@@ -1,0 +1,9 @@
+file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended.mjs:20
+const wait=async(predicate)=>{const start=Date.now();while(!predicate()){if(Date.now()-start>60000)throw Error('Timed out waiting for diagnostics');await new Promise(resolve=>setTimeout(resolve,50));}};
+                                                                                                         ^
+
+Error: Timed out waiting for diagnostics
+    at wait (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended.mjs:20:106)
+    at async file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended.mjs:39:3
+
+Node.js v22.23.1

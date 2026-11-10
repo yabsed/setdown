@@ -1,0 +1,15 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: infra/backend/template.yaml
+    at file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended.mjs:41:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

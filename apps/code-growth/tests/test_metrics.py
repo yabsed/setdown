@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import git_history
 import metrics
+from code_density import density_history
 
 
 class ClassificationTests(unittest.TestCase):
@@ -46,6 +47,28 @@ class ClassificationTests(unittest.TestCase):
             self.assertEqual(metrics.component_for_path(f"apps/desktop/src/{folder}/index.ts"), expected)
         self.assertEqual(metrics.component_for_path("apps/desktop/src/new-runtime/index.ts"), "other")
         self.assertEqual(metrics.feature_for_path("apps/desktop/src/new-runtime/index.ts"), "other")
+
+    def test_language_host_scope_and_ownership(self):
+        for path in (
+            "tooling/language-host/src/main.rs",
+            "tooling/language-host/src/project/settings.rs",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(metrics.is_code_file(path))
+                self.assertEqual(metrics.component_for_path(path), "language_host")
+                self.assertEqual(metrics.feature_for_path(path), "language")
+                self.assertIsNone(metrics.test_kind_for_path(path))
+        for path in (
+            "tooling/language-host/Cargo.toml", "tooling/language-host/Cargo.lock",
+            "tooling/language-host/rust-toolchain.toml", "tooling/language-host/NOTICE",
+            "tooling/language-host/build.rs", "tooling/language-host/src/catalog.json",
+            "tooling/language-host/target/generated.rs", "tooling/other/src/main.rs",
+            "tooling/language-host-other/src/main.rs", "vendor/zed/crates/language/src/lib.rs",
+            "reports/language-host/src/main.rs", "docs/language-host/src/main.rs",
+            "apps/another-app/src/main.rs", "apps/code-growth/example.rs",
+        ):
+            with self.subTest(path=path):
+                self.assertFalse(metrics.is_code_file(path))
 
     def test_test_helpers_and_fixtures_are_not_scenarios(self):
         cases = {
@@ -106,6 +129,59 @@ class GitHistoryTests(unittest.TestCase):
         self.git("add", ".")
         self.git("commit", "-m", message)
         return self.git("rev-parse", "HEAD")
+
+    def test_language_host_counts_in_growth_density_and_audit(self):
+        self.write("src/main/main.ts", "export {};\n")
+        self.write("test/runtime.test.ts", "assert(true);\n")
+        self.write("scripts/build.py", "print('build')\n")
+        first = self.commit("desktop before language host")
+        host = "tooling/language-host/src/main.rs"
+        self.write(host, "fn main() {\n    run();\n}\n")
+        self.write("tooling/language-host/src/project/settings.rs", "pub fn run() {}\n")
+        for path in (
+            "tooling/language-host/Cargo.lock", "tooling/language-host/Cargo.toml",
+            "tooling/language-host/src/catalog.json", "vendor/zed/src/lib.rs",
+        ):
+            self.write(path, "excluded\n" * 40)
+        added = self.commit("add production language host")
+        self.write(host, "dirty\n" * 100)
+
+        records = metrics.history()
+        self.assertEqual([r["commit"] for r in records], [first, added])
+        self.assertEqual([r["lines"] for r in records], [3, 7])
+        self.assertEqual([r["delta"] for r in records], [3, 4])
+        last = records[-1]
+        self.assertEqual((last["production"], last["testing"], last["tooling"]), (5, 1, 1))
+        self.assertEqual(last["components"]["language_host"], 4)
+        self.assertEqual(last["features"]["language"], 4)
+        self.assertEqual(sum(last["components"].values()), last["lines"])
+        self.assertEqual(sum(last["features"].values()), last["production"])
+        self.assertEqual(sum(last["tests"].values()), last["testing"])
+        entry = next(f for f in last["files"] if f["path"] == host)
+        self.assertEqual((entry["lines"], entry["category"], entry["component"], entry["feature"]),
+                         (3, "production", "language_host", "language"))
+
+        density = density_history(commits=records)
+        for group, lines, characters in (
+            ("all", 7, 74), ("production", 5, 47), ("tests", 1, 13), ("tooling", 1, 14),
+        ):
+            with self.subTest(group=group):
+                stats = density[-1]["groups"][group]
+                self.assertEqual(stats["physical_lines"], lines)
+                self.assertEqual(stats["characters"], characters)
+                self.assertEqual(stats["mean_characters"], characters / lines)
+
+        output = self.root / "output"
+        metrics.write_audit(records, "main", output)
+        summary = json.loads((output / "repository-code-growth-summary.json").read_text())
+        self.assertEqual(summary["components"]["language_host"], 4)
+        self.assertEqual(summary["features"]["language"], 4)
+        self.assertEqual(summary["unclassified_files"], [])
+        metrics.write_csv(records, output / "components.csv", "components")
+        with (output / "components.csv").open() as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual(int(rows[-1]["language_host"]), 4)
+        self.assertEqual(int(rows[-1]["total"]), 7)
 
     def test_merge_history_moves_and_dirty_worktree(self):
         self.write("src/shared/contracts.ts", "// declaration\n\nexport type X = string;")

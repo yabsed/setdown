@@ -12,12 +12,14 @@ from git_history import BlobLineCounter, code_blobs, git_text
 APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_DIR / "output"
 DEFAULT_REF = "main"
+LANGUAGE_HOST_SOURCE_ROOT = "tooling/language-host/src/"
 
 COMPONENTS = {
     "tests": "Tests / support",
     "renderer": "Renderer",
     "main": "Main",
     "core": "Core",
+    "language_host": "Language host",
     "preview_runtime": "Preview runtime",
     "browser_runtime": "Browser runtime",
     "image_runtime": "Image runtime",
@@ -60,7 +62,7 @@ STEMS = {
 }
 CODE_SUFFIXES = {
     ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".svelte",
-    ".css", ".html", ".sh", ".py",
+    ".css", ".html", ".sh", ".py", ".rs",
 }
 SCOPE_NOTE = "Physical lines including blanks/comments; committed files only."
 LIMIT_NOTE = "Code volume does not measure coverage, passing tests, quality or productivity."
@@ -80,6 +82,7 @@ def is_code_file(path: str) -> bool:
     return candidate.suffix in CODE_SUFFIXES and (
         path == "index.html"
         or path.startswith(("src/", "test/", "tests/", "scripts/"))
+        or path.startswith(LANGUAGE_HOST_SOURCE_ROOT)
         or (candidate.parent == PurePosixPath(".") and ".config." in candidate.name)
     )
 
@@ -107,6 +110,9 @@ def component_for_path(path: str) -> str:
     if test_kind_for_path(path):
         return "tests"
     path = local_path(path)
+    # This source builds a shipped runtime, despite its tooling/ location.
+    if path.startswith(LANGUAGE_HOST_SOURCE_ROOT):
+        return "language_host"
     if path == "index.html":
         return "renderer"
     if path == "src/shared/contracts.ts":
@@ -137,6 +143,8 @@ def feature_for_path(path: str) -> str:
     exceptions precede broad directories; unknown paths remain visible as other.
     """
     path = local_path(path)
+    if path.startswith(LANGUAGE_HOST_SOURCE_ROOT):
+        return "language"
     name = PurePosixPath(path).name.lower()
     parts = PurePosixPath(path).parts
     if path == "index.html":

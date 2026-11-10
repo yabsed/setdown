@@ -1,0 +1,9 @@
+file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended-final.mjs:17
+const wait=async predicate=>{const deadline=Date.now()+45000;while(!predicate()){if(Date.now()>deadline)throw Error('Diagnostics timeout');await new Promise(r=>setTimeout(r,50));}};
+                                                                                                              ^
+
+Error: Diagnostics timeout
+    at wait (file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended-final.mjs:17:111)
+    at async file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/reports/zed-language-platform-implementation-2026-11-10/check-chess-recommended-final.mjs:21:104
+
+Node.js v22.23.1
