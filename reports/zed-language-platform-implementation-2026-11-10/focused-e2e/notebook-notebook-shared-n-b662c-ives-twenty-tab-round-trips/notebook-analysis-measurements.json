@@ -1,0 +1,26 @@
+{
+  "codeCells": 100,
+  "tabRoundTrips": 20,
+  "kernel": "stopped",
+  "initial": [
+    {
+      "pid": 450956,
+      "rssKiB": 158068
+    }
+  ],
+  "after": [
+    {
+      "pid": 450956,
+      "rssKiB": 160672
+    }
+  ],
+  "editToCurrentDiagnosticsMs": [
+    876.7709290000057,
+    336.5658529999928,
+    336.7543350000051,
+    336.8917730000103,
+    338.9703310000041,
+    337.0962339999969
+  ],
+  "includes": "CDP input, 150ms debounce, IPC, server analysis, renderer and assertion polling"
+}

@@ -33,7 +33,7 @@ export class TextMateRuntime {
     }
   }
 
-  register(id: string, load: () => Promise<LanguageRegistration[]>): Promise<void> {
+  register(id: string, load: () => Promise<LanguageRegistration[]>, grammarId = id): Promise<void> {
     if (this.providers.has(id)) return Promise.resolve();
     const current = this.pending.get(id); if (current) return current;
     const promise = (async () => {
@@ -45,7 +45,7 @@ export class TextMateRuntime {
       // by Setdown. Its theme selection still uses the official adapter.
       const facade = {
         editor: { defineTheme() {}, setTheme(_name: string) {}, create() {} },
-        languages: { getLanguages: () => [{ id }], setTokensProvider: (_id: string, provider: M.languages.TokensProvider) => { raw = provider; } },
+        languages: { getLanguages: () => [{ id: grammarId }], setTokensProvider: (_id: string, provider: M.languages.TokensProvider) => { raw = provider; } },
       };
       shikiToMonaco(this.highlighter, facade as unknown as Parameters<typeof shikiToMonaco>[1], { tokenizeMaxLineLength: 20_000 });
       facade.editor.setTheme(this.theme);

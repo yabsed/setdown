@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const catalogSize = new Set([
   ...require('../../../src/main/language/catalog/mason.json').packages,
   ...require('../../../src/main/language/catalog/profiles.json').profiles,
+  ...require('../../../src/main/language/catalog/zed-profiles.json').profiles,
 ].map((entry: { id: string }) => entry.id)).size;
 
 test('the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable', async ({}, testInfo) => {
@@ -41,11 +42,13 @@ test('the language sidebar searches all discoverable servers, shows language log
     expect(await available.locator('.server').count()).toBeGreaterThan(300);
     await expect(available).not.toHaveAttribute('open');
     await panel.getByRole('searchbox').fill('svelte');
-    await expect(available.locator('.server')).toHaveCount(1);
-    await expect(available.locator('.server')).toBeVisible();
-    await expect(available.locator('.server')).toContainText('Not detected');
-    await expect(available.getByRole('img', { name: 'Svelte logo' })).toBeVisible();
-    await available.locator('.server').click();
+    // Shared extension servers also support Svelte; select the primary server by its stable identity.
+    const svelte = available.locator('[data-server-id="svelte-language-server"]');
+    await expect(svelte).toHaveCount(1);
+    await expect(svelte).toBeVisible();
+    await expect(svelte).toContainText('Not detected');
+    await expect(svelte.getByRole('img', { name: 'Svelte logo' })).toBeVisible();
+    await svelte.click();
     await expect(panel.locator('.state')).toHaveText('Not detected');
     await expect(panel.getByRole('button', { name: 'Choose executable…', exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Back to language servers' }).click();
@@ -101,6 +104,8 @@ test('installing a server while editing and rescanning connects the current mode
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-auto-language-'));
   const file = path.join(root, 'hello.f90'), log = path.join(root, 'server.jsonl');
   const executable = path.join(root, '.local/bin/fortls');
+  const settings=path.join(root,'config','Setdown');await mkdir(settings,{recursive:true});
+  await writeFile(path.join(settings,'language-servers.json'),JSON.stringify({version:1,servers:{fortls:{automaticInstall:false}},custom:[],preferred:{}}));
   await writeFile(file, 'program example\nend program example\n');
   const messages = async () => (await readFile(log, 'utf8').catch(() => '')).split('\n').filter(Boolean).map(line => JSON.parse(line));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
@@ -131,7 +136,7 @@ test('installing a server while editing and rescanning connects the current mode
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('fortls');
-    await expect(management.locator('[data-group="available"] .server')).toContainText('Not detected');
+    await expect(management.locator('[data-server-id="fortls"]')).toContainText('Not detected');
     await expect(management.getByRole('img', { name: 'Fortran logo' })).toBeVisible();
     await management.getByRole('button', { name: 'Rescan installed servers' }).click();
     await management.locator('.server-list button').click();

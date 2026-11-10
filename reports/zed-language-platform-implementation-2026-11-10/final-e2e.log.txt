@@ -1,0 +1,60 @@
+
+Running 1 test using 1 worker
+
+(node:452376) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=452394 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=452394 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=452451 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=452451 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=452451 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=452498 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=452451 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:452451): xdg-desktop-portal-WARNING **: 18:13:45.501: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.2' (uid=1000 pid=452451 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[452363]: [session uid=1000 pid=452363] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[452363]: [session uid=1000 pid=452363] Successfully activated service 'org.freedesktop.portal.Desktop'
+
+(/usr/libexec/xdg-desktop-portal:452451): xdg-desktop-portal-WARNING **: 18:13:45.516: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+  1) test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      name: !Sub "hello"
+    -
+    + # unsaved
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      101 |     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').at(-1)?.params.textDocument.text).toContain('# unsaved revision');
+      102 |     await expect(input).toBeFocused(); await input.press('Control+z'); await input.press('Control+s');
+    > 103 |     await expect.poll(() => readFile(file, 'utf8')).toBe('name: !Sub "hello"\n');
+          |                                                     ^
+      104 |   } finally { await disposeApplication(app); await rm(f.root, { recursive: true, force: true }); }
+      105 | });
+      106 |
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/language/syntax-highlighting.spec.ts:103:53
+
+    Error Context: ../../reports/zed-language-platform-implementation-2026-11-10/zed-settings-e2e/language-syntax-highlighti-305e4-the-unsaved-editor-and-Undo/error-context.md
+
+
+  1 failed
+    test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo 

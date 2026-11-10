@@ -1,0 +1,24 @@
+{
+  "newLanguage": "setdown-unknown-language",
+  "newServer": "zed.setdown-unknown-language.future-language-server",
+  "newExtension": "setdown-unknown-language",
+  "protocolLanguage": "svelte",
+  "registeredWithoutCoreChange": true,
+  "actualWasmAdapter": "Svelte 0.2.11, repackaged under new manifest identities for this fixture",
+  "diagnostics": [
+    "Type 'string' is not assignable to type 'number'."
+  ],
+  "hover": {
+    "range": {
+      "start": {
+        "line": 3,
+        "character": 4
+      },
+      "end": {
+        "line": 3,
+        "character": 9
+      }
+    },
+    "contents": "```typescript\nlet count: number\n```"
+  }
+}

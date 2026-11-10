@@ -37,7 +37,7 @@ jobs:
     needs: metadata
     name: Package ${{ matrix.platform }} x64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -68,10 +68,16 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y rpm
+          sudo apt-get install --no-install-recommends -y rpm build-essential clang cmake pkg-config libfontconfig1-dev libasound2-dev libxkbcommon-dev libwayland-dev libudev-dev libssl-dev
+      - name: Prepare pinned Zed language host
+        run: |
+          git submodule update --init --depth 1 -- vendor/zed
+          rustup toolchain install 1.98.1 --profile minimal
       - run: npm ci
       # Version changes are confined to the package; no version-bump commit.
       - name: Build installers
+        env:
+          SETDOWN_LANGUAGE_HOST_PROFILE: release
         run: npm run package:$RELEASE_PLATFORM -- --x64 --publish never --config.extraMetadata.version="$RELEASE_VERSION"
       - name: Verify expected installers
         run: node scripts/ci/verify-installers.mjs

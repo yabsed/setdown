@@ -15,6 +15,18 @@ const definition = { id: 'user-server', name: 'User server', launch: { kind: 'na
   languages: [{ languageId: 'python', extensions: ['.py', '.pyi'] }], rootMarkers: ['custom.project'],
   settings: { custom: { diagnostics: true } }, initializationOptions: { indexing: false } };
 
+test('merged Helix and Zed catalog has unique server identities with saved settings present',async()=>{
+  const root=await directory();
+  await writeFile(path.join(root,'language-servers.json'),JSON.stringify({version:1,servers:{},custom:[],preferred:{}}));
+  const registry=new ServerRegistry(root),definitions=registry.definitions();
+  expect(definitions.length).toBeGreaterThan(400);
+  expect(new Set(definitions.map(d=>d.id)).size).toBe(definitions.length);
+  expect(registry.definition('koto-ls').id).toBe('koto-ls');
+  expect(registry.definition('wgsl-analyzer').id).toBe('wgsl-analyzer');
+  registry.configure('bash-language-server',{settings:{bashIde:{shellcheckPath:''}}});
+  expect(new ServerRegistry(root).options('bash-language-server').settings).toEqual({bashIde:{shellcheckPath:''}});
+});
+
 test('custom definitions, active selection, settings and fingerprints survive restart without language branches', async () => {
   const root = await directory();
   let registry = new ServerRegistry(root);

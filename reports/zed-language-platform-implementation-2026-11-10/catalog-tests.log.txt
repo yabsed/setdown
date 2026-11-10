@@ -1,0 +1,35 @@
+
+ RUN  v3.2.7 /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+
+ ✓ src/renderer/language/tree-sitter-runtime.test.ts > query captures produce ordered non-overlapping tokens with inner captures taking precedence 3ms
+ × src/core/document/language-catalog.test.ts > server-independent catalog recognizes build files, dialects, shebangs and uncommon languages 14ms
+   → expected undefined to be 'python' // Object.is equality
+ ✓ src/core/document/language-catalog.test.ts > complete upstream metadata preserves grammar-only languages and lazy external grammars 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/document/language-catalog.test.ts > server-independent catalog recognizes build files, dialects, shebangs and uncommon languages
+AssertionError: expected undefined to be 'python' // Object.is equality
+
+- Expected: 
+"python"
+
++ Received: 
+undefined
+
+ ❯ src/core/document/language-catalog.test.ts:11:73
+      9|     'CMakeLists.txt':'cmake','Justfile':'just','main.f90':'fortran','m…
+     10|     expect(documentLanguage(file,[]),file).toBe(id);
+     11|   expect(catalogLanguage('program','#!/usr/bin/env -S python3 -u')?.id…
+       |                                                                         ^
+     12|   expect(languageDefinition('make')).toMatchObject({grammar:'make',ins…
+     13|   for (const id of ['yaml','github-action','dockercompose','gitlab-ci'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 2 passed (3)
+   Start at  16:42:22
+   Duration  349ms (transform 91ms, setup 0ms, collect 142ms, tests 20ms, environment 0ms, prepare 112ms)
+

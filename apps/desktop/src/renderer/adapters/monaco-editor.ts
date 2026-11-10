@@ -18,6 +18,8 @@ import { applyMonacoTheme, monacoThemeName, registerMonacoThemes } from '../them
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { LanguageOptions } from '../language/language-client';
 import type { LanguageServices } from '../language/language-services';
+import { installSyntaxHighlighting } from '../language/syntax-runtime';
+import { updateLanguageDefinitions } from '../../core/document/language-catalog';
 import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin } from '../language/language-runtime';
 import { recognizedLanguage } from '../../core/document/language-policy';
 import { loadMonaco } from '../editor/monaco-runtime';
@@ -42,6 +44,7 @@ type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
 
 export class MonacoEditor {
   private languageRoutes: LanguageRoute[] | undefined;
+  private readonly unknownLanguageFiles=new Set<string>();
   private languageConfiguration: Promise<LanguageRoute[]> | undefined;
   private languageEpoch = 0;
   private unregisterLanguage?: () => void;
@@ -83,6 +86,7 @@ export class MonacoEditor {
       if (event.servers) this.languageClient?.invalidate(event.servers, event.documents, event.roots);
       else { this.languageClient?.dispose(); this.languageClient = undefined; }
       this.languageLoading = undefined; this.languageRoutes = undefined; this.languageConfiguration = undefined;
+      this.unknownLanguageFiles.clear();
       if (!event.servers) {
         delete options.host.dataset.languageServer;
       }
@@ -449,7 +453,10 @@ export class MonacoEditor {
     const epoch = this.languageEpoch;
     // Fetch lightweight associations once. The LSP client and catalog stay off the preview path.
     if (!this.languageRoutes) {
-      this.languageConfiguration ??= options.port.configuration();
+      this.languageConfiguration ??= Promise.all([options.port.configuration(),options.port.definitions?.(tab.document.isUntitled?undefined:tab.document.path)??Promise.resolve([])]).then(([routes,definitions])=>{
+        if(!this.disposed && epoch===this.languageEpoch){updateLanguageDefinitions(definitions);installSyntaxHighlighting(api);}
+        return routes;
+      });
       void this.languageConfiguration.then(routes => {
         if (this.disposed || epoch !== this.languageEpoch || model.isDisposed()) return;
         this.languageRoutes = routes;
@@ -458,6 +465,10 @@ export class MonacoEditor {
       return;
     }
     const language = this.languageOverrides.get(documentIdentity(tab)) ?? recognizedLanguage(tab.document.path, api.languages.getLanguages(), this.languageRoutes, model.getLineContent(1));
+    if(language==='plaintext' && !tab.document.isUntitled && !this.unknownLanguageFiles.has(tab.document.path)) {
+      this.unknownLanguageFiles.add(tab.document.path);
+      void options.port.definitions?.(tab.document.path).catch(error=>console.warn('Language discovery:',String(error)));
+    }
     if (!api.languages.getLanguages().some(item => item.id === language)) api.languages.register({ id: language });
     if (model.getLanguageId() !== language) {
       this.languageClient?.unbind(model);

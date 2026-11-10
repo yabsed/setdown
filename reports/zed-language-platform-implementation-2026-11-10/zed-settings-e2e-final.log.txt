@@ -1,0 +1,33 @@
+
+Running 1 test using 1 worker
+
+(node:454766) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=454784 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=454784 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=454842 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[454753]: [session uid=1000 pid=454753] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[454753]: [session uid=1000 pid=454753] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=454842 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[454753]: [session uid=1000 pid=454753] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=454842 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=454889 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[454753]: [session uid=1000 pid=454753] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[454753]: [session uid=1000 pid=454753] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=454842 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[454753]: [session uid=1000 pid=454753] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:454842): xdg-desktop-portal-WARNING **: 18:17:33.817: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.2' (uid=1000 pid=454842 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[454753]: [session uid=1000 pid=454753] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[454753]: 
+(/usr/libexec/xdg-desktop-portal:454842): xdg-desktop-portal-WARNING **: 18:17:33.832: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+[session uid=1000 pid=454753] Successfully activated service 'org.freedesktop.portal.Desktop'
+  1 passed (2.9s)

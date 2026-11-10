@@ -9,6 +9,7 @@ const shared = {
   external: ['sharp', 'electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright', 'basedpyright', 'typescript', 'typescript-language-server'],
 };
 await mkdir('dist-electron', { recursive: true });
+await import('./build-language-host.mjs');
 await copyFile('../../LICENSE', 'dist-electron/SETDOWN-LICENSE.txt');
 await copyFile('src/core/project/upstream/VSCODE-LICENSE', 'dist-electron/VSCODE-GIT-LICENSE');
 await copyFile('src/core/project/upstream/NOTICE', 'dist-electron/VSCODE-GIT-NOTICE');

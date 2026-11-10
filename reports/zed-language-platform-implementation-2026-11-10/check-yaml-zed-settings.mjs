@@ -1,0 +1,38 @@
+import { spawn } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
+import assert from 'node:assert/strict';
+import { ZedProjectSettings } from './zed-settings-check.mjs';
+const require=createRequire(import.meta.url);
+const {createMessageConnection,StreamMessageReader,StreamMessageWriter}=require('vscode-jsonrpc/node');
+const root='/tmp/setdown-host-real/workspace',uri=pathToFileURL(root+'/tags.yaml').href;
+const prepared=(await readFile(new URL('./real-yaml-host.log.txt',import.meta.url),'utf8')).split('\n').filter(line=>line.startsWith('SETDOWN-LANGUAGE/1 ')).map(line=>JSON.parse(line.slice(19))).find(message=>message.result)?.result;
+assert(prepared?.executable.includes('/setdown-host-real/data/node/'));
+let settings={yaml:{validate:true,schemaStore:{enable:false}}};
+const child=spawn(prepared.executable,prepared.args,{cwd:root,env:{...process.env,...prepared.env},stdio:'pipe'});
+const connection=createMessageConnection(new StreamMessageReader(child.stdout),new StreamMessageWriter(child.stdin));
+const diagnostics=[];connection.onNotification('textDocument/publishDiagnostics',params=>diagnostics.push(params));
+connection.onRequest('workspace/configuration',({items})=>items.map(({section})=>section?section.split('.').reduce((o,k)=>o?.[k],settings)??null:settings));
+connection.onRequest('client/registerCapability',()=>null);connection.listen();
+const timeout=setTimeout(()=>{child.kill();process.exitCode=1;},30000);
+const wait=async predicate=>{const start=Date.now();while(!predicate()){if(Date.now()-start>12000)throw Error('Missing expected diagnostics: '+JSON.stringify(diagnostics));await new Promise(resolve=>setTimeout(resolve,50));}};
+const reader=new ZedProjectSettings({home:'/tmp/setdown-host-real/home',env:{},platform:'linux'});
+try{
+ await connection.sendRequest('initialize',{processId:process.pid,rootUri:pathToFileURL(root).href,capabilities:{workspace:{configuration:true},textDocument:{publishDiagnostics:{versionSupport:true}}}});
+ await connection.sendNotification('initialized',{});await connection.sendNotification('workspace/didChangeConfiguration',{settings});
+ const text='scalar: !Sub "hello ${World}"\nsequence: !Sub ["hello ${World}", {World: earth}]\n';
+ await connection.sendNotification('textDocument/didOpen',{textDocument:{uri,languageId:'yaml',version:1,text}});
+ await wait(()=>diagnostics.some(result=>result.uri===uri&&result.diagnostics.some(d=>/Unresolved tag|unknown tag/i.test(d.message))));
+ const before=diagnostics.flatMap(r=>r.diagnostics.map(d=>d.message));
+ await mkdir(root+'/.zed',{recursive:true});await writeFile(root+'/.zed/settings.json','{// Shared with Zed\n"lsp":{"yaml-language-server":{"settings":{"yaml":{"customTags":["!Sub scalar","!Sub sequence",]}}}}}');
+ const definition={id:'yaml-language-server',launch:{kind:'native',command:'yaml-language-server'}};
+ const inherited=reader.options(definition,root+'/tags.yaml');assert.deepEqual(inherited.settings.yaml.customTags,['!Sub scalar','!Sub sequence']);
+ settings={yaml:{...settings.yaml,...inherited.settings.yaml}};
+ const offset=diagnostics.length;await connection.sendNotification('workspace/didChangeConfiguration',{settings});
+ await connection.sendNotification('textDocument/didChange',{textDocument:{uri,version:2},contentChanges:[{text:text+'# current revision\n'}]});
+ await wait(()=>diagnostics.slice(offset).some(r=>r.uri===uri&&r.diagnostics.length===0));
+ const result={before,after:diagnostics.at(-1).diagnostics,customTags:settings.yaml.customTags,managedNode:prepared.executable};
+ await writeFile(new URL('./yaml-zed-settings-result.json',import.meta.url),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));
+ await connection.sendRequest('shutdown');await connection.sendNotification('exit');
+}finally{reader.dispose();clearTimeout(timeout);connection.dispose();child.kill();}

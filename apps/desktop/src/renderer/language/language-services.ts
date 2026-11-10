@@ -1,5 +1,6 @@
 import { languageFeaturePlan } from './language-feature-plan';
 import type * as M from 'monaco-editor';
+import { bindTreeSitter } from './tree-sitter-runtime';
 import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
 import type { LanguageRoute } from '../../core/document/language-support';
 import { jsonDialect } from '../../core/document/language-policy';
@@ -54,6 +55,7 @@ export class LanguageServices {
   }
   bind(tab: DocumentTab, model: M.editor.ITextModel): void {
     this.models.set(model, tab);
+    bindTreeSitter(this.api,model,tab.document.path,this.options.port);
     if (this.restarting || this.disposed) return;
     this.client(primaryChannel).bind(tab, model);
     const companions = new Set(this.matching(model, 'supplementary').map(route => route.server));

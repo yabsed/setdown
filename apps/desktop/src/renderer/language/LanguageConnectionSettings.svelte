@@ -6,12 +6,14 @@
     apply(options: LanguageServerOptions): Promise<void>;
   } = $props();
   let role = $state<'primary' | 'supplementary'>('primary'), formatting = $state('auto'), root = $state('');
+  let installation=$state('automatic');
   let interpreter = $state(''), compilation = $state(''), json = $state(''), busy = $state(false), error = $state(''), saved = $state(false);
   // Catalog language labels use "Python"; custom profiles may use "python".
   const supportsPython = $derived(languages.some(language => language.toLowerCase() === 'python'));
   let live = true;
   onMount(() => {
     role = initial.role ?? 'primary'; formatting = initial.formatting === undefined ? 'auto' : initial.formatting ? 'on' : 'off'; root = initial.root ?? '';
+    installation=initial.automaticInstall===false?'manual':'automatic';
     const python = initial.settings.python;
     interpreter = python && typeof python === 'object' ? String((python as Record<string, unknown>).pythonPath ?? '') : '';
     const index = initial.args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
@@ -38,7 +40,7 @@
         if (compilation.trim()) args.push(`--compile-commands-dir=${compilation.trim()}`);
         options.args = args;
       }
-      await apply({ ...options, scope, root: root.trim() || undefined, role, formatting: formatting === 'auto' ? undefined : formatting === 'on' });
+      await apply({ ...options,automaticInstall:installation==='automatic',scope, root: root.trim() || undefined, role, formatting: formatting === 'auto' ? undefined : formatting === 'on' });
       if (live) saved = true;
     } catch (reason) { if (live) error = String(reason); }
     finally { if (live) busy = false; }
@@ -49,6 +51,7 @@
   <p class="scope">{scope ? `This project · ${scope}` : 'Global defaults · applies where a project has no override'}</p>
   <label>Provider role<select aria-label="Provider role" bind:value={role}><option value="primary">Project analysis</option><option value="supplementary">Additional diagnostics and tools</option></select></label>
   <label>Formatting<select aria-label="Formatting provider" bind:value={formatting}><option value="auto">Default for this role</option><option value="on">Use this provider</option><option value="off">Do not use this provider</option></select></label>
+  <label>Server installation<select aria-label="Server installation" bind:value={installation}><option value="automatic">Download when needed</option><option value="manual">Use installed servers only</option></select></label>
   <label>Analysis root<input aria-label="Analysis root" bind:value={root} placeholder="Detect from project files" /></label>
   {#if supportsPython}<label>Python interpreter<input aria-label="Analysis Python interpreter" bind:value={interpreter} placeholder="Server's project environment" /></label>{/if}
   {#if server === 'clangd'}<label>Compilation database directory<input aria-label="Compilation database directory" bind:value={compilation} placeholder="Detect compile_commands.json" /></label>{/if}

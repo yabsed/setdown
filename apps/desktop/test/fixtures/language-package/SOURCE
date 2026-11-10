@@ -1,0 +1,9 @@
+Tree-sitter Make grammar, MIT (see LICENSE).
+Source: https://github.com/tree-sitter-grammars/tree-sitter-make/tree/5e9e8f8ff3387b0edcaa90f46ddf3629f4cfeb1d
+Compiled WASM distributed in Zed's make 1.1.2 package:
+https://api.zed.dev/extensions/make/1.1.2/download
+WASM SHA-256: 77ec8216cd75698f008c6061335cd62da51930cf9e9fe525059cb0e3f34d178b
+
+Used only by the unknown-language integration fixture. The fixture declares a
+new language and package at runtime; it exercises the real Rust/WASM grammar
+host and Monaco rendering without depending on downloads during GUI tests.

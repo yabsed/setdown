@@ -21,25 +21,24 @@ export function validateLanguageDefinition(value: unknown): LanguageServerDefini
   const strings = (v: unknown, max = 128): v is string[] => Array.isArray(v) && v.length <= max && v.every(item => text(item, 4096));
   if (!record(value) || !text(value.id, 80) || ['__proto__', 'constructor', 'prototype'].includes(value.id) || !/^[a-z0-9][a-z0-9._-]*$/.test(value.id) || !text(value.name)
     || !record(value.launch) || value.launch.kind !== 'native' || !text(value.launch.command, 4096)
-    || !strings(value.launch.args) || !Array.isArray(value.languages) || !value.languages.length || value.languages.length > 128)
+    || !strings(value.launch.args) || !Array.isArray(value.languages) || !value.languages.length || value.languages.length > 1024)
     throw new Error('Provide an ID, name, native executable, arguments and at least one language.');
   const associations = value.languages.map((language: unknown) => {
     if (!record(language) || !text(language.languageId, 80) || ['__proto__', 'constructor', 'prototype'].includes(language.languageId) || !/^[\w.+-]+$/.test(language.languageId)
-      || (language.monacoId !== undefined && (!text(language.monacoId, 80) || !/^[\w+-]+$/.test(language.monacoId)))
+      || (language.monacoId !== undefined && (!text(language.monacoId, 80) || !/^[\w.+-]+$/.test(language.monacoId)))
       || !strings(language.extensions)
       || (language.filenames !== undefined && !strings(language.filenames))
       || (language.filenamePatterns !== undefined && !strings(language.filenamePatterns))
-      || !(language.extensions.length || language.filenames?.length || language.filenamePatterns?.length)
       || (language.filenames ?? []).some((name: string) => /[/\\]/.test(name) || name === '..')
-      || (language.filenamePatterns ?? []).some((pattern: string) => !/^[\w .+@/?!*_-]+$/.test(pattern) || pattern.split('/').includes('..') || pattern.startsWith('/'))
+      || (language.filenamePatterns ?? []).some((pattern: string) => !/^[\w .+@/?!*_-]+$/.test(pattern) || pattern.split('/').includes('..'))
       || (language.caseSensitiveExtensions !== undefined && !strings(language.caseSensitiveExtensions))
-      || [...language.extensions, ...(language.caseSensitiveExtensions ?? [])].some(e => !/^\.[\w.+-]+$/.test(e)))
-      throw new Error('Each language needs a language ID and file extensions such as .go or .rs.');
+      || [...language.extensions, ...(language.caseSensitiveExtensions ?? [])].some(e => !/^\.[^\s/\\\0*?{}\[\]]+$/u.test(e)))
+      throw new Error('Each language needs a valid language ID and an array of file extensions such as .go or .rs.');
     return { languageId: language.languageId, monacoId: language.monacoId, extensions: language.extensions,
       caseSensitiveExtensions: language.caseSensitiveExtensions, filenames: language.filenames, filenamePatterns: language.filenamePatterns };
   });
   for (const field of ['rootMarkers', 'watchFiles', 'watchExtensions']) {
-    if (value[field] !== undefined && !strings(value[field])) throw new Error(`Invalid ${field}.`);
+    if (value[field] !== undefined && !strings(value[field], field === 'watchExtensions' ? 4096 : 128)) throw new Error(`Invalid ${field}.`);
   }
   if ((value.rootMarkers ?? []).concat(value.watchFiles ?? []).some((name: string) => /[/\\]/.test(name) || name === '..'))
     throw new Error('Root markers and watched names must be file names.');

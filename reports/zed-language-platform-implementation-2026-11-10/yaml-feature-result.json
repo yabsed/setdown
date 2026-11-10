@@ -1,0 +1,28 @@
+{
+  "managedNode": "/tmp/setdown-host-real/data/node/node-v24.22.1-linux-x64/bin/node",
+  "server": "/tmp/setdown-host-real/data/servers/yaml-language-server/node_modules/yaml-language-server/bin/yaml-language-server",
+  "diagnostics": [
+    "Incorrect type. Expected \"string\"."
+  ],
+  "completion": [
+    "enabled"
+  ],
+  "capabilities": [
+    "textDocumentSync",
+    "completionProvider",
+    "hoverProvider",
+    "documentSymbolProvider",
+    "documentFormattingProvider",
+    "documentOnTypeFormattingProvider",
+    "documentRangeFormattingProvider",
+    "definitionProvider",
+    "renameProvider",
+    "documentLinkProvider",
+    "foldingRangeProvider",
+    "selectionRangeProvider",
+    "codeActionProvider",
+    "codeLensProvider",
+    "executeCommandProvider",
+    "workspace"
+  ]
+}

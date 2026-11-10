@@ -1,3 +1,5 @@
+import { catalogLanguage } from './language-catalog';
+
 /** Shared policy: no Monaco, filesystem, renderer or worker dependency. */
 export const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'rmd', 'qmd', 'mdx'];
 export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg'];
@@ -59,6 +61,8 @@ export function documentLanguage(filePath: string, languages: readonly Registere
   if (isMarkdownDocument(filePath)) return 'markdown';
   const cLanguage = filePath.endsWith('.C') || /\.(cc|cpp|cxx|c\+\+|hh|hpp|hxx|h\+\+|ipp|inl|tpp|ixx|cppm)$/i.test(filePath) ? 'cpp' : /\.(c|h)$/.test(filePath) ? 'c' : undefined;
   if (cLanguage && languages.some(language => language.id === cLanguage)) return cLanguage;
+  const known = catalogLanguage(filePath, firstLine);
+  if (known) return known.id;
   const name = fileName(filePath);
   const lower = name.toLowerCase();
   const exact = languages.find((language) => language.filenames?.includes(name));

@@ -33,11 +33,12 @@
     "package:win": "npm run build && electron-builder --win nsis --x64",
     "package:linux": "npm run build && electron-builder --linux AppImage deb rpm",
     "install:linux": "bash scripts/install-linux.sh",
-    "update:language-profiles": "python3 scripts/update-language-profiles.py",
-    "check:language-profiles": "python3 scripts/update-language-profiles.py --check",
+    "update:language-profiles": "python3 scripts/update-language-profiles.py && node scripts/update-language-packages.mjs",
+    "check:language-profiles": "python3 scripts/update-language-profiles.py --check && node scripts/update-language-packages.mjs --check",
     "test:notebook-tools": "npm run build && bash scripts/with-isolated-display.sh playwright test --config playwright.notebook-tools.config.ts",
     "test:tooling": "node --test scripts/*.test.mjs scripts/browser/*.test.mjs",
-    "test:xwayland": "npm run build && SETDOWN_TEST_DISPLAY=xwayland bash scripts/with-isolated-display.sh playwright test --config playwright.wayland.config.ts"
+    "test:xwayland": "npm run build && SETDOWN_TEST_DISPLAY=xwayland bash scripts/with-isolated-display.sh playwright test --config playwright.wayland.config.ts",
+    "update:zed-language-packages": "node scripts/update-zed-language-packages.mjs --refresh && node scripts/update-language-packages.mjs"
   },
   "dependencies": {
     "@parcel/watcher": "^2.6.0",
@@ -75,6 +76,7 @@
     "sharp": "0.35.4",
     "simple-icons": "9.21.0",
     "smol-toml": "1.9.1",
+    "tar": "^7.5.22",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
     "typescript": "5.9.3",
@@ -117,6 +119,7 @@
       "**/node_modules/sharp/**/*",
       "**/node_modules/@img/**/*",
       "dist-electron/kernel-bridge.py",
+      "dist-electron/language-host/**/*",
       "dist-electron/x11-pinch.py",
       "node_modules/node-pty/**/*",
       "node_modules/pyright/**/*",

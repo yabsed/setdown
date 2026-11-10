@@ -889,6 +889,30 @@ guarantees and tolerances remain unchanged.
 
 Execution evidence: [Svelte syntax highlighting validation](validation/2026-10-30-svelte-syntax-highlighting.md).
 
+The language package platform extends this ownership: the core catalog recognizes
+files independently of server availability; local TextMate grammars remain lazy.
+Languages added by runtime packages use the separate Zed host for Tree-sitter WASM
+captures. Captures use UTF-16 offsets and must be discarded after a model revision,
+language, ownership or cancellation change. Grammar preparation and server
+installation never replace a document model, enter the Escape input path, or
+block editing. Markdown and existing native Monaco grammars keep their lazy-load
+guarantees.
+
+Zed user and ancestor `.zed/settings.json` files supply language-server settings.
+Saving them may reconnect affected providers, but must preserve current unsaved
+text, focus and Undo. A project opened at its root must inherit settings into
+nested files, including `infra/backend/template.yaml`. Package catalog refreshes
+must obey the same model and revision guarantees. The syntax Electron suite tests
+these cases, Make recipe tabs, YAML dialects and a language absent from the build
+that obtains highlighting through an actual runtime WASM grammar. Catalog,
+package-installation, settings-inheritance and capture-flattening unit tests are
+part of the focused contract. The latency gate and tolerances remain unchanged.
+
+The [language platform validation](../reports/zed-language-platform-implementation-2026-11-10/README.md)
+records 1,303 unit checks, all 339 isolated Electron scenarios, a packaged-app
+WASM check and the matched 80-launch comparison. All 48 first/second/warm timing
+buckets passed the unchanged tolerances; both builds used source maps disabled.
+
 ## Document-owned analysis inspection — 2026-11-01
 
 The global Language Support catalog manages tool availability and global defaults.

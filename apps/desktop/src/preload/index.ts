@@ -77,6 +77,8 @@ const api: MarkTexApi = {
   renderNotebookMarkdown: (path, source) => ipcRenderer.invoke('notebook:markdown', path, source),
   language: {
     open: document => ipcRenderer.invoke('language:open', document),
+    highlight: (file, languageId, text) => ipcRenderer.invoke('language:highlight', file, languageId, text),
+    definitions: file => ipcRenderer.invoke('language:definitions',file),
     change: (id, version, changes) => ipcRenderer.invoke('language:change', id, version, changes),
     changeNotebook: (id, version, cells) => ipcRenderer.invoke('language:notebook-change', id, version, cells),
     close: id => ipcRenderer.send('language:close', id),

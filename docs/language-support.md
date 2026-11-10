@@ -140,16 +140,19 @@ JavaScript/TypeScript inside `<script>`, and CSS inside `<style>`, including Sve
 for these colors. The optional Svelte language server still supplies diagnostics,
 completion, navigation and semantic tokens; semantic colors overlay lexical colors.
 
-The shared grammar registry in `renderer/language/syntax-runtime.ts` declares a
-language ID, file associations and a lazy grammar import. Adding another grammar
-does not require a branch in each editor surface. Monaco's existing tokenizers
-remain in place for Python, JavaScript/TypeScript, Markdown and other built-in
-languages. Svelte is the first registered TextMate language; arbitrary imported
-LSP profiles do not automatically install their syntax grammars. Additional
-preprocessors such as Pug and SCSS inside Svelte need their own embedded grammars.
+The shared language catalog supplies file associations, editing defaults and
+grammar identities to `renderer/language/syntax-runtime.ts`. Its 260 local
+TextMate grammars load on demand. Monaco's existing tokenizers remain in place for
+Python, JavaScript/TypeScript, Markdown and other built-in languages. YAML dialects
+can share the YAML grammar while keeping separate analyzer identities. Compatible
+runtime packages can add a Tree-sitter WASM grammar through the Zed host without
+an application rebuild. An arbitrary LSP connection alone does not supply syntax
+grammar metadata. Additional preprocessors such as Pug and SCSS inside Svelte
+need their own embedded grammars.
 
-The engine, Oniguruma WASM and Svelte grammar are bundled local assets, loaded on
-first Svelte use. Opening only Markdown or Python does not load them. All nine app
+The TextMate engine, Oniguruma WASM and local grammars are bundled assets, loaded
+when a matching language needs them. Opening only Markdown or Python does not
+load them. All nine app
 themes supply corresponding TextMate colors, including the pinned VS Code Dark
 2026 rules. Namespaced token rules preserve existing Monaco and LSP colors.
 Ordinary editors, split groups and both Git comparison models share the same
@@ -158,7 +161,8 @@ their Undo histories. The upstream adapter's 20,000-character line cutoff and
 500 ms soft tokenization time budget limit lexical work; a skipped oversized
 line keeps its incoming grammar state and can temporarily affect following colors.
 
-Implementation and execution evidence: [Svelte syntax highlighting validation](validation/2026-10-30-svelte-syntax-highlighting.md).
+Implementation and execution evidence: [Svelte syntax highlighting validation](validation/2026-10-30-svelte-syntax-highlighting.md)
+and [language package platform validation](../reports/zed-language-platform-implementation-2026-11-10/README.md).
 
 ## Project environments and recovery
 
@@ -249,21 +253,31 @@ explains the correspondence and retained Setdown guarantees.
 
 ## Choosing a server
 
-The offline catalog combines 331 packages from [Mason Registry](https://github.com/mason-org/mason-registry)
-with pinned [Helix language definitions](https://docs.helix-editor.com/languages.html).
-It currently contains **384 servers and 195 connection profiles**. Automatic
-discovery uses the catalog's executable metadata; bundled Pyright and the TypeScript project server are shown as Included.
-Five catalog entries without executable metadata require manual executable selection. The sidebar
-separates detected installations from available discovery profiles. Of the original
-331 Mason entries, 142 have an imported or retained connection profile; 189 still
-need connection metadata. The shared discovery flow checks every entry using its available executable
-metadata. Five Mason entries have neither an executable name nor an imported
-profile, so their path still needs a manual choice.
-A profile is a launch/association recipe, not a claim that every server feature
+The offline catalog combines 331 [Mason Registry](https://github.com/mason-org/mason-registry)
+packages, pinned [Helix definitions](https://docs.helix-editor.com/languages.html)
+and 581 published [Zed extension packages](https://zed.dev/extensions). The initial
+snapshot has **749 catalog entries and 560 connection profiles**. File recognition
+uses a separate catalog of 805 language definitions, including aliases and
+dialects; grammar availability does not depend on whether a server is installed.
+A profile is an association/launch recipe, not a claim that every server feature
 has been integration-tested.
 
-Install a server yourself, then open a matching saved file. Profiled servers know
-their command, arguments, language IDs, file associations and root markers:
+Open a matching saved file. Setdown uses an existing installation when available;
+otherwise it prepares eligible native Zed adapters, Zed WASM extensions or pinned
+npm packages in its own data directory. The actual Zed host supplies its managed
+Node runtime when needed. Preparation runs asynchronously and connects the latest
+unsaved text when ready. **Connection settings → Server installation → Use
+installed servers only** disables automatic preparation for that connection.
+Explicitly disabled providers stay disabled.
+
+The package index refreshes in the background. Compatible new published languages
+can add file associations, syntax and server adapters without changing Setdown's
+application code. Cached packages and launch commands are reused across runs.
+First use of an uncached package requires a download; language-specific project
+SDK requirements still follow the upstream adapter or extension.
+
+Profiled servers know their command, arguments, language IDs, file associations
+and root markers:
 
 - **Pyright** remains bundled and enabled for Python.
 - **TypeScript Language Server** and TypeScript 5.9.3 are included for saved JS/TS/JSX/TSX files. Automatic typings acquisition is disabled; project configuration and installed dependencies determine analysis.
@@ -291,9 +305,10 @@ their command, arguments, language IDs, file associations and root markers:
   without opening a file chooser. **Add server manually…** and **Import JSON…** remain
   available; imported custom connections initially stay disabled.
 
-Installation is manual. Setdown does not execute Mason installation recipes or
-install packages. It starts installed stdio servers with argument arrays and
-`shell: false`. Native executable scripts on Unix work through their normal
+Automatic preparation uses Zed's actual installers/extensions and supported npm
+package metadata; it does not execute arbitrary Mason installation recipes.
+Custom connections retain explicit executable selection. Stdio servers start
+with argument arrays and `shell: false`. Native executable scripts on Unix work through their normal
 interpreter. npm package `bin` metadata can also resolve an installed Node runtime
 and script directly, including on Windows without running `.cmd`/`.bat` wrappers.
 Custom connections can still select Node and put the server script in `args`.
@@ -306,6 +321,40 @@ and startup/crash errors (including available stderr). Finding an executable doe
 not prove that its runtime or project is healthy; **Connected** means LSP
 initialization completed, not that analysis completed.
 A runtime proxy such as rustup can exist even when its server component is missing.
+
+## Sharing Zed language-server settings
+
+Setdown reads `lsp.<server>.settings` and `lsp.<server>.initialization_options`
+from Zed's user settings and enclosing `.zed/settings.json` files. On Linux, the
+user settings are `${XDG_CONFIG_HOME:-~/.config}/zed/settings.json`;
+`~/.zed/settings.json` is also accepted. On Windows the Zed user directory is
+`%APPDATA%/Zed`. JSONC comments and trailing commas are supported.
+
+For a workspace opened at `chess`, `chess/.zed/settings.json` applies to
+`chess/infra/backend/template.yaml` and other nested files:
+
+```json
+{
+  "lsp": {
+    "yaml-language-server": {
+      "settings": {
+        "yaml": {
+          "customTags": ["!Sub scalar", "!Sub sequence"]
+        }
+      }
+    }
+  }
+}
+```
+
+More specific folders override ancestors. Objects merge recursively; arrays
+replace inherited arrays. Explicit Setdown connection settings have final
+precedence. Saving a valid settings change reconnects affected services with the
+current unsaved text, keeping focus and Undo. A temporarily malformed settings
+file retains the last valid settings until it is fixed.
+
+This example declares the two `!Sub` forms. It does not disable validation or
+declare other custom tags such as `!Ref` and `!GetAtt`.
 
 ## Finding an installation
 
@@ -349,8 +398,9 @@ settings. Opening the catalog performs only file checks; shell/Python/npm querie
 require a native language document or Rescan. Markdown reading, PDF and web use do
 not trigger this discovery unless explicitly connected to a language server.
 
-A missing default automatic server is a quiet unavailable state; normal editing
-and saving remain usable. Explicit connection failures still show their cause.
+A missing eligible server is prepared asynchronously when automatic installation
+is enabled. Servers without a supported installation path remain unavailable;
+normal editing and saving stay usable. Explicit connection failures show their cause.
 Finding an executable cannot repair a missing shared library or toolchain.
 
 Directory listings and Python/npm metadata are shared across scans; eight workers

@@ -1,0 +1,55 @@
+{
+  "workspaceRoot": "/home/yabsed/Documents/fall26/work/projects/chess",
+  "settingsFile": "/home/yabsed/Documents/fall26/work/projects/chess/.zed/settings.json",
+  "results": [
+    {
+      "file": "infra/foundation/template.yaml",
+      "customTags": [
+        "!Sub scalar",
+        "!Sub sequence"
+      ],
+      "before": {
+        "Unresolved tag: !Sub": 44,
+        "Unresolved tag: !Ref": 49,
+        "Unresolved tag: !Select": 4,
+        "Unresolved tag: !GetAZs": 4,
+        "Unresolved tag: !GetAtt": 15,
+        "Unresolved tag: !Base64": 1,
+        "Unresolved tag: !Join": 1
+      },
+      "after": {
+        "Unresolved tag: !Ref": 49,
+        "Unresolved tag: !Select": 4,
+        "Unresolved tag: !GetAZs": 4,
+        "Unresolved tag: !GetAtt": 15,
+        "Unresolved tag: !Base64": 1,
+        "Unresolved tag: !Join": 1
+      }
+    },
+    {
+      "file": "infra/backend/template.yaml",
+      "customTags": [
+        "!Sub scalar",
+        "!Sub sequence"
+      ],
+      "before": {
+        "Unresolved tag: !Sub": 7,
+        "Unresolved tag: !Ref": 6,
+        "Unresolved tag: !GetAtt": 1
+      },
+      "after": {
+        "Unresolved tag: !Ref": 6,
+        "Unresolved tag: !GetAtt": 1
+      }
+    },
+    {
+      "file": "infra/local/compose.yaml",
+      "customTags": [
+        "!Sub scalar",
+        "!Sub sequence"
+      ],
+      "before": {},
+      "after": {}
+    }
+  ]
+}

@@ -1,0 +1,769 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v2.0.117
+   Compiling syn v3.0.3
+   Compiling cfg-if v1.0.4
+   Compiling serde v1.0.229
+   Compiling libc v0.2.186
+   Compiling serde_derive v1.0.229
+   Compiling equivalent v1.0.2
+   Compiling memchr v2.8.3
+   Compiling value-bag v1.12.0
+   Compiling log v0.4.29
+   Compiling allocator-api2 v0.2.21
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling version_check v0.9.5
+   Compiling itoa v1.0.18
+   Compiling indexmap v2.14.0
+   Compiling smallvec v1.16.1
+   Compiling pin-project-lite v0.2.16
+   Compiling libm v0.2.16
+   Compiling zmij v1.0.23
+   Compiling regex-syntax v0.8.11
+   Compiling bitflags v2.13.1
+   Compiling anyhow v1.0.104
+   Compiling once_cell v1.21.4
+   Compiling heck v0.5.0
+   Compiling futures-core v0.3.34
+   Compiling typenum v1.19.0
+   Compiling generic-array v0.14.7
+   Compiling crossbeam-utils v0.8.21
+   Compiling scopeguard v1.2.0
+   Compiling autocfg v1.5.0
+   Compiling lock_api v0.4.14
+   Compiling crypto-common v0.1.6
+   Compiling subtle v2.6.1
+   Compiling serde_json v1.0.151
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling jobserver v0.1.34
+   Compiling cc v1.4.3
+   Compiling futures-io v0.3.34
+   Compiling block-buffer v0.10.4
+   Compiling const-oid v0.9.6
+   Compiling aho-corasick v1.1.3
+   Compiling fastrand v2.3.0
+   Compiling fnv v1.0.7
+   Compiling slab v0.4.11
+   Compiling thiserror v2.0.17
+   Compiling regex-automata v0.4.18
+   Compiling digest v0.10.7
+   Compiling thiserror-impl v2.0.17
+   Compiling stable_deref_trait v1.2.1
+   Compiling cpufeatures v0.2.17
+   Compiling synstructure v0.13.2
+   Compiling regex v1.12.3
+   Compiling crc32fast v1.5.0
+   Compiling zerocopy v0.8.27
+   Compiling zerofrom-derive v0.1.6
+   Compiling num-traits v0.2.19
+   Compiling zerocopy-derive v0.8.27
+   Compiling futures-sink v0.3.34
+   Compiling bytes v1.11.1
+   Compiling zerofrom v0.1.6
+   Compiling yoke-derive v0.8.2
+   Compiling siphasher v1.0.1
+   Compiling yoke v0.8.3
+   Compiling spin v0.9.8
+   Compiling zerovec-derive v0.11.5
+   Compiling crossbeam-epoch v0.9.20
+   Compiling parking v2.2.1
+   Compiling either v1.15.0
+   Compiling rustc-hash v2.1.1
+   Compiling zerovec v0.11.8
+   Compiling futures-channel v0.3.34
+   Compiling sha2 v0.10.9
+   Compiling tracing-core v0.1.36
+   Compiling displaydoc v0.2.5
+   Compiling futures-macro v0.3.34
+   Compiling futures-task v0.3.34
+   Compiling tracing-attributes v0.1.31
+   Compiling futures-util v0.3.34
+   Compiling tracing v0.1.44
+   Compiling tinystr v0.8.4
+   Compiling crossbeam-deque v0.8.6
+   Compiling writeable v0.6.4
+   Compiling litemap v0.8.0
+   Compiling zerotrie v0.2.5
+   Compiling icu_locale_core v2.3.0
+   Compiling potential_utf v0.1.3
+   Compiling rayon-core v1.13.0
+   Compiling utf8_iter v1.0.4
+   Compiling rustix v1.1.4
+   Compiling icu_provider v2.3.0
+   Compiling icu_collections v2.3.0
+   Compiling event-listener v5.4.2
+   Compiling concurrent-queue v2.5.0
+   Compiling linux-raw-sys v0.12.1
+   Compiling icu_normalizer_data v2.3.0
+   Compiling icu_properties_data v2.3.0
+   Compiling simd-adler32 v0.3.7
+   Compiling event-listener-strategy v0.5.4
+   Compiling adler2 v2.0.1
+   Compiling write16 v1.0.0
+   Compiling parking_lot_core v0.9.12
+   Compiling utf16_iter v1.0.5
+   Compiling icu_normalizer v2.3.0
+   Compiling miniz_oxide v0.8.9
+   Compiling icu_properties v2.3.0
+   Compiling rayon v1.11.0
+   Compiling async-task v4.7.1 (https://github.com/zed-industries/async-task.git?rev=015845a19fc31752c02367567d3b8900a406f9da#015845a1)
+   Compiling getrandom v0.3.4
+   Compiling pkg-config v0.3.32
+   Compiling percent-encoding v2.3.2
+   Compiling form_urlencoded v1.2.2
+   Compiling parking_lot v0.12.5
+   Compiling idna_adapter v1.2.1
+   Compiling async-channel v2.5.0
+   Compiling futures-executor v0.3.34
+   Compiling futures v0.3.34
+   Compiling idna v1.1.0
+   Compiling arrayvec v0.7.6
+   Compiling flate2 v1.1.8
+   Compiling url v2.5.7
+   Compiling http v1.3.1
+   Compiling rustc-demangle v0.1.26
+   Compiling unicode-segmentation v1.13.3
+   Compiling itertools v0.14.0
+   Compiling atomic-waker v1.1.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling termcolor v1.4.1
+   Compiling gpui_util v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui_util)
+   Compiling ref-cast v1.0.25
+   Compiling dunce v1.0.5
+   Compiling base64 v0.22.1
+   Compiling euclid v0.22.14
+   Compiling strum_macros v0.28.0
+   Compiling ref-cast-impl v1.0.25
+   Compiling serde_derive_internals v0.29.1
+   Compiling ryu v1.0.23
+   Compiling strum v0.28.0
+   Compiling schemars_derive v1.0.4
+   Compiling http-body v1.0.1
+   Compiling uuid v1.18.1
+   Compiling futures-lite v2.6.1
+   Compiling hashbrown v0.16.1
+   Compiling pin-project-internal v1.1.10
+   Compiling zeroize_derive v1.4.2
+   Compiling dyn-clone v1.0.20
+   Compiling schemars v1.0.4
+   Compiling zeroize v1.8.2
+   Compiling pin-project v1.1.10
+   Compiling collections v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/collections)
+   Compiling bytemuck v1.24.0
+   Compiling convert_case v0.10.0
+   Compiling polycool v0.4.0
+   Compiling rand_core v0.9.3
+   Compiling icu_locale_fallback_data v2.3.0
+   Compiling rand_chacha v0.9.0
+   Compiling kurbo v0.13.1
+   Compiling derive_more-impl v2.1.1
+   Compiling half v2.7.1
+   Compiling slotmap v1.0.7
+   Compiling iana-time-zone v0.1.64
+   Compiling chrono v0.4.42
+   Compiling derive_more v2.1.1
+   Compiling svgtypes v0.16.1
+   Compiling rand v0.9.4
+   Compiling polling v3.11.0
+   Compiling fdeflate v0.3.7
+   Compiling core_maths v0.1.1
+   Compiling float-cmp v0.9.0
+   Compiling heapless v0.9.2
+   Compiling semver v1.0.28
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.3.1
+   Compiling strict-num v0.1.1
+   Compiling ttf-parser v0.25.1
+   Compiling icu_locale_fallback v2.3.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling lyon_geom v1.0.17
+   Compiling async-io v2.6.0
+   Compiling roxmltree v0.21.1
+   Compiling smol_str v0.3.6
+   Compiling data-url v0.3.2
+   Compiling roxmltree v0.20.0
+   Compiling weezl v0.1.10
+   Compiling arrayref v0.3.9
+   Compiling quick-error v2.0.1
+   Compiling object v0.37.3
+   Compiling tinyvec_macros v0.1.1
+   Compiling bitflags v1.3.2
+   Compiling zune-core v0.5.1
+   Compiling tinyvec v1.10.0
+   Compiling zune-jpeg v0.5.15
+   Compiling ztracing v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/ztracing)
+   Compiling tiny-skia-path v0.11.4
+   Compiling fontconfig-parser v0.5.8
+   Compiling gpui_shared_string v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui_shared_string)
+   Compiling lyon_path v1.0.16
+   Compiling async-lock v3.4.2
+   Compiling memmap2 v0.9.11
+   Compiling fax_derive v0.2.0
+   Compiling unicode-properties v0.1.3
+   Compiling icu_segmenter_data v2.3.0
+   Compiling unicode-script v0.5.8
+   Compiling gimli v0.32.3
+   Compiling unicode-ccc v0.4.0
+   Compiling unicode-bidi-mirroring v0.4.0
+   Compiling color_quant v1.1.0
+   Compiling byteorder-lite v0.1.0
+   Compiling image-webp v0.2.4
+   Compiling addr2line v0.25.1
+   Compiling gif v0.14.2
+   Compiling rustybuzz v0.20.1
+   Compiling fax v0.2.6
+   Compiling fontdb v0.23.0
+   Compiling sum_tree v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/sum_tree)
+   Compiling png v0.17.16
+   Compiling http_client v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/http_client)
+   Compiling piper v0.2.4
+   Compiling zune-inflate v0.2.54
+   Compiling pxfm v0.1.25
+   Compiling simplecss v0.2.2
+   Compiling unicode-vo v0.1.0
+   Compiling pico-args v0.5.0
+   Compiling xmlwriter v0.1.0
+   Compiling imagesize v0.14.0
+   Compiling bit_field v0.10.3
+   Compiling unicode-bidi v0.3.18
+   Compiling float_next_after v1.0.0
+   Compiling lebe v0.5.3
+   Compiling exr v1.74.0
+   Compiling moxcms v0.8.1
+   Compiling lyon_tessellation v1.0.16
+   Compiling usvg v0.46.0
+   Compiling backtrace v0.3.76
+   Compiling blocking v1.6.2
+   Compiling tiny-skia v0.11.4
+   Compiling tiff v0.11.3
+   Compiling lyon_algorithms v1.0.16
+   Compiling png v0.18.0
+   Compiling qoi v0.4.1
+   Compiling rgb v0.8.52
+   Compiling flume v0.12.0
+   Compiling encoding_rs v0.8.35
+   Compiling enumn v0.1.14
+   Compiling profiling-procmacros v1.0.17
+   Compiling derive_refineable v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/refineable/derive_refineable)
+   Compiling web-time v1.1.0
+   Compiling svg_fmt v0.4.5
+   Compiling scheduler v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/scheduler)
+   Compiling etagere v0.2.15
+   Compiling refineable v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/refineable)
+   Compiling profiling v1.0.17
+   Compiling accesskit v0.24.1
+   Compiling image v0.25.10
+   Compiling resvg v0.46.0
+   Compiling lyon v1.0.16
+   Compiling icu_segmenter v2.3.0
+   Compiling taffy v0.15.0
+   Compiling spin v0.10.0
+   Compiling gpui_macros v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui_macros)
+   Compiling num_cpus v1.17.0
+   Compiling signal-hook-registry v1.4.6
+   Compiling inventory v0.3.21
+   Compiling seahash v4.1.0
+   Compiling pollster v0.4.0
+   Compiling waker-fn v1.2.0
+   Compiling raw-window-handle v0.6.2
+   Compiling gpui v0.2.2 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui)
+   Compiling async-executor v1.13.3
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling wasmtime-internal-core v48.0.7
+   Compiling async-signal v0.2.13
+   Compiling rle-decode-fast v1.0.3
+   Compiling zstd-safe v7.3.0
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.1
+   Compiling async-process v2.5.0 (https://github.com/zed-industries/async-process.git?rev=0b6d6713570af61806e1e5cb40e0f757cb93fd9d#0b6d6713)
+   Compiling lazy_static v1.5.0
+   Compiling cranelift-srcgen v0.135.7
+   Compiling cranelift-assembler-x64-meta v0.135.7
+   Compiling adler32 v1.2.0
+   Compiling dary_heap v0.3.9
+   Compiling same-file v1.0.6
+   Compiling walkdir v2.5.0
+   Compiling zstd v0.13.3
+   Compiling cranelift-bitset v0.135.7
+   Compiling no_std_io2 v0.9.4
+   Compiling mio v1.2.0
+   Compiling pulley-macros v48.0.7
+   Compiling leb128fmt v0.1.0
+   Compiling serde_json_lenient v0.2.4
+   Compiling libflate_lz77 v2.3.0
+   Compiling async-fs v2.2.0
+   Compiling async-trait v0.1.89
+   Compiling target-lexicon v0.13.5
+   Compiling cranelift-isle v0.135.7
+   Compiling libflate v2.3.1
+   Compiling pulley-interpreter v48.0.7
+   Compiling cranelift-entity v0.135.7
+   Compiling async-net v2.0.0
+   Compiling bstr v1.12.1
+   Compiling cobs v0.3.0
+   Compiling proc-macro-error-attr3 v3.1.1
+   Compiling cranelift-codegen-shared v0.135.7
+   Compiling libbz2-rs-sys v0.2.2
+   Compiling strsim v0.11.1
+   Compiling winnow v0.7.13
+   Compiling unicase v2.8.1
+   Compiling cfg_aliases v0.2.2
+   Compiling nix v0.30.1
+   Compiling bzip2 v0.6.1
+   Compiling cranelift-codegen-meta v0.135.7
+   Compiling globset v0.4.17
+   Compiling proc-macro-error3 v3.1.1
+   Compiling postcard v1.1.3
+   Compiling cranelift-bforest v0.135.7
+   Compiling smol v2.0.2
+   Compiling include-flate-compress v0.3.4
+   Compiling cranelift-assembler-x64 v0.135.7
+   Compiling gimli v0.33.0
+   Compiling path v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/path)
+   Compiling option-ext v0.2.0
+   Compiling deflate64 v0.1.10
+   Compiling compression-core v0.4.29
+   Compiling compression-codecs v0.4.31
+   Compiling dirs-sys v0.5.0
+   Compiling cranelift-codegen v0.135.7
+   Compiling include-flate-codegen v0.3.4
+   Compiling rust-embed-utils v8.11.0
+   Compiling wasmparser v0.254.2
+   Compiling bumpalo v3.20.3
+   Compiling wasmtime-internal-versioned-export-macros v48.0.7
+   Compiling cpp_demangle v0.5.1
+   Compiling object v0.39.1
+   Compiling arbitrary v1.4.2
+   Compiling cranelift-control v0.135.7
+   Compiling regalloc2 v0.15.2
+   Compiling include-flate v0.3.4
+   Compiling rust-embed-impl v8.11.0
+   Compiling dirs v6.0.0
+   Compiling async-compression v0.4.32
+   Compiling wasmtime-internal-component-util v48.0.7
+   Compiling wasmprinter v0.254.2
+   Compiling rust-embed v8.11.0
+   Compiling async_zip v0.0.18
+   Compiling command-fds v0.3.2
+   Compiling wasm-encoder v0.254.2
+   Compiling tempfile v3.27.0
+   Compiling getrandom v0.2.16
+   Compiling id-arena v2.3.0
+   Compiling wit-parser v0.254.2
+   Compiling util v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/util)
+   Compiling wasmtime-environ v48.0.7
+   Compiling wasm-metadata v0.254.2
+   Compiling rustc_version v0.4.1
+   Compiling phf_shared v0.13.1
+   Compiling cmake v0.1.56
+   Compiling fs_extra v1.3.0
+   Compiling foldhash v0.1.5
+   Compiling wasmtime-internal-unwinder v48.0.7
+   Compiling aws-lc-sys v0.45.0
+   Compiling hashbrown v0.15.5
+   Compiling logos-codegen v0.15.1
+   Compiling prost-derive v0.14.4
+   Compiling wit-component v0.254.2
+   Compiling wasmtime-internal-fiber v48.0.7
+   Compiling socket2 v0.6.5
+   Compiling tokio-macros v2.7.0
+   Compiling wasmtime-internal-component-macro v48.0.7
+   Compiling wasmtime-internal-cranelift v48.0.7
+   Compiling tokio v1.52.1
+   Compiling wasmtime-internal-wit-bindgen v48.0.7
+   Compiling prost v0.14.4
+   Compiling cranelift-frontend v0.135.7
+   Compiling cranelift-native v0.135.7
+   Compiling wasmtime v48.0.7
+   Compiling tree-sitter-language v0.1.8 (https://github.com/tree-sitter/tree-sitter?rev=803c6ebaac27d69e1808b45058482e868d073ceb#803c6eba)
+   Compiling beef v0.5.2
+   Compiling prost-types v0.14.4
+   Compiling phf_generator v0.13.1
+   Compiling wasmtime-internal-jit-icache-coherence v48.0.7
+   Compiling logos-codegen v0.16.1
+   Compiling rustls-pki-types v1.12.0
+   Compiling memfd v0.6.5
+   Compiling ring v0.17.14
+   Compiling miette-derive v7.6.0
+   Compiling aws-lc-rs v1.18.1
+   Compiling unicode-width v0.1.14
+   Compiling miette v7.6.0
+   Compiling logos-derive v0.16.1
+   Compiling logos-derive v0.15.1
+   Compiling wasmtime-c-api-impl v48.0.7
+   Compiling thiserror v1.0.69
+   Compiling logos v0.15.1
+   Compiling logos v0.16.1
+   Compiling thiserror-impl v1.0.69
+   Compiling untrusted v0.9.0
+   Compiling fixedbitset v0.5.7
+   Compiling petgraph v0.8.3
+   Compiling prost-reflect v0.16.5
+   Compiling protox-parse v0.9.0
+   Compiling tree-sitter v0.28.0 (https://github.com/tree-sitter/tree-sitter?rev=803c6ebaac27d69e1808b45058482e868d073ceb#803c6eba)
+   Compiling wasmtime-internal-c-api-macros v48.0.7
+   Compiling unicode-xid v0.2.6
+   Compiling rustls v0.23.46
+   Compiling utf8parse v0.2.2
+   Compiling multimap v0.8.3
+   Compiling httparse v1.10.1
+   Compiling prost-build v0.14.4
+   Compiling anstyle-parse v0.2.7
+   Compiling const_format_proc_macros v0.2.34
+   Compiling protox v0.9.1
+   Compiling streaming-iterator v0.1.9
+   Compiling is_terminal_polyfill v1.70.1
+   Compiling anstyle v1.0.13
+   Compiling anstyle-query v1.1.4
+   Compiling colorchoice v1.0.4
+   Compiling anstream v0.6.21
+   Compiling proto v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/proto)
+   Compiling const_format v0.2.35
+   Compiling cloud_llm_client v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/cloud_llm_client)
+   Compiling num-integer v0.1.46
+   Compiling tree-sitter-json v0.24.8
+   Compiling event-listener v2.5.3
+   Compiling clap_lex v0.7.6
+   Compiling clap_builder v4.5.49
+   Compiling async-channel v1.9.0
+   Compiling ignore v0.4.24
+   Compiling async-global-executor v2.4.1
+   Compiling crossbeam-queue v0.3.12
+   Compiling clap_derive v4.5.49
+   Compiling kv-log-macro v1.0.7
+   Compiling which v8.0.5
+   Compiling by_address v1.2.1
+   Compiling pollster v0.2.5
+   Compiling static_assertions v1.1.0
+   Compiling palette v0.7.6
+   Compiling glob v0.3.3
+   Compiling pin-utils v0.1.0
+   Compiling atomic v0.5.3
+   Compiling postage v0.5.0
+   Compiling async-std v1.13.2
+   Compiling pet-fs v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling palette_derive v0.7.6
+   Compiling clap v4.5.49
+   Compiling paths v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/paths)
+   Compiling phf_codegen v0.13.1
+   Compiling net v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/net)
+   Compiling convert_case v0.11.0
+   Compiling xattr v1.6.1
+   Compiling serde_path_to_error v0.1.20
+   Compiling filetime v0.2.29
+   Compiling is-terminal v0.4.16
+   Compiling fast-srgb8 v1.0.0
+   Compiling humantime v2.3.0
+   Compiling num-conv v0.2.0
+   Compiling time-core v0.1.8
+   Compiling powerfmt v0.2.0
+   Compiling partial-json-fixer v0.5.3
+   Compiling language_model_core v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/language_model_core)
+   Compiling deranged v0.5.4
+   Compiling time-macros v0.2.27
+   Compiling env_logger v0.10.2
+   Compiling rustls-webpki v0.103.16
+   Compiling async-tar v0.6.1 (https://github.com/zed-industries/async-tar?rev=bd3ad6f89df9a9da7a8535958756d6bf465936a0#bd3ad6f8)
+   Compiling settings_json v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/settings_json)
+   Compiling askpass v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/askpass)
+   Compiling pet-core v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling release_channel v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/release_channel)
+   Compiling num-iter v0.1.45
+   Compiling rand_core v0.6.4
+   Compiling telemetry_events v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/telemetry_events)
+   Compiling chardetng v0.1.17
+   Compiling rope v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/rope)
+   Compiling clock v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/clock)
+   Compiling inotify-sys v0.1.5
+   Compiling settings_macros v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/settings_macros)
+   Compiling num_threads v0.1.7
+   Compiling urlencoding v2.1.3
+   Compiling settings_content v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/settings_content)
+   Compiling time v0.3.47
+   Compiling inotify v0.11.0
+   Compiling text v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/text)
+   Compiling file_content v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/file_content)
+   Compiling telemetry v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/telemetry)
+   Compiling tokio-rustls v0.26.4
+   Compiling phf_macros v0.13.1
+   Compiling notify-types v2.1.0 (https://github.com/zed-industries/notify?rev=d842f16b2716bd60f09caf3ae3a894237ab38f54#d842f16b)
+   Compiling hex v0.4.3
+   Compiling xxhash-rust v0.8.16
+   Compiling notify v9.0.0-rc.4 (https://github.com/zed-industries/notify?rev=d842f16b2716bd60f09caf3ae3a894237ab38f54#d842f16b)
+   Compiling phf v0.13.1
+   Compiling git v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/git)
+   Compiling trash v5.2.5 (https://github.com/zed-industries/trash-rs?rev=41c6c800d884a89351f3b8856d12894cccee261d#41c6c800)
+   Compiling rand_chacha v0.3.1
+   Compiling rand v0.8.6
+   Compiling fs v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/fs)
+   Compiling pet-python-utils v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling toml_parser v1.0.4
+   Compiling der v0.7.10
+   Compiling migrator v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/migrator)
+   Compiling sha1 v0.10.6
+   Compiling toml_datetime v0.7.3
+   Compiling serde_spanned v1.0.3
+   Compiling ec4rs v1.2.0
+   Compiling toml_writer v1.0.4
+   Compiling toml v0.9.8
+   Compiling settings v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/settings)
+   Compiling spki v0.7.3
+   Compiling syntax_theme v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/syntax_theme)
+   Compiling rustversion v1.0.22
+   Compiling num-bigint-dig v0.8.6
+   Compiling arraydeque v0.5.1
+   Compiling new_debug_unreachable v1.0.6
+   Compiling theme v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/theme)
+   Compiling pkcs8 v0.10.2
+   Compiling utf-8 v0.7.6
+   Compiling data-encoding v2.9.0
+   Compiling precomputed-hash v0.1.1
+   Compiling tungstenite v0.28.0
+   Compiling pkcs1 v0.7.5
+   Compiling signature v2.2.0
+   Compiling tokio-util v0.7.18
+   Compiling imara-diff v0.2.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling try-lock v0.2.5
+   Compiling want v0.3.1
+   Compiling rsa v0.9.10
+   Compiling h2 v0.4.19
+   Compiling arc-swap v1.9.0
+   Compiling async-tungstenite v0.33.0
+   Compiling zed_actions v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/zed_actions)
+   Compiling shellexpand v3.1.1
+   Compiling lru v0.16.4
+   Compiling openssl-probe v0.2.1
+   Compiling tower-service v0.3.3
+   Compiling rustls-native-certs v0.8.3
+   Compiling language_core v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/language_core)
+   Compiling task v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/task)
+   Compiling hyper v1.11.1
+   Compiling rpc v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/rpc)
+   Compiling watch v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/watch)
+   Compiling fuzzy v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/fuzzy)
+   Compiling lsp-types v0.95.1 (https://github.com/zed-industries/lsp-types?rev=82d7fc66ebdfabcfeb26ba16bbed9f3d26211fc3#82d7fc66)
+   Compiling nucleo-matcher v0.3.1
+   Compiling fuzzy_nucleo v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/fuzzy_nucleo)
+   Compiling hyper-util v0.1.17
+   Compiling diffy v0.4.2
+   Compiling zlog v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/zlog)
+   Compiling dtoa v1.0.10
+   Compiling winnow v1.0.2
+   Compiling toml_edit v0.23.7
+   Compiling dtoa-short v0.3.5
+   Compiling pet-virtualenv v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling selectors v0.37.0
+   Compiling webpki-roots v1.0.10
+   Compiling lsp v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/lsp)
+   Compiling string_cache_codegen v0.6.1
+   Compiling http-body-util v0.1.3
+   Compiling ahash v0.8.12
+   Compiling cssparser-macros v0.6.1
+   Compiling enumflags2_derive v0.7.12
+   Compiling language v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/language)
+   Compiling ciborium-io v0.2.2
+   Compiling mime v0.3.17
+   Compiling ciborium-ll v0.2.2
+   Compiling cssparser v0.36.0
+   Compiling htmlize v1.1.0
+   Compiling web_atoms v0.2.6
+   Compiling proc-macro-crate v3.4.0
+   Compiling zvariant_utils v3.3.1
+   Compiling rustls-platform-verifier v0.7.0
+   Compiling servo_arc v0.4.3
+   Compiling ascii v1.1.0
+   Compiling unicode-general-category v1.1.0
+   Compiling lalrpop-util v0.23.1
+   Compiling httpdate v1.0.3
+   Compiling icu_collator_data v2.3.0
+   Compiling chunked_transfer v1.5.0
+   Compiling tiny_http v0.12.0
+   Compiling zvariant_derive v5.11.0
+   Compiling http_client_tls v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/http_client_tls)
+   Compiling ar_archive_writer v0.5.1
+   Compiling ciborium v0.2.2
+   Compiling zeta_prompt v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/zeta_prompt)
+   Compiling string_cache v0.9.0
+   Compiling nom v8.0.0
+   Compiling pastey v0.1.1
+   Compiling pulldown-cmark v0.13.4
+   Compiling unicode-width v0.2.2
+   Compiling ucd-trie v0.1.7
+   Compiling endi v1.1.0
+   Compiling json5 v1.3.1
+   Compiling yawc v0.4.2
+   Compiling cloud_api_types v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/cloud_api_types)
+   Compiling psm v0.1.30
+   Compiling hashbrown v0.14.5
+   Compiling lol_html v3.0.1
+   Compiling tendril v0.5.1
+   Compiling granit-parser v1.0.0
+   Compiling pet-jsonrpc v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling gpui_tokio v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui_tokio)
+   Compiling credentials_provider v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/credentials_provider)
+   Compiling dugong-graphlib v0.8.0-alpha.5
+   Compiling feature_flags_macros v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/feature_flags_macros)
+   Compiling ryu-js v1.0.2
+   Compiling merman-core v0.8.0-alpha.5
+   Compiling dugong v0.8.0-alpha.5
+   Compiling feature_flags v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/feature_flags)
+   Compiling zed_credentials_provider v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/zed_credentials_provider)
+   Compiling cloud_api_client v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/cloud_api_client)
+   Compiling pet-reporter v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling markup5ever v0.39.0
+   Compiling icu_collator v2.3.0
+   Compiling hashlink v0.8.4
+   Compiling worktree v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/worktree)
+   Compiling enumflags2 v0.7.12
+   Compiling node_runtime v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/node_runtime)
+   Compiling roughr-merman v0.12.3
+   Compiling proxy_handshake v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/proxy_handshake)
+   Compiling itertools v0.15.0
+   Compiling manatee v0.8.0-alpha.5
+   Compiling stacker v0.1.25
+   Compiling quick-xml v0.41.0
+   Compiling optfield v0.4.0
+   Compiling unicode-linebreak v0.1.5
+   Compiling signal-hook v0.4.4
+   Compiling merman-render v0.8.0-alpha.5
+   Compiling documented-macros v0.10.0
+   Compiling client v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/client)
+   Compiling zvariant v5.11.0
+   Compiling yaml-rust2 v0.8.1
+   Compiling github_releases v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/github_releases)
+   Compiling dap-types v0.0.1 (https://github.com/zed-industries/dap-types?rev=1b461b310481d01e02b2603c16d7144b926339f8#1b461b31)
+   Compiling serde_bytes v0.11.19
+   Compiling minimal-lexical v0.2.1
+   Compiling cursor-icon v1.2.0
+   Compiling vte v0.15.0
+   Compiling nom v7.1.3
+   Compiling merman v0.8.0-alpha.5
+   Compiling dap v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/dap)
+   Compiling pet-conda v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling zbus_names v4.3.2
+   Compiling documented v0.10.0
+   Compiling xml5ever v0.39.0
+   Compiling html5ever v0.39.0
+   Compiling theme_settings v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/theme_settings)
+   Compiling component v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/component)
+   Compiling menu v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/menu)
+   Compiling icons v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/icons)
+   Compiling rustix-openpty v0.2.0
+   Compiling block-padding v0.3.3
+   Compiling stacksafe-macro v1.0.3
+   Compiling ui_macros v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/ui_macros)
+   Compiling bit-vec v0.8.0
+   Compiling home v0.5.11
+   Compiling alacritty_terminal v0.26.1-dev (https://github.com/zed-industries/alacritty?rev=4c129667ce56611becdc82de6e28218c80e2e88f#4c129667)
+   Compiling bit-set v0.8.0
+   Compiling ui v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/ui)
+   Compiling stacksafe v1.0.3
+   Compiling inout v0.1.4
+   Compiling markup5ever_rcdom v0.39.0+unofficial
+   Compiling zbus_macros v5.13.2
+   Compiling extension v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/extension)
+   Compiling mermaid_render v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/mermaid_render)
+   Compiling pori v0.0.0
+   Compiling oauth_callback_server v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/oauth_callback_server)
+   Compiling async-broadcast v0.7.2
+   Compiling snippet v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/snippet)
+   Compiling ordered-stream v0.2.0
+   Compiling sysinfo v0.39.6
+   Compiling linkify v0.10.0
+   Compiling serde_repr v0.1.20
+   Compiling io-lifetimes v2.0.4
+   Compiling io-lifetimes v3.0.1
+   Compiling zbus v5.13.2
+   Compiling markdown v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/markdown)
+   Compiling terminal v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/terminal)
+   Compiling snippet_provider v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/snippet_provider)
+   Compiling context_server v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/context_server)
+   Compiling wax v0.7.0
+   Compiling cipher v0.4.4
+   Compiling fancy-regex v0.19.0
+   Compiling prettier v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/prettier)
+   Compiling buffer_diff v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/buffer_diff)
+   Compiling remote v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/remote)
+   Compiling git_hosting_providers v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/git_hosting_providers)
+   Compiling num-bigint v0.4.8
+   Compiling hmac v0.12.1
+   Compiling toml_datetime v0.6.11
+   Compiling serde_spanned v0.6.9
+   Compiling num-bigint-dig v0.9.1
+   Compiling io-extras v0.19.0
+   Compiling toml_write v0.1.2
+   Compiling ipnet v2.11.0
+   Compiling toml_edit v0.22.27
+   Compiling num-rational v0.4.2
+   Compiling project v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/project)
+   Compiling num-complex v0.4.6
+   Compiling cap-primitives v4.0.3
+   Compiling portable-atomic v1.11.1
+   Compiling cpufeatures v0.3.0
+   Compiling chacha20 v0.10.1
+   Compiling num v0.4.3
+   Compiling fs-set-times v0.20.3
+   Compiling toml v0.8.23
+   Compiling hkdf v0.12.4
+   Compiling pbkdf2 v0.12.2
+   Compiling aes v0.8.4
+   Compiling cbc v0.1.2
+   Compiling ashpd v0.13.5
+   Compiling sharded-slab v0.1.7
+   Compiling rustix-linux-procfs v0.1.1
+   Compiling tracing-serde v0.2.0
+   Compiling tracing-log v0.2.0
+   Compiling matchers v0.2.0
+   Compiling md-5 v0.10.6
+   Compiling sync_wrapper v1.0.2
+   Compiling thread_local v1.1.9
+   Compiling ambient-authority v0.0.2
+   Compiling pet v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling moka v0.12.11
+   Compiling tower-layer v0.3.3
+   Compiling maybe-owned v0.3.4
+   Compiling tower v0.5.2
+   Compiling tracing-subscriber v0.3.22
+   Compiling oo7 v0.6.0 (https://github.com/zed-industries/oo7?rev=731c1215edb6905876c6137ab300428c7b8d7c13#731c1215)
+   Compiling pet-poetry v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling rand v0.10.2
+   Compiling notify-rust v4.18.0
+   Compiling pet-pixi v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-homebrew v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-env-var-path v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-global-virtualenvs v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-pyenv v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-pipenv v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-linux-global-python v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-mac-commandlinetools v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-virtualenvwrapper v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-venv v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-mac-xcode v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-mac-python-org v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling hyper-rustls v0.27.9
+   Compiling pet-uv v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-hatch v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling pet-telemetry v0.1.0 (https://github.com/zed-industries/python-environment-tools.git?rev=5aad7164bfc2a58977b103c8ef8fdd7302ed2e9f#5aad7164)
+   Compiling tokio-socks v0.5.2
+   Compiling wasmtime-wasi-io v48.0.7
+   Compiling rustls-pemfile v2.2.0
+   Compiling calloop v0.14.3 (https://github.com/zed-industries/calloop?rev=3759371fee14c40066d64777e2a36b6ffcc22590#3759371f)
+   Compiling crossbeam-channel v0.5.15
+   Compiling tagptr v0.2.0
+   Compiling gpui_linux v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui_linux)
+   Compiling zed-reqwest v0.12.15-zed (https://github.com/zed-industries/reqwest.git?rev=33bc764aa15ff7b200bf7c93bd96e24878d53e14#33bc764a)
+   Compiling wasmtime-wasi v48.0.7
+   Compiling json_schema_store v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/json_schema_store)
+   Compiling grammars v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/grammars)
+   Compiling languages v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/languages)
+   Compiling extension_host v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/extension_host)
+   Compiling language_extension v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/language_extension)
+   Compiling reqwest_client v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/reqwest_client)
+   Compiling gpui_platform v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/vendor/zed/crates/gpui_platform)
+   Compiling setdown-language-host v0.1.0 (/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/tooling/language-host)
+    Finished `dev` profile [unoptimized] target(s) in 5m 25s

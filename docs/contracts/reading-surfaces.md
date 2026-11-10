@@ -321,6 +321,15 @@ shell environment; an activated Python environment remains inherited. Catalog
 browsing checks files but starts neither metadata helpers nor language servers.
 Discovery passes its selected absolute executable and environment together to the
 existing session and checks ownership/configuration after asynchronous work.
+If no installation is available, an eligible enabled profile may prepare its
+package asynchronously through the separate Zed host. Package discovery and
+installation do not replace models or block source editing or saving. When
+preparation finishes, ownership, configuration and document generation are
+checked again before sending the latest revision. User-selected installed-only
+connections and explicitly disabled providers retain their choices. Runtime
+language metadata and grammar registration follow the same revision and model
+ownership guarantees. Zed settings inheritance is covered by the nested project
+YAML scenario in the syntax suite.
 
 Default automatic profiles can return a quiet unavailable state. Editing and
 saving continue, without queueing unbounded changes for a missing server. Rescan

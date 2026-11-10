@@ -22,7 +22,7 @@ jobs:
     name: Tests, typecheck and build
     if: inputs.channel == 'none'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,6 +32,17 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Prepare pinned Zed language host
+        run: |
+          git submodule update --init --depth 1 -- vendor/zed
+          rustup toolchain install 1.98.1 --profile minimal
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/language-host
+          key: language-host-${{ runner.os }}-${{ hashFiles('tooling/language-host/Cargo.lock', 'tooling/language-host/Cargo.toml') }}
       # npm's cache does not include Electron's lazily downloaded binary.
       - name: Cache Electron downloads
         uses: actions/cache@v6
@@ -46,7 +57,7 @@ jobs:
       - name: Install native tools used by service tests
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential clangd cmake meson ninja-build
+          sudo apt-get install --no-install-recommends -y build-essential clang clangd cmake meson ninja-build pkg-config libfontconfig1-dev libasound2-dev libxkbcommon-dev libwayland-dev libudev-dev libssl-dev
       - name: Unit tests and architecture boundaries
         run: npm test
       # Tooling tests read the pinned sources before the build initializes them.

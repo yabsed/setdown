@@ -4,16 +4,24 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateLanguageDefinition, type LanguageServerDefinition } from '../../core/document/language-definition';
 import { builtinLanguageServers } from './catalog/profiles';
+import { mergeLanguageSettings } from './language-settings';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { ServerLaunch } from './server-session';
 
-export type Options = { role?: 'primary' | 'supplementary'; formatting?: boolean; enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
+export type Options = { automaticInstall?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean; enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
 type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string>; projectPreferred?: Record<string, Record<string, string>>; projects?: Record<string, Record<string, Options>> };
+const noPackageDefinitions: readonly LanguageServerDefinition[] = [];
 export class ServerRegistry {
   private data: Settings = { version: 1, servers: {}, custom: [], preferred: {} };
   private saved = JSON.stringify(this.data);
+  private indexedCustom?: LanguageServerDefinition[];
+  private indexedPackages?: readonly LanguageServerDefinition[];
+  private indexedDefinitions: LanguageServerDefinition[] = [];
+  private readonly definitionsById = new Map<string, LanguageServerDefinition>();
+  private readonly customIds = new Set<string>();
   readonly file: string;
-  constructor(private readonly directory: string) {
+  constructor(private readonly directory: string, private readonly packageDefinitions: () => readonly LanguageServerDefinition[] = () => noPackageDefinitions,
+    private readonly inheritedOptions?: (definition: LanguageServerDefinition, resource?: string) => Pick<Options, 'settings' | 'initializationOptions'>) {
     this.file = path.join(directory, 'language-servers.json');
     if (!existsSync(this.file)) return;
     if (statSync(this.file).size > 4 * 1024 * 1024) throw Error('Language settings are too large.');
@@ -40,19 +48,38 @@ export class ServerRegistry {
     this.saved = JSON.stringify(this.data);
   }
   // Existing custom profiles shadow newly shipped defaults without losing their identity or settings.
-  definitions(): LanguageServerDefinition[] { return [...builtinLanguageServers.filter(d => !this.isCustom(d.id)), ...this.data.custom]; }
-  isCustom(id: string): boolean { return this.data.custom.some(d => d.id === id); }
+  definitions(): LanguageServerDefinition[] {
+    const packages = this.packageDefinitions();
+    if (this.indexedCustom !== this.data.custom || this.indexedPackages !== packages) {
+      this.indexedPackages = packages;
+      this.indexedCustom = this.data.custom; this.customIds.clear(); this.definitionsById.clear();
+      for (const definition of this.data.custom) this.customIds.add(definition.id);
+      const imported = new Map([...builtinLanguageServers,...packages].map(definition=>[definition.id,definition]));
+      this.indexedDefinitions = [...imported.values()].filter(d => !this.customIds.has(d.id)).concat(this.data.custom);
+      for (const definition of this.indexedDefinitions) this.definitionsById.set(definition.id, definition);
+    }
+    return this.indexedDefinitions;
+  }
+  isCustom(id: string): boolean { this.definitions(); return this.customIds.has(id); }
   automatic(id: string): boolean { return !!this.definition(id).automatic && this.options(id).enabled === undefined; }
   canDetect(id: string): boolean {
     const launch = this.definition(id).launch;
     return launch.kind === 'native' && !path.isAbsolute(launch.command);
   }
   definition(id: string): LanguageServerDefinition {
-    const definition = this.definitions().find(item => item.id === id);
+    this.definitions(); const definition = this.definitionsById.get(id);
     if (!definition) throw new Error('Unknown language server. Configure a connection first.');
     return definition;
   }
   options(id: string, resource?: string): Options {
+    const stored = this.storedOptions(id, resource);
+    if (!this.inheritedOptions) return stored;
+    const definition = this.definition(id), inherited = this.inheritedOptions(definition, resource);
+    return { ...inherited, ...stored,
+      ...(inherited.settings ? { settings: mergeLanguageSettings(definition.settings, inherited.settings, stored.settings) } : {}),
+      ...(inherited.initializationOptions ? { initializationOptions: mergeLanguageSettings(definition.initializationOptions, inherited.initializationOptions, stored.initializationOptions) } : {}) };
+  }
+  private storedOptions(id: string, resource?: string): Options {
     const global = Object.hasOwn(this.data.servers, id) ? this.data.servers[id] : {};
     if (!resource) return global;
     const roots = Object.keys(this.data.projects ?? {}).filter(root => {
@@ -68,16 +95,22 @@ export class ServerRegistry {
   preferred(languageId: string, resource?: string): string | undefined {
     const root = resource && Object.keys(this.data.projectPreferred ?? {}).filter(root => { const relative = path.relative(root, resource); return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative)); }).sort((a, b) => b.length - a.length).find(root => this.data.projectPreferred![root][languageId]);
     const id = (root && this.data.projectPreferred![root][languageId]) || this.data.preferred[languageId];
-    return id && this.enabled(id, resource) && this.role(id, resource) === 'primary' ? id : this.definitions().find(d => this.role(d.id, resource) === 'primary' && this.options(d.id, resource).enabled === true
+    if (id && this.enabled(id, resource) && this.role(id, resource) === 'primary') return id;
+    const overridden = new Set([...Object.keys(this.data.servers), ...Object.values(this.data.projects ?? {}).flatMap(servers => Object.keys(servers))]);
+    return this.definitions().find(d => overridden.has(d.id) && this.options(d.id,resource).enabled === true && this.role(d.id,resource) === 'primary'
       && d.languages.some(l => l.languageId === languageId))?.id;
   }
   enabled(id: string, resource?: string): boolean { return this.options(id, resource).enabled ?? this.definition(id).enabledByDefault ?? false; }
   routes(resource?: string): LanguageRoute[] {
     const definitions = this.definitions().filter(item => this.enabled(item.id, resource));
     const result: LanguageRoute[] = [];
-    for (const id of new Set(definitions.flatMap(item => item.languages.map(l => l.languageId)))) {
-      const candidates = definitions.filter(item => item.languages.some(l => l.languageId === id));
-      candidates.sort((a, b) => Number(b.id === this.preferred(id, resource)) - Number(a.id === this.preferred(id, resource))
+    const groups = new Map<string, LanguageServerDefinition[]>();
+    for (const definition of definitions) for (const id of new Set(definition.languages.map(l=>l.languageId))) {
+      const candidates=groups.get(id)??[]; candidates.push(definition); groups.set(id,candidates);
+    }
+    for (const [id,candidates] of groups) {
+      const preferred = this.preferred(id,resource);
+      candidates.sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred)
         || Number(this.options(b.id, resource).enabled === true) - Number(this.options(a.id, resource).enabled === true));
       for (const candidate of candidates) for (const language of candidate.languages.filter(l => l.languageId === id))
         result.push({ ...language, server: candidate.id, role: this.role(candidate.id, resource), formatting: this.options(candidate.id, resource).formatting });
@@ -109,6 +142,7 @@ export class ServerRegistry {
     if (!options || typeof options !== 'object' || Array.isArray(options)
       || (options.enabled !== undefined && typeof options.enabled !== 'boolean')
       || (options.automaticExecutable !== undefined && typeof options.automaticExecutable !== 'boolean')
+      || (options.automaticInstall !== undefined && typeof options.automaticInstall !== 'boolean')
       || (options.root !== undefined && (typeof options.root !== 'string' || options.root.length > 4096 || options.root.includes('\0') || !path.isAbsolute(options.root)))
       || (options.executable !== undefined && (typeof options.executable !== 'string' || !path.isAbsolute(options.executable))))
       throw Error('Invalid language server options.');
@@ -117,7 +151,7 @@ export class ServerRegistry {
     validateLanguageDefinition({ id: 'options', name: 'Options', launch: { kind: 'native', command: 'server', args: options.args ?? [] },
       languages: [{ languageId: 'text', extensions: ['.txt'] }], settings: options.settings, initializationOptions: options.initializationOptions });
   }
-  configure(id: string, options: Pick<Options, 'args' | 'settings' | 'initializationOptions' | 'root' | 'role' | 'formatting'>, scope?: string): void {
+  configure(id: string, options: Pick<Options, 'args' | 'settings' | 'initializationOptions' | 'root' | 'role' | 'formatting' | 'automaticInstall'>, scope?: string): void {
     this.definition(id); this.validateOptions(options);
     if (scope && (!path.isAbsolute(scope) || scope.includes('\0'))) throw Error('Project scope must be an absolute path.');
     const target = scope ? ((this.data.projects ??= {})[scope] ??= {}) : this.data.servers;
@@ -125,7 +159,7 @@ export class ServerRegistry {
     // Keeping own undefined keys here would mask the global value until restart.
     target[id] = Object.fromEntries(Object.entries({ ...(target[id] ?? {}), args: options.args,
       settings: options.settings, initializationOptions: options.initializationOptions, root: options.root,
-      role: options.role, formatting: options.formatting }).filter(([, value]) => value !== undefined));
+      role: options.role, formatting: options.formatting, automaticInstall:options.automaticInstall }).filter(([, value]) => value !== undefined));
     // Exactly one explicitly selected external formatter per overlapping language.
     if (options.formatting) for (const other of this.definitions()) {
       if (other.id !== id && other.languages.some(a => this.definition(id).languages.some(b => a.languageId === b.languageId)))
@@ -176,11 +210,11 @@ export class ServerRegistry {
     this.definition(id);
     if (!path.isAbsolute(executable) || !(discoveredScript ? (await stat(executable)).isFile() : await findExecutable(executable))) throw Error('Select an executable file.');
     if (this.definition(id).launch.kind === 'bundledNode') throw Error('This server uses the bundled runtime.');
-    this.data.servers[id] = { ...this.options(id), executable, automaticExecutable: false }; this.save();
+    this.data.servers[id] = { ...this.storedOptions(id), executable, automaticExecutable: false }; this.save();
   }
   useAutomatic(id: string): void {
     if (!this.canDetect(id)) throw Error('This connection has no automatic executable profile.');
-    this.data.servers[id] = { ...this.options(id), executable: undefined, automaticExecutable: true }; this.save();
+    this.data.servers[id] = { ...this.storedOptions(id), executable: undefined, automaticExecutable: true }; this.save();
   }
   launch(id: string, packaged: boolean, environment: NodeJS.ProcessEnv = process.env, resolvedExecutable?: string, resource?: string): ServerLaunch {
     const definition = this.definition(id), options = this.options(id, resource);

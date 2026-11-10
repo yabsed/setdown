@@ -4,13 +4,13 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { WindowState } from '../windows/window-state';
-import { LanguageManager } from './language-manager';
+import { LanguageManager, type AutomaticLanguagePackages } from './language-manager';
 import { ServerDiscovery } from './server-discovery';
 import { ServerEnvironment } from './server-environment';
 
 const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
-  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; failed: (message: string) => void; diagnostics: (params: any) => void }[] }));
+  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; profile: any; failed: (message: string) => void; diagnostics: (params: any) => void }[] }));
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
@@ -22,27 +22,42 @@ vi.mock('./server-session', () => ({ ServerSession: class {
   readonly stop = vi.fn(async () => {});
   readonly request = vi.fn(async () => null);
   readonly watch = vi.fn();
-  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void, readonly failed: (message: string) => void) { mocks.servers.push(this); }
+  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void, readonly failed: (message: string) => void, readonly profile: any) { mocks.servers.push(this); }
 } }));
 beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 'setdown-manager-test-'));  mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; });
 
 afterEach(async () => { await rm(mocks.directory, { recursive: true, force: true }); });
 
-function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixture')) {
+const noPackages: AutomaticLanguagePackages = {rank:()=>0,canPrepare:()=>false,prepare:async()=>{throw Error('No package in this discovery fixture');},highlight:async()=>[],dispose() {}};
+function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixture'), packages = noPackages) {
   const states = new Map<number, WindowState>();
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['other.py', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['other.py', 'template.yaml', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
   const first = event(1), second = event(2);
-  new LanguageManager(id => states.get(id) ?? null, discovery).install();
+  new LanguageManager(id => states.get(id) ?? null, discovery, packages).install();
   const document = (id: string, name = 'main.py') => ({ id, generation: `generation-${id}`, path: path.join(root, name), text: id, version: 1 });
   return { first, second, document, invoke: (key: string, ...args: unknown[]) => mocks.handles.get(`language:${key}`)!(...args),
     send: (key: string, ...args: unknown[]) => mocks.events.get(`language:${key}`)!(...args) };
 }
+test('closing a document during automatic installation prevents a late session and reopening uses the current revision',async()=>{
+ const root=path.join(mocks.directory,'project');await mkdir(root);
+ const discovery=new ServerDiscovery(new ServerEnvironment({HOME:mocks.directory,PATH:'',SETDOWN_LSP_INHERIT_ENV:'1'}));
+ let finish!:(value:any)=>void;const waiting=new Promise<any>(resolve=>{finish=resolve;});
+ const prepare=vi.fn(()=>waiting),packages={...noPackages,canPrepare:()=>true,prepare};
+ const f=fixture(discovery,root,packages),opening=f.invoke('open',f.first,f.document('fortran','hello.f90'));
+ const rejected=expect(opening).rejects.toThrow(/closed|configuration/);
+ await vi.waitFor(()=>expect(prepare).toHaveBeenCalledOnce());f.send('close',f.first,'fortran');
+ finish({executable:process.execPath,args:['server.js'],settings:{},initializationOptions:{},languageId:'fortran'});
+ await rejected;expect(mocks.servers).toHaveLength(0);
+ await f.invoke('open',f.first,{...f.document('fortran','hello.f90'),version:7,text:'program latest\nend program'});
+ expect(mocks.servers[0].notify).toHaveBeenCalledWith('textDocument/didOpen',expect.objectContaining({textDocument:expect.objectContaining({version:7,text:'program latest\nend program'})}));
+ discovery.dispose();
+});
 test('one server per window and root, with independent buffers and last-document shutdown', async () => {
   const f = fixture();
   await f.invoke('open', f.first, f.document('one'));
@@ -411,4 +426,25 @@ test('closing during a structural notebook change cannot reopen a retired docume
   expect(server.notify.mock.calls.filter(call => call[0] === 'notebookDocument/didOpen')).toHaveLength(1);
   await f.invoke('open', f.first, { ...doc, generation: 'new-owner' });
   expect(mocks.servers).toHaveLength(1);
+});
+
+test('Zed YAML customTags reach automatic preparation and the live session and are reapplied after a settings save', async () => {
+  const root = path.join(mocks.directory, 'project'); await mkdir(path.join(root, '.zed'), { recursive: true });
+  const file = path.join(root, '.zed/settings.json');
+  const save = (tags: string[]) => writeFile(file, JSON.stringify({ lsp: { 'yaml-language-server': { settings: { yaml: { customTags: tags } } } } }));
+  await save(['!Sub scalar', '!Sub sequence']);
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const prepare = vi.fn<AutomaticLanguagePackages['prepare']>(async () => ({ executable: process.execPath, args: [], settings: {}, initializationOptions: {} }));
+  const f = fixture(discovery, root, { ...noPackages, rank: definition => definition.id === 'yaml-language-server' ? 0 : 1, canPrepare: () => true, prepare });
+  try {
+    await f.invoke('open', f.first, f.document('yaml', 'template.yaml'));
+    expect(prepare.mock.calls[0][0].id).toBe('yaml-language-server');
+    expect(prepare.mock.calls[0][4]).toMatchObject({ settings: { yaml: { customTags: ['!Sub scalar', '!Sub sequence'] } } });
+    expect(mocks.servers[0].profile.configuration).toMatchObject({ yaml: { customTags: ['!Sub scalar', '!Sub sequence'] } });
+    await save(['!Ref scalar']);
+    await vi.waitFor(() => expect(mocks.servers[0].stop).toHaveBeenCalledOnce(), { timeout: 4000 });
+    await f.invoke('open', f.first, { ...f.document('yaml', 'template.yaml'), version: 3, text: 'name: !Ref preserved' });
+    expect(mocks.servers[1].profile.configuration).toMatchObject({ yaml: { customTags: ['!Ref scalar'] } });
+    expect(mocks.servers[1].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ version: 3, text: 'name: !Ref preserved' }) }));
+  } finally { mocks.app.get('will-quit')?.({ preventDefault() {} }); discovery.dispose(); }
 });

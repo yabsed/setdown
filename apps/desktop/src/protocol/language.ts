@@ -4,7 +4,7 @@ import type { Diagnostic, DiagnosticOptions, ServerCapabilities, TextDocumentCon
 import type { LanguageRoute } from '../core/document/language-support';
 import type { LanguageServerDefinition } from '../core/document/language-definition';
 
-export type LanguageServerOptions = { role?: 'primary' | 'supplementary'; formatting?: boolean; scope?: string; args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
+export type LanguageServerOptions = { automaticInstall?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean; scope?: string; args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
 /** Local bridge metadata, never sent as an LSP ServerCapabilities object. */
 export type LanguageCapabilities = ServerCapabilities & { diagnosticProviders?: { id: string; options: DiagnosticOptions }[] };
 export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name: string;
@@ -71,6 +71,8 @@ export type LanguageEvent =
   | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; recovery?: LanguageRecovery; server?: { id: string; name: string } };
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
+  highlight?(file: string, languageId: string, text: string): Promise<Array<[number, number, string]>>;
+  definitions?(file?: string): Promise<import('../core/document/language-catalog').LanguageDefinition[]>;
   change(id: string, version: number, changes: TextDocumentContentChangeEvent[]): Promise<void>;
   changeNotebook(id: string, version: number, cells: LanguageCell[]): Promise<Record<string, string>>;
   close(id: string): void;

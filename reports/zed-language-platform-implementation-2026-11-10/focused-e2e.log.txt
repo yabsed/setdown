@@ -1,0 +1,125 @@
+
+Running 33 tests using 1 worker
+
+(node:435787) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[1/33] test/e2e/language/clangd-support.spec.ts:23:1 › first-line LSP hovers remain fully visible above ordinary and split editors
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.0' (uid=1000 pid=435803 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=435803 comm="/home/yabsed/Documents/fall26/work/projects/better" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[435768]: [session uid=1000 pid=435768] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.3' (uid=1000 pid=435867 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[435768]: [session uid=1000 pid=435768] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.freedesktop.portal.Documents' requested by ':1.3' (uid=1000 pid=435867 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[435768]: [session uid=1000 pid=435768] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.3' (uid=1000 pid=435867 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.gnome.Settings.GlobalShortcutsProvider' requested by ':1.7' (uid=1000 pid=435914 comm="/usr/libexec/xdg-desktop-portal-gnome" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+dbus-daemon[435768]: [session uid=1000 pid=435768] Successfully activated service 'org.gnome.Settings.GlobalShortcutsProvider'
+dbus-daemon[435768]: [session uid=1000 pid=435768] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.3' (uid=1000 pid=435867 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[435768]: [session uid=1000 pid=435768] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+
+(/usr/libexec/xdg-desktop-portal:435867): xdg-desktop-portal-WARNING **: 18:09:40.882: Failed to connect to PipeWire: Couldn't connect to PipeWire
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activating service name='org.freedesktop.impl.portal.desktop.oo7' requested by ':1.3' (uid=1000 pid=435867 comm="/usr/libexec/xdg-desktop-portal" label="unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023")
+dbus-daemon[435768]: [session uid=1000 pid=435768] Activated service 'org.freedesktop.impl.portal.desktop.oo7' failed: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+dbus-daemon[435768]: 
+(/usr/libexec/xdg-desktop-portal:435867): xdg-desktop-portal-WARNING **: 18:09:40.901: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.impl.portal.desktop.oo7: Process org.freedesktop.impl.portal.desktop.oo7 exited with status 1
+[session uid=1000 pid=435768] Successfully activated service 'org.freedesktop.portal.Desktop'
+[2/33] test/e2e/language/clangd-support.spec.ts:72:1 › clangd honors compile commands and .clangd, with completion, rename, Undo and header navigation
+[3/33] test/e2e/language/clangd-support.spec.ts:165:1 › missing clangd keeps C editable and a native executable selection repairs language support
+[4/33] test/e2e/language/language-registry.spec.ts:14:1 › the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable
+[5/33] test/e2e/language/language-registry.spec.ts:103:1 › installing a server while editing and rescanning connects the current model without replacing healthy sessions
+[6/33] test/e2e/language/language-registry.spec.ts:165:1 › Edit menu imports a new server, negotiates Full sync, and reconnects the same unsaved model with Undo intact
+[7/33] test/e2e/language/language-registry.spec.ts:252:1 › an imported npm profile starts automatically and supplies completion without a connection form
+[8/33] test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo
+  1) test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      name: !Sub "hello"
+    -
+    + # unsaved
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      100 |     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').at(-1)?.params.textDocument.text).toContain('# unsaved revision');
+      101 |     await expect(input).toBeFocused(); await input.press('Control+z'); await input.press('Control+s');
+    > 102 |     await expect.poll(() => readFile(file, 'utf8')).toBe('name: !Sub "hello"\n');
+          |                                                     ^
+      103 |   } finally { await disposeApplication(app); await rm(f.root, { recursive: true, force: true }); }
+      104 | });
+      105 |
+        at /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop/test/e2e/language/syntax-highlighting.spec.ts:102:53
+
+    Error Context: ../../reports/zed-language-platform-implementation-2026-11-10/focused-e2e/language-syntax-highlighti-305e4-the-unsaved-editor-and-Undo/error-context.md
+
+
+(node:438957) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+
+
+[9/33] test/e2e/language/syntax-highlighting.spec.ts:106:1 › build languages and YAML dialects retain grammar, comments and Make recipe tabs with every server disabled
+[10/33] test/e2e/language/syntax-highlighting.spec.ts:131:1 › a language absent from the application gets real WASM syntax from its runtime package with no server or network
+[11/33] test/e2e/language/syntax-highlighting.spec.ts:159:1 › Svelte has lazy local grammar colors without servers; Python, theme changes and Undo keep working
+[12/33] test/e2e/language/syntax-highlighting.spec.ts:210:1 › Svelte lexical colors coexist with negotiated LSP semantic tokens across themes
+[13/33] test/e2e/language/syntax-highlighting.spec.ts:240:1 › Svelte grammar reaches both Git comparison models and shared split editors
+[14/33] test/e2e/notebook/notebook.spec.ts:17:36 › empty ipynb files enable Code and Markdown and save as valid notebooks
+[15/33] test/e2e/notebook/notebook.spec.ts:17:36 › whitespace-only ipynb files enable Code and Markdown and save as valid notebooks
+[16/33] test/e2e/notebook/notebook.spec.ts:68:1 › notebook reading hierarchy keeps content, actions and focus distinct, including narrow split panes
+[17/33] test/e2e/notebook/notebook.spec.ts:181:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+test/e2e/notebook/notebook.spec.ts:181:1 › notebook cells reuse Markdown and Python, preserve outputs on save, and retain Undo across deletion
+notebook process: (node:443901) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `exe --trace-warnings ...` to show where the warning was created)
+
+
+notebook process: [443529:1110/181032.376597:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.filetransfer to kAtomsToCache
+
+
+notebook process: [443529:1110/181032.376645:ERROR:ui/gfx/x/atom_cache.cc:236] Add application/vnd.portal.files to kAtomsToCache
+
+
+notebook process: Debugger ending on ws://127.0.0.1:46161/df92fe1d-4d53-4731-a235-e6f7024d7250
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[18/33] test/e2e/notebook/notebook.spec.ts:258:1 › unsupported notebook versions remain read-only and byte-identical
+test/e2e/notebook/notebook.spec.ts:258:1 › unsupported notebook versions remain read-only and byte-identical
+notebook process: Debugger ending on ws://127.0.0.1:43187/fad6269b-dd8e-4682-99a3-fccdbd7668ac
+For help, see: https://nodejs.org/learn/getting-started/debugging
+
+
+[19/33] test/e2e/notebook/notebook.spec.ts:275:1 › long cells grow with their contents and scroll only the notebook, including keyboard navigation
+[20/33] test/e2e/notebook/notebook.spec.ts:313:39 › long notebook cells meet the scroll viewport without a blank strip at 100% app zoom
+[21/33] test/e2e/notebook/notebook.spec.ts:313:39 › long notebook cells meet the scroll viewport without a blank strip at 130% app zoom
+[22/33] test/e2e/notebook/notebook.spec.ts:313:39 › long notebook cells meet the scroll viewport without a blank strip at 90% app zoom
+[23/33] test/e2e/notebook/notebook.spec.ts:384:1 › Python cells run in one kernel, persist results, and reset discards variables
+[24/33] test/e2e/notebook/notebook.spec.ts:434:1 › native notebook analysis checks types with IPython and isolated cell ranges
+test/e2e/notebook/notebook.spec.ts:434:1 › native notebook analysis checks types with IPython and isolated cell ranges
+
+
+
+
+[25/33] test/e2e/notebook/notebook.spec.ts:482:1 › scrolling preserves focused editors and measured output height; cell copy and reader search keep their scope
+[26/33] test/e2e/notebook/notebook.spec.ts:528:1 › notebook convenience commands preserve data through replace, split, clear and image export
+[27/33] test/e2e/notebook/notebook.spec.ts:583:1 › notebook stdin, variables and restart-all use the live kernel with scoped state
+[28/33] test/e2e/notebook/notebook.spec.ts:614:1 › notebook project extraPaths resolve imports and hover, reload live, and retain real missing-import diagnostics
+[29/33] test/e2e/notebook/notebook.spec.ts:646:1 › VS Code notebook defaults preserve normal table wrapping, horizontal code scroll and command-mode execution focus
+[30/33] test/e2e/notebook/notebook.spec.ts:729:1 › opening and switching notebooks and Markdown Escape never paint raw preview source
+[31/33] test/e2e/notebook/notebook.spec.ts:773:1 › notebook cells indent with four spaces per Tab
+[32/33] test/e2e/notebook/notebook.spec.ts:803:1 › default notebook Literal errors share Problems, survive tab switches, and stay independent from execution
+test/e2e/notebook/notebook.spec.ts:803:1 › default notebook Literal errors share Problems, survive tab switches, and stay independent from execution
+
+
+[33/33] test/e2e/notebook/notebook.spec.ts:866:1 › shared notebook analysis keeps 100-cell namespaces separate and survives twenty tab round trips
+  1 failed
+    test/e2e/language/syntax-highlighting.spec.ts:62:1 › an open project inherits .zed YAML settings into infra files and hot reload preserves the unsaved editor and Undo 
+  32 passed (1.7m)

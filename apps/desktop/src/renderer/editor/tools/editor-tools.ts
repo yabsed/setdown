@@ -11,6 +11,7 @@ import { liveDocumentModels } from '../live-document-model';
 import type { EditorPolicy } from '../../../protocol/editor-tools';
 import MarkdownIt from 'markdown-it';
 import { setDisplayOptions } from './view-display';
+import { languageDefinition } from '../../../core/document/language-catalog';
 
 export type EditorToolsOptions = {
   resolve(model: Monaco.editor.ITextModel, editor?: Monaco.editor.ICodeEditor): { path: string; cellId?: string; viewId: string | null; groupId: string } | null;
@@ -113,14 +114,24 @@ export class EditorTools {
   }
   private async loadPolicy(context: CommandContext): Promise<void> {
     const model = context.model, state = model && this.policies.get(model);
-    if (!model || !state || !context.resource || !this.options.policy) return;
+    if (!model || !state || state.local) return;
     const epoch = ++state.epoch;
+    // Notebook cells and Markdown own their existing editing defaults. Imported
+    // code-language defaults must not overwrite those surface policies.
+    const defaults = model.uri.scheme === 'setdown-cell' || model.getLanguageId() === 'markdown'
+      ? undefined : languageDefinition(model.getLanguageId());
+    const apply = (policy?: EditorPolicy) => model.updateOptions({
+      tabSize: policy?.tabSize ?? defaults?.tabSize ?? state.baseline.tabSize,
+      indentSize: policy?.indentSize ?? defaults?.tabSize ?? state.baseline.indentSize,
+      insertSpaces: policy?.insertSpaces ?? defaults?.insertSpaces ?? state.baseline.insertSpaces,
+    });
+    apply();
+    if (!context.resource || !this.options.policy) return;
     try {
       const policy = await this.options.policy(context.resource);
       if (model.isDisposed() || state.epoch !== epoch || state.local) return;
       state.policy = policy;
-      model.updateOptions({ tabSize: policy.tabSize ?? state.baseline.tabSize, indentSize: policy.indentSize ?? state.baseline.indentSize,
-        insertSpaces: policy.insertSpaces ?? state.baseline.insertSpaces });
+      apply(policy);
     } catch (error) { this.registry.messages.push({ time: Date.now(), command: 'Editor settings', message: String(error) }); }
   }
   private location(context: CommandContext): EditorLocation | null {

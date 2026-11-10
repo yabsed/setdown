@@ -1,0 +1,16 @@
+
+> @setdown/desktop@2.5.3 typecheck
+> tsc --noEmit && tsc --noEmit -p test/tsconfig.json && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings
+
+src/core/document/language-catalog.ts(9,14): error TS2322: Type '({ id: string; sourceId: string; name: string; label: string; grammar: string; extensions: string[]; caseSensitiveExtensions: never[]; filenames: never[]; filenamePatterns: never[]; shebangs: string[]; lineComment: string; blockComment: string[]; tabSize: number; insertSpaces: boolean; } | ... 21 more ... | { ...; }...' is not assignable to type 'readonly LanguageDefinition[]'.
+  Type '{ id: string; sourceId: string; name: string; label: string; grammar: string; extensions: string[]; caseSensitiveExtensions: never[]; filenames: never[]; filenamePatterns: never[]; shebangs: string[]; lineComment: string; blockComment: string[]; tabSize: number; insertSpaces: boolean; } | ... 21 more ... | { ...; }' is not assignable to type 'LanguageDefinition'.
+    Type '{ id: string; sourceId: string; name: string; label: string; extensions: string[]; caseSensitiveExtensions: never[]; filenames: never[]; filenamePatterns: never[]; shebangs: never[]; lineComment: string[]; tabSize: number; insertSpaces: boolean; grammar?: undefined; blockComment?: undefined; }' is not assignable to type 'LanguageDefinition'.
+      Types of property 'lineComment' are incompatible.
+        Type 'string[]' is not assignable to type 'string'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 2
+npm error path /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error workspace @setdown/desktop@2.5.3
+npm error location /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/desktop
+npm error command failed
+npm error command sh -c tsc --noEmit && tsc --noEmit -p test/tsconfig.json && svelte-check --config ./svelte.config.js --tsconfig ./tsconfig.json --fail-on-warnings
