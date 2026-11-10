@@ -4,48 +4,68 @@ Use the language button in a code document’s location bar to choose its projec
 environment, inspect checks and repair its analysis service.
 
 Open **Language Support** in the left activity bar, directly below Browser.
-**Edit → Language Support…** opens the same catalog. The editor’s Language Support
+**Edit → Language Support…** opens the same app settings. The editor’s Language Support
 command inspects the owning code tab; surfaces without a code-language control
-fall back to the catalog.
+fall back to app settings.
 It stays beside the document; opening it does not cover or freeze a live web page.
 The Setdown button continues to toggle Folder Tools.
 
-The sidebar has four groups: **Detected**, **Needs attention**, **Manual
-connections**, and **Available servers**. The fourth group contains automatically
-discoverable servers that have not been found yet. It starts collapsed to keep
-installed servers visible; search includes all four groups and expands matching
-results. Discovery support is independent of installation and of connection
-profile availability. Only entries without automatic discovery metadata are
-omitted from this list; they remain available in the manual-add flow.
+The home screen contains the app's automatic-download policy, **Language defaults**,
+**Custom connections** and **Installation management**. Opening home or language
+defaults performs no executable scan, installation or server launch. No open
+project or document is needed. Ordinary file opening chooses the declared primary
+tool and prepares it automatically when downloads are allowed; users do not need
+to detect or register an imported Zed profile first. An explicit choice is
+authoritative even if that executable is unavailable. If no default distinguishes
+several primary tools, the document asks for a choice.
 
-Each row separates runtime state (Connected, Starting, Disabled, Stopped, Not detected)
-from origin (Detected, Included, Manual). Missing saved connections and failed
-sessions remain visible so they can be repaired. A detected executable without a
-connection profile appears with **Setup needed**. Language logos use named SVG
+Language defaults choose Automatic, a primary tool, or no project analysis. A
+project's explicit choice takes precedence; **Use app default** restores inheritance.
+Changing the app default keeps unaffected project sessions running. Existing
+per-server preferences, explicit disabled states, executable paths and custom IDs
+remain in the existing settings file. Restoring inheritance does not delete
+arguments or options shared by another language.
+
+Installation management is an advanced screen with **Installed tools**, **Needs
+attention**, **Custom connections** and **Other tools**. The last group starts
+collapsed; search includes all four groups. It separates installation capability
+and origin from a document's runtime state. Managed receipts and active sessions
+count as installation evidence even when the tool is absent from PATH. Missing
+saved executables remain repairable; a found executable without a connection
+profile appears with **Setup needed**. Language logos use named SVG
 exports from the already installed Simple Icons package, pinned to 9.21.0 as a
 direct dependency. Logos adapt contrast to light/dark themes; languages without
 a matching logo use a short language label. No remote image requests are needed.
 
-Select a row to manage its installation and global defaults. Advanced arguments,
-settings, and profile information are under **Connection settings**; runtime paths
-and window-wide restart are under **Additional actions**. Project settings and
-individual session output belong to their document’s inspection. Back returns
-to the filtered list. Escape clears a search, returns from details, or closes the
-sidebar; it does not switch the active document into reader mode.
+Select an installation to manage its global connection settings. Advanced
+arguments and profile information are under **Connection settings**; executable
+paths are under **Additional actions**. Runtime state, restart, project settings
+and output belong to the document's inspection. Escape clears a search, moves
+back one step, then closes the sidebar and restores its activity button.
 
-The title bar's refresh icon rescans installations. **+ / Add server manually…**
+The advanced screen's refresh icon rescans external installations. **Add server manually…**
 opens the manual flow: choose a known profile and locate its executable, or enter
 a custom connection. **Import JSON…** remains available. Browsing a manual-only profile
 in this flow does not add it to the default list until it is detected or saved.
 
-The compact view title, icon actions, search field, counted sections, and row
-hierarchy follow [VS Code's view guidance](https://code.visualstudio.com/api/ux-guidelines/views)
+The installation list's compact view title, icon actions, search field, counted
+sections, and row hierarchy follow [VS Code's view guidance](https://code.visualstudio.com/api/ux-guidelines/views)
 and its vendored `extensionsViewlet.ts` / `media/extensionsViewlet.css`. Setdown
 retains its own theme tokens and sidebar layout; the screen is not a marketplace.
 
 The [discovery design](../reports/2026_10_16_00_09_lsp_discovery_and_connection_design.md)
 explains the architecture and follow-up work. The behavior below describes the
-implemented catalog-wide discovery and imported connection profiles.
+implemented discovery and imported connection profiles. The
+[global settings design](language-support-global-settings-design.ko.md) explains
+why detection moved out of the ordinary workflow after the Zed integration.
+
+The automatic-download switch is a default; explicit tool/project download
+settings override it. Bundled and external executables and validated managed
+launch receipts remain usable with downloads off. A receipt is specific to its
+project inputs and launch settings: a new project or changed manifest may require
+preparation even if the same tool was prepared elsewhere. Setdown reports that
+condition without starting an installer or silently downloading. This switch
+controls analysis tools; it does not control syntax grammar package loading.
 
 ## Current file support
 
@@ -79,8 +99,8 @@ incarnation and root; late responses cannot update a replacement document or
 retarget an in-progress choice. Connection-setting edits retain their original
 options instead of following live catalog refreshes.
 
-The left **Language Support** sidebar owns available tools, installation paths,
-manual connections, import, discovery and global defaults. It has no current-file
+The left **Language Support** sidebar owns app defaults and advanced installation
+management, custom connections and import. It has no current-file
 mode. **Manage installation…** passes only the language/tool filter to it, not a
 project editing target. **Disable by default** is distinct from a document’s
 project analysis selection. Closing all code tabs leaves the catalog usable.
@@ -100,7 +120,10 @@ claim to have ported GTK or Builder’s project model. The corrected
 [design review](../reports/2026_11_01_gnome_builder_lsp_ui_review.md#후속-검토-화면의-위치보다-소유권을-먼저-정한다)
 records the product reasoning and concrete failure cases.
 
-No applicable server is a supported editing state. Built-in JSON validates syntax
+No applicable primary server is a supported editing state. Make shows syntax and
+editing support without a Python environment or an instruction to enable project
+analysis. Disabled supplementary profiles do not establish that project analysis
+was explicitly turned off. Built-in JSON validates syntax
 and available schemas; CSS/SCSS/Less validate syntax and configured lint knowledge;
 HTML supplies completion, hover and formatting without a diagnostic adapter.
 JS/TS's isolated worker supplies syntax checks only. It has no filesystem/project
@@ -166,10 +189,11 @@ and [language package platform validation](../reports/zed-language-platform-impl
 
 ## Project environments and recovery
 
-The current file’s language button now includes **Project environment**. Select
-Python, the TypeScript SDK, or a C/C++ build configuration here; the global server
-catalog remains available under **Set up analysis…**. Its Enable/Disable controls
-manage global defaults; the current-file chooser manages project overrides. The choice is stored for the
+The current file’s language button includes its applicable project environment.
+Select Python, the TypeScript SDK, or a C/C++ build configuration here. **Manage
+analysis tools…** opens the corresponding app language defaults. The current-file
+chooser manages project overrides and shows whether the selection comes from the
+app default or this project. The choice is stored for the
 analysis root shown in the panel, independently of other projects. **Basic editing**
 disables that project’s matching providers while preserving syntax colors and local
 checks. Re-enable its primary provider from the same chooser.
@@ -287,9 +311,10 @@ and root markers:
 - Imported profiles cover TypeScript/JavaScript, Bash, Lua, YAML, JSON, Dockerfile,
   CMake and many others. Names such as `Dockerfile`, `CMakeLists.txt` and `go.mod`,
   path globs, compound suffixes and JSX/TSX language IDs are included.
-- One installed primary server connects automatically. Multiple installed
-  alternatives wait for **Use for these languages**. An explicit selection stays
-  selected even if its executable disappears. Bundled Python and TypeScript services take precedence
+- The declared primary server connects or prepares automatically. Several
+  installed alternatives do not override a declared default. A genuinely ambiguous
+  primary choice is resolved in Code support. An explicit selection stays selected
+  even if its executable disappears. Bundled Python and TypeScript services take precedence
   until the user chooses another primary server for those languages. Healthy sessions stay on their
   original server when new installations are discovered.
 - Optional writing/diagnostic providers remain disabled by default. Ruff, Biome
@@ -313,9 +338,9 @@ interpreter. npm package `bin` metadata can also resolve an installed Node runti
 and script directly, including on Windows without running `.cmd`/`.bat` wrappers.
 Custom connections can still select Node and put the server script in `args`.
 
-The catalog distinguishes **Not detected**, **Choose installation**, **Disabled**,
-**Detected**, **Choose primary**, **Starting**, **Connected** and **Stopped**. Detected
-entries lacking a profile show **Setup needed**. Installation details expose the
+Installation management distinguishes **Installed**, **Not installed**, **Prepares
+when needed**, **Downloads disabled** and **Choose installation**. Found entries
+lacking a profile show **Setup needed**. Installation details expose the
 executable; document tool details expose the analysis root, negotiated features
 and startup/crash errors (including available stderr). Finding an executable does
 not prove that its runtime or project is healthy; **Connected** means LSP
@@ -440,7 +465,7 @@ Settings persist atomically in `language-servers.json` in Electron's user-data
 directory (normally `~/.config/Setdown` on Linux). Invalid persisted settings are
 reported instead of silently discarded. clangd's previous `clangd.json` selection
 is still read: new selection → old selection → `SETDOWN_CLANGD_PATH` → `clangd`
-on the selected environment's PATH. **Use automatic detection** bypasses the
+on the selected environment's PATH. **Reset executable selection** bypasses the
 old path selection and executable environment override until another manual
 selection is made.
 
@@ -448,12 +473,15 @@ Enabling a primary selects it for its language IDs. Enabling a supplementary
 provider adds it without replacing that primary. Choose **Use this provider** for
 formatting to select one external formatter for overlapping languages in that
 settings scope. Supplementary formatting is otherwise off. Built-in formatting
-remains available where no selected external formatter advertises the feature. Disabling the chosen server
-allows another enabled connection; multiple automatic installations require a choice. Changing definitions,
-paths, selection or settings stops the affected servers in all windows and
-reconnects their models with current unsaved text. Unrelated servers keep running. It preserves document ownership,
-selection and Undo; it does not save files. **Restart servers in this window** and
-F1 **Restart Language Servers** only restart the current window.
+remains available where no selected external formatter advertises the feature.
+The advanced global enable/disable controls remain compatible with earlier
+settings; use language defaults for ordinary primary selection and explicit Off.
+Changing effective definitions, paths, selection or settings reconnects affected
+models with their current unsaved text. Unchanged project-pinned sessions keep
+running, including when only the download default changes. It preserves document
+ownership, selection and Undo; it does not save files. A document's **Restart
+[tool]** restarts its shared session in that window. F1 **Restart Language Servers**
+remains a window-wide command.
 
 Processes start lazily for saved files with live editor models, shared within one
 window/server/root/configuration. Separate windows retain separate unsaved

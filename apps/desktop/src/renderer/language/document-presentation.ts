@@ -9,7 +9,9 @@ export type SupportPresentation = { label: string; tone: 'neutral' | 'warning' |
 export function presentSupport(providers: ProviderSupport[], context?: DocumentAnalysis | AnalysisContext): SupportPresentation {
   const servers = providers.filter(p => p.kind === 'server');
   const active = servers.filter(p => p.state === 'ready');
-  const projectOff = context && 'servers' in context && context.servers.length > 0 && !context.servers.some(s => s.enabled);
+  const policy = context && 'analysisSelection' in context ? context.analysisSelection : undefined;
+  const projectOff = policy?.mode === 'off';
+  const offDescription = policy?.source === 'project' ? 'Analysis is turned off for this project.' : 'Analysis is turned off by the app default.';
   const environment = !projectOff && (context?.environment === 'action-needed' ? context : servers.find(p => p.analysis?.context.environment === 'action-needed')?.analysis?.context);
   if (environment) return { label: 'Choose environment', tone: 'warning', title: environment.issues[0]?.message ?? 'Choose an analysis environment for this project.',
     description: 'Editing and syntax colors remain available.', action: { kind: 'environment', label: environment.kind === 'compilation' ? 'Choose build configuration…' : 'Choose environment…' } };
@@ -25,6 +27,7 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
   const limited = !projectOff && (context?.environment === 'partial' ? context : servers.find(p => p.analysis?.context.environment === 'partial')?.analysis?.context);
   if (limited) return { label: 'Analysis limited', tone: 'warning', title: limited.issues[0]?.message ?? 'The project environment has limitations.', action: { kind: 'details', label: 'Review environment…' } };
   const missing = servers.find(p => p.state === 'missing');
+  if (missing?.message && !active.length) return { label: 'Analysis unavailable', tone: 'warning', title: `${missing.name} is not available.`, description: missing.message, action: { kind: 'details', label: 'Tool settings…', server: missing.id } };
   if (missing && active.length) return { label: 'Some tools unavailable', tone: 'warning', title: `${missing.name} is not available.`, description: `${active.map(p => p.name).join(', ')} remains connected.`, action: { kind: 'provider', label: 'Manage analysis tools…' } };
   const localFailure = providers.find(p => p.kind === 'builtin' && p.state === 'failed');
   if (localFailure) return { label: 'Local checks limited', tone: 'warning', title: localFailure.message ?? `${localFailure.name} checks are limited.`, action: { kind: 'details', label: 'Review checks…', server: localFailure.id } };
@@ -35,9 +38,11 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
   if (servers.some(p => p.state === 'starting')) return { label: 'Starting analysis', tone: 'busy' };
   if (active.some(p => p.analysis?.analysis === 'working' && p.analysis.progress.length)) return { label: 'Analyzing', tone: 'busy' };
   if (active.length) return { label: '', tone: 'neutral' };
-  if (providers.some(p => p.state === 'ready' && p.checks !== 'none')) return { label: '', tone: 'neutral', description: projectOff ? 'Project analysis is off. Local checks remain available.' : 'Only local checks are active.' };
+  if (providers.some(p => p.state === 'ready' && p.checks !== 'none')) return { label: '', tone: 'neutral', description: projectOff ? `${offDescription} Local checks remain available.` : 'Only local checks are active.' };
+  if (!projectOff && context && 'servers' in context && !context.servers.some(s => s.role === 'primary'))
+    return { label: 'Editing support', tone: 'neutral', description: 'Syntax highlighting and editing support are available. The default support for this language does not include project analysis.' };
   return { label: providers.some(p => p.state === 'ready' && p.features.length) ? 'Editing support' : 'Basic editing', tone: 'neutral',
-    description: projectOff ? 'Project analysis is off.' : 'No project checks are active for this document.' };
+    description: projectOff ? offDescription : 'No project checks are active for this document.' };
 }
 
 export function providerStatus(provider: ProviderSupport): string {

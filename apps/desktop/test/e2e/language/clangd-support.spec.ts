@@ -194,9 +194,12 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     await inspection.getByRole('button', { name: 'Manage analysis tools…', exact: true }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(management).toBeVisible();
+    await management.getByRole('button', { name: 'Back to language settings' }).click();
+    await management.getByRole('button', { name: /^Installation management/ }).click();
     await management.getByRole('searchbox').fill('clangd');
     await management.locator('[data-server-id="clangd"]').click();
-    await management.getByRole('button', { name: 'Choose executable…', exact: true }).click();
+    await management.getByText('Connection settings', { exact: true }).click();
+    await management.getByRole('button', { name: 'Choose executable…', exact: true }).last().click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Close language support' }).click();

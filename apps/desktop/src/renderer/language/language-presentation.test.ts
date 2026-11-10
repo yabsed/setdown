@@ -20,14 +20,14 @@ test('all discoverable profiles are searchable in Available servers, regardless 
   expect(serverGroups(catalog, ' PYTHON ')[0].entries).toHaveLength(2);
 });
 
-test('missing manual connections and failed servers stay visible for repair', () => {
+test('installation problems remain global while session failures belong to their document', () => {
   const catalog = [entry('custom', { custom: true }), entry('saved', { managed: true }),
     entry('crashed', { sessions: [{ root: '/project', state: 'failed' }] })];
   expect(serverGroups(catalog)[0]).toMatchObject({ id: 'attention', entries: [
-    { id: 'crashed' }, { id: 'custom' }, { id: 'saved' },
+    { id: 'custom' }, { id: 'saved' },
   ] });
-  expect(serverStatus(catalog[0]).label).toBe('Not detected');
-  expect(serverStatus(catalog[2]).label).toBe('Stopped');
+  expect(serverStatus(catalog[0]).label).toBe('Not installed');
+  expect(serverStatus(catalog[2]).label).toBe('Not installed');
 });
 
 test('detected unprofiled and ambiguous installations are actionable, not hidden', () => {
@@ -43,10 +43,19 @@ test('detection source and runtime status are independent, including disabled co
   const manual = entry('manual', { available: true, candidates: [{ id: 'one', path: '/bin/server', source: 'explicit' }] });
   const disabled = entry('disabled', { available: true, enabled: false });
   const running = entry('running', { available: true, sessions: [{ root: '/project', state: 'ready' }] });
-  expect(connectionSource(manual)).toBe('Manual');
-  expect(connectionSource(disabled)).toBe('Detected');
-  expect(serverStatus(disabled).label).toBe('Disabled');
+  expect(connectionSource(manual)).toBe('Selected executable');
+  expect(connectionSource(disabled)).toBe('External installation');
+  expect(serverStatus(disabled).label).toBe('Installed');
   expect(serverGroups([disabled, manual, running]).map(group => [group.id, group.entries.map(e => e.id)])).toEqual([
-    ['detected', ['running', 'disabled']], ['manual', ['manual']],
+    ['detected', ['disabled', 'manual', 'running']],
   ]);
+});
+
+test('a managed installation and a live session are visible without PATH discovery', () => {
+  const managed = entry('managed', { preparation: { state: 'ready', source: 'managed' }, available: false });
+  const live = entry('live', { available: false, sessions: [{ root: '/project', state: 'ready' }] });
+  expect(serverStatus(managed).label).toBe('Installed');
+  expect(connectionSource(managed)).toBe('Managed by Setdown');
+  expect(serverStatus(live).label).toBe('Installed');
+  expect(serverGroups([managed, live])[0].id).toBe('detected');
 });

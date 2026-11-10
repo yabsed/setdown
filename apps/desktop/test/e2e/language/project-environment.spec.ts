@@ -145,8 +145,8 @@ test('TypeScript SDK selection and basic editing apply to this project; service 
     await details.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
     await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('off');
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
-    await expect(details).toContainText('Project analysis is off. Local checks remain available.');
-    await details.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await expect(details).toContainText('Analysis is turned off for this project. Local checks remain available.');
+    await details.getByRole('button', { name: 'Change analysis setting…', exact: true }).click();
     await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('typescript-language-server');
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await page.screenshot({ path: testInfo.outputPath('typescript-sdk.png') });

@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readFile, stat, writeFile, rename } from 'node:fs/promises';
 import { languageDefinition } from '../../core/document/language-catalog';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import type { Options } from './server-registry';
@@ -10,9 +10,12 @@ import mason from './catalog/mason.json';
 import zed from './catalog/zed.json';
 import adapters from './catalog/zed-profiles.json';
 import type { RuntimeLanguageCatalog, ZedAdapterBinding } from './runtime-language-catalog';
+import type { LanguageCatalogEntry } from '../../protocol/language';
 
 import { mergeLanguageSettings } from './language-settings';
 export { mergeLanguageSettings } from './language-settings';
+
+export class AutomaticDownloadsDisabled extends Error {}
 
 /** One installer per package/workspace configuration, shared by simultaneous document opens. */
 export class LanguageProvisioner {
@@ -36,6 +39,22 @@ export class LanguageProvisioner {
       || mason.packages.some(p => p.id === definition.id && p.source.id.startsWith('pkg:npm/'))
       || ['clangd','rust-analyzer','gopls','yaml-language-server','bash-language-server','vscode-css-language-server','vscode-json-language-server','ruff','ty','pyrefly','basedpyright','vtsls','eslint','tailwindcss-language-server'].includes(definition.id));
   }
+  async installation(id: string): Promise<LanguageCatalogEntry['preparation']> {
+    try {
+      const saved = JSON.parse(await readFile(path.join(this.directory, 'installations', id + '.json'), 'utf8'));
+      if (!Array.isArray(saved.files) || !saved.files.length) return;
+      for (const file of saved.files) {
+        const current = await stat(file.path);
+        if (!current.isFile() || current.size !== file.size || current.mtimeMs !== file.mtime) return;
+      }
+      return { state: 'ready', source: 'managed', executable: saved.executable };
+    } catch { return undefined; }
+  }
+  private async recordInstallation(id: string, executable: string, files: Array<{ path: string; size: number; mtime: number }>): Promise<void> {
+    const directory = path.join(this.directory, 'installations'); await mkdir(directory, { recursive: true });
+    const file = path.join(directory, id + '.json'), staging = file + '.' + randomUUID();
+    await writeFile(staging, JSON.stringify({ executable, files }), { mode: 0o600 }); await rename(staging, file);
+  }
   prepare(definition: LanguageServerDefinition, languageId: string, root: string, env: NodeJS.ProcessEnv, options: Options,
     progress?: (message: string) => void): Promise<PreparedLanguageServer> {
     const key = JSON.stringify([definition.id,languageId,root,env,options]);
@@ -53,15 +72,21 @@ export class LanguageProvisioner {
     const inputs=await Promise.all([...new Set([...definition.rootMarkers,'package.json','package-lock.json','pnpm-lock.yaml','yarn.lock'])].map(async name=>{
       try{const value=await stat(path.join(root,name));return [name,value.size,value.mtimeMs];}catch{return [name];}
     }));
-    const key=createHash('sha256').update(JSON.stringify([definition,languageId,root,env,options,pkg?.sha256,inputs])).digest('hex');
-    const receipt=path.join(this.directory,'launches',key+'.json');
-    try {
-      if((await stat(receipt)).size>4*1024*1024)throw Error('Invalid launch receipt');
-      const saved=JSON.parse(await readFile(receipt,'utf8')) as {version:number;prepared:PreparedLanguageServer;files:Array<{path:string;size:number;mtime:number}>};
+    const { automaticInstall: _downloadPolicy, ...launchOptions } = options;
+    const receiptFor = (options: Options) => path.join(this.directory, 'launches', createHash('sha256').update(JSON.stringify([definition,languageId,root,env,options,pkg?.sha256,inputs])).digest('hex') + '.json');
+    const receipt = receiptFor(launchOptions);
+    // Download policy does not change the installed command. Read legacy receipts
+    // too, so turning downloads off never discards a previously validated install.
+    for (const candidate of new Set([receipt, receiptFor(options), ...[true, false].flatMap(automaticInstall => [receiptFor({ ...launchOptions, automaticInstall }), receiptFor({ automaticInstall, ...launchOptions })])])) try {
+      if((await stat(candidate)).size>4*1024*1024)throw Error('Invalid launch receipt');
+      const saved=JSON.parse(await readFile(candidate,'utf8')) as {version:number;prepared:PreparedLanguageServer;files:Array<{path:string;size:number;mtime:number}>};
       if(saved.version!==1 || !saved.files.length)throw Error('Invalid launch receipt');
       for(const file of saved.files){const current=await stat(file.path);if(!current.isFile() || current.size!==file.size || current.mtimeMs!==file.mtime)throw Error('Installed server changed');}
-      return validatePreparedServer(saved.prepared);
+      const prepared = validatePreparedServer(saved.prepared);
+      await this.recordInstallation(definition.id, prepared.executable, saved.files).catch(() => {});
+      return prepared;
     }catch{/* A missing or stale receipt is repaired through the actual adapter. */}
+    if (options.automaticInstall === false) throw new AutomaticDownloadsDisabled(`${definition.name} is not prepared for this project. Automatic downloads are disabled. Enable downloads in Language Support or choose an installed executable in the tool settings.`);
     const resolved=await this.resolve(definition,languageId,root,env,options,progress);
     const prepared={...resolved,env:Object.fromEntries(Object.entries(resolved.env??{}).filter(([key])=>!['NODE_OPTIONS','NODE_PATH','ELECTRON_RUN_AS_NODE'].includes(key)))};
     const managed=(file:string)=>{const relative=path.relative(this.directory,file);return relative!=='' && !relative.startsWith('..'+path.sep) && relative!=='..' && !path.isAbsolute(relative);};
@@ -70,6 +95,7 @@ export class LanguageProvisioner {
       const files=(await Promise.all(paths.map(async file=>{try{const info=await stat(file);return info.isFile()?{path:file,size:info.size,mtime:info.mtimeMs}:undefined;}catch{return undefined;}}))).filter((value):value is {path:string;size:number;mtime:number}=>!!value);
       const overrides=Object.fromEntries(Object.entries(prepared.env??{}).filter(([key,value])=>value!==env[key]&&!['NODE_OPTIONS','NODE_PATH','ELECTRON_RUN_AS_NODE'].includes(key)));
       await mkdir(path.dirname(receipt),{recursive:true});await writeFile(receipt,JSON.stringify({version:1,prepared:{...prepared,env:overrides},files}),{mode:0o600});
+      await this.recordInstallation(definition.id, prepared.executable, files);
     }
     return prepared;
   }

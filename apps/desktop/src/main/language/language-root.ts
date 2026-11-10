@@ -17,7 +17,7 @@ export function projectManifest(file: string): Record<string, any> {
   } catch { return {}; }
 }
 
-export function languageRoot(file: string, definition: LanguageServerDefinition, folder?: string, override?: string): LanguageRoot {
+export function languageRoot(file: string, definition: Pick<LanguageServerDefinition, 'languages' | 'rootMarkers'>, folder?: string, override?: string): LanguageRoot {
   const directory = path.dirname(file);
   if (override && isInside(override, file)) {
     if (!statSync(override).isDirectory()) throw Error('The language root override must be a directory.');

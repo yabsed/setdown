@@ -10,20 +10,26 @@
   let searchInput = $state<HTMLInputElement>();
   let backButton = $state<HTMLButtonElement>();
   let loaded = $state(false);
-  let mode = $state<'list' | 'details' | 'add'>('list');
+  let mode = $state<'home' | 'languages' | 'language' | 'connections' | 'list' | 'details' | 'add'>('home');
+  let detailParent = $state<'list' | 'connections' | 'language'>('list');
   let catalog = $state<LanguageCatalog>({ release: '', entries: [] });
   let query = $state('');
   let selectedId = $state('');
   let settingsTarget = $state<LanguageCatalogEntry>();
   async function inspect() {
     const request = languageCatalogRequest.get();
-    query = request.language ?? ''; mode = 'list';
-    const result = await api.catalog();
+    detailParent = 'list';
+    query = request.language ?? ''; mode = request.server ? 'details' : request.language ? 'languages' : 'home';
+    const result = await api.catalog(undefined, !!request.server);
     if (!live || languageCatalogRequest.get() !== request) return;
     catalog = result; loaded = true;
     const entry = result.entries.find(e => e.id === request.server); if (entry) choose(entry);
+    else await tick().then(() => (searchInput ?? document.querySelector<HTMLButtonElement>('.language-support .settings-row'))?.focus());
   }
   let busy = $state(false);
+  let selectedLanguage = $state('');
+  const language = $derived(catalog.languages?.find(item => item.id === selectedLanguage));
+  const languageDefaults = $derived((catalog.languages ?? []).filter(item => `${item.name} ${item.id}`.toLowerCase().includes(query.trim().toLowerCase())).sort((a,b) => a.name.localeCompare(b.name)));
   let error = $state('');
   const adding = $derived(mode === 'add');
   let connectionId = $state('');
@@ -38,13 +44,14 @@
   const templates = $derived([...catalog.entries].sort((a, b) => a.name.localeCompare(b.name)));
   const defaults: LanguageServerOptions = { args: [], settings: {}, initializationOptions: {} };
   function choose(entry: LanguageCatalogEntry) {
+    if (mode === 'list' || mode === 'connections' || mode === 'language') detailParent = mode;
     selectedId = entry.id; settingsTarget = structuredClone($state.snapshot(entry)); mode = 'details'; error = '';
     void tick().then(() => backButton?.focus());
 
   }
   async function refresh() {
     const version = ++refreshVersion;
-    const result = await api.catalog();
+    const result = await api.catalog(undefined, mode === 'list' || mode === 'details' || mode === 'add');
     if (!live || version !== refreshVersion) return;
     catalog = result; loaded = true;
   }
@@ -56,8 +63,13 @@
     finally { busy = false; }
   }
   const status = (entry: LanguageCatalogEntry) => serverStatus(entry).label;
-  function back() { mode = 'list'; error = ''; void tick().then(() => searchInput?.focus()); }
+  function back() {
+    mode = mode === 'language' ? 'languages' : mode === 'details' || mode === 'add' ? detailParent : 'home'; error = '';
+    void tick().then(() => (mode === 'home' ? document.querySelector<HTMLButtonElement>('.language-support .settings-row') : searchInput ?? backButton)?.focus());
+  }
+  async function navigate(next: typeof mode) { mode = next; query = ''; error = ''; await refresh(); await tick(); (searchInput ?? backButton)?.focus(); }
   function beginConnection(entry?: LanguageCatalogEntry) {
+    if (mode === 'list' || mode === 'connections' || mode === 'language') detailParent = mode;
     selectedId = entry?.id ?? '';
     mode = 'add'; error = ''; connectionId = entry?.id ?? ''; connectionName = entry?.name ?? '';
     languageId = ''; extensions = ''; markers = ''; optionsText = JSON.stringify(defaults, null, 2);
@@ -81,13 +93,14 @@
       if (event.key !== 'Escape' || isComposingInput(event) || !(event.target instanceof Element)
         || !event.target.closest('.language-support')) return;
       event.preventDefault(); event.stopPropagation();
-      if (mode !== 'list') back();
-      else if (query) query = '';
+      if (query && (mode === 'list' || mode === 'languages')) query = '';
+      else if (mode !== 'home') back();
       else { onclose(); void tick().then(() => document.querySelector<HTMLButtonElement>('.activity-bar [aria-label="Language Support"]')?.focus()); }
     };
     window.addEventListener('keydown', keydown);
     const unsubscribe = api.onEvent(event => {
-      if (['configuration', 'discovery', 'status', 'activity', 'capabilities'].includes(event.type)) void refresh().catch(reason => { error = String(reason); });
+      if (event.type === 'configuration' || (mode === 'list' || mode === 'details') && (event.type === 'discovery' || event.type === 'status'))
+        void refresh().catch(reason => { error = String(reason); });
     });
     return () => {
       live = false; unsubscribe(); stopInspection(); window.removeEventListener('keydown', keydown);
@@ -98,18 +111,61 @@
 <section class="language-support" aria-label="Language Support" aria-busy={busy}>
   <header class="side-view-title">
     <span>LANGUAGE SUPPORT</span>
-    <button type="button" disabled={busy} aria-label="Rescan installed servers" title="Rescan installed servers" onclick={() => perform(() => api.rescan())}>
+    {#if mode === 'list' || mode === 'details'}<button type="button" disabled={busy} aria-label="Rescan installed servers" title="Check external installations again" onclick={() => perform(() => api.rescan())}>
       <svg class:scanning={busy} viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.46-3.54L13 6M13 2v4H9"/></svg>
-    </button>
-    <button type="button" disabled={busy} aria-label="Add language server" title="Add language server" onclick={() => beginConnection()}>
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
-    </button>
+    </button>{/if}
     <button type="button" aria-label="Close language support" title="Hide Language Support" onclick={onclose}>
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
     </button>
   </header>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  {#if mode === 'list'}
+  {#if mode === 'home'}
+    <div class="settings-list">
+      <h3>Language settings</h3>
+      <p>All of Setdown. Project choices are preserved.</p>
+      <label class="download-setting"><input type="checkbox" aria-label="Download analysis tools automatically" checked={catalog.automaticInstall !== false} disabled={busy || !loaded} onchange={event => perform(() => api.setAutomaticInstall(event.currentTarget.checked))} /><span>Download analysis tools when needed</span></label>
+      <p>Uses existing executables and prepared project caches when downloads are off. Tool and project settings can override this default.</p>
+      <button class="settings-row" onclick={() => navigate('languages')}><strong>Language defaults</strong><span>Choose the default analysis tool for each language.</span></button>
+      <button class="settings-row" onclick={() => navigate('connections')}><strong>Custom connections</strong><span>Servers you have added yourself.</span></button>
+      <button class="settings-row" onclick={() => navigate('list')}><strong>Installation management</strong><span>Managed tools, external executables and advanced settings.</span></button>
+    </div>
+  {:else if mode === 'languages' || mode === 'language'}
+    <div class="navigation"><button bind:this={backButton} class="text-action" onclick={back} aria-label="Back to language settings">← {mode === 'language' ? 'Language defaults' : 'Language settings'}</button></div>
+    {#if mode === 'languages'}
+      <div class="search"><input bind:this={searchInput} type="search" aria-label="Search languages" placeholder="Search languages" bind:value={query} /></div>
+      <div class="server-list">
+        {#each languageDefaults as item (item.id)}
+          <button class="server" data-language-id={item.id} onclick={() => { selectedLanguage = item.id; mode = 'language'; void tick().then(() => backButton?.focus()); }}>
+            <LanguageLogo languages={[item.id]} /><span class="server-info"><strong>{item.name}</strong><small>{item.selection.mode === 'off' ? 'Analysis off by default' : item.selection.mode === 'server' ? catalog.entries.find(entry => entry.id === item.selection.server)?.name : item.servers.length ? 'Automatic' : 'Syntax and editing support'}</small></span>
+          </button>
+        {/each}
+        {#if !languageDefaults.length}<p class="empty">No matching languages.</p>{/if}
+      </div>
+    {:else if language}
+      <div class="details">
+        <h3>{language.name}</h3><p>App default · applies where a project has no explicit selection.</p>
+        {#if language.servers.length}
+          <label>Default analysis tool<select aria-label="Default analysis tool" disabled={busy} value={language.selection.mode === 'server' ? language.selection.server : language.selection.mode} onchange={event => perform(() => api.setLanguageDefault(language!.id, event.currentTarget.value))}>
+            <option value="automatic">Automatic</option><option value="off">No project analysis by default</option>
+            {#each language.servers as id}<option value={id}>{catalog.entries.find(entry => entry.id === id)?.name ?? id}</option>{/each}
+          </select></label>
+          {#if language.defaultServer}<p>Default tool: {catalog.entries.find(entry => entry.id === language.defaultServer)?.name ?? language.defaultServer}.</p>{/if}
+          {#if language.selection.mode === 'off'}<p>Syntax and local editing checks remain available. Projects can choose an analysis tool explicitly.</p>
+          {:else}<p>Opening a matching file starts the default tool. Preparation follows the download policy.</p>{/if}
+          {#if language.defaultServer}<button onclick={() => perform(async () => { selectedId = language!.defaultServer!; detailParent = 'language'; mode = 'details'; await refresh(); const entry = catalog.entries.find(item => item.id === selectedId); if (entry) choose(entry); })}>Tool settings…</button>{/if}
+        {:else}<p>Syntax highlighting and editing support are available. The default support for this language does not include project analysis.</p>{/if}
+      </div>
+    {/if}
+  {:else if mode === 'connections'}
+    <div class="navigation"><button bind:this={backButton} class="text-action" onclick={back} aria-label="Back to language settings">← Language settings</button></div>
+    <div class="details"><h3>Custom connections</h3><p>Connections you add apply across Setdown. Select them as a language default or in a project's Code support.</p>
+      {#each catalog.entries.filter(entry => entry.custom) as entry}<button class="settings-row" data-server-id={entry.id} onclick={() => choose(entry)}>{entry.name}</button>{/each}
+      {#if !catalog.entries.some(entry => entry.custom)}<p>No custom connections.</p>{/if}
+      <button onclick={() => beginConnection()}>Add server manually…</button>
+      <button onclick={() => perform(async () => { await api.importDefinition(); })}>Import JSON…</button>
+    </div>
+  {:else if mode === 'list'}
+    <div class="navigation"><button bind:this={backButton} class="text-action" onclick={back} aria-label="Back to language settings">← Language settings</button></div>
     <div class="search">
       <input bind:this={searchInput} type="search" aria-label="Search language servers" placeholder="Search language servers" bind:value={query} />
     </div>
@@ -118,7 +174,7 @@
       {#each groups as group (group.id)}
         <details class="server-group" data-group={group.id} open={!!query.trim() || group.id !== 'available'}>
           <summary>{group.title}<span class="count">{group.entries.length}</span></summary>
-          {#if group.id === 'available'}<p class="group-help">Auto-detection supported. Not found on this computer yet.</p>{/if}
+          {#if group.id === 'available'}<p class="group-help">Supported tools can be prepared when a matching file needs them.</p>{/if}
           {#each group.entries as entry (entry.id)}
             {@const state = serverStatus(entry)}
             <button class="server" data-server-id={entry.id} onclick={() => choose(entry)} title={entry.description}>
@@ -130,15 +186,15 @@
           {/each}
         </details>
       {/each}
-      {#if !loaded}<p class="empty" role="status">Looking for installed servers…</p>
-      {:else if !groups.length}<div class="empty"><p>{query ? 'No matching servers.' : 'No automatically detectable servers.'}</p><p>Install a server, then rescan. You can also connect one manually.</p></div>{/if}
+      {#if !loaded}<p class="empty" role="status">Loading installations…</p>
+      {:else if !groups.length}<div class="empty"><p>{query ? 'No matching servers.' : 'No installations to manage.'}</p></div>{/if}
     </div>
     <footer>
       <button class="text-action" disabled={busy} onclick={() => beginConnection()}>Add server manually…</button>
-      <button class="text-action" disabled={busy} onclick={() => perform(async () => { if (await api.importDefinition()) { query = ''; back(); } })}>Import JSON…</button>
+      <button class="text-action" disabled={busy} onclick={() => perform(async () => { if (await api.importDefinition()) { query = ''; await tick(); searchInput?.focus(); } })}>Import JSON…</button>
     </footer>
   {:else}
-    <div class="navigation"><button bind:this={backButton} class="text-action" onclick={back} aria-label="Back to language servers">← Language servers</button></div>
+    <div class="navigation"><button bind:this={backButton} class="text-action" onclick={back} aria-label={detailParent === 'list' ? 'Back to language servers' : detailParent === 'connections' ? 'Back to custom connections' : 'Back to language default'}>← {detailParent === 'list' ? 'Language servers' : detailParent === 'connections' ? 'Custom connections' : 'Language default'}</button></div>
     <section class="details" aria-label="Server details">
       {#if adding}
         <h3>Add language server</h3>
@@ -165,13 +221,6 @@
         {#if selected.setupNote}<p>{selected.setupNote}</p>{/if}
         {#if selected.notebook}
           <p>Choose Python in the notebook toolbar. Analysis and execution share that environment.</p>
-          <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
-          {#each selected.sessions as session}
-            <p class="session" data-session-state={session.state}><code>{session.root}</code><br />{session.state}{session.message ? ` · ${session.message}` : ''}
-              {#if session.rootReason}<br />{session.rootReason}{/if}</p>
-            {#if session.context?.length}<p class="session">{session.context.join(" · ")}</p>{/if}
-            {#if session.logs?.length}<details><summary>Server output</summary><pre class="server-output">{session.logs.join('\n')}</pre></details>{/if}
-          {/each}
         {:else if selected.configured}
 
           {#if selected.automatic && selected.enabled}<p>Starts when you open a matching file.</p>{/if}
@@ -189,20 +238,18 @@
           <div class="buttons">
             <button class:primary={!selected.enabled} disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, !selected!.enabled))}>{selected.enabled ? 'Disable by default' : 'Enable by default'}</button>
             {#if selected.enabled && !selected.selected.length}<button disabled={busy} onclick={() => perform(() => api.setEnabled(selected!.id, true))}>Use for these languages</button>{/if}
-            {#if !selected.available && !selected.bundled}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
+            {#if !selected.available && !selected.bundled && !selected.preparation}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
 
           </div>
-          {#if selected.sessions.length}<p>Connected in {selected.sessions.filter(session => session.state === 'ready').length} project(s). Inspect each document from its language button.</p>{/if}
           <details><summary>Additional actions</summary>
-            <p>Applies to every project in this window.</p>
-            <button disabled={busy} onclick={() => window.dispatchEvent(new Event('setdown:restart-language'))}>Restart servers in this window</button>
-            <p class="executable"><span class="field-label">Executable</span><code>{selected.executable}</code></p>
+            <p>Inspect results, environment and recovery from a document's Code support.</p>
+            <p class="executable"><span class="field-label">Executable</span><code>{selected.preparation?.executable ?? selected.executable}</code></p>
           </details>
           <details>
             <summary>Connection settings</summary>
             <div class="buttons">
               {#if !selected.bundled}<button disabled={busy} onclick={() => perform(() => api.chooseExecutable(selected!.id))}>Choose executable…</button>{/if}
-              {#if selected.canDetect}<button disabled={busy} onclick={() => perform(() => api.useAutomatic(selected!.id))}>Use automatic detection</button>{/if}
+              {#if selected.canDetect}<button disabled={busy} onclick={() => perform(() => api.useAutomatic(selected!.id))}>Reset executable selection</button>{/if}
             </div>
             {#if selected.profileSource}<p>Profile: {selected.profileSource}</p>{/if}
             {#if selected.searched?.length}<p>Searched: {selected.searched.join(', ')}</p>{/if}
@@ -226,6 +273,12 @@
 </section>
 
 <style>
+  .settings-list { overflow: auto; padding: 14px; }
+  .settings-row { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--app-border); border-radius: 4px; background: transparent; text-align: left; }
+  .settings-row:hover { background: var(--app-hover); }
+  .settings-row span { color: var(--app-muted-text); line-height: 1.5; }
+  .download-setting { display: flex; align-items: flex-start; gap: 8px; margin-top: 22px; line-height: 1.5; }
+  .download-setting input { width: auto; margin-top: 2px; accent-color: var(--app-accent); }
   .language-support { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; color: var(--app-text); font-size: 12px; }
   .search { padding: 4px 12px 10px; }
   input, select, textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: 5px 7px; color: var(--app-text); background: var(--app-raised-surface); border: 1px solid var(--app-border); border-radius: 2px; font: inherit; }
@@ -276,8 +329,6 @@
   .details button.primary { color: #fff; background: var(--app-accent); border-color: var(--app-accent); }
   .details details { padding: 10px 0; border-top: 1px solid var(--app-border); margin-top: 14px; }
   .details summary { font-size: 11px; cursor: pointer; }
-  .server-output { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
-  .session { padding: 8px; background: var(--app-hover); font-size: 11px; }
   .empty { padding: 8px 14px; color: var(--app-muted-text); line-height: 1.6; }
   .error { margin: 8px 12px; color: var(--app-danger-text); white-space: pre-wrap; overflow-wrap: anywhere; }
   .progress { margin: 0 12px 6px; font-size: 11px; }

@@ -416,6 +416,8 @@ test('language sidebar leaves the native web page live and Escape belongs to its
     await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
     await f.page.getByRole('button', { name: 'Language Support', exact: true }).click();
     const panel = f.page.getByRole('region', { name: 'Language Support', exact: true });
+    await expect(panel.getByRole('button', { name: /^Language defaults/ })).toBeFocused();
+    await panel.getByRole('button', { name: /^Language defaults/ }).click();
     await expect(panel.getByRole('searchbox')).toBeFocused();
     await panel.getByRole('searchbox').fill('anything');
     const before = await evaluatePage<number>(f.app, f.origin, 'window.sidebarFrames');
@@ -424,6 +426,8 @@ test('language sidebar leaves the native web page live and Escape belongs to its
     await panel.getByRole('searchbox').press('Escape');
     await expect(panel.getByRole('searchbox')).toHaveValue('');
     await panel.getByRole('searchbox').press('Escape');
+    await expect(panel.getByRole('heading', { name: 'Language settings' })).toBeVisible();
+    await f.page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
     expect(await f.app.evaluate(({ BrowserWindow }, id) => {
       const child = BrowserWindow.getAllWindows()[0].contentView.children.find(v => 'webContents' in v && (v as Electron.WebContentsView).webContents.id === id);

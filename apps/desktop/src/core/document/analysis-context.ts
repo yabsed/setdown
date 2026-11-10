@@ -15,8 +15,10 @@ export type AnalysisContext = {
   preparation?: 'cmake' | 'meson';
 };
 export type DocumentAnalysis = AnalysisContext & {
+  analysisSelection?: AnalysisPolicy;
   servers: { id: string; name: string; selected: boolean; enabled: boolean; role: 'primary' | 'supplementary' }[];
 };
+export type AnalysisPolicy = { mode: 'automatic' | 'server' | 'off'; source: 'project' | 'global' | 'default'; server?: string };
 export type AnalysisSelection = { kind: AnalysisEnvironmentKind | 'server' | 'python-checking'; value: string; root?: string };
 export type AnalysisObservation = {
   context: AnalysisContext;

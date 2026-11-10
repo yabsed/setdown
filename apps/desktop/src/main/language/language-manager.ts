@@ -27,16 +27,16 @@ import { AnalysisPreparation } from './analysis-preparation';
 import { LanguageServiceSupervisor } from './language-supervisor';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
-import { LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
+import { AutomaticDownloadsDisabled, LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
 import type { PreparedLanguageServer } from './zed-language-host';
 import { RuntimeLanguageCatalog } from './runtime-language-catalog';
 import { ZedProjectSettings } from './zed-project-settings';
-import { catalogLanguage } from '../../core/document/language-catalog';
+import { catalogLanguage, languageDefinitions } from '../../core/document/language-catalog';
 
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
-export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'>;
+export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation'>>;
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 export class LanguageManager {
@@ -91,10 +91,13 @@ export class LanguageManager {
   private readonly subscribers = new Map<number, WindowState>();
   private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; resource?: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
   private updating: Promise<void> = Promise.resolve();
-  private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData'),()=>this.packageCatalog.profiles, (definition, resource) => this.zedSettings.options(definition, resource, this.packageCatalog.binding(definition.id)?.server)); }
+  private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData'),()=>this.packageCatalog.profiles,
+    (definition, resource) => this.zedSettings.options(definition, resource, this.packageCatalog.binding(definition.id)?.server),
+    language => this.packageCatalog.definition(language)?.servers ?? []); }
   private async changed(task: () => unknown | Promise<unknown>): Promise<void> {
     const update = this.updating.then(async () => {
       const before = new Map(this.registry.definitions().map(d => [d.id, this.registry.fingerprint(d.id)]));
+      const active = new Map([...this.sessions].map(([server, info]) => [server, info.resource ? this.registry.sessionFingerprint(info.id, info.resource) : undefined]));
       const routes = this.registry.routes();
       await task();
       const after = new Map(this.registry.definitions().map(d => [d.id, this.registry.fingerprint(d.id)]));
@@ -105,13 +108,19 @@ export class LanguageManager {
           affected.add(route.server);
       }
       if (!affected.size) return;
+      const retainedDocuments: { id: string; generation: string }[] = [];
       for (const owner of this.owners.values()) {
-        const servers = [...owner.servers.values()].filter(server => affected.has(this.sessions.get(server)?.id ?? ''));
+        const servers = [...owner.servers.values()].filter(server => {
+          const info = this.sessions.get(server);
+          if (!info || !affected.has(info.id)) return false;
+          return !after.has(info.id) || !info.resource || active.get(server) !== this.registry.sessionFingerprint(info.id, info.resource);
+        });
+        for (const binding of owner.documents.values()) if (!servers.includes(binding.server)) retainedDocuments.push({ id: binding.id, generation: binding.generation });
         for (const [id, binding] of owner.documents) if (servers.includes(binding.server)) owner.documents.delete(id);
         for (const [key, server] of owner.servers) if (servers.includes(server)) owner.servers.delete(key);
         await Promise.all(servers.map(server => this.stop(server)));
       }
-      this.broadcast({ type: 'configuration', servers: [...affected] });
+      this.broadcast({ type: 'configuration', servers: [...affected], retainedDocuments });
     });
     this.updating = update.catch(() => {});
     return update;
@@ -153,13 +162,13 @@ export class LanguageManager {
     return { candidates, selected: candidates.length === 1 ? candidates[0] : results.length === 1 ? results[0].selected : undefined,
       searched: [...new Set(results.flatMap(r => r.searched))], environment: snapshot };
   }
-  private async catalogFor(state: WindowState, file?: string): Promise<LanguageCatalog> {
+  private async catalogFor(state: WindowState, file?: string, inspectInstallations = true): Promise<LanguageCatalog> {
     this.subscribe(state);
     await this.updating;
     const resource = file === undefined ? undefined : this.ownedFile(state, file);
     const catalog = (await import('./catalog/mason.json')).default;
     const registry = this.registry;
-    const definitions = registry.definitions(), routes = registry.routes();
+    const definitions = registry.definitions();
     const packages = [...languageCatalog];
     for (const definition of definitions) if (!packages.some(item => item.id === definition.id))
       packages.push({ id: definition.id, languages: definition.languages.map(l => l.languageId), description: 'Custom language server connection.', homepage: '', licenses: [], source: { id: '' }, executables: [] } as typeof packages[number]);
@@ -168,13 +177,16 @@ export class LanguageManager {
       const projectRoot = definition && resource ? languageRoot(resource, definition, state.projectRoot ?? undefined, options?.root).path : undefined;
       const bundled = definition?.launch.kind === 'bundledNode';
       const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
-      const found = await this.discover(item.id);
+      const found = inspectInstallations ? await this.discover(item.id) : undefined;
+      const managedPreparation = definition && !registry.isCustom(item.id) && !path.isAbsolute(executable ?? '') && this.provisioner.canPrepare(definition);
+      const preparation = managedPreparation && inspectInstallations ? await this.provisioner.installation?.(item.id) : undefined;
       const resolved = bundled ? executable : found?.selected?.path;
       const owner = this.owners.get(state.webContentsId);
       return { id: item.id, name: definition?.name ?? item.id, languages: item.languages, description: item.description, homepage: item.homepage,
         role: definition ? registry.role(item.id, resource ?? projectRoot) : undefined, projectRoot,
         globalOptions: definition ? { automaticInstall:registry.options(item.id).automaticInstall,args: registry.options(item.id).args ?? definition.launch.args, settings: registry.options(item.id).settings ?? definition.settings, initializationOptions: registry.options(item.id).initializationOptions ?? definition.initializationOptions ?? {}, root: registry.options(item.id).root, role: registry.role(item.id), formatting: registry.options(item.id).formatting } : undefined,
         configured: !!definition, bundled, custom: !!definition && registry.isCustom(item.id),
+        preparation: preparation || (managedPreparation ? { state: 'available' as const, downloadsAllowed: registry.automaticInstall(item.id) } : undefined),
         managed: !!definition && (registry.isCustom(item.id) || Object.keys(options ?? {}).length > 0 || !!executable && path.isAbsolute(executable)),
         discoverable: definition ? registry.canDetect(item.id) : item.executables.length > 0,
         enabled: !!definition && registry.enabled(item.id), selected: [] as string[],
@@ -189,20 +201,18 @@ export class LanguageManager {
           const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
         }) };
     });
-    // Report the same primary-server policy as document opening. Multiple installed
-    // alternatives require an explicit choice, never an arbitrary catalog ordering.
-    for (const languageId of new Set(routes.map(r => r.languageId))) {
-      const matching = entries.filter(e => e.role !== 'supplementary' && e.enabled && e.available && routes.some(r => r.languageId === languageId && r.server === e.id));
-      const preferred = registry.preferred(languageId);
-      const chosen = matching.find(e => e.id === preferred) ?? (!preferred && (matching.find(e => e.bundled) ?? (matching.length === 1 ? matching[0] : undefined)));
-      if (chosen) chosen.selected.push(languageId);
-    }
-    for (const entry of entries) if (entry.role === 'supplementary' && entry.enabled && entry.available) entry.selected = entry.languages;
     entries.push({ id: 'notebook-python', name: 'Notebook Python', languages: ['python'],
       description: 'Cell-aware Python analysis for Jupyter notebooks, using the Python environment selected in the notebook.',
       homepage: '', configured: true, bundled: true, custom: false, enabled: true, selected: ['Python notebooks'],
       available: true, notebook: true, sessions: this.notebooks.snapshot(state.webContentsId) });
-    return { release: catalog.release, profileSource, profiles: definitions.length, entries };
+    const languages = [...new Map([...languageDefinitions, ...this.packageCatalog.languages].map(language => [language.id, language])).values()].map(language => ({ id: language.id, name: language.label ?? language.name,
+      selection: registry.analysisSelection(language.id), defaultServer: registry.defaultServer(language.id),
+      servers: definitions.filter(d => registry.role(d.id) === 'primary' && d.languages.some(l => l.languageId === language.id || l.monacoId === language.id)).map(d => d.id) }));
+    for (const definition of definitions.filter(d => registry.isCustom(d.id))) for (const language of definition.languages) if (!languages.some(l => l.id === language.languageId))
+      languages.push({ id: language.languageId, name: language.languageId, selection: registry.analysisSelection(language.languageId), defaultServer: registry.defaultServer(language.languageId),
+        servers: definitions.filter(d => registry.role(d.id) === 'primary' && d.languages.some(l => l.languageId === language.languageId)).map(d => d.id) });
+    for (const entry of entries) if (!entry.notebook) entry.selected = languages.filter(language => language.defaultServer === entry.id).map(language => language.id);
+    return { release: catalog.release, profileSource, profiles: definitions.length, entries, automaticInstall: registry.automaticInstall(), languages };
   }
   install(): void {
     const state = (event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent) => {
@@ -331,7 +341,10 @@ export class LanguageManager {
       return { output: result.output };
     });
     ipcMain.handle('language:cancel-preparation', async (event, file: string, language: string) => { const owner = state(event), context = await this.documentEnvironment(owner, file, language); this.preparation.cancel(owner.webContentsId, context.root); });
-    ipcMain.handle('language:catalog', (event, file?: string) => this.catalogFor(state(event), file));
+    ipcMain.handle('language:catalog', (event, file?: string, inspectInstallations = true) => {
+      if (typeof inspectInstallations !== 'boolean') throw Error('Invalid installation inspection.');
+      return this.catalogFor(state(event), file, inspectInstallations);
+    });
     ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
     ipcMain.handle('language:automatic', (event, id: string) => { state(event); return this.changed(() => this.registry.useAutomatic(id)); });
     ipcMain.handle('language:select-candidate', async (event, id: string, candidateId: string) => {
@@ -344,6 +357,12 @@ export class LanguageManager {
     });
     ipcMain.handle('language:set-enabled', (event, id: string, enabled: boolean) => {
       state(event); return this.changed(() => this.registry.setEnabled(id, enabled));
+    });
+    ipcMain.handle('language:set-automatic-install', (event, enabled: boolean) => {
+      state(event); return this.changed(() => this.registry.setAutomaticInstall(enabled));
+    });
+    ipcMain.handle('language:set-default', (event, language: string, value: string) => {
+      state(event); return this.changed(() => this.registry.selectAnalysis(language, value));
     });
     ipcMain.handle('language:configure', (event, id: string, options: LanguageServerOptions) => {
       state(event); return this.changed(() => this.registry.configure(id, options, options.scope));
@@ -446,7 +465,8 @@ export class LanguageManager {
     const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server, file)]));
     const roots = new Map<string, LanguageRoot>();
     const rootFor = (definition: LanguageServerDefinition) => {
-      if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, definition,
+      const language = candidates.find(candidate => candidate.server === definition.id)?.languageId;
+      if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, { ...definition, languages: definition.languages.filter(l => l.languageId === language) },
         state.projectRoot ? canonicalPath(state.projectRoot) : undefined, this.registry.options(definition.id, file).root));
       return roots.get(definition.id)!.path;
     };
@@ -482,13 +502,14 @@ export class LanguageManager {
           if (!installed.length && !ambiguous) {
             const installable = candidates.filter(candidate => {
               const d = this.registry.definition(candidate.server);
-              return this.registry.options(d.id,file).automaticInstall!==false && !this.registry.isCustom(d.id) && !path.isAbsolute(this.registry.executable(d.id,this.discovery.environment.peek().env))
+              return !this.registry.isCustom(d.id) && !path.isAbsolute(this.registry.executable(d.id,this.discovery.environment.peek().env))
                 && this.provisioner.canPrepare(d);
             }).sort((a,b) => this.provisioner.rank(this.registry.definition(a.server),a.languageId) - this.provisioner.rank(this.registry.definition(b.server),b.languageId));
+            if (installable.length > 1 && !this.registry.defaultServer(support.languageId, file)) return { unavailable: 'selection-needed' as const };
             if (installable.length) {
               support = installable[0]; definition = this.registry.definition(support.server); root = rootFor(definition);
               const environment = this.discovery.environment.peek().env;
-              prepared = await this.provisioner.prepare(definition,support.languageId,root,environment,this.registry.options(support.server,file),message => {
+              prepared = await this.provisioner.prepare(definition,support.languageId,root,environment,{ ...this.registry.options(support.server,file), automaticInstall: this.registry.automaticInstall(support.server, file) },message => {
                 if (current()) this.emit(owner, {type:'status',state:'starting',message,server:{id:support.server,name:definition.name},documents:[{id:document.id,generation:document.generation}]});
               });
               if (!current()) throw Error('Language document closed or configuration changed during installation.');
@@ -509,7 +530,11 @@ export class LanguageManager {
           launch = this.registry.launch(support.server, app.isPackaged, found?.environment.env, found?.selected?.path, file);
           if (found?.selected?.runtime) launch = { ...launch, executable: found.selected.runtime, args: [found.selected.path, ...launch.args] };
           break;
-        } catch (error) { if (revision === this.discovery.generation) throw error; }
+        } catch (error) {
+          if (revision !== this.discovery.generation) continue;
+          if (error instanceof AutomaticDownloadsDisabled) return { unavailable: 'missing' as const, message: error.message };
+          throw error;
+        }
       }
       if (!current()) throw Error('Language document closed or configuration changed during discovery.');
       // A concurrent document or a rescan may have retained this workspace's session.
@@ -520,7 +545,7 @@ export class LanguageManager {
         definition = this.registry.definition(support.server); root = rootFor(definition);
       }
       if (!server) {
-        plan = await this.contexts.resolve(root, roots.get(support.server)?.reason ?? 'Project', definition, this.registry.options(support.server, file));
+        plan = await this.contexts.resolve(root, roots.get(support.server)?.reason ?? 'Project', { ...definition, languages: definition.languages.filter(l => l.languageId === support.languageId) }, this.registry.options(support.server, file));
         if (!current()) throw Error('Language document closed or configuration changed while resolving its environment.');
         // Another document may have finished resolving the same context meanwhile.
         server = activeServer();
@@ -632,13 +657,19 @@ export class LanguageManager {
     const definitions = this.registry.definitions().filter(d => d.languages.some(l => (l.monacoId ?? l.languageId) === language || l.languageId === language));
     const candidates = this.registry.candidates(resource, undefined, language);
     const running = [...this.owners.get(state.webContentsId)?.documents.values() ?? []].find(b => b.uri === pathToFileURL(resource).href && this.registry.role(this.sessions.get(b.server)?.id ?? '', resource) === 'primary');
-    const selected = running ? this.sessions.get(running.server)?.id : this.registry.preferred(language, resource) ?? candidates.find(c => this.registry.definition(c.server).launch.kind === 'bundledNode')?.server ?? candidates[0]?.server;
-    const definition = definitions.find(d => d.id === selected) ?? definitions.find(d => d.id === candidates[0]?.server) ?? definitions[0];
-    if (!definition) return { id: language, root: path.dirname(resource), rootReason: 'File directory', environment: 'usable', choices: [], issues: [], evidence: [], servers: [] };
-    const options = this.registry.options(definition.id, resource), root = languageRoot(resource, definition, state.projectRoot ?? undefined, options.root);
-    const plan = await this.contexts.resolve(root.path, root.reason, definition, options, refresh);
+    const primaryCandidates = candidates.filter(candidate => this.registry.role(candidate.server, resource) === 'primary');
+    const selected = running ? this.sessions.get(running.server)?.id : primaryCandidates.length === 1 ? primaryCandidates[0].server : undefined;
+    const analysisSelection = this.registry.analysisSelection(language, resource);
+    const definition = definitions.find(d => d.id === selected);
+    const rootDefinition = definition ?? definitions.find(d => this.registry.role(d.id, resource) === 'primary');
+    const options = rootDefinition ? this.registry.options(rootDefinition.id, resource) : {};
+    const root = rootDefinition ? languageRoot(resource, { ...rootDefinition, languages: rootDefinition.languages.filter(l => (l.monacoId ?? l.languageId) === language || l.languageId === language) }, state.projectRoot ?? undefined, options.root)
+      : languageRoot(resource, { languages: [], rootMarkers: [] }, state.projectRoot ?? undefined);
+    const servers = definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabledFor(d.id, language, resource), role: this.registry.role(d.id, resource) }));
+    if (!definition) return { id: language, root: root.path, rootReason: root.reason, environment: 'usable', choices: [], issues: [], evidence: [], servers, analysisSelection };
+    const plan = await this.contexts.resolve(root.path, root.reason, { ...definition, languages: definition.languages.filter(l => (l.monacoId ?? l.languageId) === language || l.languageId === language) }, options, refresh);
     this.ownedFile(state, resource);
-    return { ...plan.context, servers: definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabled(d.id, resource), role: this.registry.role(d.id, resource) })) };
+    return { ...plan.context, servers, analysisSelection };
   }
   private async selectEnvironment(state: WindowState, file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis> {
     if (!selection || !['python', 'typescript', 'compilation', 'server', 'python-checking'].includes(selection.kind) || typeof selection.value !== 'string' || selection.value.length > 128) throw Error('Invalid environment selection.');
@@ -648,13 +679,8 @@ export class LanguageManager {
       if (language !== 'python' || !['automatic', 'off', 'basic', 'standard', 'strict'].includes(selection.value)) throw Error('Invalid Python checking level.');
       await this.updateEnvironment(context.root, language, () => analysisPreferences.set(context.root, 'python-checking', selection.value === 'automatic' ? undefined : selection.value));
     } else if (selection.kind === 'server') {
-      if (selection.value === 'off') {
-        await this.updateEnvironment(context.root, language, () => { for (const server of context.servers) this.registry.setEnabled(server.id, false, context.root); });
-        return this.documentEnvironment(state, file, language, true);
-      }
-      const server = context.servers.find(s => s.id === selection.value && s.role === 'primary');
-      if (!server) throw Error('Unknown analysis provider.');
-      await this.updateEnvironment(context.root, language, () => this.registry.setEnabled(server.id, true, context.root));
+      if (!['off', 'automatic'].includes(selection.value) && !context.servers.some(s => s.id === selection.value && s.role === 'primary')) throw Error('Unknown analysis provider.');
+      await this.updateEnvironment(context.root, language, () => this.registry.selectAnalysis(language, selection.value, context.root));
     } else {
       if (selection.kind !== context.kind) throw Error('This environment does not apply to the document.');
       let selected: string | undefined;

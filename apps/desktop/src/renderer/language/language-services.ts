@@ -87,7 +87,7 @@ export class LanguageServices {
     for (const client of [...this.clients.values()]) await client.beforeSave(model, reason);
   }
   saved(model: M.editor.ITextModel, text?: string) { for (const client of this.clients.values()) client.saved(model, text); }
-  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>, roots?: string[]) { for (const client of this.clients.values()) client.invalidate(servers, documents, roots); }
+  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>, roots?: string[], retainedDocuments?: Array<{ id: string; generation: string }>) { for (const client of this.clients.values()) client.invalidate(servers, documents, roots, retainedDocuments); }
   retryUnavailable() { for (const client of this.clients.values()) client.retryUnavailable(); }
   async restart(): Promise<void> {
     if (this.restarting) return this.restarting;

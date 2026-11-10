@@ -21,6 +21,8 @@
   const context = $derived(analysis.context);
   const summary = $derived(presentSupport(support?.providers ?? [], context));
   const active = $derived(support?.providers.find(p => p.kind === 'server' && p.role !== 'supplementary' && p.state === 'ready'));
+  const hasPrimary = $derived(context?.servers.some(server => server.role === 'primary'));
+  const needsProviderChoice = $derived(hasPrimary && (context?.analysisSelection?.mode === 'off' || support?.providers.some(p => p.state === 'selection-needed' || p.state === 'missing')));
   const local = $derived(support?.providers.find(p => p.kind === 'builtin' && p.state === 'ready'));
   const environment = $derived(context?.choices.find(choice => choice.id === context.selected));
   const title = $derived(({ summary: 'Code support', details: 'Document analysis', language: 'Document language', environment: context?.label ?? 'Project environment', provider: 'Choose analysis tool', tool: provider?.name ?? 'Analysis tool', settings: 'Project connection settings', output: 'Server output' })[page]);
@@ -30,7 +32,7 @@
     let observed = '';
     const off = documentSupport.subscribe(() => {
       revision++;
-      const next = documentSupport.current(target)?.providers.map(p => p.analysis?.context.id ?? '').join('|') ?? '';
+      const next = documentSupport.current(target)?.providers.map(p => `${p.id}:${p.state}:${p.analysis?.context.id ?? ''}`).join('|') ?? '';
       if (next !== observed) { observed = next; void controller.refresh(); }
     });
     void controller.refresh();
@@ -73,10 +75,10 @@
   {:else if page === 'provider'}
     <p class="muted">Project · {context ? projectLabel(context.root) : 'Loading…'}</p>
     {#if context?.servers.some(server => server.role === 'primary')}
-      <label>Analysis provider <select aria-label="Analysis provider" disabled={analysis.busy} value={context.servers.some(server => server.enabled && server.role === 'primary') ? context.servers.find(server => server.selected)?.id ?? '' : 'off'} onchange={event => select({ kind: 'server', value: event.currentTarget.value })}>
-        <option value="" disabled>Choose an analysis tool…</option>
+      <label>Analysis provider <select aria-label="Analysis provider" disabled={analysis.busy} value={context.analysisSelection?.source === 'project' ? context.analysisSelection.mode === 'off' ? 'off' : context.analysisSelection.server ?? 'automatic' : 'automatic'} onchange={event => select({ kind: 'server', value: event.currentTarget.value })}>
+        <option value="automatic">Use app default</option>
         <option value="off">Basic editing · no project analysis</option>
-        {#each context.servers.filter(server => server.role === 'primary') as server}<option value={server.id}>{server.name}{server.enabled ? '' : ' · disabled'}</option>{/each}
+        {#each context.servers.filter(server => server.role === 'primary') as server}<option value={server.id}>{server.name}</option>{/each}
       </select></label>
       <p class="muted">Applies to files using this analysis root, including other tabs and windows.</p>
     {/if}
@@ -128,6 +130,9 @@
         {#if context.kind}<button class="analysis-row" onclick={() => navigate('environment')}><span>{context.label}</span><strong>{environment?.name ?? 'Choose…'} <span aria-hidden="true">›</span></strong></button>{/if}
       {/if}
     </div>
+    {#if hasPrimary && context?.analysisSelection}
+      <p class="muted">{context.analysisSelection.source === 'project' ? 'Analysis selection: this project' : 'Analysis selection: app default'}{context.servers.find(server => server.selected) ? ` · ${context.servers.find(server => server.selected)!.name}` : ''}</p>
+    {/if}
     {#if active}<p class="result">{active.name} · {providerStatus(active)}<br />{analysisResult(active)}</p>
     {:else if local}<p class="result">{local.name} · {analysisResult(local)}</p>{/if}
     {#if summary.description && !summary.title}<p class="muted">{summary.description}</p>{/if}
@@ -136,7 +141,7 @@
       {#if context}
         <section class="detail-block"><h4>Project environment</h4><p class="path">{context.root}</p><p class="muted">{context.rootReason}</p>
           {#if environment}<p class="path">{environment.path}</p><p>{selectionSource(context)}</p>{/if}
-          <button onclick={() => navigate('provider')}>Choose analysis tool…</button>
+          {#if hasPrimary}<button onclick={() => navigate('provider')}>Choose analysis tool…</button>{/if}
           <button disabled={analysis.busy} onclick={() => controller.refresh()} aria-label="Refresh project environment">Refresh</button>
           <details><summary>Environment details</summary>{#each context.evidence as evidence}<p class="path">{evidence}</p>{/each}</details>
         </section>
@@ -152,7 +157,7 @@
     <footer>
       <button onclick={() => { documentSupport.current(target)?.problems(); onclose(); }}>Problems</button>
       {#if page === 'summary'}<button onclick={() => navigate('details')}>Details…</button>{/if}
-      {#if page === 'summary' && !active}<button onclick={() => navigate('provider')}>Choose analysis tool…</button>{/if}
+      {#if page === 'summary' && needsProviderChoice}<button onclick={() => navigate('provider')}>{context?.analysisSelection?.mode === 'off' ? 'Change analysis setting…' : 'Choose analysis tool…'}</button>{/if}
     </footer>
   {/if}
   {#if analysis.busy}<p class="muted" role="status">{analysis.preparing ? 'Configuring project…' : 'Updating project environment…'}</p>{/if}

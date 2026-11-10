@@ -39,6 +39,20 @@ IME and latency guarantees and tolerances remain unchanged.
 
 ## Guarantees and ownership
 
+Language Support's left sidebar is app settings: download policy, language
+defaults, custom connections and advanced installation management. Home does not
+scan executables or start tools. Runtime status, environment selection, output and
+restart belong to the owning document's Code support. A language without a primary
+analyzer (including Make) retains grammar/editing support without borrowing an
+environment from a disabled supplementary profile. App defaults preserve explicit
+project choices and unaffected live sessions; resetting a project to the app
+default preserves shared options. Global changes must preserve model identity,
+unsaved text and Undo. `language-manager.test.ts`, `server-registry.test.ts`,
+`language-provisioner.test.ts` and `language/document-analysis-ui.spec.ts` cover
+these guarantees; `language/language-support.spec.ts` retains real crash recovery
+and restart through the document controls. Existing preview timing, native capture
+and focus/IME guarantees remain unchanged.
+
 Memory reclamation is app-wide (`main/memory/memory-monitor.ts` and
 `core/memory/memory-policy.ts`). Linux uses process-tree PSS, MemAvailable, memory
 pressure stalls and ancestor cgroup limits; other platforms use Electron working

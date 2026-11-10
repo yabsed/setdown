@@ -83,7 +83,7 @@ export class MonacoEditor {
       if (event.type === 'discovery') { this.languageClient?.retryUnavailable(); return; }
       if (event.type !== 'configuration') return;
       this.languageEpoch++;
-      if (event.servers) this.languageClient?.invalidate(event.servers, event.documents, event.roots);
+      if (event.servers) this.languageClient?.invalidate(event.servers, event.documents, event.roots, event.retainedDocuments);
       else { this.languageClient?.dispose(); this.languageClient = undefined; }
       this.languageLoading = undefined; this.languageRoutes = undefined; this.languageConfiguration = undefined;
       this.unknownLanguageFiles.clear();

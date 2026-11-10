@@ -22,9 +22,11 @@ export type LanguageCatalogEntry = {
   automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
   discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
   profileSource?: string; setupNote?: string;
+  preparation?: { state: 'available' | 'preparing' | 'ready' | 'failed'; source?: 'managed' | 'external'; message?: string; executable?: string; downloadsAllowed?: boolean };
   sessions: { root: string; rootReason?: string; context?: string[]; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[]; logs?: string[]; progress?: string[] }[];
 };
-export type LanguageCatalog = { release: string; profileSource?: string; profiles?: number; entries: LanguageCatalogEntry[] };
+export type LanguageDefault = { id: string; name: string; selection: import('../core/document/analysis-context').AnalysisPolicy; servers: string[]; defaultServer?: string };
+export type LanguageCatalog = { release: string; profileSource?: string; profiles?: number; entries: LanguageCatalogEntry[]; automaticInstall?: boolean; languages?: LanguageDefault[] };
 
 export function textSynchronization(capabilities: ServerCapabilities): { change: number; openClose: boolean; save: false | { includeText?: boolean } } {
   const sync = capabilities.textDocumentSync;
@@ -57,9 +59,9 @@ export type LanguageDocument = { server?: string; languageId?: string; notebook?
 export type LanguageServerMessage = { id: string; message: string; actions: string[] };
 export type LanguageRecovery = { retrying: boolean; attempt?: number };
 export type LanguageConnection = { messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
-export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed' };
+export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed'; message?: string };
 export type LanguageEvent =
-  | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[] }
+  | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[]; retainedDocuments?: { id: string; generation: string }[] }
   | { type: 'discovery' }
   | { type: 'environment'; root: string; language: string }
   | { type: 'diagnostics'; server?: string; id: string; generation: string; version: number; cell?: string; cellVersion?: number; unversioned?: boolean; diagnostics: Diagnostic[] }
@@ -88,11 +90,13 @@ export type LanguageApi = {
   prepareEnvironment(file: string, language: string): Promise<{ output: string }>;
   cancelPreparation(file: string, language: string): Promise<void>;
   configuration(): Promise<LanguageRoute[]>;
-  catalog(file?: string): Promise<LanguageCatalog>;
+  catalog(file?: string, inspectInstallations?: boolean): Promise<LanguageCatalog>;
   rescan(): Promise<void>;
   useAutomatic(id: string): Promise<void>;
   selectCandidate(id: string, candidateId: string): Promise<void>;
   setEnabled(id: string, enabled: boolean): Promise<void>;
+  setAutomaticInstall(enabled: boolean): Promise<void>;
+  setLanguageDefault(language: string, value: string): Promise<void>;
   chooseExecutable(id: string): Promise<boolean>;
   configure(id: string, options: LanguageServerOptions): Promise<void>;
   addConnection(draft: LanguageConnectionDraft): Promise<boolean>;

@@ -36,8 +36,9 @@ test('compact address panels own input above live pages and work for Markdown, f
     await expect(panel.getByRole('textbox')).toHaveValue(/notes\.md/);
     await expect(panel.getByText('Current address', { exact: true })).toHaveCount(0);
     await expect(panel.getByRole('button', { name: 'Copy current address' })).toHaveCount(0);
-    await f.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-copy')!.click());
-    expect(await f.app.evaluate(({ clipboard }) => clipboard.readText())).toContain('notes.md');
+    await f.app.evaluate(({ clipboard, Menu }) => { clipboard.clear(); Menu.getApplicationMenu()!.getMenuItemById('menu-copy')!.click(); });
+    // Native edit commands cross renderer IPC; the menu callback is not a copy acknowledgement.
+    await expect.poll(() => f.app.evaluate(({ clipboard }) => clipboard.readText())).toContain('notes.md');
     await panel.getByRole('textbox').fill('');
     await f.app.evaluate(({ clipboard, Menu }) => {
       clipboard.writeText('https://example.com/pasted');
@@ -48,11 +49,12 @@ test('compact address panels own input above live pages and work for Markdown, f
     await expect(panel.getByRole('textbox')).toHaveValue('');
     await f.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-redo')!.click());
     await expect(panel.getByRole('textbox')).toHaveValue('https://example.com/pasted');
-    await f.app.evaluate(({ Menu }) => {
+    await f.app.evaluate(({ clipboard, Menu }) => {
+      clipboard.clear();
       Menu.getApplicationMenu()!.getMenuItemById('menu-select-all')!.click();
       Menu.getApplicationMenu()!.getMenuItemById('menu-copy')!.click();
     });
-    expect(await f.app.evaluate(({ clipboard }) => clipboard.readText())).toBe('https://example.com/pasted');
+    await expect.poll(() => f.app.evaluate(({ clipboard }) => clipboard.readText())).toBe('https://example.com/pasted');
     await f.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-cut')!.click());
     await expect(panel.getByRole('textbox')).toHaveValue('');
     await panel.getByRole('textbox').press('Escape');

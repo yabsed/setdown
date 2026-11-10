@@ -34,7 +34,7 @@ function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixt
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['other.py', 'template.yaml', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['Makefile', 'other.py', 'template.yaml', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
@@ -44,6 +44,44 @@ function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixt
   return { first, second, document, invoke: (key: string, ...args: unknown[]) => mocks.handles.get(`language:${key}`)!(...args),
     send: (key: string, ...args: unknown[]) => mocks.events.get(`language:${key}`)!(...args) };
 }
+test('Make has editing support without borrowing a disabled companion environment', async () => {
+  const f = fixture(), context = await f.invoke('environment', f.first, f.document('make', 'Makefile').path, 'make');
+  expect(context.kind).toBeUndefined(); expect(context.choices).toEqual([]);
+  expect(context.analysisSelection).toEqual({ mode: 'automatic', source: 'default' });
+  expect(context.servers.every((server: any) => server.role === 'supplementary' && !server.enabled)).toBe(true);
+  expect(mocks.servers).toHaveLength(0);
+});
+test('opening app settings performs no executable discovery or automatic preparation', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const find = vi.spyOn(discovery, 'find'), prepare = vi.fn(noPackages.prepare), f = fixture(discovery, undefined, { ...noPackages, prepare });
+  const settings = await f.invoke('catalog', f.first, undefined, false);
+  expect(settings.languages.find((language: any) => language.id === 'make').servers).toEqual([]);
+  expect(settings.automaticInstall).toBe(true); expect(find).not.toHaveBeenCalled(); expect(prepare).not.toHaveBeenCalled();
+  expect(mocks.servers).toHaveLength(0); discovery.dispose();
+});
+
+test('an old managed installation cannot hide a missing explicitly selected executable', async () => {
+  const executable = path.join(mocks.directory, 'missing-gopls');
+  await writeFile(path.join(mocks.directory, 'language-servers.json'), JSON.stringify({ version: 1, servers: { gopls: { executable } }, custom: [], preferred: {} }));
+  const installation = vi.fn(async () => ({ state: 'ready' as const, source: 'managed' as const, executable: '/previous/managed-gopls' }));
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const f = fixture(discovery, undefined, { ...noPackages, canPrepare: () => true, installation });
+  const catalog = await f.invoke('catalog', f.first);
+  const gopls = catalog.entries.find((entry: any) => entry.id === 'gopls');
+  expect(gopls.executable).toBe(executable); expect(gopls.available).toBe(false); expect(gopls.preparation).toBeUndefined();
+  expect(installation).not.toHaveBeenCalledWith('gopls'); discovery.dispose();
+});
+test('changing an app default preserves a project-pinned live session and download changes preserve all live sessions', async () => {
+  const f = fixture();
+  await f.invoke('select-environment', f.first, f.document('one').path, 'python', { kind: 'server', value: 'pyright' });
+  await f.invoke('open', f.first, f.document('one'));
+  await f.invoke('set-default', f.first, 'python', 'basedpyright');
+  expect(mocks.servers[0].stop).not.toHaveBeenCalled();
+  const configuration = f.first.sender.send.mock.calls.filter(call => call[1].type === 'configuration').at(-1)![1];
+  expect(configuration.retainedDocuments).toContainEqual({ id: 'one', generation: 'generation-one' });
+  await f.invoke('set-automatic-install', f.first, false);
+  expect(mocks.servers[0].stop).not.toHaveBeenCalled();
+});
 test('closing a document during automatic installation prevents a late session and reopening uses the current revision',async()=>{
  const root=path.join(mocks.directory,'project');await mkdir(root);
  const discovery=new ServerDiscovery(new ServerEnvironment({HOME:mocks.directory,PATH:'',SETDOWN_LSP_INHERIT_ENV:'1'}));
@@ -116,7 +154,7 @@ test('settings are owner-checked, stop previous sessions and notify every subscr
   expect(() => f.invoke('set-enabled', { ...f.first, senderFrame: {} }, 'pyright', false)).toThrow(/owning editor/);
   await f.invoke('set-enabled', f.first, 'pyright', false);
   expect(mocks.servers[0].stop).toHaveBeenCalledOnce();
-  for (const event of [f.first, f.second]) expect(event.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: expect.arrayContaining(['pyright']) });
+  for (const event of [f.first, f.second]) expect(event.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: expect.arrayContaining(['pyright']), retainedDocuments: [] });
   expect((await f.invoke('configuration', f.second)).find((r: { server: string }) => r.server === 'pyright')).toMatchObject({ enabled: false });
   expect(await f.invoke('open', f.first, f.document('one'))).toEqual({ unavailable: 'missing' });
   await f.invoke('set-enabled', f.first, 'pyright', true);
@@ -155,7 +193,7 @@ test('rescanning and configuring Fortran preserve unrelated Python sessions in e
   expect(mocks.servers).toHaveLength(2); expect(mocks.servers.every(s => !s.stop.mock.calls.length)).toBe(true);
   await f.invoke('configure', f.first, 'fortls', { args: ['--disable_autoupdate'], settings: {}, initializationOptions: {} });
   expect(mocks.servers.every(s => !s.stop.mock.calls.length)).toBe(true);
-  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: ['fortls'] });
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: ['fortls'], retainedDocuments: [{ id: 'python', generation: 'generation-python' }, { id: 'other-python', generation: 'generation-other-python' }] });
   discovery.dispose();
 });
 

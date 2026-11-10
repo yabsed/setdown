@@ -1,34 +1,31 @@
 import type { LanguageCatalogEntry } from '../../protocol/language';
 
 export function installed(entry: LanguageCatalogEntry): boolean {
-  return !!(entry.bundled || entry.available || entry.candidates?.length);
+  return !!(entry.bundled || entry.available || entry.candidates?.length || entry.preparation?.state === 'ready' || entry.sessions.some(session => session.state === 'ready'));
 }
 
 export function serverStatus(entry: LanguageCatalogEntry): { label: string; tone: 'neutral' | 'success' | 'warning' | 'error' } {
-  if (entry.sessions.some(session => session.state === 'failed')) return { label: 'Stopped', tone: 'error' };
-  if (!installed(entry)) return { label: 'Not detected', tone: entry.managed || entry.custom ? 'warning' : 'neutral' };
+  if (!installed(entry)) return entry.preparation ? { label: entry.preparation.downloadsAllowed === false ? 'Downloads disabled' : 'Prepares when needed', tone: 'neutral' } : { label: 'Not installed', tone: entry.managed || entry.custom ? 'warning' : 'neutral' };
   if (!entry.configured) return { label: 'Setup needed', tone: 'warning' };
-  if (entry.sessions.some(session => session.state === 'ready')) return { label: 'Connected', tone: 'success' };
-  if (!entry.enabled) return { label: 'Disabled', tone: 'neutral' };
-  if (entry.sessions.some(session => session.state === 'starting')) return { label: 'Starting', tone: 'neutral' };
   if (entry.selectionNeeded) return { label: 'Choose installation', tone: 'warning' };
-  if (!entry.selected.length) return { label: entry.role === 'supplementary' ? 'Additional tools' : 'Choose primary', tone: entry.role === 'supplementary' ? 'neutral' : 'warning' };
-  return { label: 'Detected', tone: 'neutral' };
+  return { label: 'Installed', tone: 'neutral' };
 }
 
 export function connectionSource(entry: LanguageCatalogEntry): string {
   if (entry.bundled) return 'Included';
-  if (entry.custom || entry.candidates?.some(candidate => candidate.source === 'explicit')) return 'Manual';
-  return installed(entry) ? 'Detected' : entry.managed ? 'Saved connection' : 'Auto-detect supported';
+  if (entry.custom) return 'Custom connection';
+  if (entry.candidates?.some(candidate => candidate.source === 'explicit')) return 'Selected executable';
+  if (entry.preparation?.source === 'managed') return 'Managed by Setdown';
+  return installed(entry) ? 'External installation' : entry.preparation ? 'Automatic preparation' : entry.managed ? 'Saved connection' : 'External installation';
 }
 
 /** Search all discoverable servers, while separating capability from detected installations. */
 export function serverGroups(entries: LanguageCatalogEntry[], query = '') {
   const groups = [
-    { id: 'detected', title: 'Detected', entries: [] as LanguageCatalogEntry[] },
+    { id: 'detected', title: 'Installed tools', entries: [] as LanguageCatalogEntry[] },
     { id: 'attention', title: 'Needs attention', entries: [] as LanguageCatalogEntry[] },
-    { id: 'manual', title: 'Manual connections', entries: [] as LanguageCatalogEntry[] },
-    { id: 'available', title: 'Available servers', entries: [] as LanguageCatalogEntry[] },
+    { id: 'manual', title: 'Custom connections', entries: [] as LanguageCatalogEntry[] },
+    { id: 'available', title: 'Other tools', entries: [] as LanguageCatalogEntry[] },
   ];
   const search = query.trim().toLowerCase();
   for (const entry of entries) {
@@ -36,10 +33,9 @@ export function serverGroups(entries: LanguageCatalogEntry[], query = '') {
     if (!`${entry.name} ${entry.id} ${entry.languages.join(' ')}`.toLowerCase().includes(search)) continue;
     const tone = serverStatus(entry).tone;
     const group = tone === 'warning' || tone === 'error' ? groups[1] : !installed(entry) ? groups[3]
-      : connectionSource(entry) === 'Manual' ? groups[2] : groups[0];
+      : entry.custom ? groups[2] : groups[0];
     group.entries.push(entry);
   }
-  for (const group of groups) group.entries.sort((a, b) =>
-    Number(b.sessions.some(s => s.state === 'ready')) - Number(a.sessions.some(s => s.state === 'ready')) || a.name.localeCompare(b.name));
+  for (const group of groups) group.entries.sort((a, b) => a.name.localeCompare(b.name));
   return groups.filter(group => group.entries.length);
 }

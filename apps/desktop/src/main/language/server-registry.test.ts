@@ -15,6 +15,90 @@ const definition = { id: 'user-server', name: 'User server', launch: { kind: 'na
   languages: [{ languageId: 'python', extensions: ['.py', '.pyi'] }], rootMarkers: ['custom.project'],
   settings: { custom: { diagnostics: true } }, initializationOptions: { indexing: false } };
 
+test('app defaults preserve project choices and restore inheritance without deleting connection settings', async () => {
+  const root = await directory(), project = path.join(root, 'project'), other = path.join(root, 'other', 'main.py');
+  const registry = new ServerRegistry(root);
+  registry.configure('pyright', { settings: { python: { pythonPath: '/chosen/python' } }, formatting: false }, project);
+  registry.selectAnalysis('python', 'off', project);
+  registry.selectAnalysis('python', 'basedpyright');
+  expect(registry.candidates(path.join(project, 'main.py'))).toEqual([]);
+  expect(registry.candidates(other)).toEqual([{ server: 'basedpyright', languageId: 'python' }]);
+  const reopened = new ServerRegistry(root);
+  expect(reopened.analysisSelection('python', project)).toEqual({ mode: 'off', source: 'project' });
+  reopened.selectAnalysis('python', 'automatic', project);
+  expect(reopened.analysisSelection('python', project)).toEqual({ mode: 'server', source: 'global', server: 'basedpyright' });
+  expect(reopened.options('pyright', project)).toMatchObject({ settings: { python: { pythonPath: '/chosen/python' } }, formatting: false });
+  reopened.selectAnalysis('python', 'pyright', project);
+  reopened.selectAnalysis('python', 'off');
+  expect(reopened.candidates(path.join(project, 'main.py'))).toEqual([{ server: 'pyright', languageId: 'python' }]);
+  expect(reopened.candidates(other)).toEqual([]);
+});
+
+test('legacy project selection wins over a new app default and can return to inheritance', async () => {
+  const root = await directory(), project = path.join(root, 'project'), registry = new ServerRegistry(root);
+  registry.setEnabled('pyright', true, project);
+  registry.selectAnalysis('python', 'basedpyright');
+  expect(new ServerRegistry(root).candidates(path.join(project, 'main.py'))).toEqual([{ server: 'pyright', languageId: 'python' }]);
+  registry.selectAnalysis('python', 'automatic', project);
+  expect(new ServerRegistry(root).candidates(path.join(project, 'main.py'))).toEqual([{ server: 'basedpyright', languageId: 'python' }]);
+});
+
+test('download defaults inherit separately from analysis selection and do not change live-session identity', async () => {
+  const root = await directory(), registry = new ServerRegistry(root), file = path.join(root, 'main.py');
+  const session = registry.sessionFingerprint('pyright', file);
+  registry.setAutomaticInstall(false);
+  expect(registry.automaticInstall('pyright', file)).toBe(false);
+  expect(registry.sessionFingerprint('pyright', file)).toBe(session);
+  registry.configure('pyright', { automaticInstall: true });
+  expect(registry.automaticInstall('pyright', file)).toBe(true);
+  expect(new ServerRegistry(root).automaticInstall()).toBe(false);
+  registry.selectAnalysis('python', 'off', root); registry.setAutomaticInstall(true);
+  expect(registry.candidates(file)).toEqual([]);
+});
+
+test('restoring automatic primary selection preserves independently enabled supplementary tools', async () => {
+  const registry = new ServerRegistry(await directory()), project = path.resolve('supplementary-fixture');
+  registry.setEnabled('ruff', true);
+  registry.selectAnalysis('python', 'basedpyright'); registry.selectAnalysis('python', 'automatic');
+  expect(registry.enabledFor('ruff', 'python')).toBe(true); expect(registry.defaultServer('python')).toBe('pyright');
+  registry.setEnabled('ruff', false, project);
+  registry.selectAnalysis('python', 'automatic', project);
+  expect(registry.enabledFor('ruff', 'python', project)).toBe(false);
+});
+
+test('a project language policy cannot reconnect through a protocol dialect sharing its editor language', async () => {
+  const root = await directory(), project = path.join(root, 'project'), other = path.join(root, 'other'), registry = new ServerRegistry(root);
+  registry.selectAnalysis('typescript', 'off', project);
+  for (const extension of ['ts', 'tsx']) expect(registry.candidates(path.join(project, 'main.' + extension))).toEqual([]);
+  expect(registry.associations(path.join(project, 'main.ts')).filter(route => ['typescript', 'typescriptreact'].includes(route.languageId)).every(route => !route.enabled)).toBe(true);
+  expect(registry.candidates(path.join(other, 'main.tsx'))).toContainEqual({ server: 'typescript-language-server', languageId: 'typescriptreact' });
+  registry.selectAnalysis('typescriptreact', 'automatic', project);
+  expect(registry.candidates(path.join(project, 'main.ts'))).toContainEqual({ server: 'typescript-language-server', languageId: 'typescript' });
+  registry.selectAnalysis('javascript', 'off');
+  expect(registry.candidates(path.join(other, 'main.jsx'))).toEqual([]);
+  expect(new ServerRegistry(root).analysisSelection('javascriptreact')).toEqual({ mode: 'off', source: 'global' });
+});
+
+test('legacy dialect-specific custom choices survive until an app language policy explicitly replaces them', async () => {
+  const root = await directory(), registry = new ServerRegistry(root);
+  registry.add({ ...definition, languages: [{ languageId: 'typescriptreact', monacoId: 'typescript', extensions: ['.tsx'] }] });
+  registry.setEnabled('user-server', true);
+  expect(registry.candidates(path.join(root, 'main.ts'))).toEqual([{ server: 'typescript-language-server', languageId: 'typescript' }]);
+  expect(new ServerRegistry(root).candidates(path.join(root, 'main.tsx'))).toEqual([{ server: 'user-server', languageId: 'typescriptreact' }]);
+  registry.selectAnalysis('typescript', 'off');
+  expect(registry.candidates(path.join(root, 'main.tsx'))).toEqual([]);
+});
+
+test('a runtime package declaration selects its primary without asking users to detect or choose alternatives', async () => {
+  const root = await directory();
+  const profiles = ['first-tool', 'declared-tool'].map(id => ({ ...validateLanguageDefinition({ ...definition, id,
+    role: 'primary', languages: [{ languageId: 'runtime-language', extensions: ['.runtime'] }] }), automatic: true, enabledByDefault: true }));
+  const registry = new ServerRegistry(root, () => profiles, undefined, language => language === 'runtime-language' ? ['declared-tool', 'first-tool'] : []);
+  expect(registry.candidates(path.join(root, 'main.runtime'))).toEqual([{ server: 'declared-tool', languageId: 'runtime-language' }]);
+  registry.selectAnalysis('runtime-language', 'first-tool');
+  expect(registry.candidates(path.join(root, 'main.runtime'))).toEqual([{ server: 'first-tool', languageId: 'runtime-language' }]);
+});
+
 test('merged Helix and Zed catalog has unique server identities with saved settings present',async()=>{
   const root=await directory();
   await writeFile(path.join(root,'language-servers.json'),JSON.stringify({version:1,servers:{},custom:[],preferred:{}}));

@@ -19,9 +19,9 @@ test('known environment repair precedes restart; supplementary failure retains t
   expect(presentSupport([failed], { ...context, environment: 'action-needed', issues: [{ code: 'python-missing', message: 'Missing Python' }] })).toMatchObject({ title: 'Missing Python', action: { kind: 'environment' } });
 });
 test('intentional project-off suppresses irrelevant environment repair but preserves local checks', () => {
-  const off = { ...context, environment: 'action-needed' as const, servers: [{ id: 'primary', name: 'Primary', enabled: false, selected: false, role: 'primary' as const }] };
-  expect(presentSupport([], off)).toMatchObject({ tone: 'neutral', description: 'Project analysis is off.' });
-  expect(presentSupport([server({ kind: 'builtin', checks: 'syntax', analysis: undefined })], off)).toMatchObject({ tone: 'neutral', description: 'Project analysis is off. Local checks remain available.' });
+  const off = { ...context, analysisSelection: { mode: 'off' as const, source: 'project' as const }, environment: 'action-needed' as const, servers: [{ id: 'primary', name: 'Primary', enabled: false, selected: false, role: 'primary' as const }] };
+  expect(presentSupport([], off)).toMatchObject({ tone: 'neutral', description: 'Analysis is turned off for this project.' });
+  expect(presentSupport([server({ kind: 'builtin', checks: 'syntax', analysis: undefined })], off)).toMatchObject({ tone: 'neutral', description: 'Analysis is turned off for this project. Local checks remain available.' });
 });
 test('recovery, stopped recovery and partial/local failure remain actionable and distinct', () => {
   expect(presentSupport([server({ state: 'failed', recovery: { retrying: true, attempt: 2 } })])).toMatchObject({ label: 'Reconnecting', tone: 'busy' });
@@ -34,4 +34,11 @@ test('Problems distinguishes unknown coverage, pending results and observed resu
   expect(problemsEmpty([server()])).toContain('still pending');
   expect(problemsEmpty([server({ checks: 'none' })])).toContain('still pending');
   expect(problemsEmpty([server({ analysis: { context, analysis: 'observed', scope: 'open-files', freshness: 'best-effort', progress: [] } })])).toContain('does not establish project-wide coverage');
+});
+
+test('default-disabled companions are normal editing support, not an explicit project-off choice', () => {
+  const grammar = { ...context, servers: [{ id: 'companion', name: 'Companion', enabled: false, selected: false, role: 'supplementary' as const }], analysisSelection: { mode: 'automatic' as const, source: 'default' as const } };
+  expect(presentSupport([], grammar)).toMatchObject({ tone: 'neutral', label: 'Editing support' });
+  expect(presentSupport([], grammar).description).toContain('does not include project analysis');
+  expect(presentSupport([], { ...grammar, analysisSelection: { mode: 'off', source: 'global' } }).description).toBe('Analysis is turned off by the app default.');
 });

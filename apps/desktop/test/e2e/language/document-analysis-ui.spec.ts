@@ -4,6 +4,77 @@ import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 
+test('global language defaults preserve project choices, unsaved text and Make editing support', async ({}, testInfo) => {
+  test.setTimeout(120_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-global-language-')), config = path.join(root, 'config');
+  const alpha = path.join(root, 'alpha'), beta = path.join(root, 'beta');
+  for (const project of [alpha, beta]) {
+    await mkdir(path.join(project, '.git'), { recursive: true });
+    await writeFile(path.join(project, 'main.py'), 'value = 1\n');
+  }
+  const make = path.join(beta, 'Makefile'); await writeFile(make, 'all:\n\t@echo hello\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', path.join(alpha, 'main.py')], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    const status = page.getByRole('button', { name: /Language status:/ });
+    const popup = page.getByRole('dialog', { name: 'Current file language support' });
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await page.keyboard.insertText('unsaved = 42');
+    await status.click(); await popup.getByRole('button', { name: 'Details…', exact: true }).click();
+    await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await popup.getByRole('combobox', { name: 'Analysis provider' }).selectOption('pyright');
+    await expect(popup).toContainText('Analysis selection: this project');
+    await popup.getByRole('button', { name: 'Close language status' }).click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
+    const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
+    await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Rescan installed servers' })).toHaveCount(0);
+    await expect(sidebar.locator('[data-server-id]')).toHaveCount(0);
+    await sidebar.getByRole('checkbox', { name: 'Download analysis tools automatically' }).uncheck();
+    await page.screenshot({ path: testInfo.outputPath('global-language-settings.png') });
+    await application.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click());
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+    await page.screenshot({ path: testInfo.outputPath('global-language-settings-dark.png') });
+    await sidebar.getByRole('button', { name: /^Language defaults/ }).click();
+    await sidebar.getByRole('searchbox').fill('python');
+    await sidebar.locator('[data-language-id="python"]').click();
+    await sidebar.getByRole('combobox', { name: 'Default analysis tool' }).selectOption('off');
+    await expect(sidebar).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
+    await expect(page.locator('.view-lines')).toContainText('unsaved = 42');
+    await editor.press('Control+z'); await expect(page.locator('.view-lines')).not.toContainText('unsaved = 42');
+    const open = async (file: string) => {
+      const snapshot = await page.evaluate(file => window.marktex.readDocumentLocation(file), file);
+      await application.evaluate(({ BrowserWindow }, snapshot) => BrowserWindow.getAllWindows()[0].webContents.send('document:opened', snapshot), snapshot);
+      await expect(page.locator('.location-bar input')).toHaveValue(new URL(`file://${file}`).href);
+    };
+    await open(path.join(beta, 'main.py')); await status.click();
+    await expect(popup).toContainText('Analysis is turned off by the app default.');
+    await popup.getByRole('button', { name: 'Close language status' }).click();
+    await open(path.join(alpha, 'main.py')); await status.click();
+    await expect(popup).toContainText('Analysis selection: this project');
+    await popup.getByRole('button', { name: 'Details…', exact: true }).click();
+    await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await popup.getByRole('combobox', { name: 'Analysis provider' }).selectOption('automatic');
+    await expect(popup).toContainText('Analysis is turned off by the app default.');
+    await popup.getByRole('button', { name: 'Close language status' }).click();
+    await open(make); await status.click();
+    await expect(popup).toContainText('does not include project analysis');
+    await expect(popup).not.toContainText('Python environment');
+    await expect(popup).not.toContainText('turned off');
+    await expect(popup.getByRole('button', { name: 'Choose analysis tool…', exact: true })).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('make-editing-support.png') });
+    const saved = JSON.parse(await readFile(path.join(config, 'Setdown/language-servers.json'), 'utf8'));
+    expect(saved.automaticInstall).toBe(false); expect(saved.languageDefaults.python).toBe('off');
+    expect(saved.projectDefaults[alpha].python).toBe('automatic'); expect(saved.projectDefaults[beta]).toBeUndefined();
+    expect(await readFile(path.join(alpha, 'main.py'), 'utf8')).toBe('value = 1\n'); expect(errors).toEqual([]);
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
 test('compact inspection has keyboard steps; project settings remain pinned while switching documents', async ({}, testInfo) => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-analysis-ui-')), config = path.join(root, 'config');
@@ -80,10 +151,10 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
-    await expect(sidebar.getByRole('searchbox')).toBeVisible();
+    await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
     await expect(sidebar).not.toContainText('Document analysis');
     await page.locator('.editor-group').first().locator('.document-tab[aria-selected="true"] .tab-close').click();
-    await expect(sidebar.getByRole('searchbox')).toBeVisible();
+    await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
     await expect(sidebar).not.toContainText('This document was closed');
     expect(await readFile(files[0], 'utf8')).toBe('value = 0\n');
     expect(errors).toEqual([]);

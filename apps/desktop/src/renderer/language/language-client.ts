@@ -141,7 +141,7 @@ export class LanguageClient {
     binding.queue = connected.then(connection => {
       if (this.bindings.get(model) !== binding) return;
       if ('unavailable' in connection) {
-        binding.state = 'unavailable'; binding.unavailable = connection.unavailable; binding.listener.dispose(); this.publishStatus(); return;
+        binding.state = 'unavailable'; binding.unavailable = connection.unavailable; binding.message = connection.message; binding.listener.dispose(); this.publishStatus(); return;
       }
       binding.uri = connection.uri; binding.state = 'ready'; binding.context = connection.context; binding.analysis = connection.analysis; binding.messages = connection.messages; binding.serverName = connection.name;
       this.setServer(binding, connection.server ?? binding.serverId);
@@ -220,9 +220,9 @@ export class LanguageClient {
       return null;
     } finally { cancel.dispose(); this.requests.delete(id); if (commandVersions) this.commandEdits.delete(binding); }
   }
-  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>, roots?: string[]): void {
+  invalidate(servers: string[], documents?: Array<{ id: string; generation: string }>, roots?: string[], retainedDocuments?: Array<{ id: string; generation: string }>): void {
     const inside = (file: string, root: string) => { file = file.replaceAll('\\', '/'); root = root.replaceAll('\\', '/').replace(/\/$/, ''); return file === root || file.startsWith(root + '/'); };
-    for (const binding of [...this.bindings.values()]) if ((!roots || roots.some(root => inside(binding.path, root))) && servers.includes(binding.serverId) && (!documents || documents.some(document => document.id === binding.id && document.generation === binding.generation))) this.unbind(binding.model);
+    for (const binding of [...this.bindings.values()]) if (!retainedDocuments?.some(document => document.id === binding.id && document.generation === binding.generation) && (!roots || roots.some(root => inside(binding.path, root))) && servers.includes(binding.serverId) && (!documents || documents.some(document => document.id === binding.id && document.generation === binding.generation))) this.unbind(binding.model);
   }
   retryUnavailable(): void {
     for (const binding of [...this.bindings.values()]) if (binding.state === 'unavailable' || binding.state === 'failed') {

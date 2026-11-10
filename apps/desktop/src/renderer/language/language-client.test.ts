@@ -35,7 +35,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
     open: vi.fn(async document => { opened.push(document); return { uri: 'file:///project/main.py', capabilities }; }),
     change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), configuration: vi.fn(async () => []), catalog: vi.fn(async () => ({ release: '', entries: [] })),
     rescan: vi.fn(async () => {}), useAutomatic: vi.fn(async () => {}), selectCandidate: vi.fn(async () => {}),
-    setEnabled: vi.fn(async () => {}), chooseExecutable: vi.fn(async () => false), configure: vi.fn(async () => {}),
+    setEnabled: vi.fn(async () => {}), setAutomaticInstall: vi.fn(async () => {}), setLanguageDefault: vi.fn(async () => {}), chooseExecutable: vi.fn(async () => false), configure: vi.fn(async () => {}),
     addConnection: vi.fn(async () => false), importDefinition: vi.fn(async () => false), remove: vi.fn(async () => {}), openHomepage: vi.fn(async () => {}),
     request: vi.fn(async () => null), onEvent: callback => { event = callback; return () => {}; },
   };
@@ -216,4 +216,14 @@ test('configuration invalidates the server actually selected by discovery rather
   f.client.invalidate(['unrelated']); expect(f.port.close).not.toHaveBeenCalled();
   f.client.invalidate(['installed-primary']); expect(f.port.close).toHaveBeenCalledWith(f.tab.id);
   f.client.dispose();
+});
+
+test('global settings retain only the exact document incarnation acknowledged by main', async () => {
+  const f = fixture(); f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.opened).toHaveLength(1));
+  const retained = { id: f.opened[0].id, generation: f.opened[0].generation };
+  f.client.invalidate(['pyright'], undefined, undefined, [retained]);
+  expect(f.port.close).not.toHaveBeenCalled();
+  f.client.invalidate(['pyright'], undefined, undefined, [{ ...retained, generation: 'an-old-incarnation' }]);
+  expect(f.port.close).toHaveBeenCalledWith(f.tab.id); f.client.dispose();
 });
