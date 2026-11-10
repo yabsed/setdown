@@ -1,0 +1,293 @@
+{
+  "scope": "Actual recognition functions against installed Monaco basic registrations, app syntax metadata, and imported profiles. No saved user overrides, rich-service registration, GUI, tokenization, installation, or server execution.",
+  "setdownRevision": "2c910993dc948b53b2875233bcbe835b5c6e56f7",
+  "zedRevision": "b5cd310b3b54dfc659fcc06453e6358843dfe216",
+  "versions": {
+    "monaco": "0.56.0"
+  },
+  "counts": {
+    "masonEntries": 331,
+    "connectionProfiles": 195,
+    "mappedMasonEntries": 142,
+    "distinctProfileLanguageIds": 181,
+    "helixLanguageDefinitions": 342,
+    "helixLanguagesWithoutServerBindings": 156,
+    "monacoBasicLanguageRegistrations": 89,
+    "appAdditionalGrammarRegistrations": 1
+  },
+  "make": {
+    "helixDefinition": {
+      "name": "make",
+      "scope": "source.make",
+      "file-types": [
+        {
+          "glob": "Makefile"
+        },
+        {
+          "glob": "makefile"
+        },
+        "make",
+        "mk",
+        "mak",
+        {
+          "glob": "GNUmakefile"
+        },
+        {
+          "glob": "OCamlMakefile"
+        }
+      ],
+      "shebangs": [
+        "make",
+        "gmake"
+      ],
+      "injection-regex": "(make|makefile|Makefile|mk)",
+      "comment-token": "#",
+      "indent": {
+        "tab-width": 4,
+        "unit": "\t"
+      }
+    },
+    "coverage": {
+      "id": "autotools-language-server",
+      "connection": "manual",
+      "reason": "The pinned sources do not provide a complete stdio connection profile."
+    },
+    "inProfileRoutes": false,
+    "inMonacoBasicRegistrations": false
+  },
+  "cases": [
+    {
+      "file": "Makefile",
+      "language": "plaintext",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": []
+    },
+    {
+      "file": "GNUmakefile",
+      "language": "plaintext",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": []
+    },
+    {
+      "file": "fragment.mk",
+      "language": "plaintext",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": []
+    },
+    {
+      "file": "config.yaml",
+      "language": "yaml",
+      "hasRegisteredGrammar": true,
+      "matchingProfiles": [
+        "ansible-language-server",
+        "yaml-language-server"
+      ]
+    },
+    {
+      "file": "config.yml",
+      "language": "yaml",
+      "hasRegisteredGrammar": true,
+      "matchingProfiles": [
+        "ansible-language-server",
+        "yaml-language-server"
+      ]
+    },
+    {
+      "file": ".github/workflows/ci.yaml",
+      "language": "github-action",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": [
+        "ansible-language-server",
+        "gh-actions-language-server",
+        "yaml-language-server",
+        "zizmor"
+      ]
+    },
+    {
+      "file": "compose.yaml",
+      "language": "dockercompose",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": [
+        "ansible-language-server",
+        "docker-compose-language-service",
+        "docker-language-server",
+        "yaml-language-server"
+      ]
+    },
+    {
+      "file": ".gitlab-ci.yml",
+      "language": "gitlab-ci",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": [
+        "ansible-language-server",
+        "gitlab-ci-ls",
+        "yaml-language-server"
+      ]
+    },
+    {
+      "file": "Justfile",
+      "language": "just",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": [
+        "just-lsp"
+      ]
+    },
+    {
+      "file": "CMakeLists.txt",
+      "language": "cmake",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": [
+        "cmake-language-server",
+        "neocmakelsp"
+      ]
+    },
+    {
+      "file": "main.f90",
+      "language": "fortran",
+      "hasRegisteredGrammar": false,
+      "matchingProfiles": [
+        "fortls"
+      ]
+    },
+    {
+      "file": "app.svelte",
+      "language": "svelte",
+      "hasRegisteredGrammar": true,
+      "matchingProfiles": [
+        "svelte-language-server"
+      ]
+    },
+    {
+      "file": "main.py",
+      "language": "python",
+      "hasRegisteredGrammar": true,
+      "matchingProfiles": [
+        "pyright",
+        "basedpyright",
+        "harper-ls",
+        "jedi-language-server",
+        "pylyzer",
+        "pyrefly",
+        "pytest-language-server",
+        "python-lsp-server",
+        "ruff",
+        "ty",
+        "zuban"
+      ]
+    },
+    {
+      "file": "main.rs",
+      "language": "rust",
+      "hasRegisteredGrammar": true,
+      "matchingProfiles": [
+        "rust-analyzer",
+        "harper-ls"
+      ]
+    },
+    {
+      "file": "main.ts",
+      "language": "typescript",
+      "hasRegisteredGrammar": true,
+      "matchingProfiles": [
+        "typescript-language-server",
+        "biome",
+        "deno",
+        "harper-ls",
+        "oxlint",
+        "vtsls"
+      ]
+    }
+  ],
+  "sourceHashes": {
+    "node_modules/monaco-editor/esm/vs/basic-languages/monaco.contribution.js": "d6cc3a877449cbb2e19c2d4311a9103320b1d7b9a1685f2fe76ac98e146f68de",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/abap/register.js": "2e710ed239407f4b45b9d194fc53d1d978ca614b5f61f90a11fb16cc3ee265d6",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/apex/register.js": "05e242445c1cb4fd6c06631ad9b7de454623c0e8decc033c55efe3fdb48a73c7",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/azcli/register.js": "f3928c65d7407d62d4afd5eca5491a9d42632b7dae41d66aaae32741ec732672",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/bat/register.js": "85b2cbc7eb1b62bb9e7f5f5a0c061414ba02dce7fe0942dfd821d956324ec323",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/bicep/register.js": "9271e2c0e9bd6830ddac520a8d7811fba5baafe2fce18dcdbaaea2a3e855821f",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/cameligo/register.js": "3eb4fe50b917b34f9d4006a1aa23bf2f4cb223337d0690cb99f23934d9fa4e5c",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/clojure/register.js": "9f906589ab0948feaac660d808d7e913edd87ab85721d8b4f3c69d5248f8e6e3",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/coffee/register.js": "65d17ecdd91708dced5ab866fe012555dda9aac714412bbd37f8a17a1137379c",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/cpp/register.js": "f12f9b7c4a60254b4c9f29705cd4fd0fa96af7419955267794d86abc41a8b860",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/csharp/register.js": "d8965ae6bc0dd04ec50baae62f8ab54bc4d8629b752b71a50de147c0ee498475",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/csp/register.js": "919e034c4d3a3b2ae5f45a6420c52d217c69108b47217e424a9e467d22629067",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/css/register.js": "33cf47ae3ec5a9a631f7cd99cb31186a85c83f7983440c8c1477e73b8dd58a31",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/cypher/register.js": "689aaea3a2c07c26feee5386a6963ca2e8ade815b58d175d81234de04789d57e",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/dart/register.js": "4d523cf14022b731511e2b69994e1cf27cfa43a9cbd33718da92ccf648a13b9d",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/dockerfile/register.js": "c70af12deff6d9363d6d95b3a43a496f24c09349c6ee48783693dc7a94b1ebc0",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/ecl/register.js": "f8843255950152ee2bdf4b0755faddaa84a5da101628b0ad6f0ca566d2fddc42",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/elixir/register.js": "d6fa847e6569c65a13529850a553bf030988034e8705470c6ca659fbb4fad730",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/flow9/register.js": "54357db719b299e41053d4a84c75aee096d3f19ad5014fc25a9fa6f922d7e4fb",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/fsharp/register.js": "4b75f524e93f565257fd0ec5a2f510751a72f020446409ab26df9d08f0ebb73f",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/freemarker2/register.js": "1a2989daee87420d019f97cbc6b9b951c3d1a32e238a02676ee984e0a55e202d",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/go/register.js": "04a7e8de31591ead06abff48891006644060df0d3af2858bca9d42b8574f538d",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/graphql/register.js": "99938bce8c68dab8a6288d275ae84c769c61d3e28355434dc49e04669691f01a",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/handlebars/register.js": "60ded9330fc46799da2507a4c0fac84a538ec595514a7809f3471071a60f45de",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/hcl/register.js": "89c6fbfb0ce12170ebef992caa7ce583e2a23044394bb375b7ba9a6f9143407d",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/html/register.js": "0fca18df2f440a73b25f4d5329a2532224f6335d784365b5367ef29c14474cfb",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/ini/register.js": "0d9cda78c47fc1494dbd9e522d71530d064f29f42f4261e1923a2f49c732470e",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/java/register.js": "6996d899ac2bd080781b96ed9221169cba593f5b714b455501f017292710c1b4",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/javascript/register.js": "be3dd895221328156fa61167b40d3a82ad37c172a6dfeaa828e003ae43930c0a",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/julia/register.js": "e68502a75da84816cb3ee72c14a792ceac8ae2b45323d4561a26e8a5ee107c23",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/kotlin/register.js": "ad228e646cac258e64100d0312cf3e6723ef8417a4c9a74b0302ba13c93c0e15",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/less/register.js": "03c128622ea402421d3c772e263d6b5165ae0ee8b805bb48855770cead21f9f3",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/lexon/register.js": "0d360fd85eb47f6f3a8036fea42d23dbd24f7b852cffd86c0869de51e0bf2323",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/lua/register.js": "716168a27c35600ff2fdf954640558f9c4bc8041fc73bda5361a4b12ae817f4d",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/liquid/register.js": "36c7c1b6b2d3aa8ee2d6aae6db27c8982cbbe6a789d735f53d2bf75bf2cc1209",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/m3/register.js": "7bbf6a87399c21abcbb6affd57704c339cf482b1049ac3797201a64c0c4e596d",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/markdown/register.js": "a257a2c9e4c2c5d2d118b86344dcfefa28f7416b87e54a4fce963f328de979df",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/mdx/register.js": "b269efb308e378f58b85c3af105c4e7ee36f356aa0c7b1e3bdb5271192afbdaa",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/mips/register.js": "a22d69339e1a8610248681c30601dfac4ca2491e63edc275cc2a7d34c781e6bf",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/msdax/register.js": "2937bf5d0a070066befa41a69d67e78c80f544b7de370f692fe4b7ba48512fd5",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/mysql/register.js": "b0e5ed24f64b28e5c5ae65ce0c7362a91d2b9cb7d99a4a8b57da845ac2f3b287",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/objective-c/register.js": "d08f13d685d21a4aed4fcdf5c5d698045405d98fad36300489e1d5cd684cd027",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/pascal/register.js": "67943c840f45d511d99c633b970581e58dab987ca12daa8e6206a699c3fa4ffe",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/pascaligo/register.js": "c87cb054172e2c9dd529fc21ebd115e7664a6cced4c21ceaadeec40fbe6ad97f",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/perl/register.js": "ea1ccfff4c5b6a13fbc023ed93a167be19ae1670c19cf6250ba495195af52bec",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/pgsql/register.js": "d6c93af70986d558ac8b73b392055735f44538c1e87b9216702f393a07747d2f",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/php/register.js": "a91c73b514394b1f36c4bfe14e8a3f684e60f07c61033fd3816e2f480d2333e5",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/pla/register.js": "81fff4a9ec0495f842dd8c21499dc1a82808f581370457849a8a571a6097d466",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/postiats/register.js": "2d23535d8072f828faebd9e5d982aaeb8b0ea2e357c7ea801d82fc192d867f39",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/powerquery/register.js": "0e14b9ecd3a5df6cdc056051a0bd5bfba6ed0af3fdbff8ae42c6b06008d9ec2b",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/powershell/register.js": "9c3c3ad0c14f66d9d3e748408b5b68cd396a1cf041918c4abd1784b90de47e6e",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/protobuf/register.js": "4810a77ed530f3036fe057a77b81588086217644295fd3edabeac91a299a2aa9",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/pug/register.js": "5c42dd452bbbfadd00b4c1d059e5764a07cabe3fc025d15d13511b72fc329373",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/python/register.js": "b8d5297ec86762720182bbb0fbd63eaa219aae48ac289c855dc6ff02ca56a963",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/qsharp/register.js": "9c12b6a542683d335b9f92c639dd88c6bc6c42998a5c49d343870c238a75252a",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/r/register.js": "3b5971cf8cb3e78cbb3f863ba9de4547980a6c85886bb95941de09cc9c5486a6",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/razor/register.js": "d737e01c49b21304c0cc6f749bfeceec65bbc5d51750a75a72af444727ce88c5",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/redis/register.js": "1a082b19b02ecf8fd37be8000a21d5b205ce9d288441c209b15c9f4ba4e6b1e3",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/redshift/register.js": "fa39d5f604c91ffa03dacd2967fc3f04318c518b6aef4bbac2b86f7d66391a80",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/restructuredtext/register.js": "e961e862efd1b82dc62fb554e85498115163979b70c0e1198e4409352ded8cc4",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/ruby/register.js": "11d0171362947a0fff00d1c75cf0675092f77ac91515c53b6b5b0085a43d1d53",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/rust/register.js": "f5f172357b1c931a5e16ac0b8aaa2d12c700d5b020e8861e0f1a3bd1e901af26",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/sb/register.js": "f3267d16d4e931426b62e587d0307c0d7bf6d480e424da434b6796e0ee6749fb",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/scala/register.js": "a6c96699a3b2bb8a5951cc5b35d1f70a5eaefdcf58975e50ef95492f98df2f19",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/scheme/register.js": "d2a6fdab41234ad5f841582b78d2727939d9ca7b6a5a9da2d8d8278411d36b50",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/scss/register.js": "9bdc466d40be063a23edb4f3c71470d2d89210d3ffb86987423319b38b68a51b",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/shell/register.js": "96df2b5077496911753d4dbd65c39c346309a0a311075b13d4605cc1b4cf5526",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/solidity/register.js": "f74d0bed3b49db79b0fab61d7ea013fc1902856d87f6872e0d22b4d1c2b29bcc",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/sophia/register.js": "fbf7b90d0782f859b955624bacf067a420eb67a511cfbdc0ec026278d7232c39",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/sparql/register.js": "ca1b4335f66208e1ffac7f6515ecd8a4f3c434470fc827b666ad828d51a0ddac",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/sql/register.js": "81b1f2e1999cecc942027ce720ef97d5d4fdb37fa3613300178c69d96b5b9d6f",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/st/register.js": "8efff20c487eb826ed95499784da582b74673939df1190e8f05fc3a2c6337c49",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/swift/register.js": "00f689de2acc6d022e8729bd3251ddc77a927e5eb298f703dcdf56fbe8975046",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/systemverilog/register.js": "83c3f5442139245d514f5f7d31448e9aa76b198911b80a7ac6f8e7281450090c",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/tcl/register.js": "8474613c36d17a012be4ab1c8f8146c217d80b00b77736425175083243fd3626",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/twig/register.js": "3981d25099c877eaa5b249db6c89ca48a6aebf9de2e802d03895024588276a69",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/typescript/register.js": "0fe9f27735d6dfb35bc941f99cf879f05fd7d1fad849c0eb890056d44375570a",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/typespec/register.js": "7ece665d9820020790581f7f2a15f292dd77277ad6804f1852ddd6515c82d7af",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/vb/register.js": "886c6c80f68a2513ce5bf252ea16c2001b2075abf817796e08aaacc15730784f",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/wgsl/register.js": "97d37b71c5c2ab07f955835e78b193529b7a71fc68ff2d22261037fbd0de6ba5",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/xml/register.js": "7d2613d74f003a778cd096d212a7c08da2f02d6eee0263ee4b4b468694451f68",
+    "node_modules/monaco-editor/esm/vs/languages/definitions/yaml/register.js": "5e3fc48c75c003d676781753bab9ebb76ec6c9f8901e33a9a6c576e892a63def",
+    "apps/desktop/src/core/document/language-policy.ts": "ba2af72720801a879e078c57010f3c7b58bed742c8b9e5de0783bcd91e60fd52",
+    "apps/desktop/src/core/document/document-profile.ts": "75a816ef0f9a1a2b600a14a1992bd69e9dd80fd49579b3c7135048a7f928e219",
+    "apps/desktop/src/core/document/language-support.ts": "0d7cbe1d720b714d30856ca7031133dbd8612f3828e3af5fb22e43585ebe0e2c",
+    "apps/desktop/src/renderer/language/syntax-runtime.ts": "9afc5af552fd2bf03b057f7c0b072e6e11ac6a56c375e93a0a776bf0abcae071",
+    "apps/desktop/scripts/update-language-profiles.py": "9f9bf4a253e1fdfd61f144bc6c9e7bd065f41dba3aafd0c2fc6d82edb31fddee",
+    "apps/desktop/scripts/language-profiles/upstream/helix-languages.toml": "365d39f08c94e792d685cb9f12020340daefeb7999ab4bb8202d4fe04b9fc273",
+    "apps/desktop/src/main/language/catalog/profiles.json": "adf6b85654a78ac7431094930b0a175fab4841fa1d788f004d752847256fe5f7",
+    "apps/desktop/src/main/language/catalog/mason.json": "5f31e9738acc3ddef3da7e617678444c208789c9778c9c886de04bbd67cd02f8"
+  }
+}

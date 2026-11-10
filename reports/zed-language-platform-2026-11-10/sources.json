@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-10",
+  "setdownRevision": "2c910993dc948b53b2875233bcbe835b5c6e56f7",
+  "zedRevision": "b5cd310b3b54dfc659fcc06453e6358843dfe216",
+  "method": "Local pinned source reading, GitHub connector reads at explicit revisions, official Zed documentation, and an offline execution of Setdown recognition functions. No Rust host build or Electron integration execution.",
+  "repositories": [
+    {
+      "repository": "caius/zed-make",
+      "sha": "f7c5052790c20b4ec2aad87f28fc85860d151443"
+    },
+    {
+      "repository": "zed-extensions/svelte",
+      "sha": "ca6c2c6c891583a23820d9b23772e116426cc57d"
+    },
+    {
+      "repository": "zed-extensions/java",
+      "sha": "b66544c8bab1003e1660a6d53c21104727c1e092"
+    },
+    {
+      "repository": "Freed-Wu/autotools-language-server",
+      "sha": "527f88774984782fa96509308043a7f1b07d9beb"
+    },
+    {
+      "repository": "zed-industries/extensions",
+      "sha": "74007eabeee3b2b27fbe41b1682696c25ad5ec17"
+    }
+  ],
+  "externalFiles": [
+    {
+      "repository": "caius/zed-make",
+      "sha": "f7c5052790c20b4ec2aad87f28fc85860d151443",
+      "path": "extension.toml",
+      "url": "https://github.com/caius/zed-make/blob/f7c5052790c20b4ec2aad87f28fc85860d151443/extension.toml"
+    },
+    {
+      "repository": "caius/zed-make",
+      "sha": "f7c5052790c20b4ec2aad87f28fc85860d151443",
+      "path": "languages/make/config.toml",
+      "url": "https://github.com/caius/zed-make/blob/f7c5052790c20b4ec2aad87f28fc85860d151443/languages/make/config.toml"
+    },
+    {
+      "repository": "zed-extensions/svelte",
+      "sha": "ca6c2c6c891583a23820d9b23772e116426cc57d",
+      "path": "src/svelte.rs",
+      "url": "https://github.com/zed-extensions/svelte/blob/ca6c2c6c891583a23820d9b23772e116426cc57d/src/svelte.rs"
+    },
+    {
+      "repository": "zed-extensions/svelte",
+      "sha": "ca6c2c6c891583a23820d9b23772e116426cc57d",
+      "path": "extension.toml",
+      "url": "https://github.com/zed-extensions/svelte/blob/ca6c2c6c891583a23820d9b23772e116426cc57d/extension.toml"
+    },
+    {
+      "repository": "zed-extensions/java",
+      "sha": "b66544c8bab1003e1660a6d53c21104727c1e092",
+      "path": "src/jdk.rs",
+      "url": "https://github.com/zed-extensions/java/blob/b66544c8bab1003e1660a6d53c21104727c1e092/src/jdk.rs"
+    },
+    {
+      "repository": "zed-extensions/java",
+      "sha": "b66544c8bab1003e1660a6d53c21104727c1e092",
+      "path": "src/config.rs",
+      "url": "https://github.com/zed-extensions/java/blob/b66544c8bab1003e1660a6d53c21104727c1e092/src/config.rs"
+    },
+    {
+      "repository": "Freed-Wu/autotools-language-server",
+      "sha": "527f88774984782fa96509308043a7f1b07d9beb",
+      "path": "README.md",
+      "url": "https://github.com/Freed-Wu/autotools-language-server/blob/527f88774984782fa96509308043a7f1b07d9beb/README.md"
+    },
+    {
+      "repository": "zed-industries/extensions",
+      "sha": "74007eabeee3b2b27fbe41b1682696c25ad5ec17",
+      "path": "extensions.toml",
+      "url": "https://github.com/zed-industries/extensions/blob/74007eabeee3b2b27fbe41b1682696c25ad5ec17/extensions.toml"
+    }
+  ],
+  "officialDocs": [
+    "https://zed.dev/docs/configuring-languages",
+    "https://zed.dev/docs/extensions/languages",
+    "https://zed.dev/docs/languages/makefile"
+  ],
+  "registryEntryCount": 1590,
+  "registryCountMeaning": "Top-level extension entries, including themes and other non-language extensions. This is not a language or working-LSP count."
+}
