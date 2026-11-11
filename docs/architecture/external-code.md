@@ -22,13 +22,19 @@ desktop 빌드 스크립트에서 소스 입력으로 직접 사용하지 않는
 
 ```text
 aura-browser, brave-core, bypass-paywalls-chrome-clean,
-commit-graph, commonmark-spec, crossnote, dolphin, fabric.js,
+commit-graph, commonmark-spec, cosmic-files, crossnote, dolphin, fabric.js,
 filerobot-image-editor, gitgraph.js,
 jupyterlab, jupyterlab-desktop, linear-algebra, monaco-editor,
 monaco-languageclient, nautilus, nbformat, ptyxis, pulsar, react-git-log,
-sublime-lsp, svelte-chop-chop, theia, vscode, vscode-jupyter, vscode-languageserver-node,
-vscode-markdown-preview-enhanced, web-git-graph
+sigma-file-manager, sublime-lsp, svelte-chop-chop, theia, vscode, vscode-jupyter,
+vscode-languageserver-node, vscode-markdown-preview-enhanced, web-git-graph,
+xdg-desktop-portal, xdg-desktop-portal-termfilechooser, yazi
 ```
+
+파일 관리자 참고 저장소(nautilus, dolphin, cosmic-files, sigma-file-manager,
+xdg-desktop-portal, xdg-desktop-portal-termfilechooser, yazi)는 얕은 서브모듈
+(`shallow = true`)이다. 무엇을 보는지는
+[파일 관리자 탭 보고서](../../reports/2026_11_11_22_09_file_manager_tab_strategy.md) 8절에 있다.
 
 이들 이름과 npm 패키지 이름이 같아도 checkout을 통째로 제품에 포함한다는 뜻은
 아니다. `.gitmodules`와 실제 import/build 경로를 함께 확인한다.
