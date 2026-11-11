@@ -108,8 +108,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       .sort((a, b) => b.startedAt - a.startedAt);
     downloadsLoaded = true; changedDownloads.clear();
   }).catch(error => { browser.error = String(error); });
-  const observer = new ResizeObserver(() => sync()); observer.observe(area);
   const zoom = desktop.onZoomChanged(() => sync(true));
-  window.addEventListener('beforeunload', () => { unsubscribe(); zoom(); observer.disconnect(); window.removeEventListener('setdown:native-overlay-visibility', overlay); }, { once: true });
+  window.addEventListener('beforeunload', () => { unsubscribe(); zoom(); window.removeEventListener('setdown:native-overlay-visibility', overlay); }, { once: true });
   return { sync };
 }

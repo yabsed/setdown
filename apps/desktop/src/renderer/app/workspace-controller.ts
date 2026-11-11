@@ -247,6 +247,7 @@ export function startWorkspace(desktop: DesktopPort) {
   let projectContextChanged = () => {};
   let groups: ReturnType<typeof createGroupRuntime> | undefined;
   let browsers: ReturnType<typeof createBrowserRuntime> | undefined;
+  const syncGroupLayout = () => { groups?.sync(); projects?.syncReviews(); browsers?.sync(true); };
   const reader = new ReaderController({ desktop: layouts.port('documents'), shell, frames: previewFrames, get tabs() { return workspace.documents; }, active,
     activeId: () => workspace.activeId, initialTheme,
     syncBackgrounds: () => groups?.backgrounds() ?? [],
@@ -302,9 +303,9 @@ export function startWorkspace(desktop: DesktopPort) {
     shouldSchedulePreview: () => !project.gitDiffActive,
     copyReview: (id, group, direction) => projects.copyReview(id, group, direction),
     activateReview: id => projects.activateGitDiff(id), closeReview: (id, confirmed) => projects.closeGitDiff(id, confirmed),
-    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: () => { groups?.sync(); projects?.syncReviews(); browsers?.sync(true); },
+    confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: syncGroupLayout,
     autoSave: { schedule: (tab) => autoSave.schedule(workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab), cancel: (tabId) => autoSave.cancel(tabId) } });
-  groups = createGroupRuntime({ workspace, desktop, editor, reader, changed: () => tabs.render(), activate: id => actions.activateTab(id) });
+  groups = createGroupRuntime({ workspace, desktop, editor, reader, changed: () => tabs.render(), layoutChanged: syncGroupLayout, activate: id => actions.activateTab(id) });
   browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory,
     id => actions.browserReaderEnter(id));
   /** Open shell menus/dialogs own Escape first (they close on it); reader
@@ -648,6 +649,4 @@ export function startWorkspace(desktop: DesktopPort) {
     if (!workspace.activeId && pages.length) await tabs.activate(pages[0].id);
     desktop.browser.ready();
   });
-  const previewResizeObserver = new ResizeObserver(reader.syncView);
-  previewResizeObserver.observe(previewFrames);
 }

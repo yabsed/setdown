@@ -4,11 +4,12 @@ import type { MonacoEditor } from '../../adapters/monaco-editor';
 import type { DesktopPort } from '../../ports/desktop-port';
 import type { ReaderController } from '../../reader/reader-controller';
 import { project } from '../../project/project-state.svelte';
+import { observeWorkspaceGeometry } from './workspace-geometry';
 
 /** Keeps native readers and Monaco instances in their group's live geometry. */
 export function createGroupRuntime(options: {
   workspace: WorkspaceState; desktop: DesktopPort; editor: MonacoEditor;
-  reader: ReaderController; activate(id: string): void; changed(): void;
+  reader: ReaderController; activate(id: string): void; changed(): void; layoutChanged(): void;
 }) {
   type BackgroundEntry = { tabId: string; bounds: { x: number; y: number; width: number; height: number } };
   let dragging = false, overlayDepth = 0, overlayToken = 0;
@@ -70,6 +71,7 @@ export function createGroupRuntime(options: {
     };
   }
   function sync() {
+    geometry.refresh();
     editor.syncGroups(workspace.groups.groups, workspace.groups.focusedId);
     if (!dragging) reader.syncView();
   }
@@ -96,8 +98,8 @@ export function createGroupRuntime(options: {
   }
   area.addEventListener('pointerdown', focusSurface, true);
   area.addEventListener('focusin', focusSurface);
-  const observer = new ResizeObserver(sync);
-  observer.observe(area);
+  const geometry = observeWorkspaceGeometry(area, options.layoutChanged);
+  window.addEventListener('beforeunload', () => geometry.dispose(), { once: true });
   async function freezeBackgroundPreviews() {
     overlayDepth += 1;
     if (overlayDepth > 1) return;

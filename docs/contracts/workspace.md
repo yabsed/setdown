@@ -440,6 +440,15 @@ retains visible background groups during foreground changes. Backgrounds use the
 same hidden preparation and fractional CSS-to-DIP boundary as foreground readers.
 They must not be focused by preparation, lose their current revision, or cover the
 shell's split resize handles. Native focus explicitly activates its owning group.
+Native Markdown and website bounds follow the actual content rectangles after
+layout, including position changes that leave the window and pane sizes unchanged.
+Restoring a temporarily unavailable background surface must show its retained
+native child again without waiting for a window or split resize.
+`renderer/workspace/groups/workspace-geometry.ts` observes the layout owners and
+individual surfaces, then reconciles document, review and browser geometry together.
+It ignores content/editor mutations and suppresses duplicate geometry updates.
+`preview/native-layout.spec.ts` checks late position changes without resizing,
+retained native identity, composed screen pixels and native pointer input.
 
 Media cache capacity applies to hidden readers: every visible group's media surface
 is pinned until it becomes hidden. `active` on a media surface means visible;
