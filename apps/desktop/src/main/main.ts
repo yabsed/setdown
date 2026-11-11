@@ -35,6 +35,8 @@ import { LanguageManager } from './language/language-manager';
 import { displayBackend, hasGlobalWindowPositions } from './windows/display-backend';
 import { MemoryMonitor } from './memory/memory-monitor';
 import { installX11Pinch } from './windows/x11-pinch';
+import { installPathPicker } from './dialogs/path-picker';
+import { FolderRequests, folderRequestFromArgs, requestsFromFileManagerCall, startFileManagerDbus } from './files/file-manager-launch';
 
 // Electron populates its own default ozone switch before running main. Only an
 // actual launch argument is an explicit user choice.
@@ -123,6 +125,13 @@ const transfers: TabTransferManager = new TabTransferManager({ previews, browser
   windows: () => registry.values, theme: () => themes.id, createWindow: windows.create });
 const channels = windowIpc((id) => registry.stateForWebContents(id));
 function sendCommand(command: AppCommand): void { registry.focused()?.window.webContents.send('app:command', command); }
+const folderRequests = new FolderRequests();
+/** Show a folder in the focused window, creating one when Setdown has none. */
+function showFolder(request: import('../core/files/folder-types').FolderOpenRequest): void {
+  if (!registry.focused()) windows.create();
+  const state = registry.focused();
+  if (state) folderRequests.deliver(state, request);
+}
 function openError(error: unknown): void {
   dialog.showErrorBox('Could not open the file', error instanceof Error ? error.message : String(error));
 }
@@ -201,6 +210,9 @@ else {
     const filePath = documentPathFromArgs(argv, app.isPackaged);
     const state = registry.focused();
     if (filePath && state) void documents.open(state, filePath).catch(openError);
+    // `setdown <folder>` (the inode/directory handler) and `setdown --files` open a folder tab.
+    const folder = filePath ? null : folderRequestFromArgs(argv, app.isPackaged);
+    if (folder) { showFolder(folder); return; }
     state?.window.show(); state?.window.focus();
   });
   app.whenReady().then(async () => {
@@ -220,7 +232,8 @@ else {
         state.window.webContents.send('workspace:zoom-changed', previews.zoom.snapshot);
     });
     app.on('will-quit', flushZoom);
-    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, browsers });
+    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, browsers, folderRequests });
+    installPathPicker(channels, (id) => registry.stateForWebContents(id));
     browsers.registerIpc(channels);
     channels.on('memory:context', (state, context: unknown) => {
       const first = !memory.contexts.has(state.webContentsId);
@@ -287,6 +300,16 @@ else {
     }
     windows.create(null, initialDocument);
     const state = registry.focused();
+    const launchFolder = filePath ? null : folderRequestFromArgs(process.argv, app.isPackaged);
+    if (launchFolder && state) folderRequests.deliver(state, launchFolder);
+    // "Show in folder" from other applications (org.freedesktop.FileManager1). Started
+    // after launch so the helper never competes with the first window.
+    const dbusTimer = setTimeout(() => {
+      const stop = startFileManagerDbus(path.join(__dirname, 'file-manager-dbus.py'),
+        (method, paths) => { for (const request of requestsFromFileManagerCall(method, paths)) showFolder(request); });
+      app.on('will-quit', stop);
+    }, 1500);
+    app.on('will-quit', () => clearTimeout(dbusTimer));
     for (const filePath of queuedOpenFiles.splice(0)) {
       if (state) void documents.open(state, filePath).catch(openError);
     }

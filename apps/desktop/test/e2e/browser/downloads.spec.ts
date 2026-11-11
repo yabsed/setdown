@@ -27,8 +27,13 @@ test('downloads expose native progress and controls, retain completed files acro
     expect(await readFile(path.join(f.root, 'report.txt'), 'utf8')).toBe('Downloaded by Setdown.');
     await report.getByRole('button', { name: 'Open download: report.txt', exact: true }).click();
     await report.getByRole('button', { name: 'Show download in folder: report.txt', exact: true }).click();
-    expect(await f.app.evaluate(() => (globalThis as { downloadCalls?: string[] }).downloadCalls))
-      .toEqual([`open:${f.root}/report.txt`, `show:${f.root}/report.txt`]);
+    // "Show in folder" opens a Setdown folder tab with the download selected, not the system file manager.
+    const folderTab = f.page.getByRole('tab', { name: path.basename(f.root), exact: false });
+    await expect(folderTab).toHaveAttribute('aria-selected', 'true');
+    await expect(f.page.locator('.folder-content:not(.inactive) .folder-row[aria-selected="true"] .folder-label')).toHaveText('report.txt');
+    expect(await f.app.evaluate(() => (globalThis as { downloadCalls?: string[] }).downloadCalls)).toEqual([`open:${f.root}/report.txt`]);
+    await folderTab.getByTitle('Close tab', { exact: true }).click();
+    await expect(folderTab).toHaveCount(0);
     await evaluatePage(f.app, f.origin, 'location.href="/slow-download";true');
     const slow = f.page.locator('.download').filter({ hasText: 'slow.txt' });
     await expect(slow).toHaveAttribute('data-state', 'progressing');

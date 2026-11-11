@@ -27,7 +27,7 @@ async function reviews(app: Application) {
   });
 }
 
-test('warm Esc presents actual content while the next installation is held', async () => {
+test('Esc waits for the latest held installation and retains the warm native pages', async () => {
   test.setTimeout(120_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-instant-escape-'));
   const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-instant-escape-config-'));
@@ -80,19 +80,20 @@ test('warm Esc presents actual content while the next installation is held', asy
     await expect.poll(() => app!.evaluate(() => (globalThis as unknown as { held: unknown[] }).held.length)).toBeGreaterThan(0);
     await editor.press('Escape');
     await expect(page.getByRole('button', { name: 'View Source Diff' })).toBeVisible();
-    // The new update is still held. A loader/class toggle is not sufficient:
-    // assert the native front's contents and capture an actual nonempty frame.
-    const shown = (await reviews(app)).find((view) => view.visible);
-    expect(shown?.text).toContain('warm-');
-    expect(shown?.text).not.toContain('held-installation');
-    expect(await app.evaluate(async ({ webContents }, id) => {
-      return !(await webContents.fromId(id)!.capturePage()).isEmpty();
-    }, shown!.id)).toBe(true);
+    // A pending edited revision cannot expose the stale warm front. No fixed
+    // delay or loader state can substitute for checking the actual native views.
+    expect((await reviews(app)).filter(view => view.visible)).toHaveLength(0);
+    await expect(page.getByText('Typesetting changes…', { exact: true })).toBeVisible();
     await app.evaluate(() => {
       const state = globalThis as unknown as { held: (() => void)[]; restore: (() => void)[] };
       state.restore.forEach((restore) => restore()); state.held.splice(0).forEach((send) => send());
     });
     await expect.poll(async () => (await reviews(app!)).find((view) => view.visible)?.text).toContain('held-installation');
+    const shown = (await reviews(app)).find(view => view.visible)!;
+    expect(shown.text).toContain('warm-');
+    expect(await app.evaluate(async ({ webContents }, id) => {
+      return !(await webContents.fromId(id)!.capturePage()).isEmpty();
+    }, shown.id)).toBe(true);
     const after = (await reviews(app)).map(({ id, url, context }) => ({ id, url, context })).sort((a, b) => a.id - b.id);
     expect(after).toEqual(before);
   } finally {

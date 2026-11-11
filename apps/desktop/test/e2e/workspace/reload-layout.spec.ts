@@ -4,8 +4,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication } from '../../support/electron/electron-app';
+import { previews } from '../../support/preview/preview-view';
 
-test('restores the open folder, side panels, and their widths after Reload', async () => {
+test('local Reload and shell reload retain the open folder, side panels, and their widths', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-reload-layout-'));
   const configRoot = await mkdtemp(path.join(os.tmpdir(), 'setdown-reload-layout-config-'));
   const documentPath = path.join(root, 'reload.md');
@@ -32,11 +33,14 @@ test('restores the open folder, side panels, and their widths after Reload', asy
       outline: getComputedStyle(shell).getPropertyValue('--toc-panel-width'),
     }));
 
+    await window.evaluate(() => Object.assign(window, { __layoutReloadSentinel: 41 }));
+    await writeFile(documentPath, '# Reloaded layout\n\nExternal reload marker', 'utf8');
     await window.locator('.application-menu button', { hasText: 'View' }).click();
-    await Promise.all([
-      window.waitForEvent('load'),
-      window.locator('.application-menu-popup [data-menu-item-id="menu-reload"]').click(),
-    ]);
+    await window.locator('.application-menu-popup [data-menu-item-id="menu-reload"]').click();
+    await expect.poll(() => previews(application).evaluate('document.body.innerText')).toContain('External reload marker');
+    expect(await window.evaluate(() => (window as typeof window & { __layoutReloadSentinel?: number }).__layoutReloadSentinel)).toBe(41);
+    // The menu reloads the document. An actual renderer reload must also restore layout.
+    await window.reload();
 
     await expect(window.locator('.project-sidebar')).toBeVisible();
     await window.getByRole('button', { name: 'Explorer' }).click();

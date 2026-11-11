@@ -73,7 +73,7 @@
       editor: editor.getModifiedEditor(), monaco: api, model: cached.modified };
   }
   const unregisterMarkdown = workingTreeMarkdownEditor.register(writableMarkdown);
-  const unregisterViewport = untrack(() => gitDiffViewport).register((tabId) => {
+  const unregisterViewport = untrack(() => gitDiffViewport).register((tabId, finishScroll) => {
     if (!editor || !api || shownId !== tabId || !project.gitDiffActive
       || project.gitDiffMode !== 'source') return null;
     const cached = models.get(tabId);
@@ -84,6 +84,12 @@
       ? 'before' : 'after';
     const side = sourceSide === 'before' ? original : editor.getModifiedEditor();
     const model = sourceSide === 'before' ? cached.original : cached.modified;
+    // Esc owns the animation's destination, as in the ordinary editor. Passive
+    // prewarming reads must leave a user's ongoing scroll animation alone.
+    if (finishScroll && side.hasPendingScrollAnimation()) {
+      const state = side.saveViewState();
+      if (state) side.restoreViewState(state);
+    }
     return { ...readEditorViewport(side, api, model, reviewViewport(project.gitDiffLine).anchor), sourceSide };
   });
 

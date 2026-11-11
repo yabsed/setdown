@@ -1127,8 +1127,8 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .group-content > * { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; pointer-events: auto; }
 .group-content > .notice { grid-column: 1; grid-row: 1; }
 .editor-area .group-content > .git-review, .editor-area .group-content > .pdf-surface, .editor-area .group-content > .image-surface, .editor-area .group-content > .video-surface { grid-column: 1; grid-row: 2; }
-:is(.media-content, .terminal-content).inactive { visibility: hidden; pointer-events: none; }
-:is(.media-content, .terminal-content).inactive > * { pointer-events: none; }
+:is(.media-content, .terminal-content, .folder-content).inactive { visibility: hidden; pointer-events: none; }
+:is(.media-content, .terminal-content, .folder-content).inactive > * { pointer-events: none; }
 .shell[data-tabs="false"]:not([data-git-diff="true"]) .group-content { padding-top: 0; }
 .group-sash { position: absolute; z-index: 25; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: row-resize; transform: translateY(-50%); touch-action: none; }
 .group-sash.vertical { cursor: col-resize; transform: translateX(-50%); }
@@ -1159,3 +1159,4 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .explorer-row:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }
 
 .shell[data-surface="terminal"] .viewer-surface, .shell[data-surface="terminal"] .editor-surface { display: none; }
+.shell[data-surface="folder"] .viewer-surface, .shell[data-surface="folder"] .editor-surface { display: none; }

@@ -11,7 +11,7 @@ import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../../project/project-state.svelte';
   import { browser } from '../../browser/browser-state.svelte';
   import type { BrowserPlace } from '../../../protocol/browser';
-  import { fileLocation } from '../../../core/document/file-location';
+  import { fileLocation, isFileLocation } from '../../../core/document/file-location';
   import { isMarkdownPath } from '../../editor/markdown-editor-port';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
@@ -28,12 +28,13 @@ import type { AppActions } from '../../ports/ui-actions';
   const requests = $derived(tab ? browser.permissions[tab.id] ?? [] : []);
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
+  const folder = $derived(!review && tab?.kind === 'folder');
   const zoomId = $derived(tab?.id);
   const reading = $derived(!!tab && !!browser.readers[tab.id]);
   // Markdown surface actions live in the address bar. They act on the focused
   // session, so only the focused group's bar shows them (as the tab strip did).
   const focusedGroup = $derived(groupId === view.focusedGroupId);
-  const markdown = $derived(!['web', 'terminal'].includes(tab?.kind ?? 'document') && isMarkdownPath(tab?.path ?? ''));
+  const markdown = $derived(!['web', 'terminal', 'folder'].includes(tab?.kind ?? 'document') && isMarkdownPath(tab?.path ?? ''));
   const canRender = $derived(project.gitDiffActive
     ? !!project.gitDiff && isMarkdownPath(project.gitDiff.filePath)
       && project.gitDiff.originalText !== null && project.gitDiff.modifiedText !== null
@@ -84,9 +85,13 @@ import type { AppActions } from '../../ports/ui-actions';
   function search() {
     clearTimeout(timer); const request = ++generation;
     if (composing) return;
-    timer = setTimeout(() => void actions.browserPlaces(draft).then(rows => {
+    // Typed paths complete from the filesystem (shell-like), web input from Browser places.
+    const typedPath = isFileLocation(draft) && !/^file:/i.test(draft.trim());
+    timer = setTimeout(() => void (typedPath
+      ? actions.completePath(draft.trim()).then(rows => rows.map(row => ({ url: row.directory ? `${row.path}/` : row.path, title: row.name, bookmarked: false, lastVisit: 0, visits: 0 })))
+      : actions.browserPlaces(draft)).then(rows => {
       if (request === generation && editing) { suggestions = rows.slice(0, 8); selected = -1; }
-    }).catch(() => { if (request === generation) suggestions = []; }), 100);
+    }).catch(() => { if (request === generation) suggestions = []; }), typedPath ? 40 : 100);
   }
   async function go(value = selected >= 0 ? suggestions[selected].url : draft) {
     // Submitting ends the address edit and lets navigation focus the content.
@@ -161,7 +166,7 @@ import type { AppActions } from '../../ports/ui-actions';
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d={web.loading ? 'M6 6l12 12M18 6 6 18' : 'M21 3v5h-5M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'} fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   {:else if tab && tab.kind !== 'terminal'}
-    <button class="location-icon location-reload" aria-label="Reload file" title={tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>
+    <button class="location-icon location-reload" aria-label={folder ? 'Refresh folder' : 'Reload file'} title={folder ? 'Refresh folder (F5)' : tab.isUntitled ? 'Save this document before reloading' : 'Reload file (Ctrl/Cmd+R)'} disabled={tab.isUntitled} onclick={() => void actions.reloadLocalDocument(tab.id)}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3v5h-5M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   {/if}
@@ -177,6 +182,9 @@ import type { AppActions } from '../../ports/ui-actions';
         if (event.isComposing || composing) return;
         if (event.key === 'Enter') { event.preventDefault(); void go(); }
         else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); blur(); input?.blur(); actions.focusLocationContent(groupId); }
+        else if (event.key === 'Tab' && !event.shiftKey && suggestions.length && isFileLocation(draft) && !/^file:/i.test(draft.trim())) {
+          event.preventDefault(); draft = suggestions[Math.max(0, selected)].url; search();
+        }
         else if (event.key === 'ArrowDown' && suggestions.length) { event.preventDefault(); selected = (selected + 1) % suggestions.length; }
         else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
       }} />
@@ -212,7 +220,7 @@ import type { AppActions } from '../../ports/ui-actions';
     <button aria-label="Sign in to website" title={`Sign in to ${browser.auth[tab.id].origin}`}
       onclick={() => { browser.authId = tab.id; }}>Sign in</button>
   {/if}
-  {#if tab && !web && tab.kind !== 'terminal' && !markdown && !review && !media && !isNotebookDocument(tab.path)}
+  {#if tab && !web && tab.kind !== 'terminal' && !folder && !markdown && !review && !media && !isNotebookDocument(tab.path)}
     <DocumentLanguageStatus tabId={tab.id} />
   {/if}
   {#if focusedGroup}
@@ -253,7 +261,7 @@ import type { AppActions } from '../../ports/ui-actions';
       <ZoomControls label="Website" percent={web.zoomPercent}
         change={step => actions.browserCommand(tab!.id, step === 0 ? 'zoom-reset' : step < 0 ? 'zoom-out' : 'zoom-in')} />
     {:else}
-      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : media?.document.kind === 'video' ? 'Video' : media?.document.kind === 'pdf' ? 'PDF' : media?.document.kind === 'image' ? 'Image' : 'Text'}
+      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : folder ? 'Folder' : media?.document.kind === 'video' ? 'Video' : media?.document.kind === 'pdf' ? 'PDF' : media?.document.kind === 'image' ? 'Image' : 'Text'}
         percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}

@@ -3,7 +3,7 @@ import { sharedTextDocument } from '../../core/workspace/document-store';
 import { browserURL } from '../../core/browser/browser-url';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { recordVisit, type TabNavigation, type TabVisit } from '../../core/workspace/tab-navigation';
-import { isDocumentTab, tabLocation, type DocumentTab, type TerminalTab, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
+import { DEFAULT_FOLDER_VIEW, isDocumentTab, tabLocation, type DocumentTab, type FolderTab, type TerminalTab, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { DocumentSnapshot } from '../../core/document/document';
 import type { CloseDecision } from '../../protocol/desktop-api';
 import type { DesktopPort } from '../ports/desktop-port';
@@ -12,7 +12,7 @@ import type { MonacoEditor } from '../adapters/monaco-editor';
 
 type Options = {
   workspace: WorkspaceState;
-  desktop: Pick<DesktopPort, 'browser' | 'readDocumentLocation' | 'saveTabDocument' | 'discardDocument'>;
+  desktop: Pick<DesktopPort, 'browser' | 'readDocumentLocation' | 'saveTabDocument' | 'discardDocument' | 'files'>;
   editor: Pick<MonacoEditor, 'load'>;
   documents: DocumentSessions;
   capturePosition?(tab?: DocumentTab): void;
@@ -46,6 +46,7 @@ export class TabNavigationController {
   visit(tab: WorkspaceTab): TabVisit | null {
     if (tab.kind === 'diff') return null;
     if (tab.kind === 'terminal') return { kind: 'terminal', url: tabLocation(tab) };
+    if (tab.kind === 'folder') return { kind: 'folder', url: fileLocation(tab.path), ...(tab.selection?.length ? { selection: [...tab.selection] } : {}) };
     if (tab.kind === 'web') return { kind: 'web', url: tab.page.url };
     return tab.document.isUntitled ? null : { kind: 'file', url: fileLocation(tab.document.path), position: tab.readingPosition };
   }
@@ -88,18 +89,29 @@ export class TabNavigationController {
     void task.then(cleanup, cleanup);
     return task;
   };
-  navigateLocation = (id: string, input: string, historyIndex?: number): Promise<boolean> => {
+  navigateLocation = (id: string, input: string, historyIndex?: number, selection?: string[]): Promise<boolean> => {
     const { desktop, workspace } = this.options;
     const request = Symbol();
     this.navigationRequests.set(id, request);
-    let prepared: Promise<string | DocumentSnapshot | TerminalTab>;
+    let prepared: Promise<string | DocumentSnapshot | TerminalTab | FolderTab>;
     try {
       if (/^terminal:/i.test(input.trim())) {
         const url = new URL(input.trim());
         const session = workspace.terminals.get(url.hostname);
         if (!session || url.username || url.password || !['', '/'].includes(url.pathname) || url.search || url.hash) throw Error('This terminal session is no longer available.');
         prepared = Promise.resolve({ ...session, kind: 'terminal', id, sessionId: session.id, surface: 'terminal' });
-      } else prepared = isFileLocation(input) ? desktop.readDocumentLocation(input.trim()) : Promise.resolve(browserURL(input));
+      } else if (isFileLocation(input)) {
+        // Files keep their direct read. Only a failed read asks whether the
+        // address is a folder (or a `~` path), which then opens a folder tab in place.
+        const current = workspace.find(id), location = input.trim();
+        prepared = desktop.readDocumentLocation(location).catch(async (error: unknown) => {
+          const resolved = await desktop.files?.resolve(location).catch(() => null);
+          if (resolved?.kind === 'folder') return { kind: 'folder', id, surface: 'folder', path: resolved.path, selection,
+            view: current?.kind === 'folder' ? { ...current.view } : { ...DEFAULT_FOLDER_VIEW }, revision: 0 } satisfies FolderTab;
+          if (resolved?.kind === 'file' && resolved.path !== location) return desktop.readDocumentLocation(resolved.path);
+          throw error;
+        });
+      } else prepared = Promise.resolve(browserURL(input));
     } catch (error) {
       if (!this.navigationTasks.has(id)) this.navigationRequests.delete(id);
       return Promise.reject(error);
@@ -124,7 +136,23 @@ export class TabNavigationController {
       }
       const navigation = this.history(tab), target = historyIndex === undefined ? null : navigation.entries[historyIndex];
       if (historyIndex !== undefined && !target) return false;
-      if (typeof destination !== 'string' && destination.kind !== 'terminal' && target?.kind === 'file' && target.position) {
+      if (typeof destination !== 'string' && destination.kind === 'folder' && tab.kind === 'folder') {
+        // Folder-to-folder navigation keeps the tab and its surface; only the
+        // location and the selection to restore change (Nautilus keeps the
+        // selection with each history entry, nautilus-window-slot.c:1457).
+        const outgoing = this.visit(tab);
+        if (outgoing && navigation.index >= 0) navigation.entries[navigation.index] = outgoing;
+        else if (outgoing) recordVisit(navigation, outgoing);
+        tab.selection = target?.kind === 'folder' ? target.selection : destination.selection;
+        tab.path = destination.path;
+        tab.revision = (tab.revision ?? 0) + 1;
+        if (historyIndex === undefined) { recordVisit(navigation, this.visit(tab)!); workspace.groups.pin(id); }
+        else navigation.index = historyIndex;
+        this.options.render();
+        return true;
+      }
+      if (typeof destination !== 'string' && destination.kind === 'folder' && target?.kind === 'folder') destination.selection = target.selection;
+      if (typeof destination !== 'string' && destination.kind !== 'terminal' && destination.kind !== 'folder' && target?.kind === 'file' && target.position) {
         destination = { ...destination, readingPosition: target.position };
       }
       if (typeof destination === 'string' && tab.kind === 'web') {
@@ -132,7 +160,7 @@ export class TabNavigationController {
         await desktop.browser.navigate(id, destination);
         return true;
       }
-      if (typeof destination !== 'string' && destination.kind !== 'terminal' && isDocumentTab(tab) && destination.path === tab.document.path) {
+      if (typeof destination !== 'string' && destination.kind !== 'terminal' && destination.kind !== 'folder' && isDocumentTab(tab) && destination.path === tab.document.path) {
         if (historyIndex !== undefined) { navigation.index = historyIndex; this.options.render(); }
         return true;
       }
@@ -169,11 +197,11 @@ export class TabNavigationController {
           }
           // A rejected beforeunload leaves the live web page and tab intact.
           if (tab.kind === 'web' && !await desktop.browser.close(id)) return false;
-          replacement = destination.kind === 'terminal' ? destination : this.options.documentTab(id, destination);
+          replacement = destination.kind === 'terminal' || destination.kind === 'folder' ? destination : this.options.documentTab(id, destination);
         }
         if (workspace.activeId === id) this.options.saveActiveState();
         else if (isDocumentTab(tab)) { this.options.capturePosition?.(tab); this.options.documents.saveView(tab); }
-        if (isDocumentTab(tab)) {
+        if (isDocumentTab(tab) || tab.kind === 'folder') {
           const outgoing = this.visit(tab);
           if (outgoing) {
             if (navigation.index < 0) recordVisit(navigation, outgoing);

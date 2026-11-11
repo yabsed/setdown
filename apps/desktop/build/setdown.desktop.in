@@ -2,14 +2,19 @@
 Type=Application
 Version=1.0
 Name=Setdown
-GenericName=Markdown Reader and Editor
+GenericName=Files, Markdown Reader and Editor
 Comment=Write plain. Read beautifully.
 Exec=@APP_DIR@/setdown %F
 TryExec=@APP_DIR@/setdown
 Icon=setdown
 Terminal=false
-Categories=Office;TextEditor;Utility;
-Keywords=Markdown;Editor;Viewer;Writing;
-MimeType=text/markdown;text/x-markdown;text/plain;application/pdf;application/x-hwp;application/vnd.haansoft-hwp;application/hwp+zip;
+Categories=Office;TextEditor;Utility;System;FileManager;
+Keywords=Markdown;Editor;Viewer;Writing;Files;Folder;File Manager;
+MimeType=inode/directory;text/markdown;text/x-markdown;text/plain;application/pdf;application/x-hwp;application/vnd.haansoft-hwp;application/hwp+zip;
 StartupNotify=false
 StartupWMClass=Setdown
+Actions=files;
+
+[Desktop Action files]
+Name=Browse Files
+Exec=@APP_DIR@/setdown --files

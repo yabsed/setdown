@@ -219,7 +219,9 @@ export type TransferableDocumentTab = {
 
 export type TransferableTerminalTab = { kind: 'terminal'; id: string; sessionId?: string; title: string; cwd: string; exited: boolean;
   navigation?: import('../core/workspace/tab-navigation').TabNavigation };
-export type TransferableTab = TransferableDocumentTab | TransferableTerminalTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage;
+export type TransferableFolderTab = { kind: 'folder'; id: string; path: string; view: import('../core/workspace/workspace-state').FolderView;
+  navigation?: import('../core/workspace/tab-navigation').TabNavigation };
+export type TransferableTab = TransferableDocumentTab | TransferableTerminalTab | TransferableFolderTab | { kind: 'web'; id: string; page: import('./browser').BrowserPage;
   navigation?: import('../core/workspace/tab-navigation').TabNavigation };
 
 export type ClaimedTabTransfer = {
@@ -258,6 +260,7 @@ export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
   | 'reader-select-all'
   | 'new-web-tab'
+  | 'new-folder-tab'
   | 'reopen-web-tab'
   | 'focus-location'
   | 'navigate-back'
@@ -395,6 +398,8 @@ export type MarkTexApi = {
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
   pathForFile(file: File): string;
+  /** Folder tabs and the in-app path picker (app windows only). */
+  files: import('./files').FilesApi;
   chooseProjectFolder(): Promise<ProjectFolder | null>;
   getProjectFolder(): Promise<ProjectFolder | null>;
   getRecentProjectFolders(): Promise<ProjectFolder[]>;

@@ -1,3 +1,5 @@
+import { nativeDialogsRequested, pathDialog } from '../dialogs/path-picker';
+import { releaseDownloadReservation, reserveDownloadPath } from './download-path';
 import { app, dialog, ipcMain, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { promises as fs, writeFileSync, renameSync } from 'node:fs';
@@ -140,7 +142,19 @@ export class BrowserManager {
         if (this.extensions?.downloads?.claim(item, contents)) return;
         const entry = this.forContents(contents);
         if (!entry && !(contents && this.isExtensionURL(contents.getURL()))) { item.cancel(); return; }
-        item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
+        // GNOME routes Chromium's save prompt to GNOME Files. Like Chrome's default,
+        // save into Downloads under a reserved unique name; the native prompt
+        // remains for SETDOWN_NATIVE_DIALOGS=1.
+        if (nativeDialogsRequested()) item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
+        else {
+          try {
+            const reserved = reserveDownloadPath(app.getPath('downloads'), item.getFilename());
+            item.setSavePath(reserved);
+            // A canceled download must not leave its empty reservation behind.
+            item.once('done', (_done, result) => { if (result !== 'completed') void releaseDownloadReservation(reserved); });
+          }
+          catch { item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) }); }
+        }
         this.downloads.track(item);
       });
     }
@@ -916,11 +930,11 @@ export class BrowserManager {
           const pdf = entry.pdf;
           if (!pdf || !entry.page.pdf.size) return;
           const title = entry.page.title.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 150) || 'document';
-          const result = await dialog.showSaveDialog(state.window, { title: 'Save PDF', defaultPath: title.endsWith('.pdf') ? title : `${title}.pdf`, filters: [{ name: 'PDF document', extensions: ['pdf'] }] });
+          const result = await pathDialog.showSaveDialog(state.window, { title: 'Save PDF', defaultPath: title.endsWith('.pdf') ? title : `${title}.pdf`, filters: [{ name: 'PDF document', extensions: ['pdf'] }] });
           if (!result.canceled && result.filePath && this.live(entry) && entry.owner === state.webContentsId && entry.pdf === pdf) await pdf.save(result.filePath);
           return;
         }
-        const result = await dialog.showSaveDialog(state.window, { title: 'Save web page', defaultPath: 'page.html', filters: [{ name: 'Web page', extensions: ['html'] }] });
+        const result = await pathDialog.showSaveDialog(state.window, { title: 'Save web page', defaultPath: 'page.html', filters: [{ name: 'Web page', extensions: ['html'] }] });
         if (!result.canceled && result.filePath) await wc.savePage(result.filePath, 'HTMLComplete');
       } else if (command === 'protection' && this.extensions?.builtinPopupURL()) {
         this.extensions.bridge?.activate(this.extensions.extensionId!, wc, { x: state.window.getContentBounds().width - 40, y: 80, width: 28, height: 28 });
@@ -942,7 +956,7 @@ export class BrowserManager {
       if (importing) throw Error('Another bookmark import is in progress.');
       importing = true;
       try {
-        const picked = await dialog.showOpenDialog(state.window, { title: 'Import bookmarks', properties: ['openFile'], filters: [{ name: 'Bookmark HTML', extensions: ['html', 'htm'] }] });
+        const picked = await pathDialog.showOpenDialog(state.window, { title: 'Import bookmarks', properties: ['openFile'], filters: [{ name: 'Bookmark HTML', extensions: ['html', 'htm'] }] });
         if (picked.canceled || !picked.filePaths[0] || state.window.isDestroyed()) return null;
         const handle = await fs.open(picked.filePaths[0], 'r');
         let bytes: Buffer;
@@ -989,7 +1003,7 @@ export class BrowserManager {
         await this.ensureReady();
         const extensions = this.extensions!;
         if (state.window.isDestroyed()) return extensions.list();
-        const picked = kind === 'web-store' ? null : await dialog.showOpenDialog(state.window, kind === 'folder'
+        const picked = kind === 'web-store' ? null : await pathDialog.showOpenDialog(state.window, kind === 'folder'
           ? { title: 'Install extension from folder', properties: ['openDirectory'] }
           : { title: 'Install extension package', properties: ['openFile'],
               filters: [{ name: 'Extension package (.zip, .crx)', extensions: ['zip', 'crx'] }] });

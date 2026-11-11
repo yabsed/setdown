@@ -38,11 +38,22 @@ export type TerminalTab = { kind: 'terminal'; id: string; surface: 'terminal'; s
 export type DiffTab = { kind: 'diff'; surface: 'diff'; id: string; documentId?: string; filePath: string;
   staged: boolean; history?: import('../project/git-history').GitHistorySelection;
   navigation?: import('./tab-navigation').TabNavigation };
-export type WorkspaceTab = DocumentTab | BrowserTab | TerminalTab | DiffTab;
+export type FolderView = { layout: 'list' | 'grid'; sort: 'name' | 'modified' | 'size' | 'type'; descending: boolean; showHidden: boolean };
+/** A file-manager tab. `picker` marks a transient tab answering a path request. */
+export type FolderTab = { kind: 'folder'; id: string; surface: 'folder'; path: string; view: FolderView;
+  /** Paths to select once the listing arrives (Back/Forward, Reveal, picker defaults). */
+  selection?: string[];
+  picker?: import('../files/folder-types').PathPickerRequest;
+  /** Bumped when the location or requested selection changes, so the surface re-applies it. */
+  revision?: number;
+  navigation?: import('./tab-navigation').TabNavigation };
+export const DEFAULT_FOLDER_VIEW: FolderView = { layout: 'list', sort: 'name', descending: false, showHidden: false };
+export type WorkspaceTab = DocumentTab | BrowserTab | TerminalTab | DiffTab | FolderTab;
+const folderTitle = (tab: FolderTab) => tab.picker ? tab.picker.title : tab.path.replace(/[\\/]+$/, '').split(/[\\/]/).at(-1) || tab.path;
 export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind === undefined || tab.kind === 'document';
-export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.kind === 'diff' ? `${tab.filePath.split(/[\\/]/).at(-1)} (${tab.history ? tab.history.head.slice(0, 8) : tab.staged ? 'Index' : 'Working Tree'})` : tab.document.name;
-export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'terminal' ? `terminal://${tab.sessionId ?? tab.id}` : tab.kind === 'web' ? tab.page.url : tab.kind === 'diff' ? tab.filePath : tab.document.path;
-export const editorInputKey = (tab: WorkspaceTab): string => tab.kind === 'diff'
+export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'folder' ? folderTitle(tab) : tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.kind === 'diff' ? `${tab.filePath.split(/[\\/]/).at(-1)} (${tab.history ? tab.history.head.slice(0, 8) : tab.staged ? 'Index' : 'Working Tree'})` : tab.document.name;
+export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'folder' ? tab.path : tab.kind === 'terminal' ? `terminal://${tab.sessionId ?? tab.id}` : tab.kind === 'web' ? tab.page.url : tab.kind === 'diff' ? tab.filePath : tab.document.path;
+export const editorInputKey = (tab: WorkspaceTab): string => tab.kind === 'folder' ? (tab.picker ? tab.id : JSON.stringify(['folder', tab.path])) : tab.kind === 'diff'
   ? JSON.stringify(['diff', tab.filePath, tab.staged, tab.history ?? null])
   : isDocumentTab(tab) ? JSON.stringify(['file', tab.documentId ?? tab.document.path]) : tab.id;
 
@@ -130,10 +141,10 @@ export function createTabSession(active: () => WorkspaceTab | null, emptyAnchor:
       const tab = documentTab();
       if (tab) tab.revision = value;
     },
-    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff' { return active()?.surface ?? 'empty'; },
-    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff') {
+    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder' { return active()?.surface ?? 'empty'; },
+    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder') {
       const tab = documentTab();
-      if (tab && value !== 'empty' && value !== 'web' && value !== 'terminal' && value !== 'diff') tab.surface = documentSurface(tab.document.path, value);
+      if (tab && value !== 'empty' && value !== 'web' && value !== 'terminal' && value !== 'diff' && value !== 'folder') tab.surface = documentSurface(tab.document.path, value);
     },
     get anchor() { return documentTab()?.anchor ?? emptyAnchor; },
     set anchor(value: ViewportAnchor) {

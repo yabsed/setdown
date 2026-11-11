@@ -15,6 +15,7 @@
     <button class="secondary-button empty-folder" type="button" onclick={actions.chooseProjectFolder}>Open Folder</button>
     <button class="secondary-button" type="button" onclick={() => actions.newWebTab()}>Open Web Page</button>
     <button class="secondary-button" type="button" onclick={() => actions.newTerminal()}>Open Terminal</button>
+    <button class="secondary-button empty-files" type="button" onclick={() => actions.newFolderTab()}>Browse Files</button>
   </div>
   <span class="shortcut">Ctrl/Cmd+N · Ctrl/Cmd+O</span>
   {#if project.recentFolders.length}

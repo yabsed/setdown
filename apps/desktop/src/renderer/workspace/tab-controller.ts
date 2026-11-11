@@ -13,7 +13,7 @@ import { retainUnsavedRevision } from '../../core/document/document-save';
 import { fileLocation } from '../../core/document/file-location';
 import { recordVisit } from '../../core/workspace/tab-navigation';
 import { GOLDEN_TOP_RATIO, type ViewportAnchor } from '../../core/preview/viewport-anchor';
-import { createWorkspaceTab, isDocumentTab, tabTitle, tabLocation, type DocumentTab, type TabSession, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
+import { createWorkspaceTab, DEFAULT_FOLDER_VIEW, isDocumentTab, tabTitle, tabLocation, type DocumentTab, type FolderTab, type TabSession, type WorkspaceState, type WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { ClaimedTabTransfer, CloseDecision, DocumentSnapshot, TransferableTab } from '../../protocol/desktop-api';
 import type { MonacoEditor } from '../adapters/monaco-editor';
 import type { SurfaceController } from './surface-controller';
@@ -43,6 +43,8 @@ type Options = {
   shouldFocusWeb?(): boolean;
   reviewZoomId?(): string | null;
   autoSave?: { schedule(tab: DocumentContent): void; cancel(tabId?: string): void };
+  /** A picker-mode folder tab closed without accepting. */
+  pickerClosed?(requestId: string): void;
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
@@ -209,6 +211,42 @@ export class TabController {
     this.options.workspace.add({ ...session, kind: 'terminal', sessionId: id, surface: 'terminal' }, true, groupId);
     this.render(); await this.activate(id);
   };
+  /** Open (or reuse) a folder tab. Picker tabs are always new and never reused. */
+  openFolder = async (path: string, options: { groupId?: string; selection?: string[]; picker?: FolderTab['picker'];
+    background?: boolean; reuse?: boolean } = {}): Promise<FolderTab | null> => {
+    const { workspace } = this.options;
+    const groupId = options.groupId ?? workspace.groups.focusedId;
+    if (!workspace.groups.groups.some(group => group.id === groupId)) return null;
+    if (!options.picker && options.reuse !== false) {
+      const existing = workspace.tabs.find((tab): tab is FolderTab => tab.kind === 'folder' && !tab.picker && tab.path === path
+        && workspace.groups.owner(tab.id)?.id === groupId);
+      if (existing) {
+        if (options.selection) { existing.selection = options.selection; existing.revision = (existing.revision ?? 0) + 1; }
+        this.render(); if (!options.background) await this.activate(existing.id); return existing;
+      }
+    }
+    const tab: FolderTab = { kind: 'folder', id: crypto.randomUUID(), surface: 'folder', path, view: { ...DEFAULT_FOLDER_VIEW,
+      ...(options.picker?.showHidden ? { showHidden: true } : {}) }, selection: options.selection, picker: options.picker, revision: 0 };
+    workspace.add(tab, true, groupId);
+    this.render();
+    if (!options.background) await this.activate(tab.id);
+    return tab;
+  };
+  /** The folder surface reports selection so Back/Forward and transfers keep it. */
+  folderSelected = (id: string, selection: string[]): void => {
+    const tab = this.options.workspace.find(id);
+    if (tab?.kind === 'folder') tab.selection = selection;
+  };
+  refreshFolder = (id: string): void => {
+    const tab = this.options.workspace.find(id);
+    if (tab?.kind !== 'folder') return;
+    tab.revision = (tab.revision ?? 0) + 1; this.render();
+  };
+  folderViewChanged = (id: string, update: Partial<FolderTab['view']>): void => {
+    const tab = this.options.workspace.find(id);
+    if (tab?.kind !== 'folder') return;
+    tab.view = { ...tab.view, ...update }; this.render();
+  };
   openTerminalSession = async (sessionId: string): Promise<void> => {
     const { workspace } = this.options;
     const session = workspace.terminals.get(sessionId);
@@ -251,12 +289,16 @@ export class TabController {
   canGoForward = (id: string): boolean => this.navigation.canGoForward(id);
   webNavigated = (id: string): void => this.navigation.webNavigated(id);
   navigateHistory = (id: string, direction: -1 | 1): Promise<boolean> => this.navigation.navigateHistory(id, direction);
-  navigateLocation = (id: string, input: string, historyIndex?: number): Promise<boolean> => this.navigation.navigateLocation(id, input, historyIndex);
+  navigateLocation = (id: string, input: string, historyIndex?: number, selection?: string[]): Promise<boolean> => this.navigation.navigateLocation(id, input, historyIndex, selection);
   transferable = (tab: WorkspaceTab): TransferableTab => {
     if (tab.kind === 'diff') throw Error('Git review tabs can be moved between groups in this window. Cross-window transfer is not supported.');
     if (tab.kind === 'terminal') return { kind: 'terminal', id: tab.id, sessionId: tab.sessionId ?? tab.id,
       title: tab.title, cwd: tab.cwd, exited: tab.exited, navigation: tab.navigation };
     if (tab.kind === 'web') return { kind: 'web', id: tab.id, page: { ...tab.page }, navigation: tab.navigation };
+    if (tab.kind === 'folder') {
+      if (tab.picker) throw Error('A file chooser tab stays in the window that asked for it.');
+      return { kind: 'folder', id: tab.id, path: tab.path, view: { ...tab.view }, navigation: tab.navigation };
+    }
     if (tab.id === this.options.workspace.activeId) this.saveActiveState();
     else this.options.documents.saveView(tab);
     const markdown = hasMarkdownPreview(tab.document);
@@ -286,6 +328,8 @@ export class TabController {
     view.tabs = summaries;
     this.options.publishDocuments?.();
     view.terminalSessions = [...workspace.terminals.values()].map(session => ({ ...session }));
+    view.folderTabs = workspace.tabs.filter((tab): tab is FolderTab => tab.kind === 'folder').map(tab => ({ id: tab.id, path: tab.path,
+      view: { ...tab.view }, selection: tab.selection ? [...tab.selection] : undefined, picker: tab.picker, revision: tab.revision ?? 0 }));
     const review = this.options.reviewZoomId?.() ?? null;
     desktop.setZoomTabs?.([...workspace.tabs.map(tab => tab.id), ...(review ? [review] : [])], review ?? workspace.activeId,
       Object.fromEntries(workspace.documents.filter(tab => !tab.document.isUntitled).map(tab => [tab.id, tab.document.path])));
@@ -357,6 +401,16 @@ export class TabController {
       surfaces.set('terminal'); view.notice = false; this.updateChrome();
       await tick();
       if (workspace.activeId === next.id) window.dispatchEvent(new CustomEvent('setdown:focus-terminal', { detail: next.id }));
+      return;
+    }
+    if (next.kind === 'folder') {
+      ++this.activation;
+      if (workspace.activeId !== next.id) { this.saveActiveState(); preview.newSession(); }
+      workspace.activeId = next.id;
+      editor.selectGroup(workspace.groups.focusedId);
+      surfaces.set('folder'); view.notice = false; this.updateChrome();
+      await tick();
+      if (workspace.activeId === next.id) window.dispatchEvent(new CustomEvent('setdown:focus-folder', { detail: next.id }));
       return;
     }
     if (next.kind === 'web') {
@@ -498,6 +552,7 @@ export class TabController {
     const removed = workspace.remove(tab.id);
     if (!removed) return true;
     this.release(tab);
+    if (tab.kind === 'folder' && tab.picker) this.options.pickerClosed?.(tab.picker.id);
     if (!removed.wasActive) { this.render(); return true; }
     const replacement = workspace.replacement(removed.index);
     if (replacement) { await this.activate(replacement.id); return true; }
@@ -591,6 +646,12 @@ export class TabController {
 
   relocatePath = async (from: string, to: string): Promise<void> => {
     const { workspace } = this.options;
+    // A folder tab showing a moved folder follows it, like an open document does.
+    for (const tab of workspace.tabs) if (tab.kind === 'folder' && this.pathUnder(tab.path, from)) {
+      tab.path = `${to}${tab.path.slice(from.length)}`;
+      tab.selection = tab.selection?.map(path => this.pathUnder(path, from) ? `${to}${path.slice(from.length)}` : path);
+      tab.revision = (tab.revision ?? 0) + 1;
+    }
     for (const content of workspace.contents) {
       if (!this.pathUnder(content.document.path, from)) continue;
       const previousPath = content.document.path;
@@ -735,6 +796,11 @@ export class TabController {
     const { workspace, editor } = this.options;
     const source = workspace.find(id);
     if (source?.kind === 'diff') { await this.options.copyReview?.(id, groupId, direction); return; }
+    if (source?.kind === 'folder' && !source.picker && workspace.groups.groups.some(group => group.id === groupId)) {
+      const target = direction ? workspace.groups.split(groupId, direction) : workspace.groups.groups.find(group => group.id === groupId)!;
+      await this.openFolder(source.path, { groupId: target.id, selection: source.selection });
+      return;
+    }
     if (!source || !isDocumentTab(source) || !source.documentId || !workspace.groups.groups.some(group => group.id === groupId)) return;
     if (!direction && workspace.groups.owner(id)?.id === groupId) { await this.activate(id); return; }
     editor.saveView(source);
@@ -815,6 +881,13 @@ export class TabController {
   installTransferred = async (transfer: ClaimedTabTransfer, placement?: EditorGroupPlacement): Promise<void> => {
     const { desktop, editor, preview, reader, shell, surfaces, workspace } = this.options;
     const incoming = transfer.tab;
+    if (incoming.kind === 'folder') {
+      if (!await desktop.adoptTabTransfer(transfer.transferId)) return;
+      workspace.add({ kind: 'folder', id: incoming.id, surface: 'folder', path: incoming.path, view: { ...DEFAULT_FOLDER_VIEW, ...incoming.view },
+        navigation: incoming.navigation, revision: 0 });
+      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index);
+      this.render(); await this.activate(incoming.id); desktop.completeTabTransfer(transfer.transferId); return;
+    }
     if (incoming.kind !== 'web' && incoming.kind !== 'terminal'
       && workspace.contents.some(content => content.document.path === incoming.document.path)) {
       desktop.cancelTabTransfer(transfer.transferId);

@@ -11,6 +11,7 @@
   import { gitChangeGroups } from './source-control/git-change-groups';
 
   import TerminalSidebar from '../terminal/TerminalSidebar.svelte';
+  import FolderSidebar from '../folder/FolderSidebar.svelte';
 
   let { actions, languageApi }: { actions: AppActions; languageApi: LanguageApi } = $props();
   let gitGroups = $derived(gitChangeGroups(project.git?.changes, project.git?.settings));
@@ -57,6 +58,10 @@
       aria-label="Terminal" aria-expanded={project.open && project.activeView === 'terminal'} title="Terminal sessions (Ctrl+`)" onclick={() => select('terminal')}>
       <svg viewBox="0 0 24 24"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
     </button>
+    <button type="button" class="files-activity" class:is-active={project.open && project.activeView === 'files'}
+      aria-label="Files" aria-expanded={project.open && project.activeView === 'files'} title="File manager tabs" onclick={() => select('files')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v10.5h-17z"/></svg>
+    </button>
   </nav>
 
   <section class="side-view" aria-label={project.activeView} hidden={!project.open}>
@@ -64,6 +69,7 @@
     {#if project.activeView === 'explorer'}{#key project.folder?.path}<ExplorerView {actions} />{/key}
     {:else if project.activeView === 'search'}<SearchView {actions} />
     {:else if project.activeView === 'terminal'}<TerminalSidebar {actions} />
+    {:else if project.activeView === 'files'}<FolderSidebar {actions} />
     {:else if project.activeView === 'browser'}<BrowserSidebar {actions} />
     {:else if project.activeView === 'language'}
       {#if project.visible && project.open}

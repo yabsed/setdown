@@ -39,3 +39,10 @@ test('viewport reader cleanup cannot unregister a newer mounted editor', () => {
   removeOld(); assert.equal(port.read('tab')?.anchor.sourceLine, 2);
   removeNew(); assert.equal(port.read('tab'), null);
 });
+test('passive review reads preserve scrolling while explicit navigation finishes it', () => {
+  const port = new GitDiffViewportPort();
+  const requests: boolean[] = [];
+  port.register((_id, finishScroll) => { requests.push(finishScroll); return reviewViewport(1); });
+  port.read('tab'); port.read('tab', true);
+  assert.deepEqual(requests, [false, true]);
+});

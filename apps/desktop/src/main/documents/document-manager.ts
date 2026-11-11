@@ -1,4 +1,5 @@
 import { app, clipboard, dialog } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import { promises as fs, statSync as requireStat, watchFile, unwatchFile, watch, type FSWatcher, type Stats } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -141,7 +142,7 @@ export class DocumentManager {
   }
 
   async chooseAndOpen(state: WindowState, notify = true) {
-    const result = await dialog.showOpenDialog(state.window, {
+    const result = await pathDialog.showOpenDialog(state.window, {
       properties: ['openFile'], filters: [{ name: 'Documents', extensions: [...MARKDOWN_EXTENSIONS, ...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, 'pdf', 'txt', 'ipynb'] }, MARKDOWN_FILTER, { name: 'PDF', extensions: ['pdf'] }, { name: 'Images', extensions: IMAGE_EXTENSIONS }, { name: 'Videos', extensions: VIDEO_EXTENSIONS }, ALL_FILES_FILTER],
     });
     if (result.canceled || !result.filePaths[0]) return null;
@@ -216,7 +217,7 @@ export class DocumentManager {
     if (updated.isUntitled) {
       // Auto save never opens a dialog; untitled drafts stay in the drafts folder.
       if (auto) return { canceled: true };
-      const selected = await dialog.showSaveDialog(state.window, {
+      const selected = await pathDialog.showSaveDialog(state.window, {
         defaultPath: path.join(state.documentDirectory ?? state.projectRoot ?? app.getPath('documents'), updated.name),
         filters: saveFilters(updated.path),
       });
@@ -294,7 +295,7 @@ export class DocumentManager {
     if (!document) return { canceled: true };
     if (document.kind !== undefined || isReadOnlyDocument(document.path)) return { canceled: true };
     if (document.isUntitled) return this.saveCurrent(state, text, revision);
-    const selected = await dialog.showSaveDialog(state.window, {
+    const selected = await pathDialog.showSaveDialog(state.window, {
       defaultPath: document.path, filters: saveFilters(document.path),
     });
     if (selected.canceled || !selected.filePath) return { canceled: true };
@@ -348,7 +349,7 @@ export class DocumentManager {
     if (!document || !isMarkdownDocument(document.path) || document.path !== documentPath || document.isUntitled) {
       return { canceled: true };
     }
-    const result = await dialog.showOpenDialog(state.window, {
+    const result = await pathDialog.showOpenDialog(state.window, {
       defaultPath: path.dirname(document.path), properties: ['openFile'], filters: [ALL_FILES_FILTER],
     });
     const target = result.filePaths[0];

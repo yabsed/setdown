@@ -384,7 +384,11 @@ test('application menus preserve live video frames, playback and web view visibi
           { x: bounds.x + (body.x + body.width * .98) * z, y: bounds.y + (body.y + body.height / 2) * z }];
       }, { tab, body });
       await nativeInput({ pointer: [points[0]], button: 'down' });
-      await nativeInput({ pointer: [{ x: points[0].x + 20, y: points[0].y + 15 }, points[1]] });
+      // Establish the OS drag in the shell before crossing into the native web view.
+      // This scenario measures frames during a held drag; fast entry/release has its own test.
+      await nativeInput({ pointer: [{ x: points[0].x + 20, y: points[0].y }] });
+      await expect(f.page.getByRole('tab', { name: /Research page/ })).toHaveClass(/is-dragging/);
+      await nativeInput({ pointer: [points[1]] });
       await expect(f.page.locator('.group-drop-overlay')).toBeVisible();
       const draggingFrames = await evaluatePage<number>(f.app, f.origin, 'window.presentedFrames');
       await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(draggingFrames + 8);
@@ -393,6 +397,7 @@ test('application menus preserve live video frames, playback and web view visibi
         && 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL() === `${origin}/first`), f.origin)).toBe(true);
       if (cancel) await nativeInput({ keys: ['Escape'] });
       await nativeInput({ button: 'up' });
+      await expect(f.page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
       await expect(f.page.locator('.editor-group')).toHaveCount(cancel ? 1 : 2);
       await expect(f.page.locator('.group-drop-overlay')).toBeHidden();
     }

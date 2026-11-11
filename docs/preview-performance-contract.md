@@ -158,7 +158,7 @@ the file into its temporary workspace before opening it.
 
 Content zoom belongs exclusively to the workspace tab ID. Website, web Reader,
 Markdown/source, code/plain text, notebooks, PDF/image (including image editing),
-video and terminal surfaces all consume that same value. Address navigation and
+video, terminal and folder surfaces all consume that same value. Address navigation and
 Back/Forward and Explorer preview replacement retain it when the tab's resource or surface changes. Files of the
 same type and different views of the same file do not share zoom. The two panes
 of a Git review share its review tab's factor, including the two image versions.
@@ -513,14 +513,22 @@ Shared preparation command types live in `src/protocol/preview-preparation.ts`.
 Call sites use `satisfies`; IPC inputs still require runtime validation. Core
 document algorithms must not import Electron or the protocol layer.
 
-An Esc transition during Monaco's smooth scroll uses that scroll's requested
-destination, not an arbitrary intermediate frame. Complete the pending scroll
-through Monaco's saved view state before reading the viewport; do not add an
+An ordinary or Git-review Esc transition during Monaco's smooth scroll uses that
+scroll's requested destination, not an arbitrary intermediate frame. Complete the
+pending scroll through Monaco's saved view state before reading the viewport; do not add an
 animation delay or guess from an offscreen cursor. The immediate edited
 Ctrl+End/Esc case in `document-preparation.spec.ts` checks the source anchor and
-the latest paragraph's actual visible bounds. Hidden preview preparation stays
-outside the input path; existing on-demand hydration for requested source lines
-outside the installed prefix remains unchanged.
+the latest paragraph's actual visible bounds. `git-review-reading-position.spec.ts`
+checks immediate Ctrl+Home/Esc after a retained review's reading bookmark. Passive
+review prewarming does not finish an ongoing scroll animation. Hidden preview
+preparation stays outside the input path; existing on-demand hydration for
+requested source lines outside the installed prefix remains unchanged.
+
+The focused gate includes the cold-Esc, held-installation, review-reading-position
+and reload-layout regressions. A held edited installation must not expose the
+stale warm front; after release, the latest native content and page identity are
+verified. Local Reload preserves the shell context, and an explicit renderer
+reload restores the folder and panel geometry.
 
 Alt+Z uses VS Code's transient model word-wrap override. Different files retain
 independent state across tab/source-reader switches; split views sharing a model

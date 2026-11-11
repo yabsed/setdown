@@ -1,4 +1,5 @@
-import { app, dialog } from 'electron';
+import { app } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -49,7 +50,7 @@ export class NotebookTools {
   async pythonCells(state: WindowState, file: string, source: string): Promise<string | null> {
     if (typeof source !== 'string' || source.length > 4 * 1024 * 1024) throw Error('Python source exceeds 4 MiB.');
     await this.ready();
-    const destination = await dialog.showSaveDialog(state.window, { title: 'Create interactive notebook from Python cells', defaultPath: file.replace(/\.py$/i, '-interactive.ipynb'), filters: [{ name: 'Jupyter notebook', extensions: ['ipynb'] }] });
+    const destination = await pathDialog.showSaveDialog(state.window, { title: 'Create interactive notebook from Python cells', defaultPath: file.replace(/\.py$/i, '-interactive.ipynb'), filters: [{ name: 'Jupyter notebook', extensions: ['ipynb'] }] });
     if (destination.canceled || !destination.filePath) return null;
     if (!/\.ipynb$/i.test(destination.filePath)) throw Error('Choose an .ipynb file.');
     const text = await this.execute(this.python, ['-I', '-m', 'jupytext', '--from', 'py:percent', '--to', 'ipynb', '-'], source, 120_000, os.tmpdir(), state.webContentsId);
@@ -64,7 +65,7 @@ export class NotebookTools {
       : mime === 'image/gif' ? /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString('ascii'))
       : bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
     if (!valid) throw Error('Image bytes do not match the selected format.');
-    const result = await dialog.showSaveDialog(state.window, { title: 'Save notebook image', defaultPath: file.replace(/\.ipynb$/i, `-plot.${extensions[mime]}`), filters: [{ name: mime, extensions: [extensions[mime]] }] });
+    const result = await pathDialog.showSaveDialog(state.window, { title: 'Save notebook image', defaultPath: file.replace(/\.ipynb$/i, `-plot.${extensions[mime]}`), filters: [{ name: mime, extensions: [extensions[mime]] }] });
     if (result.canceled || !result.filePath) return null;
     if (path.resolve(result.filePath) === path.resolve(file)) throw Error('Choose a destination other than the notebook.');
     await fs.writeFile(result.filePath, bytes); return result.filePath;
@@ -124,7 +125,7 @@ export class NotebookTools {
       const format = ({ 'export-html': 'html', 'export-markdown': 'markdown', 'export-script': 'script', 'export-webpdf': 'webpdf' } as Record<string, string>)[action];
       if (!format) throw Error('Unsupported notebook action.');
       const extension = format === 'webpdf' ? 'pdf' : format === 'markdown' ? 'md' : format === 'script' ? (notebook.metadata?.language_info?.file_extension?.replace(/^\./, '') || 'py') : 'html';
-      const destination = await dialog.showSaveDialog(state.window, { title: `Export notebook as ${format}`, defaultPath: file.replace(/\.ipynb$/i, '.' + extension) });
+      const destination = await pathDialog.showSaveDialog(state.window, { title: `Export notebook as ${format}`, defaultPath: file.replace(/\.ipynb$/i, '.' + extension) });
       if (destination.canceled || !destination.filePath) return {};
       if (path.resolve(destination.filePath) === path.resolve(file)) throw Error('Export cannot overwrite the notebook.');
       await execute(this.python, ['-I', '-m', 'nbconvert', '--to', format, '--output', 'export', '--output-dir', dir, ...(format === 'webpdf' ? ['--allow-chromium-download'] : []), snapshot], undefined, 300_000);

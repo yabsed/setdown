@@ -19,7 +19,11 @@
   }
   async function command(item: BrowserDownload, value: DownloadCommand) {
     error = '';
-    try { await actions.browserDownloadCommand(item.id, value); }
+    try {
+      // Show the download in a Setdown folder tab instead of launching GNOME Files.
+      if (value === 'show' && item.path) await actions.openFolder(item.path.replace(/[\\/][^\\/]+$/, '') || '/', { selection: [item.path] });
+      else await actions.browserDownloadCommand(item.id, value);
+    }
     catch (reason) { error = String(reason); }
   }
 </script>

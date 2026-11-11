@@ -1,4 +1,5 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ReaderArticle } from '../../core/browser/reader-article';
@@ -10,7 +11,7 @@ import { printThemedPdf, waitForPrintablePreview } from '../preview/pdf-exporter
 export async function exportReader(window: BrowserWindow, article: ReaderArticle, format: 'markdown' | 'pdf', theme: PreviewThemeId,
   current: () => boolean) {
   const extension = format === 'markdown' ? 'md' : 'pdf';
-  const result = await dialog.showSaveDialog(window, { title: format === 'markdown' ? 'Export to Markdown' : 'Export to PDF',
+  const result = await pathDialog.showSaveDialog(window, { title: format === 'markdown' ? 'Export to Markdown' : 'Export to PDF',
     defaultPath: path.join(app.getPath('documents'), `${readerFileName(article.title)}.${extension}`),
     filters: [{ name: format === 'markdown' ? 'Markdown' : 'PDF', extensions: [extension] }] });
   if (result.canceled || !result.filePath || !current()) return { canceled: true };

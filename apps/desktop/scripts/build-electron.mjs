@@ -35,6 +35,7 @@ await Promise.all([
 
 await copyFile('src/main/notebook/kernel-bridge.py', 'dist-electron/kernel-bridge.py');
 await copyFile('src/main/windows/x11-pinch.py', 'dist-electron/x11-pinch.py');
+await copyFile('src/main/files/file-manager-dbus.py', 'dist-electron/file-manager-dbus.py');
 await copyFile('src/main/notebook/notebook-inspect.py', 'dist-electron/notebook-inspect.py');
 
 await import('./build-browser.mjs');

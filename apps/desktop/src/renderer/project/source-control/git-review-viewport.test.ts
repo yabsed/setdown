@@ -86,7 +86,9 @@ for (const staged of [false, true]) test(`same-page Viewer resume never repositi
 
 test('Esc samples the live reader synchronously and passes cursor height and column', async () => {
   const f = fixture(); const source = reviewViewport(175); source.anchor.yRatio = .81; source.anchor.sourceColumn = 24;
-  let reads = 0; f.viewport.register((id) => { assert.equal(id, f.tab.id); reads++; return source; });
+  let reads = 0; f.viewport.register((id, finishScroll) => {
+    assert.equal(id, f.tab.id); assert.equal(finishScroll, true); reads++; return source;
+  });
   await f.open();
   assert.equal(reads, 1);
   assert.equal(f.positions()[0].message.sourceLine, 175);

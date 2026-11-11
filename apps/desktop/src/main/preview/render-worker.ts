@@ -17,7 +17,7 @@ import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Notebook, getDefaultNotebookConfig, utility } from 'crossnote';
 import type { FileSystemApi, WebviewConfig } from 'crossnote';
-import { APP_FONT_FAMILY } from '../../core/theme/typography';
+import { APP_FONT_FAMILY, CONTENT_ZOOM_PROPERTY, DOCUMENT_MEASURE_PX, MARKDOWN_FONT_SIZE } from '../../core/theme/typography';
 import {
   normalizePreviewTheme,
   previewThemeBackground,
@@ -344,8 +344,17 @@ function previewFragmentFromTemplate(template: string): string {
 function previewStyles(themeId: PreviewThemeId, screenTypography: boolean): string {
   const screenTypographyStyles = screenTypography ? `
       /* Keep reading and editing surfaces in proportion with the 12px app chrome. */
-      html { font-size: 14px !important; }
-      .markdown-preview { font-size: 14px !important; }` : '';
+      html { font-size: ${MARKDOWN_FONT_SIZE}px !important; }
+      .markdown-preview { font-size: ${MARKDOWN_FONT_SIZE}px !important; }
+      /* A readable measure: the preview still paints the full width, and its side
+         padding grows so the text column is centered and at most ${DOCUMENT_MEASURE_PX}px wide
+         on screen. Native tab zoom scales every length, so the width is divided by
+         the tab zoom main publishes: zooming changes the text, not the column. */
+      .markdown-preview {
+        box-sizing: border-box !important;
+        padding-left: max(2em, calc((100% - ${DOCUMENT_MEASURE_PX}px / var(${CONTENT_ZOOM_PROPERTY}, 1)) / 2)) !important;
+        padding-right: max(2em, calc((100% - ${DOCUMENT_MEASURE_PX}px / var(${CONTENT_ZOOM_PROPERTY}, 1)) / 2)) !important;
+      }` : '';
   return `<style>
       /* theme stylesheet가 적용되기 전 첫 frame이 흰색으로 칠해지지 않게
          한다. 새 문서를 열 때 보이던 흰 섬광의 원인이다. bridge가 theme을

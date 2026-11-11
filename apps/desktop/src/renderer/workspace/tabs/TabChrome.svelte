@@ -67,6 +67,9 @@ import type { AppActions } from '../../ports/ui-actions';
     <button class="new-resource-button new-terminal-tab-button" type="button" title="New terminal" aria-label="New terminal" onclick={() => actions.newTerminal(groupId)}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M6 8l4 4-4 4M18 14v7M14.5 17.5h7"/></svg>
     </button>
+    <button class="new-resource-button new-folder-tab-button" type="button" title="New folder tab (Ctrl/Cmd+Shift+E)" aria-label="New folder tab" onclick={() => actions.newFolderTab(groupId)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 20H3.5V5.5h6l2 2.5h9V12M18 14v7M14.5 17.5h7"/></svg>
+    </button>
   </div>
 </nav>
 

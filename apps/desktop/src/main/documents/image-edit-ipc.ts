@@ -1,4 +1,4 @@
-import { dialog } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
@@ -74,7 +74,7 @@ export function installImageEditIpc(channels: WindowIpc, documents: DocumentMana
     let target = doc.path;
     const matches = (file: string) => (recipe.format === 'jpeg' ? /\.jpe?g$/i : new RegExp(`\\.${recipe.format}$`, 'i')).test(file);
     if (request.saveAs || !matches(target)) {
-      const result = await dialog.showSaveDialog(state.window, { title: 'Save image as',
+      const result = await pathDialog.showSaveDialog(state.window, { title: 'Save image as',
         defaultPath: path.join(path.dirname(doc.path), `${path.parse(doc.path).name}.${extension}`),
         filters: [{ name: recipe.format.toUpperCase(), extensions: recipe.format === 'jpeg' ? ['jpg', 'jpeg'] : [extension] }] });
       if (result.canceled || !result.filePath) return { canceled: true };

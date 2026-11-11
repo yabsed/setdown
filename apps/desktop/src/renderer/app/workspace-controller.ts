@@ -44,6 +44,9 @@ import { AutoSaveController } from '../workspace/auto-save';
 import { TabController } from '../workspace/tab-controller';
 import { installWorkspaceTools } from './editor-tools-controller';
 import { openEditorCommands, editorToolsNow, runEditorCommand } from '../editor/tools/tools-runtime';
+import { createFolderOperations } from '../folder/folder-actions';
+import { createPickerController } from '../folder/picker-controller';
+import { installFileCommandTarget } from '../files/file-command-target';
 
 const EMPTY_ANCHOR: ViewportAnchor = {
   sourceLine: 1, yRatio: GOLDEN_TOP_RATIO, reason: 'empty-document', confidence: 'fallback',
@@ -62,6 +65,17 @@ export function startWorkspace(desktop: DesktopPort) {
     const result = fileMutation.then(() => documents.save(saveAs));
     fileMutation = result.catch(() => {}); return result;
   };
+  /** One queue for saves and Explorer/folder-tab file changes; auto save pauses during each. */
+  const runFileMutation = <T,>(operation: () => Promise<T>): Promise<T> => {
+    const result = fileMutation.then(async () => {
+      const release = await autoSave.hold();
+      try { return await operation(); } finally { release(); }
+    });
+    fileMutation = result.catch(() => {}); return result;
+  };
+  const parentFolder = (path: string) => path.replace(/[\\/][^\\/]+[\\/]?$/, '') || '/';
+  const folderFiles = createFolderOperations({ desktop, runMutation: runFileMutation,
+    relocatePath: (from, to) => tabs.relocatePath(from, to), prepareRemove: path => tabs.prepareRemove(path), commitRemove: path => tabs.commitRemove(path) });
   const actions: AppActions = {
     restoreWorkspace: () => { void runEditorCommand('setdown.session.restore').catch(error => window.alert(String(error))); },
     openLanguageLocation: async (path, selection) => {
@@ -100,6 +114,42 @@ export function startWorkspace(desktop: DesktopPort) {
       else document.querySelector<HTMLElement>(`.editor-group[data-group-id="${groupId}"] .inputarea, .editor-group[data-group-id="${groupId}"] .xterm-helper-textarea`)?.focus();
     },
     newTerminal: groupId => { projectOpenRequest++; projects.deactivateGitDiff(); void tabs.openTerminal('', groupId); },
+    newFolderTab: groupId => {
+      projectOpenRequest++; projects.deactivateGitDiff();
+      void (async () => tabs.openFolder(project.folder?.path ?? await desktop.files.home(), { groupId, reuse: false }))()
+        .catch(error => { browser.error = String(error); });
+    },
+    openFolder: async (path, options = {}) => {
+      projectOpenRequest++; projects.deactivateGitDiff();
+      const location = await desktop.files.resolve(path);
+      if (location.kind !== 'folder') throw Error(`No folder exists at ${path}.`);
+      let groupId = options.groupId ?? workspace.groups.focusedId;
+      if (options.side) groupId = workspace.groups.side(groupId).id;
+      await tabs.openFolder(location.path, { groupId, selection: options.selection, reuse: !options.newTab });
+    },
+    folderNavigate: async (tabId, path, selection) => {
+      if (workspace.activeId !== tabId) await tabs.activate(tabId);
+      projects.deactivateGitDiff();
+      await tabs.navigateLocation(tabId, fileLocation(path), undefined, selection);
+    },
+    folderSelected: (tabId, paths) => tabs.folderSelected(tabId, paths),
+    folderViewChanged: (tabId, update) => tabs.folderViewChanged(tabId, update),
+    folderOpenEntries: async (tabId, entries, options = {}) => {
+      const groupId = workspace.groups.owner(tabId)?.id ?? workspace.groups.focusedId;
+      for (const entry of entries) {
+        if (entry.kind === 'directory') { if (!options.external) await tabs.openFolder(entry.path, { groupId, reuse: false }); continue; }
+        if (options.external || entry.kind === 'file') { await desktop.files.open(entry.path); continue; }
+        projectOpenRequest++; projects.deactivateGitDiff();
+        const snapshot = await desktop.readDocumentLocation(fileLocation(entry.path));
+        await tabs.show(snapshot, 'viewer', 'document', undefined, { groupId, pinned: true, side: options.side });
+      }
+    },
+    folderOpenTerminal: path => { projects.deactivateGitDiff(); void tabs.openTerminal(path); },
+    folderOpenWorkspace: path => projects.openFolderPath(path),
+    folderFiles,
+    completePath: prefix => desktop.files.complete(prefix, 8),
+    pickerAccept: (tabId, paths) => picker.accept(tabId, paths),
+    pickerCancel: tabId => picker.cancel(tabId),
     openTerminalSession: id => { projects.deactivateGitDiff(); void tabs.openTerminalSession(id).catch(error => { browser.error = String(error); }); },
     closeTerminalSession: id => { void tabs.closeTerminalSession(id); },
     terminalChanged: (id, info) => tabs.terminalChanged(id, info),
@@ -108,18 +158,33 @@ export function startWorkspace(desktop: DesktopPort) {
       const target = workspace.groups.groups.find(group => group.id === groupId);
       const id = target?.activeId;
       const previous = id ? workspace.find(id) : null;
+      if (id && previous?.kind === 'folder' && previous.picker) {
+        // A file chooser's address bar moves within the filesystem; it never opens documents or websites.
+        if (!isFileLocation(input)) throw Error('Enter a folder or file path to choose from.');
+        const location = await desktop.files.resolve(input);
+        if (location.kind === 'missing') throw Error(`No file or folder exists at ${location.path}.`);
+        await tabs.navigateLocation(id, fileLocation(location.kind === 'folder' ? location.path : parentFolder(location.path)), undefined,
+          location.kind === 'file' ? [location.path] : undefined);
+        return;
+      }
       if (id && workspace.activeId !== id) await tabs.activate(id);
       projects.deactivateGitDiff();
       if (previous?.kind === 'diff') {
-        if (isFileLocation(input)) await tabs.show(await desktop.readDocumentLocation(input), 'viewer', 'document', undefined, { groupId, pinned: true });
-        else await tabs.openWeb(input);
+        if (isFileLocation(input)) {
+          const location = await desktop.files.resolve(input);
+          if (location.kind === 'folder') await tabs.openFolder(location.path, { groupId });
+          else await tabs.show(await desktop.readDocumentLocation(location.path), 'viewer', 'document', undefined, { groupId, pinned: true });
+        } else await tabs.openWeb(input);
         return;
       }
       if (id) {
         if (await tabs.navigateLocation(id, input) && previous && isDocumentTab(previous)
           && workspace.find(id) !== previous) projects.closeWorkingTreeReviews(previous.document.path);
-      } else if (isFileLocation(input)) await tabs.show(await desktop.readDocumentLocation(input));
-      else await tabs.openWeb(input);
+      } else if (isFileLocation(input)) {
+        const location = await desktop.files.resolve(input);
+        if (location.kind === 'folder') await tabs.openFolder(location.path, { groupId });
+        else await tabs.show(await desktop.readDocumentLocation(location.path));
+      } else await tabs.openWeb(input);
     },
     navigateHistory: (id, direction) => {
       void (async () => {
@@ -218,6 +283,7 @@ export function startWorkspace(desktop: DesktopPort) {
     reloadLocalDocument: async (id, confirmed = false) => {
       const tab = workspace.find(id);
       if (tab?.kind === 'diff') { await projects.refreshGit(); return; }
+      if (tab?.kind === 'folder') { tabs.refreshFolder(id); return; }
       if (!tab || !isDocumentTab(tab) || tab.document.isUntitled) return;
       if (tabs.dirty(tab) && (!confirmed || view.reloadPrompt?.revision !== tab.revision || view.reloadPrompt?.path !== tab.document.path)) {
         view.reloadPrompt = { id, name: tab.document.name, revision: tab.revision, path: tab.document.path }; return;
@@ -304,16 +370,27 @@ export function startWorkspace(desktop: DesktopPort) {
     copyReview: (id, group, direction) => projects.copyReview(id, group, direction),
     activateReview: id => projects.activateGitDiff(id), closeReview: (id, confirmed) => projects.closeGitDiff(id, confirmed),
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: syncGroupLayout,
-    autoSave: { schedule: (tab) => autoSave.schedule(workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab), cancel: (tabId) => autoSave.cancel(tabId) } });
+    autoSave: { schedule: (tab) => autoSave.schedule(workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab), cancel: (tabId) => autoSave.cancel(tabId) },
+    pickerClosed: id => picker.closed(id) });
+  const picker = createPickerController({ desktop, workspace, tabs, projectFolder: () => project.folder?.path ?? null });
+  const stopFileCommands = installFileCommandTarget(desktop.explorer, () => project.open && project.visible);
+  /** Folders requested by the launch arguments, a second instance or another application's "Show in folder". */
+  const showRequestedFolder = (request: import('../../protocol/files').FolderOpenRequest) => {
+    void actions.openFolder(request.path, { selection: request.selection }).then(() => {
+      if (request.properties && request.selection?.[0]) window.dispatchEvent(new CustomEvent('setdown:folder-properties', { detail: request.selection[0] }));
+    }).catch(error => { browser.error = String(error); });
+  };
+  const stopFolderRequests = desktop.files.onOpenRequest(showRequestedFolder);
+  window.addEventListener('beforeunload', () => { picker.dispose(); stopFileCommands(); stopFolderRequests(); }, { once: true });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, changed: () => tabs.render(), layoutChanged: syncGroupLayout, activate: id => actions.activateTab(id) });
   browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory,
     id => actions.browserReaderEnter(id));
   /** Open shell menus/dialogs own Escape first (they close on it); reader
    * entry is the last stop for an unconsumed Esc. */
   const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="alertdialog"], dialog[open]')]
-    .some(element => element.getClientRects().length > 0);
+    .some(element => !element.closest('[data-folder-list]') && element.getClientRects().length > 0);
   const sidebarOwnsEscape = (target = document.activeElement) => target instanceof Element
-    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm, .folder-picker, .language-support');
+    && !!target.closest('.explorer-tree, .explorer-root, .explorer-filter, .project-context-menu, .project-confirm, .folder-picker, .language-support, .folder-surface');
   const tabDrag = createTabDrag({ desktop, shell, tabs: workspace.tabs, groups: workspace.groups,
     dragging: (active) => groups?.drag(active),
     openFile: async (path, placement) => {
@@ -374,13 +451,7 @@ export function startWorkspace(desktop: DesktopPort) {
     activateWorkingTree: tabs.activateWorkingTreePath, workingTreeBuffer: tabs.documentBuffer,
     workingTreeChanged: tabs.acceptWorkingTreeBuffer, reloadDocuments: tabs.reloadDocumentPaths,
     pathMoved: tabs.relocatePath, prepareRemove: tabs.prepareRemove, commitRemove: tabs.commitRemove,
-    runMutation: operation => {
-      const result = fileMutation.then(async () => {
-        const release = await autoSave.hold();
-        try { return await operation(); } finally { release(); }
-      });
-      fileMutation = result.catch(() => {}); return result;
-    },
+    runMutation: runFileMutation,
     reviewChanged: (open, activeReview) => {
       shell.dataset.gitDiff = String(open);
       reader.setSuspended(activeReview); browsers?.sync();
@@ -512,6 +583,7 @@ export function startWorkspace(desktop: DesktopPort) {
       }
       if (command === 'language-support') { window.dispatchEvent(new Event('setdown:language-support')); return; }
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
+      if (command === 'new-folder-tab') { actions.newFolderTab(); return; }
       if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
       if (command === 'reader-select-all') {
         // Address/search fields retain their own Select All even while a Reader
@@ -648,5 +720,6 @@ export function startWorkspace(desktop: DesktopPort) {
     for (const page of pages) await tabs.addWeb(page, true);
     if (!workspace.activeId && pages.length) await tabs.activate(pages[0].id);
     desktop.browser.ready();
+    for (const request of await desktop.files.launchRequests()) showRequestedFolder(request);
   });
 }

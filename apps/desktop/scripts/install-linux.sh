@@ -41,6 +41,8 @@ xdg-mime default setdown.desktop text/markdown
 xdg-mime default setdown.desktop text/x-markdown
 xdg-mime default setdown.desktop text/plain
 xdg-mime default setdown.desktop application/pdf
+# Setdown is the file manager: folders opened from other applications open a folder tab.
+xdg-mime default setdown.desktop inode/directory
 
 echo "Setdown was installed successfully."
 echo "Application directory: $app_dir"

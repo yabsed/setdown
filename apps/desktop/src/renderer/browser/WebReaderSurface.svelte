@@ -7,7 +7,7 @@
   import { browser } from './browser-state.svelte';
   import { createRenderedFind } from './rendered-find';
   import { zoomState } from '../zoom-state.svelte';
-  import { DOCUMENT_FONT_SIZE } from '../../core/theme/typography';
+  import { DOCUMENT_MEASURE_PX, MARKDOWN_FONT_SIZE, READER_FONT_SIZE } from '../../core/theme/typography';
 
   let { actions, groupId, tabId, snapshot }: {
     actions: AppActions; groupId: string; tabId: string; snapshot: ReaderSnapshot;
@@ -207,15 +207,18 @@
       void actions.navigateLocation(groupId, url.href);
     }, 250);
   }
+  // Reader is the Markdown theme scaled to its larger body, then by the tab zoom.
+  const scale = $derived(READER_FONT_SIZE / MARKDOWN_FONT_SIZE * (zoomState.tabs?.[tabId] ?? 100) / 100);
 </script>
 
 <!-- The reading region itself owns pointer position, like the Markdown
      viewer's native surface; Enter is its keyboard return path. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section class="web-reader" aria-label="Reader mode" data-reader-tab={tabId} tabindex="-1"
-  data-reader-theme={readyTheme} data-zoom-tab={tabId} style:font-size={`${DOCUMENT_FONT_SIZE * (zoomState.tabs?.[tabId] ?? 100) / 100}px`} bind:this={container}
-  style:--reader-scale={(zoomState.tabs?.[tabId] ?? 100) / 100}
-  style:--reader-font-size={`${DOCUMENT_FONT_SIZE * (zoomState.tabs?.[tabId] ?? 100) / 100}px`}
+  data-reader-theme={readyTheme} data-zoom-tab={tabId} style:font-size={`${MARKDOWN_FONT_SIZE * scale}px`} bind:this={container}
+  style:--reader-scale={scale}
+  style:--reader-measure={DOCUMENT_MEASURE_PX}
+  style:--reader-font-size={`${MARKDOWN_FONT_SIZE * scale}px`}
   onscroll={onScroll}
   oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
@@ -236,7 +239,9 @@
     font-family: var(--app-font-family); line-height: 1.6; word-wrap: break-word;
     cursor: text; outline: none; font-synthesis: initial; text-rendering: auto;
   }
-  .web-reader .web-reader-column { width: 100%; padding: 0; margin: 0; }
+  /* The same centered measure as rendered Markdown (core/theme/typography.ts). It is
+     a fixed width: tab zoom scales the text, not the column. */
+  .web-reader .web-reader-column { width: 100%; max-width: calc(var(--reader-measure) * 1px); padding: 0; margin: 0 auto; }
   .pending { visibility: hidden; }
   /* Native Markdown uses the selected Crossnote theme, with these document
      font and responsive-content overrides. Keep the same screen/tab scale. */
@@ -244,6 +249,9 @@
   .web-reader .web-reader-content,
   .web-reader :global(:is(h1,h2,h3,h4,h5,h6,p,blockquote,ul,ol,li,dl,dt,dd,
     table,th,td,pre,code,kbd,samp,tt,summary)) { font-family: var(--app-font-family) !important; }
+  /* The browser's default 40px list indent is a fixed length that no theme rule
+     rescales; scale it like every theme length. Zero specificity keeps themes in charge. */
+  :global(:where(.web-reader) :where(ul, ol, menu)) { padding-inline-start: calc(40px * var(--reader-scale)); }
   .web-reader .meta { color: var(--app-muted-text); font-size: .85em; margin: 0 0 calc(16px * var(--reader-scale)); }
   .web-reader :global(p), .web-reader :global(li), .web-reader :global(blockquote) { overflow-wrap: break-word; }
   .web-reader :global(pre > code) { font-size: inherit; color: inherit; }

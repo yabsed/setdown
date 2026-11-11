@@ -195,7 +195,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
       return { font: style.fontFamily, size: style.fontSize };
     });
     expect(look.font).toContain('D2Coding');
-    expect(look.size).toBe('14px');
+    expect(look.size).toBe('20px');
     await expect.poll(() => reader.evaluate(el => {
       const rect = el.getBoundingClientRect();
       const golden = rect.top + el.clientHeight * 0.372;
@@ -222,7 +222,12 @@ test('Esc opens reader mode at the same block and double-click returns to the li
     await toggle.click();
     await expect(reader).toBeVisible();
     await expect(f.page.getByRole('button', { name: 'Exit reader mode' })).toHaveAttribute('aria-pressed', 'true');
-    expect(await reader.evaluate(el => el.querySelector('.web-reader-column')!.getBoundingClientRect().width - (el.clientWidth - 56))).toBeCloseTo(0, 0);
+    // The column fills a narrow pane (minus 2em padding) and is centered at no more than 840px at any zoom.
+    expect(await reader.evaluate(el => {
+      const column = el.querySelector('.web-reader-column')!.getBoundingClientRect(), pane = el.getBoundingClientRect();
+      const em = parseFloat(getComputedStyle(el).fontSize);
+      return [column.width - Math.min(el.clientWidth - 4 * em, 840), (column.left - pane.left) - (pane.left + el.clientWidth - column.right)];
+    })).toEqual([expect.closeTo(0, 0), expect.closeTo(0, 0)]);
     await reader.locator('[data-setdown-block]', { hasText: 'Paragraph 12:' }).first().scrollIntoViewIfNeeded();
     await f.page.waitForTimeout(150);
     const readerMarker = await reader.evaluate(el => {
@@ -290,7 +295,7 @@ test('reader toolbar and wheel share the live website tab zoom while other Markd
     await expect(textReset).toHaveText('120%');
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
     await expect(textReset).toHaveText('130%');
-    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(18.2, 2);
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(26, 2);
     await reader.hover();
     await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
     await expect(textReset).toHaveText('140%');
@@ -427,19 +432,21 @@ test('web articles share native Markdown typography and theme styles without aff
     await evaluatePage(f.app, f.origin, `document.querySelector('article').innerHTML = ${JSON.stringify('<h1>Long article</h1>' + body + paragraphs)}; true`);
     await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
     const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
+    // Reader is the Markdown theme scaled to its larger body (20px against 14px), so
+    // lengths are compared in em of each surface's body size.
     const measure = (root: Element) => {
+      const base = parseFloat(getComputedStyle(root).fontSize);
+      const em = (value: string) => value.replace(/(-?\d*\.?\d+)px/g, (_, px) => `${Math.round(Number(px) / base * 100) / 100}em`);
       const properties = ['font-family', 'font-size', 'font-weight', 'font-style', 'font-synthesis', 'text-rendering', 'letter-spacing', 'line-height', 'color', 'background-color',
         'margin-top', 'margin-bottom', 'padding-left', 'padding-right', 'padding-top', 'padding-bottom',
         'border-left-width', 'border-left-color', 'list-style-type', 'border-collapse'];
-      // CSSOM serialization rounds decimal em values; normalize below 0.001px.
       const result = Object.fromEntries(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p:not(.meta)', 'strong', 'em', 'a', 'code',
         'ul', 'ul ul', 'li > p', 'ol', 'blockquote', 'blockquote p', 'pre', 'table', 'th', 'td', 'hr']
         .map(selector => {
           const element = root.querySelector(selector);
           if (!element) throw Error(`Missing typography probe: ${selector}`);
           const style = getComputedStyle(element);
-          return [selector, Object.fromEntries(properties.map(property => [property, style.getPropertyValue(property)
-            .replace(/(-?\d*\.?\d+)px/g, (_, value) => `${Math.round(Number(value) * 1000) / 1000}px`)]))];
+          return [selector, Object.fromEntries(properties.map(property => [property, em(style.getPropertyValue(property))]))];
         }));
       const walker = document.createTreeWalker(root.querySelector('pre')!, NodeFilter.SHOW_TEXT);
       let text = walker.nextNode();
@@ -447,8 +454,7 @@ test('web articles share native Markdown typography and theme styles without aff
       if (!text?.parentElement) throw Error('Missing code block text');
       const style = getComputedStyle(text.parentElement);
       result['code block text'] = Object.fromEntries(['font-family', 'font-size', 'line-height', 'color']
-        .map(property => [property, style.getPropertyValue(property)
-          .replace(/(-?\d*\.?\d+)px/g, (_, value) => `${Math.round(Number(value) * 1000) / 1000}px`)]));
+        .map(property => [property, em(style.getPropertyValue(property))]));
       return result;
     };
     const shell = () => f.page.locator('.location-bar').evaluate(el => ({
@@ -470,7 +476,9 @@ test('web articles share native Markdown typography and theme styles without aff
       const article = await reader.locator('.web-reader-content').evaluate(measure);
       for (const [selector, style] of Object.entries(markdown!)) for (const [property, expected] of Object.entries(style)) {
         const actual = article[selector]?.[property];
-        if (actual !== expected) differences.push({ theme, selector, property, expected, actual });
+        // Borders snap to whole device pixels, so a scaled hairline may differ by one pixel.
+        const close = property === 'border-left-width' && Math.abs(parseFloat(actual) - parseFloat(expected)) <= 0.08;
+        if (actual !== expected && !close) differences.push({ theme, selector, property, expected, actual });
       }
       expect(await shell()).toEqual(shellBefore);
     }
@@ -486,6 +494,36 @@ test('web articles share native Markdown typography and theme styles without aff
     await expect(address).toBeFocused();
     expect(Math.abs((await reader.locator('p').filter({ hasText: 'Passage 20:' }).boundingBox())!.y - anchor!.y)).toBeLessThan(2);
     await f.page.screenshot({ path: test.info().outputPath('web-reader-markdown-typography.png') });
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('rendered Markdown keeps a centered 840px reading column while tab zoom changes only the text', async () => {
+  const f = await fixture(true, `# Measure\n\n${Array.from({ length: 12 }, (_, i) => `Paragraph ${i}: a long line of prose that wraps inside the reading column instead of stretching across a wide window.`).join('\n\n')}\n`);
+  try {
+    await f.app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.unmaximize(); window.setContentSize(1500, 800); });
+    const native = previews(f.app);
+    const measure = () => native.evaluate<{ column: number; left: number; right: number; font: number; zoom: number }>(`(() => {
+      const el = document.querySelector('.markdown-preview'); if (!el) return null;
+      const style = getComputedStyle(el), left = parseFloat(style.paddingLeft), right = parseFloat(style.paddingRight);
+      const zoom = Number(getComputedStyle(document.documentElement).getPropertyValue('--setdown-content-zoom') || 1);
+      return { column: (el.clientWidth - left - right) * zoom, left, right, font: parseFloat(style.fontSize) * zoom, zoom };
+    })()`);
+    // 100%: Markdown's 14px body in an 840px column with equal side space.
+    await expect.poll(async () => Math.round((await measure())?.column ?? 0)).toBe(840);
+    const initial = (await measure())!;
+    expect(initial.font).toBeCloseTo(14, 1);
+    expect(Math.abs(initial.left - initial.right)).toBeLessThan(1);
+    // Zooming the tab changes the text size; the column keeps its on-screen width.
+    for (const expected of [12.6, 11.2]) {
+      await f.page.getByRole('button', { name: 'Zoom text out', exact: true }).click();
+      await expect.poll(async () => Math.round(((await measure())?.font ?? 0) * 10) / 10).toBe(expected);
+      await expect.poll(async () => Math.round((await measure())?.column ?? 0)).toBe(840);
+    }
+    // A pane narrower than the measure uses its whole width with 2em of padding.
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(700, 800));
+    await expect.poll(async () => { const value = await measure(); return value ? Math.round(value.left / (value.font / value.zoom) * 10) / 10 : 0; }).toBe(2);
+    expect((await measure())!.column).toBeLessThan(700);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

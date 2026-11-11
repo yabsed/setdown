@@ -12,9 +12,10 @@ import type { ProjectView } from '../project/project-state.svelte';
 import type { WorkingTreeEdit } from '../../core/document/text-edit';
 import type { BrowserActions } from '../browser/browser-actions';
 import type { TerminalActions } from '../terminal/terminal-actions';
+import type { FolderActions } from '../folder/folder-actions';
 
 /** Final shell action contract. Feature implementations own their action types. */
-export type AppActions = BrowserActions & TerminalActions & {
+export type AppActions = BrowserActions & TerminalActions & FolderActions & {
   restoreWorkspace(): void;
   openLanguageLocation(path: string, selection?: import('monaco-editor').IRange | import('monaco-editor').IPosition): Promise<void>;
   browserFindOverlay: import('../../protocol/browser-find').BrowserFindOverlayApi;

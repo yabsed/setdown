@@ -1,3 +1,4 @@
+import { CONTENT_ZOOM_PROPERTY } from '../../core/theme/typography';
 import { appZoomStep } from '../../core/zoom';
 import { ipcMain, WebContentsView } from 'electron';
 import type { Rectangle, WebContents } from 'electron';
@@ -124,14 +125,28 @@ export class PreviewManager {
     this.warmup = { url: `marktex-preview://document/${token}`, themeId };
   }
 
+  private readonly contentZoom = new WeakMap<WebContentsView, number>();
+  /** A document at 100% needs no property; skip the round trip on that (default) path. */
+  private publishContentZoom(view: WebContentsView, factor: number): void {
+    const contents = view.webContents;
+    if (contents.isDestroyed() || !Number.isFinite(factor) || factor <= 0) return;
+    if (factor === 1 && (this.contentZoom.get(view) ?? 1) === 1) return;
+    this.contentZoom.set(view, factor);
+    void contents.executeJavaScript(`document.documentElement.style.setProperty(${JSON.stringify(CONTENT_ZOOM_PROPERTY)}, ${JSON.stringify(String(factor))})`, true)
+      .catch(() => { /* A navigating or closing view republishes after its next load. */ });
+  }
+
   private createView() {
     const view = new WebContentsView({ webPreferences: {
       preload: this.options.preload, contextIsolation: true, nodeIntegration: false, sandbox: true,
     } });
-    this.zoom.track(view.webContents, undefined, () => {
+    const tabFactor = () => {
       const id = [...this.views].find(([, entry]) => entry.view === view)?.[0];
       return id ? this.zoom.tabFactor(id) : 1;
-    });
+    };
+    // After every zoom application and document load, tell the document its tab
+    // zoom so the reading column keeps its on-screen width (render-worker.ts).
+    this.zoom.track(view.webContents, () => this.publishContentZoom(view, tabFactor()), tabFactor);
     view.setBackgroundColor(previewThemeBackground(this.options.theme()));
     view.setVisible(false);
     const contents = view.webContents;
@@ -244,6 +259,7 @@ export class PreviewManager {
     this.views.set(tabId, { view, ownerWebContentsId: ownerId,
       pendingScrollPosition: null, pendingScrollRatio: null, appliedBounds: null });
     view.webContents.setZoomFactor(this.zoom.factor * this.zoom.tabFactor(tabId));
+    this.publishContentZoom(view, this.zoom.tabFactor(tabId));
     view.webContents.on('before-input-event', (event, input) => {
       const preview = this.views.get(tabId);
       const state = preview && this.options.stateFor(preview.ownerWebContentsId);

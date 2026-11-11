@@ -106,6 +106,16 @@ import type { AppActions } from './ports/ui-actions';
     {/if}
     </div>
   {/each}
+  {#each view.folderTabs as tab (tab.id)}
+    {@const group = view.groups.find(group => group.activeId === tab.id)}
+    {@const active = !!group && !(group.id === view.focusedGroupId && project.gitDiffActive)}
+    {@const box = boxes.find(box => box.id === group?.id) ?? focused}
+    <div class="group-content folder-content" class:inactive={!active} inert={!active} style={geometry(box)} data-folder-tab={tab.id} data-zoom-tab={tab.id}>
+      {#await import('./folder/FolderSurface.svelte') then module}
+        <module.default {tab} {active} focused={active && group?.id === view.focusedGroupId} {actions} {desktop} />
+      {:catch error}<div role="alert">Could not load the folder view: {String(error)}</div>{/await}
+    </div>
+  {/each}
   {#each view.terminalSessions as session (session.id)}
     {@const tab = view.tabs.find(tab => tab.kind === 'terminal' && tab.sessionId === session.id)}
     {@const group = view.groups.find(group => group.activeId === tab?.id)}

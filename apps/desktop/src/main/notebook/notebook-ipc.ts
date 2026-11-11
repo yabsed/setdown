@@ -1,6 +1,7 @@
 import { NotebookTools } from './notebook-tools';
 import type { BrowserManager } from '../browser/browser-manager';
-import { app, clipboard, dialog } from 'electron';
+import { app, clipboard } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import path from 'node:path';
 import os from 'node:os';
 import type { NotebookRun, NotebookTool } from '../../protocol/notebook';
@@ -64,7 +65,7 @@ export function installNotebookIpc(channels: WindowIpc, browsers: BrowserManager
   });
   channels.handle('notebook:choose-python', async (state, file?: string) => {
     if (file) owns(state, file);
-    const result = await dialog.showOpenDialog(state.window, { title: 'Choose Python with ipykernel installed', properties: ['openFile'] });
+    const result = await pathDialog.showOpenDialog(state.window, { title: 'Choose Python with ipykernel installed', properties: ['openFile'] });
     const python = result.canceled ? null : result.filePaths[0] ?? null;
     if (python && file) await notebookPython.select(file, python);
     return python;

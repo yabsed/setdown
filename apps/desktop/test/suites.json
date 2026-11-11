@@ -130,7 +130,13 @@
       "src/core/document/language-catalog.test.ts",
       "src/main/language/runtime-language-catalog.test.ts",
       "src/main/language/zed-project-settings.test.ts",
-      "src/renderer/language/tree-sitter-runtime.test.ts"
+      "src/renderer/language/tree-sitter-runtime.test.ts",
+      "src/core/files/picker-rules.test.ts",
+      "src/core/files/folder-presentation.test.ts",
+      "src/main/files/file-browser-service.test.ts",
+      "src/main/dialogs/path-picker.test.ts",
+      "src/main/files/file-manager.test.ts",
+      "src/main/files/places.test.ts"
     ]
   },
   "e2e": {
@@ -207,7 +213,7 @@
       "previewContract": true
     },
     "git/git-review-cold-escape.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "git/git-review-editing-tools.spec.ts": {
       "previewContract": false
@@ -219,10 +225,10 @@
       "previewContract": true
     },
     "git/git-review-instant-escape.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "git/git-review-reading-position.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "git/git-review-tabs.spec.ts": {
       "previewContract": true
@@ -348,7 +354,7 @@
       "previewContract": true
     },
     "workspace/reload-layout.spec.ts": {
-      "previewContract": false
+      "previewContract": true
     },
     "workspace/folder-history.spec.ts": {
       "previewContract": true
@@ -400,6 +406,9 @@
       "previewContract": true
     },
     "browser/bookmark-import.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/folder-tab.spec.ts": {
       "previewContract": true
     }
   },

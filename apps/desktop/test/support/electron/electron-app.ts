@@ -4,7 +4,13 @@ import { createRequire } from 'node:module';
 // Resolve the app's Electron, even when npm installs it inside the workspace.
 const executablePath = createRequire(import.meta.url)('electron') as string;
 export const electron = {
-  launch: (options: Parameters<typeof _electron.launch>[0] = {}) => _electron.launch({ executablePath, chromiumSandbox: true, ...options }),
+  /**
+   * Specs that replace `electron.dialog` keep the platform dialog path
+   * (`SETDOWN_NATIVE_DIALOGS=1`). Folder-tab picker specs pass `'0'` to drive
+   * Setdown's in-app chooser through the real UI instead.
+   */
+  launch: (options: Parameters<typeof _electron.launch>[0] = {}) => _electron.launch({ executablePath, chromiumSandbox: true, ...options,
+    env: { ...(options.env ?? process.env) as Record<string, string>, SETDOWN_NATIVE_DIALOGS: options.env?.SETDOWN_NATIVE_DIALOGS ?? '1' } }),
 };
 
 export type TestApplication = Awaited<ReturnType<typeof electron.launch>>;

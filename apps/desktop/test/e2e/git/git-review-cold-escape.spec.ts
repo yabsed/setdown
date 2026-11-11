@@ -22,7 +22,7 @@ function inspectChanges(application: Application) {
       if (!contents.getURL().startsWith('marktex-preview://document/')) return null;
       const geometry = await contents.executeJavaScript(`(() => {
         const changed = Array.from(document.querySelectorAll(
-          '.setdown-rendered-diff-after .setdown-diff-added'
+          '.setdown-rendered-diff-after[data-change="added"]'
         )).find((element) => element.textContent.includes(${JSON.stringify(marker)}));
         if (!changed) return null;
         const rect = changed.getBoundingClientRect();

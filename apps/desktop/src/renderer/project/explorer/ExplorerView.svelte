@@ -12,6 +12,7 @@
   import SideViewMenu from '../SideViewMenu.svelte';
   import ExplorerEditRow from './ExplorerEditRow.svelte';
   import FileIcon from '../FileIcon.svelte';
+  import { fileCommandTarget } from '../../files/file-command-target';
 
   type Edit = {
     mode: 'create' | 'rename';
@@ -110,31 +111,19 @@
 
   onMount(() => {
     const stopProgress = actions.explorer.onProgress(value => { progress = value; });
-    const menuTarget = '.application-menu, .application-menu-popup, .application-submenu-popup, .project-context-menu';
-    const updateTarget = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof Element) || target.closest(menuTarget)) return;
-      actions.explorer.setEditTarget(!!target.closest('.explorer-row:not(.explorer-edit), .explorer-root, .explorer-tree')
-        && !target.closest('input, textarea, [contenteditable="true"]') && project.open && project.visible);
-    };
+    // file-command-target.ts decides whether the Explorer or a folder tab owns Ctrl+C/X/V.
     const command = (event: Event) => {
-      if (project.visible && project.open && !editing) void fileCommand((event as CustomEvent<ExplorerEditCommand>).detail);
+      if (fileCommandTarget.owner === 'explorer' && project.visible && project.open && !editing) void fileCommand((event as CustomEvent<ExplorerEditCommand>).detail);
     };
-    const blur = () => actions.explorer.setEditTarget(false);
-    document.addEventListener('focusin', updateTarget);
-    document.addEventListener('pointerdown', updateTarget, true);
     window.addEventListener('setdown:explorer-command', command);
     window.addEventListener('focus', refreshClipboard);
-    window.addEventListener('blur', blur);
     void refreshClipboard();
     const timer = setInterval(() => { if (clipboard?.cut && document.hasFocus()) void refreshClipboard(); }, 1500);
     return () => {
-      stopProgress(); clearInterval(timer); endDrag(); actions.explorer.setEditTarget(false);
-      document.removeEventListener('focusin', updateTarget);
-      document.removeEventListener('pointerdown', updateTarget, true);
+      stopProgress(); clearInterval(timer); endDrag();
+      if (fileCommandTarget.owner === 'explorer') { fileCommandTarget.owner = ''; actions.explorer.setEditTarget(false); }
       window.removeEventListener('setdown:explorer-command', command);
       window.removeEventListener('focus', refreshClipboard);
-      window.removeEventListener('blur', blur);
     };
   });
 
@@ -538,7 +527,8 @@
       <button type="button" role="menuitem" onclick={() => { menu = null; actions.chooseProjectFolder(); }}>Open Another Folder…</button>
     {/if}
     <span class="menu-separator"></span>
-    <button type="button" role="menuitem" onclick={() => { const target = menu?.entry?.path ?? project.folder!.path; menu = null; void actions.explorer.reveal(target).catch(fail); }}>Reveal in File Manager</button>
+    <button type="button" role="menuitem" onclick={() => { const entry = menu?.entry, target = entry?.path ?? project.folder!.path; menu = null; void actions.openFolder(entry ? parentOf(target) : target, entry ? { selection: [target] } : {}).catch(fail); }}>Reveal in Folder Tab</button>
+    <button type="button" role="menuitem" onclick={() => { const target = menu?.entry?.path ?? project.folder!.path; menu = null; void actions.explorer.reveal(target).catch(fail); }}>Reveal in System File Manager</button>
     <button type="button" role="menuitem" onclick={() => { const target = createParent(); menu = null; actions.openProjectTerminal(target); }}>Open in Terminal</button>
   </div>
 {/if}

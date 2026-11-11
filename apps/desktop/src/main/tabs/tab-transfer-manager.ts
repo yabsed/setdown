@@ -60,7 +60,8 @@ export class TabTransferManager {
     if (typeof transferId !== 'string' || !incoming || typeof incoming.id !== 'string'
       || this.transfers.has(transferId)
       || !this.options.stateFor(sourceId)
-      || (incoming.kind === 'terminal' ? !this.options.terminals?.owns(sourceId, incoming.sessionId ?? incoming.id) : incoming.kind === 'web' ? !this.options.browsers?.owns(sourceId, incoming.id) : typeof incoming.document?.path !== 'string')) return;
+      || (incoming.kind === 'terminal' ? !this.options.terminals?.owns(sourceId, incoming.sessionId ?? incoming.id) : incoming.kind === 'web' ? !this.options.browsers?.owns(sourceId, incoming.id)
+        : incoming.kind === 'folder' ? typeof incoming.path !== 'string' || !incoming.path : typeof incoming.document?.path !== 'string')) return;
     for (const [id, pending] of this.transfers) if (pending.dragActive && pending.claimedByWebContentsId === null)
       this.cancel(pending.sourceWebContentsId, id);
     const source = this.options.stateFor(sourceId)!.window;
@@ -81,8 +82,8 @@ export class TabTransferManager {
         }
       });
     }
-    const markdown = incoming.kind !== 'web' && incoming.kind !== 'terminal' && isMarkdownDocument(incoming.document.path);
-    const tab: TransferableTab = incoming.kind === 'terminal' || incoming.kind === 'web' || markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
+    const markdown = incoming.kind !== 'web' && incoming.kind !== 'terminal' && incoming.kind !== 'folder' && isMarkdownDocument(incoming.document.path);
+    const tab: TransferableTab = incoming.kind === 'terminal' || incoming.kind === 'web' || incoming.kind === 'folder' || markdown ? incoming : { ...incoming, surface: documentSurface(incoming.document.path),
       previewUrl: null, previewRevision: null, previewTheme: null, viewerScrollRatio: null,
       viewerBand: [], tocOpen: false };
     const ownedPreview = markdown ? this.options.previews.views.get(tab.id) : undefined;
@@ -143,8 +144,8 @@ export class TabTransferManager {
       transfer.previewAdopted = this.options.browsers?.adopt(transfer.sourceWebContentsId, destinationId, transfer.tab.id) ?? false;
       return transfer.previewAdopted;
     }
-    // Text tabs transfer their document/model state; there is no native page to adopt.
-    if (!isMarkdownDocument(transfer.tab.document.path)) {
+    // Text and folder tabs transfer plain state; there is no native page to adopt.
+    if (transfer.tab.kind === 'folder' || !isMarkdownDocument(transfer.tab.document.path)) {
       transfer.previewAdopted = true;
       return true;
     }

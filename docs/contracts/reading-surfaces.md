@@ -68,15 +68,27 @@ They join the existing `media/image-reader.spec.ts` and full preview contract ga
 
 ### Document and web readers
 
-Web Reader shares Markdown's 14px screen body, app font, 2em page padding
-and full available document width. It loads the same installed Crossnote preview
+Rendered Markdown keeps its 14px screen body (`MARKDOWN_FONT_SIZE`). Web Reader
+uses a 20px body (`READER_FONT_SIZE`, the size of long-form news text; it shared
+Markdown's 14px until 2026-11-12). Reader is the selected Markdown theme scaled by
+20/14: its `--reader-scale` carries that ratio and the tab zoom, so every theme
+length keeps its proportion to the text. Both use the app font and 2em page
+padding. Lines stop at an 840px measure (`DOCUMENT_MEASURE_PX`): a wider pane centers the text column while the surface still paints its
+full width, and a narrower pane uses all of its width. Tab zoom changes the text
+size only; the column keeps its on-screen width. The shell Reader uses a fixed px
+width. The native Markdown preview, whose tab zoom scales every length, divides
+the width by `--setdown-content-zoom`, which `PreviewManager` publishes after each
+zoom application and document load (never at the default 100%). App zoom scales
+the column with the rest of the interface. PDF export keeps the page width.
+Web Reader loads the same installed Crossnote preview
 and code stylesheets and the same imported-theme color overrides, scoped to the
 article so the shell and other groups retain their styling. Headings, paragraphs,
 lists, quotations, inline code and tables follow the selected Markdown theme.
 The existing tab zoom scales the document and its padding and survives entering
 or leaving Reader. Theme changes retain the current reading anchor and never
 refocus an already mounted Reader. `browser/reader.spec.ts` compares actual web
-and native Markdown typography across themes and checks scaled font sizes,
+and native Markdown typography across themes in em of each body size, checks
+scaled font sizes, the fixed reading column at several zoom levels,
 Esc entry, reading-anchor restoration and live-page state preservation.
 
 Rendered Markdown/Git and web Reader snapshots share the small capability-based

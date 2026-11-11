@@ -1,6 +1,6 @@
 import type { ReviewViewport } from '../../../core/preview/review-viewport';
 
-type Reader = (tabId: string) => ReviewViewport | null;
+type Reader = (tabId: string, finishScroll: boolean) => ReviewViewport | null;
 
 /**
  * Renderer-local synchronous port for the Svelte-owned Monaco instance.
@@ -21,7 +21,7 @@ export class GitDiffViewportPort {
     return () => { this.listeners.delete(listener); };
   }
   changed(): void { for (const listener of this.listeners) listener(); }
-  read(tabId: string): ReviewViewport | null { return this.reader?.(tabId) ?? null; }
+  read(tabId: string, finishScroll = false): ReviewViewport | null { return this.reader?.(tabId, finishScroll) ?? null; }
   requestSource(tabId: string, target: ReviewViewport): void { this.sourceTargets.set(tabId, target); }
   takeSourceTarget(tabId: string): ReviewViewport | null {
     const target = this.sourceTargets.get(tabId) ?? null;

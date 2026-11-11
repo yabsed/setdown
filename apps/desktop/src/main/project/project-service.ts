@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { app, dialog } from 'electron';
+import { app } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import type { GitRemoteAction, ProjectEntryKind, ProjectFolder, ProjectSearchRequest } from '../../protocol/desktop-api';
 import { isOpenableDocument } from '../../core/document/document-profile';
 import { canonicalPath, isInside } from '../documents/file-system';
@@ -14,6 +15,7 @@ import { ProjectPaths } from './project-paths';
 import { SearchService } from './search-service';
 import type { VisibleSearchMatch } from './visible-search';
 import { RecentFolders } from './recent-folders';
+import { FileBrowserService } from '../files/file-browser-service';
 export { parseGitDiffHunks, parseGitStatus } from './git-service';
 export { isMarkdownDocument } from './project-paths';
 
@@ -39,8 +41,10 @@ export class ProjectService {
     return result;
   }
   private readonly paths = new ProjectPaths();
-  setLanguageFileOperations(handler: NonNullable<ExplorerService['languageOperation']>): void { this.explorer.languageOperation = handler; }
-  private readonly explorer = new ExplorerService(this.paths, undefined, (state, paths) => {
+  setLanguageFileOperations(handler: NonNullable<ExplorerService['languageOperation']>): void {
+    this.explorer.languageOperation = handler; this.files.setLanguageFileOperations(handler);
+  }
+  private assertNotOpenElsewhere(state: WindowState, paths: string[]): void {
     for (const other of this.windows()) {
       if (other.webContentsId === state.webContentsId) continue;
       const open = [...other.rendererTabs, ...(other.currentDocument ? [other.currentDocument] : [])];
@@ -48,7 +52,12 @@ export class ProjectService {
         throw new Error('This selection is open in another Setdown window. Close those tabs before moving, renaming, or deleting it.');
       }
     }
-  });
+  }
+  private readonly explorer = new ExplorerService(this.paths, undefined, (state, paths) => this.assertNotOpenElsewhere(state, paths));
+  /** Folder tabs share the clipboard, cross-window protection and transfer engine. */
+  readonly files = new FileBrowserService({ clipboard: this.clipboard,
+    beforeMutation: (state, paths) => this.assertNotOpenElsewhere(state, paths),
+    userDirectory: name => { try { return app?.getPath ? app.getPath(name) : null; } catch { return null; } } });
   private readonly git = new GitService(this.paths, undefined, () => app?.getPath ? path.join(app.getPath('userData'), 'git-settings.json') : null);
   private readonly searcher: SearchService;
   private readonly folderRequests = new WeakMap<WindowState, number>();
@@ -60,7 +69,7 @@ export class ProjectService {
   }
   async choose(state: WindowState): Promise<ProjectFolder | null> {
     const request = this.beginFolderRequest(state);
-    const selected = await dialog.showOpenDialog(state.window, { title: 'Open Folder', properties: ['openDirectory'] });
+    const selected = await pathDialog.showOpenDialog(state.window, { title: 'Open Folder', properties: ['openDirectory'] });
     if (selected.canceled || !selected.filePaths[0] || this.folderRequests.get(state) !== request) return null;
     return this.openFolder(state, selected.filePaths[0], request);
   }
@@ -93,7 +102,7 @@ export class ProjectService {
     this.watch(state, folderPath);
     return this.folder(folderPath);
   }
-  dispose = (): Promise<void> => { this.git.watcher.dispose(); return this.watcher.dispose(); };
+  dispose = (): Promise<void> => { this.git.watcher.dispose(); this.files.dispose(); return this.watcher.dispose(); };
   readDirectory = (state: WindowState, directoryPath: string) => this.explorer.readDirectory(state, directoryPath);
   createEntry = (state: WindowState, parentPath: string, name: string, kind: ProjectEntryKind) => this.explorer.create(state, parentPath, name, kind);
   renameEntry = (state: WindowState, entryPath: string, name: string) => this.explorer.rename(state, entryPath, name);

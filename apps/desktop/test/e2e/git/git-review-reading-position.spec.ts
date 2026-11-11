@@ -74,10 +74,29 @@ test('Viewer tab resume preserves its last reading position instead of the sourc
     // Explicit Source -> Esc is a different intent: it must follow the source,
     // rather than incorrectly preserving the old Viewer bookmark at 2400px.
     await page.getByRole('button', { name: 'View Source Diff' }).click();
+    await app.evaluate(({ ipcMain }) => {
+      const state = globalThis as typeof globalThis & { __readingPositionTarget?: { sourceLine: number; topRatio: number; sourceSide: string } };
+      delete state.__readingPositionTarget;
+      ipcMain.on('preview:command', (_event, { message }) => {
+        if (message?.command === 'marktex:position-preview') state.__readingPositionTarget = message;
+      });
+    });
     const input = page.locator('.git-diff-editor').getByRole('textbox').nth(1);
     await input.press('Control+Home');
     await input.press('Escape');
-    await expect.poll(async () => (await visibleReview(app))?.value).toBe(0);
+    const target = () => app.evaluate(() => (globalThis as typeof globalThis & {
+      __readingPositionTarget?: { sourceLine: number; topRatio: number; sourceSide: string };
+    }).__readingPositionTarget);
+    await expect.poll(target).toMatchObject({ sourceLine: 1, sourceSide: 'after' });
+    const position = (await target())!;
+    // Source and rendered headings have different padding. Preserve the actual
+    // requested cursor height rather than assuming the reader must scroll to zero.
+    await expect.poll(() => visibleReview(app, `(() => {
+      const heading = document.querySelector('.setdown-rendered-diff-split .setdown-rendered-diff-after h1');
+      return heading && { text: heading.textContent.trim(),
+        alignment: Math.round(Math.abs(heading.getBoundingClientRect().top - innerHeight * ${position.topRatio})) };
+    })()`)).toMatchObject({ id: initial.id, url: initial.url, value: { text: 'Working', alignment: 0 } });
+    expect(await app.evaluate(async ({ webContents }, id) => !(await webContents.fromId(id)!.capturePage()).isEmpty(), initial.id)).toBe(true);
     await expect(page.getByRole('button', { name: 'View Source Diff' })).toBeVisible();
   } finally {
     await disposeApplication(app);

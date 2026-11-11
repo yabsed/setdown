@@ -303,7 +303,7 @@ for (const extension of ['txt', 'cpp', 'json', 'custom']) test(`open/edit/transf
   f.controller.acceptWorkingTreeBuffer(tab.document.path, 'working tree\r\n');
   const transfer = f.controller.transferable(tab);
   assert.notEqual(transfer.kind, 'web');
-  if (transfer.kind === 'web' || transfer.kind === 'terminal') throw new Error('Expected a document transfer');
+  if (transfer.kind === 'web' || transfer.kind === 'terminal' || transfer.kind === 'folder') throw new Error('Expected a document transfer');
   assert.equal(transfer.document.encoding, 'utf8-bom');
   assert.equal(transfer.document.eol, 'crlf');
   assert.equal(transfer.previewUrl, null);

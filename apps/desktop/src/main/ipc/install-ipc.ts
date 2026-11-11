@@ -32,11 +32,12 @@ import type { AutoSaveStore } from '../settings/auto-save-store';
 import type { ThemeManager } from '../theme/theme-manager';
 import type { WindowIpc } from './window-ipc';
 import type { ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
+import { installFilesIpc } from '../files/files-ipc';
 
 type Options = {
   channels: WindowIpc; documents: DocumentManager; previews: PreviewManager;
   renderer: PreviewRenderer; projects: ProjectService; themes: ThemeManager; transfers: TabTransferManager;
-  autoSave: AutoSaveStore; browsers: BrowserManager;
+  autoSave: AutoSaveStore; browsers: BrowserManager; folderRequests: import('../files/file-manager-launch').FolderRequests;
 };
 function assertMarkdown(filePath: string): void {
   if (!isMarkdownDocument(filePath)) throw new Error('This text document has no Markdown preview.');
@@ -264,6 +265,7 @@ export function installIpc(options: Options): void {
   channels.handle('project:git-remote', (state, action: GitRemoteAction) => projects.runGitRemote(state, action));
   channels.handle('document:reload', (state) => documents.reload(state));
   channels.handle('document:open-link', (state, href: string) => openLink(documents, state, href, options.browsers));
+  installFilesIpc(channels, projects.files, documents, options.folderRequests);
 }
 async function openLink(documents: DocumentManager, state: Parameters<DocumentManager['open']>[0], href: string, browsers: BrowserManager): Promise<void> {
   if (typeof href !== 'string') return;

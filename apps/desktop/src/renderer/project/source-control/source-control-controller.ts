@@ -276,7 +276,7 @@ export class SourceControlController {
     if (!this.renderable(diff)) return;
     if (!sameReviewContent(tab.diff, diff)) { tab.diff = diff; this.invalidatePreview(tab); }
     const reading = this.readingState(tab);
-    reading.source = this.viewport.read(tab.id) ?? reviewViewport(tab.line);
+    reading.source = this.viewport.read(tab.id, true) ?? reviewViewport(tab.line);
     reading.viewer = null;
     reading.observationId = null;
     reading.observedId = null;

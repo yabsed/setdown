@@ -11,4 +11,5 @@ export function fileLocation(path: string): string {
   return `file://${encode(normalized)}`;
 }
 
-export const isFileLocation = (input: string): boolean => /^(?:[/\\]|[a-z]:[\\/]|file:)/i.test(input.trim());
+/** Absolute paths, file URLs and home-relative `~` paths (a folder tab expands `~`). */
+export const isFileLocation = (input: string): boolean => /^(?:[/\\]|[a-z]:[\\/]|file:|~(?:[/\\]|$))/i.test(input.trim());

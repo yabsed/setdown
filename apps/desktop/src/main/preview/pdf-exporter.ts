@@ -1,4 +1,5 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ExportPdfResult } from '../../protocol/desktop-api';
@@ -51,7 +52,7 @@ export async function exportPdf(
   const document = state.currentDocument;
   if (!document || document.path !== documentPath) return { canceled: true };
   const baseName = document.name.replace(/\.[^.]+$/, '') || 'document';
-  const result = await dialog.showSaveDialog(state.window, {
+  const result = await pathDialog.showSaveDialog(state.window, {
     defaultPath: path.join(
       document.isUntitled ? app.getPath('documents') : path.dirname(document.path),
       `${baseName}.pdf`,

@@ -15,6 +15,6 @@ test('Windows drive and network locations retain their filesystem meaning', () =
   expect(fileLocation('\\\\server\\share\\a #.md')).toBe('file://server/share/a%20%23.md');
 });
 test('address input distinguishes file locations from web addresses and searches', () => {
-  for (const value of [' /tmp/a.md ', 'FILE:///tmp/a.md', 'C:\\a.pdf', '\\\\server\\share\\a.md']) expect(isFileLocation(value)).toBe(true);
-  for (const value of ['https://example.org', 'localhost:3000', 'google.com', '한글 검색']) expect(isFileLocation(value)).toBe(false);
+  for (const value of [' /tmp/a.md ', 'FILE:///tmp/a.md', 'C:\\a.pdf', '\\\\server\\share\\a.md', '~', '~/Documents']) expect(isFileLocation(value)).toBe(true);
+  for (const value of ['https://example.org', 'localhost:3000', 'google.com', '한글 검색', '~user', '~ approx']) expect(isFileLocation(value)).toBe(false);
 });

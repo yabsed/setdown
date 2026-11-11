@@ -854,3 +854,62 @@ The empty workspace offers Open Terminal alongside New Document, Open File,
 Open Folder and Open Web Page. It uses the existing new-terminal action, current
 project cwd and normal terminal focus. The terminal lifecycle scenario verifies
 opening it from the empty workspace after reload and executing in that cwd.
+
+## File manager tabs and the in-app file chooser
+
+A folder is a workspace resource like a document, a web page or a terminal. The
+tab strip's New folder tab button, `File → New Folder Tab` (Ctrl/Cmd+Shift+E), the
+empty workspace's Browse Files, an address-bar folder path (including `~`),
+`setdown <folder>`, `setdown --files` and another application's "Show in folder"
+(`org.freedesktop.FileManager1`) all open a `FolderTab` (`kind: 'folder'`).
+
+- **One tab, one location.** Folder-to-folder navigation keeps the tab and its DOM
+  surface and records a `folder` visit; Back/Forward restore the selection that was
+  left (`core/workspace/tab-navigation.ts`, `tab-navigation-controller.ts`). A file
+  address still reads the document first; only a failed read asks whether the
+  address is a folder, so document navigation timing is unchanged.
+- **DOM surface.** `renderer/folder/FolderSurface.svelte` is a shell layer like the
+  terminal: it adds no `WebContentsView`, native bounds or preview preparation. It
+  consumes the tab's content zoom for row height and font size. Rows are virtualized
+  with `virtua`; a grid layout shows thumbnails only for mounted cells.
+- **Same file engine.** Copy/cut/paste/duplicate, conflicts, Undo, Trash, rename and
+  create run through `ExplorerService` with a filesystem-wide path policy
+  (`main/files/file-system-paths.ts`). The sidebar Explorer and folder tabs share
+  one clipboard, one per-window Undo history, the cross-window open-document
+  protection and the renderer's save/auto-save mutation queue. A filesystem root
+  can never be renamed, moved, trashed or deleted. These IPC channels exist only on
+  app windows (`ipc/window-ipc.ts`); web contents and extensions cannot reach them.
+- **Edit commands.** `renderer/files/file-command-target.ts` decides whether the
+  Explorer or one folder tab owns Ctrl+C/X/V/A/Z and the Edit menu. Inputs, Monaco
+  and the terminal keep their own text commands.
+- **Narrow panes.** Below 560 CSS px the Places sidebar becomes a drawer over the
+  list only. The toolbar (and its Places toggle) always spans the pane, columns
+  drop from four to two to one, and the file name column is never removed. Places
+  can also be collapsed in wide panes (F9); that choice is a per-viewer preference.
+- **Chooser.** `main/dialogs/path-picker.ts` keeps Electron's `showOpenDialog` /
+  `showSaveDialog` signatures for every call site but answers them with a transient
+  picker-mode folder tab in the requesting window. Acceptance follows GNOME Files'
+  modes (`core/files/picker-rules.ts`): the selection when it fits the request,
+  otherwise the current folder for folder requests; filters never hide folders; a
+  save name is validated live and overwriting asks first. A file that cannot answer
+  a folder request still opens on activation. Closing the tab, Escape, Cancel or
+  closing the window cancels. Main re-validates every reply (kind, count, existing
+  parent) and ignores replies from another window. Focus returns to the requesting
+  tab before the chooser closes. Picker tabs are not transferable or restorable.
+  `SETDOWN_NATIVE_DIALOGS=1` keeps the platform dialog; the shared E2E launcher
+  sets it so specs that replace `electron.dialog` are unchanged.
+- **Downloads** save directly into the Downloads folder under a reserved unique
+  name, as Chrome does without "Ask where to save"; a canceled download removes its
+  empty reservation. The native save prompt remains with `SETDOWN_NATIVE_DIALOGS=1`.
+- **Desktop services are reused, not reimplemented.** GTK bookmarks, XDG user
+  directories, `/proc/self/mountinfo`, `lsblk`/`udisksctl`, `gio` (content types,
+  default applications, Trash), the freedesktop thumbnail cache and ripgrep supply
+  places, volumes, Open With, properties, thumbnails and name search
+  (`main/files/desktop-integration.ts`, `places.ts`, `file-search.ts`).
+
+Checks: `core/files/*.test.ts`, `main/files/*.test.ts`,
+`main/dialogs/path-picker.test.ts`, `main/browser/download-path.test.ts`,
+`renderer/files/file-command-target.test.ts` and
+`test/e2e/workspace/folder-tab.spec.ts` (browse, Back/Forward selection, address
+completion, file operations outside a workspace, chooser accept/cancel/save, search,
+grid, properties, the Files side view, narrow panes, launch with a folder).

@@ -1,4 +1,4 @@
-import { DOCUMENT_FONT_SIZE } from '../../core/theme/typography';
+import { MARKDOWN_FONT_SIZE } from '../../core/theme/typography';
 import { themeProfile } from '../../core/theme/theme-catalog';
 import { vscodePreviewThemeCss } from '../../core/theme/preview-theme-css';
 
@@ -47,9 +47,10 @@ export function readerThemeCss(themeId: string): Promise<string> {
                 .replace(/\.markdown-preview/g, '.web-reader-content');
               // Native tab zoom scales fixed lengths too; rem is rooted at
               // Markdown's 14px document, rather than the shell's root size.
+              // --reader-scale also carries Reader's larger body (20/14).
               for (const property of [...rule.style]) {
                 const value = rule.style.getPropertyValue(property).replace(/(-?\d*\.?\d+)(px|rem)\b/g,
-                  (_, number, unit) => `calc(var(--reader-scale) * ${Number(number) * (unit === 'rem' ? DOCUMENT_FONT_SIZE : 1)}px)`);
+                  (_, number, unit) => `calc(var(--reader-scale) * ${Number(number) * (unit === 'rem' ? MARKDOWN_FONT_SIZE : 1)}px)`);
                 rule.style.setProperty(property, value, rule.style.getPropertyPriority(property));
               }
             }

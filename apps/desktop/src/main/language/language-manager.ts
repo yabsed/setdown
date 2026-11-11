@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { app, dialog, ipcMain, shell } from 'electron';
+import { app, ipcMain, shell } from 'electron';
+import { pathDialog } from '../dialogs/path-picker';
 import { readFile, stat } from 'node:fs/promises';
 import { watchFile, unwatchFile } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
@@ -372,7 +373,7 @@ export class LanguageManager {
     ipcMain.handle('language:choose-executable', async (event, id: string) => {
       const owner = state(event), definition = this.registry.definition(id);
       if (definition.launch.kind === 'bundledNode') return false;
-      const result = await dialog.showOpenDialog(owner.window, { title: `Select ${definition.name} Executable`, properties: ['openFile'] });
+      const result = await pathDialog.showOpenDialog(owner.window, { title: `Select ${definition.name} Executable`, properties: ['openFile'] });
       if (result.canceled || !result.filePaths[0] || owner.window.isDestroyed()) return false;
       await this.changed(() => this.registry.chooseExecutable(id, result.filePaths[0])); return true;
     });
@@ -388,7 +389,7 @@ export class LanguageManager {
         await this.changed(() => { this.registry.add(definition); this.registry.setEnabled(definition.id, true); });
         return true;
       }
-      const result = await dialog.showOpenDialog(owner.window, { title: `Select ${definition.name} Executable`, properties: ['openFile'] });
+      const result = await pathDialog.showOpenDialog(owner.window, { title: `Select ${definition.name} Executable`, properties: ['openFile'] });
       if (result.canceled || !result.filePaths[0] || owner.window.isDestroyed()) return false;
       const executable = result.filePaths[0];
       if (!path.isAbsolute(executable) || !await findExecutable(executable)) throw Error('Select an executable file.');
@@ -397,7 +398,7 @@ export class LanguageManager {
     });
     ipcMain.handle('language:import-definition', async event => {
       const owner = state(event);
-      const result = await dialog.showOpenDialog(owner.window, { title: 'Import Language Server Connection', properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json'] }] });
+      const result = await pathDialog.showOpenDialog(owner.window, { title: 'Import Language Server Connection', properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json'] }] });
       if (result.canceled || !result.filePaths[0] || owner.window.isDestroyed()) return false;
       if ((await stat(result.filePaths[0])).size > 128 * 1024) throw Error('Language definition is too large.');
       const definition = validateLanguageDefinition(JSON.parse(await readFile(result.filePaths[0], 'utf8')));
@@ -711,7 +712,7 @@ export class LanguageManager {
       if (selection.kind !== context.kind) throw Error('This environment does not apply to the document.');
       let selected: string | undefined;
       if (selection.value === 'browse') {
-        const result = await dialog.showOpenDialog(state.window, { title: context.label, properties: [selection.kind === 'compilation' ? 'openDirectory' : 'openFile'] });
+        const result = await pathDialog.showOpenDialog(state.window, { title: context.label, properties: [selection.kind === 'compilation' ? 'openDirectory' : 'openFile'] });
         if (result.canceled || !result.filePaths[0]) return context;
         selected = selection.kind === 'compilation' ? path.join(result.filePaths[0], 'compile_commands.json') : result.filePaths[0];
         if (selection.kind === 'python' ? !await findExecutable(selected) : !(await stat(selected)).isFile()) throw Error('Choose an existing analysis environment.');

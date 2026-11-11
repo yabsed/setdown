@@ -100,6 +100,7 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-editor-commands', label: 'Commands…', accelerator: 'CmdOrCtrl+Shift+P', click: () => command('editor-commands') },
         { id: 'menu-new-window', label: 'New Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => context.createWindow() },
         { id: 'menu-new-web', label: 'New Web Tab', accelerator: 'CmdOrCtrl+T', click: () => command('new-web-tab') },
+        { id: 'menu-new-folder-tab', label: 'New Folder Tab', accelerator: 'CmdOrCtrl+Shift+E', click: () => command('new-folder-tab') },
         { id: 'menu-reopen-web', label: 'Reopen Closed Web Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => command('reopen-web-tab') },
         { id: 'menu-location', label: 'Open Location…', click: () => command('focus-location') },
         { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => command('new-document') },
