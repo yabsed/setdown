@@ -14,15 +14,25 @@ export class ServerCapabilitiesState {
   private registrations = new Map<string, Registration>();
   base: ServerCapabilities = {};
   constructor(private readonly root: string) {}
-  register(registrations: Registration[]): void {
+  /** Returns the methods that were acknowledged without effect. An error reply
+   * here is fatal to many servers: vscode-languageserver leaves the rejected
+   * registration unhandled and Node exits. Zed, whose adapters launch these
+   * servers, acknowledges unknown methods the same way. */
+  register(registrations: Registration[]): string[] {
     if (!Array.isArray(registrations) || registrations.length > 100 || this.registrations.size + registrations.length > 256)
       throw Error('Too many language registrations.');
+    for (const registration of registrations)
+      if (typeof registration?.id !== 'string' || registration.id.length > 256 || typeof registration.method !== 'string') throw Error('Invalid registration ID.');
+    const ignored: string[] = [];
     for (const registration of registrations) {
+      // Setting changes reconnect the session, and servers pull the current
+      // values through workspace/configuration. Nothing is stored for this.
+      if (registration.method === 'workspace/didChangeConfiguration') continue;
       if (!methods.has(registration.method) && registration.method !== 'workspace/didChangeWatchedFiles' && !/^workspace\/(will|did)(Create|Rename|Delete)Files$/.test(registration.method))
-        throw Error(`Unsupported dynamic language registration: ${registration.method}`);
-      if (typeof registration.id !== 'string' || registration.id.length > 256) throw Error('Invalid registration ID.');
+        ignored.push(registration.method.slice(0, 120));
+      else this.registrations.set(registration.id, registration);
     }
-    for (const registration of registrations) this.registrations.set(registration.id, registration);
+    return ignored;
   }
   unregister(ids: string[]): void { for (const id of ids) this.registrations.delete(id); }
   forDocument(uri: string, language: string): LanguageCapabilities {

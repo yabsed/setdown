@@ -129,6 +129,55 @@ test('build languages and YAML dialects retain grammar, comments and Make recipe
   }finally{await disposeApplication(app);await rm(f.root,{recursive:true,force:true});}
 });
 
+test('bundled grammars replace Monaco fallback tokenizers for shell, Dockerfile and YAML; Python stays on Monaco without the engine', async ({}, info) => {
+  const f = await fixture(), shell = path.join(f.root, 'deploy.sh'), docker = path.join(f.root, 'Dockerfile');
+  const yaml = path.join(f.root, 'plain.yaml'), python = path.join(f.root, 'colors.py'), markdown = path.join(f.root, 'notes.md');
+  await writeFile(shell, '#!/usr/bin/env bash\nset -euo pipefail\n# syntax marker\naws sts get-caller-identity --query Account\ntest "$account" = "$AWS_ACCOUNT_ID"\n');
+  await writeFile(docker, '# syntax marker\nFROM docker.io/library/python:3.14-slim AS base\nRUN uv sync --locked\n');
+  await writeFile(yaml, '# syntax marker\nname: example\nport: 8000\n');
+  await writeFile(python, 'def hello():\n    return "hello"\n'); await writeFile(markdown, '# Notes\n\nA normal reader.\n');
+  const app = await f.launch(markdown);
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    const scripts = new Set<string>(), cdp = await page.context().newCDPSession(page);
+    cdp.on('Debugger.scriptParsed', event => scripts.add(event.url)); await cdp.send('Debugger.enable');
+    const engine = () => [...scripts].filter(name => /\/(textmate-runtime|wasm-inlined)-/.test(name));
+    await expect(page.getByRole('button', { name: 'Switch to Editor' })).toBeVisible();
+    const view = page.locator('.editor-surface .view-lines');
+    await open(page, python);
+    await expect.poll(() => color(view, 'def hello', 'def')).toBe('rgb(207, 34, 46)');
+    const pythonColor = await color(view, 'return', '"hello"'); expect(engine()).toEqual([]);
+    await open(page, shell);
+    // Monaco's shell tokenizer leaves commands, arguments and expansions in the
+    // plain foreground. The grammar gives each its role, as VS Code does.
+    await expect.poll(() => color(view, 'aws sts', 'aws')).toBe('rgb(9, 105, 218)');
+    await expect.poll(() => color(view, 'aws sts', 'get-caller-identity')).toBe('rgb(10, 48, 105)');
+    await expect.poll(() => color(view, 'set -euo', 'set')).toBe('rgb(9, 105, 218)');
+    await expect.poll(() => color(view, 'test "', 'account')).toBe('rgb(36, 41, 47)');
+    await expect.poll(() => color(view, 'syntax marker', 'marker')).toBe('rgb(110, 119, 129)');
+    expect(engine().length).toBeGreaterThan(0);
+    await open(page, docker);
+    await expect.poll(() => color(view, 'FROM', 'FROM')).toBe('rgb(207, 34, 46)');
+    await expect.poll(() => color(view, 'FROM', 'AS')).toBe('rgb(207, 34, 46)');
+    await expect.poll(() => color(view, 'syntax marker', 'marker')).toBe('rgb(110, 119, 129)');
+    await open(page, yaml);
+    await expect.poll(() => color(view, 'name:', 'name')).toBe('rgb(130, 80, 223)');
+    await expect.poll(() => color(view, 'port:', '8000')).toBe('rgb(5, 80, 174)');
+    // The built-in factory has long settled. Reopening and a theme round trip
+    // must not hand the document back to it.
+    await open(page, shell);
+    await theme(page, 'github-dark'); await expect.poll(() => color(view, 'aws sts', 'aws')).not.toBe(await color(view, 'aws sts', 'get-caller-identity'));
+    await theme(page, 'github-light');
+    await expect.poll(() => color(view, 'aws sts', 'aws')).toBe('rgb(9, 105, 218)');
+    await expect.poll(() => color(view, 'aws sts', 'get-caller-identity')).toBe('rgb(10, 48, 105)');
+    await page.screenshot({ path: info.outputPath('shell-grammar.png') });
+    await open(page, python); await expect.poll(() => color(view, 'def hello', 'def')).toBe('rgb(207, 34, 46)');
+    await expect.poll(() => color(view, 'return', '"hello"')).toBe(pythonColor);
+    expect(errors).toEqual([]);
+  } finally { await disposeApplication(app); await rm(f.root, { recursive: true, force: true }); }
+});
+
 test('a language absent from the application gets real WASM syntax from its runtime package with no server or network', async ({}, info) => {
   const f = await fixture(), id = 'setdown-future-fixture', file = path.join(f.root, 'new.future-fixture');
   const directory = path.join(f.settings, 'language-packages'), extension = path.join(directory, 'extensions', id);

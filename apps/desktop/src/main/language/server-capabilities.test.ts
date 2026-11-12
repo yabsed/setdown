@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { ServerCapabilitiesState } from './server-capabilities';
 import { ServerItems } from './server-items';
-import { clientCapabilities } from '../../protocol/language-features';
+import { clientCapabilities, notebookClientCapabilities } from '../../protocol/language-features';
 
 test('dynamic capabilities honor language, URI scheme and path and disappear on unregister', () => {
   const state = new ServerCapabilitiesState('/project');
@@ -14,8 +14,21 @@ test('dynamic capabilities honor language, URI scheme and path and disappear on 
   expect(state.forDocument('file:///project/src/main.py', 'cpp').documentFormattingProvider).toBeUndefined();
   state.unregister(['format-python']);
   expect(state.forDocument('file:///project/src/main.py', 'python')).toEqual({ hoverProvider: true });
-  expect(() => state.register([{ id: 'unsupported', method: 'notebookDocument/sync' }])).toThrow(/Unsupported/);
   expect(clientCapabilities().workspace?.workspaceEdit?.resourceOperations).toEqual([]);
+});
+
+test('configuration and unknown registrations are acknowledged without changing document capabilities', () => {
+  const state = new ServerCapabilitiesState('/project');
+  state.base = { hoverProvider: true };
+  // dockerfile-language-server registers this whenever workspace.configuration is true.
+  expect(state.register([{ id: 'settings', method: 'workspace/didChangeConfiguration', registerOptions: { section: 'docker' } }])).toEqual([]);
+  expect(state.register([{ id: 'unknown', method: 'notebookDocument/sync' }, { id: 'format', method: 'textDocument/formatting' }])).toEqual(['notebookDocument/sync']);
+  expect(state.forDocument('file:///project/Dockerfile', 'dockerfile')).toEqual({ hoverProvider: true, documentFormattingProvider: {} });
+  state.unregister(['settings', 'unknown', 'format']);
+  expect(state.forDocument('file:///project/Dockerfile', 'dockerfile')).toEqual({ hoverProvider: true });
+  expect(() => state.register([{ id: 'x'.repeat(257), method: 'textDocument/hover' }])).toThrow(/Invalid/);
+  expect(clientCapabilities().workspace?.didChangeConfiguration).toEqual({ dynamicRegistration: true });
+  expect(notebookClientCapabilities().workspace?.didChangeConfiguration).toEqual({ dynamicRegistration: true });
 });
 
 test('relative file watchers honor operation masks and stay inside their base directory', () => {

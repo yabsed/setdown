@@ -54,7 +54,9 @@ export class TextMateRuntime {
       const provider: M.languages.TokensProvider = {
         getInitialState: () => new SyntaxState(source.getInitialState() as AdapterState),
         tokenize: (line, state) => {
-          const result = source.tokenize(line, (state as SyntaxState).value);
+          // A Monarch host (a fenced block in Markdown) may still hold the state
+          // of the tokenizer this grammar replaced; restart instead of throwing.
+          const result = source.tokenize(line, state instanceof SyntaxState ? state.value : source.getInitialState() as AdapterState);
           return { endState: new SyntaxState(result.endState as AdapterState),
             tokens: result.tokens.map(token => ({ ...token, scopes: syntaxScope(token.scopes) })) };
         },

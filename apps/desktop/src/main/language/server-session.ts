@@ -107,7 +107,9 @@ export class ServerSession {
     this.connection.onRequest('workspace/applyEdit', async (params: ApplyWorkspaceEditParams): Promise<ApplyWorkspaceEditResult> => hooks.applyEdit?.(params)
       ?? { applied: false, failureReason: 'No active user command accepts edits.' });
     this.connection.onRequest('client/registerCapability', (params: { registrations: Registration[] }) => {
-      this.capabilities.register(params.registrations); hooks.capabilitiesChanged?.(); return null;
+      for (const method of this.capabilities.register(params.registrations))
+        this.log(`${profile.name} registered ${method}, which Setdown does not use. The registration was acknowledged without effect.`);
+      hooks.capabilitiesChanged?.(); return null;
     });
     this.connection.onRequest('client/unregisterCapability', (params: { unregisterations: { id: string }[] }) => {
       this.capabilities.unregister(params.unregisterations.map(item => item.id)); hooks.capabilitiesChanged?.(); return null;

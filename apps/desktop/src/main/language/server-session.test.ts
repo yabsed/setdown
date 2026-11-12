@@ -239,3 +239,34 @@ test('server action requests remain nonmodal, bounded to their session and cance
   const pending = server.request('ask', {}).catch(() => null); await expect.poll(() => server.messages.length).toBe(1);
   await server.stop(); await pending; expect(server.messages).toEqual([]);
 });
+
+test('a server that registers configuration or unknown capabilities stays connected', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-registration-'));
+  roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  // Like vscode-languageserver, the fixture dies when a registration is rejected.
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    let declared;
+    c.onRequest('initialize', params => { declared = params.capabilities.workspace.didChangeConfiguration; return {capabilities:{positionEncoding:'utf-16'}}; });
+    c.onNotification('initialized', () => c.sendRequest('client/registerCapability', {registrations:[
+      {id:'settings', method:'workspace/didChangeConfiguration', registerOptions:{section:'fixture'}},
+      {id:'future', method:'fixture/notYetStandardized'},
+      {id:'hover', method:'textDocument/hover', registerOptions:{documentSelector:[{language:'fixture'}]}},
+    ]}).catch(() => process.exit(9)));
+    c.onRequest('declared', () => declared);
+    c.onRequest('shutdown', () => null);
+    c.onNotification('exit', () => process.exit(0));
+    c.listen();
+  `);
+  const failures: string[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message), { name: 'Fixture', configuration: {}, watches: () => false });
+  sessions.push(server);
+  await server.ready;
+  await expect.poll(() => server.capabilities.forDocument(pathToFileURL(path.join(root, 'a.fixture')).href, 'fixture').hoverProvider).toBeTruthy();
+  expect(await server.request('declared', null)).toEqual({ dynamicRegistration: true });
+  expect(server.logs.join('\n')).toContain('fixture/notYetStandardized');
+  expect(server.logs.join('\n')).not.toContain('workspace/didChangeConfiguration');
+  expect(failures).toEqual([]);
+});

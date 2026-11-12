@@ -913,6 +913,19 @@ The lexical engine and Svelte grammar must remain absent when opening only
 Markdown or Python. Existing Monarch and LSP providers retain their own rules.
 Theme changes must preserve document models, selections and Undo histories.
 
+Since 2026-11-12 a catalog grammar takes precedence over Monaco's built-in
+tokenizer for the same language, because those tokenizers are coarse fallbacks
+(shell commands, options and expansions were left uncolored). Monaco keeps
+lexical ownership of exactly `monacoLexicalLanguages`: Markdown, Python,
+JavaScript/TypeScript, JSON, CSS/SCSS/Less and HTML. The engine-free guarantee
+above therefore still covers Markdown and Python, and their colors are unchanged.
+For every other built-in language the grammar registers only after Monaco's lazy
+tokenizer factory has settled, so the result does not depend on load order, and
+Monaco's tokenizer stays in place if the grammar fails to load. Registration
+replaces a tokenizer, never a model: unsaved text, selection and Undo persist.
+`syntax-runtime.test.ts` and the shell/Dockerfile/YAML scenario in
+`language/syntax-highlighting.spec.ts` are part of the contract.
+
 The contract includes `textmate-runtime.test.ts` and
 `language/syntax-highlighting.spec.ts`: real grammar state continuity, all theme
 mappings, actual no-server Svelte colors, lazy asset loading, unchanged Python
@@ -928,8 +941,9 @@ Languages added by runtime packages use the separate Zed host for Tree-sitter WA
 captures. Captures use UTF-16 offsets and must be discarded after a model revision,
 language, ownership or cancellation change. Grammar preparation and server
 installation never replace a document model, enter the Escape input path, or
-block editing. Markdown and existing native Monaco grammars keep their lazy-load
-guarantees.
+block editing. Markdown and the other `monacoLexicalLanguages` keep their
+lazy-load guarantees; grammars that replace a Monaco fallback tokenizer load as
+lazily as any other catalog grammar.
 
 Zed user and ancestor `.zed/settings.json` files supply language-server settings.
 Saving them may reconnect affected providers, but must preserve current unsaved

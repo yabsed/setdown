@@ -42,6 +42,7 @@ export function clientCapabilities(): ClientCapabilities {
       workspaceEdit: { documentChanges: true, resourceOperations: [], failureHandling: 'abort' },
       fileOperations: { dynamicRegistration: true, willCreate: true, didCreate: true, willRename: true, didRename: true, willDelete: true, didDelete: true },
       didChangeWatchedFiles: { dynamicRegistration: true, relativePatternSupport: true },
+      didChangeConfiguration: { dynamicRegistration: true },
       symbol: { ...dynamic, resolveSupport: { properties: ['location.range'] } },
       semanticTokens: { refreshSupport: true }, inlayHint: { refreshSupport: true },
       codeLens: { refreshSupport: true }, diagnostics: { refreshSupport: true } },
@@ -90,7 +91,8 @@ export function notebookClientCapabilities(): ClientCapabilities {
   const all = clientCapabilities(), text = all.textDocument!;
   return { general: all.general, notebookDocument: all.notebookDocument, window: all.window,
     workspace: { configuration: true, workspaceFolders: true,
-      didChangeWatchedFiles: all.workspace!.didChangeWatchedFiles },
+      didChangeWatchedFiles: all.workspace!.didChangeWatchedFiles,
+      didChangeConfiguration: all.workspace!.didChangeConfiguration },
     textDocument: {
       completion: { ...text.completion, dynamicRegistration: false, completionItem: { ...text.completion!.completionItem,
         resolveSupport: { properties: ['documentation', 'detail', 'additionalTextEdits'] } } },

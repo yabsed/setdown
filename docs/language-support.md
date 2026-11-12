@@ -152,6 +152,14 @@ properties/dialects depend on the selected service's configuration; unknown-prop
 warnings are not blindly removed. Built-in parser settings and external tool
 settings are distinct; the server configuration form configures that server.
 
+Servers may register capabilities after initialization. Setdown applies the
+registrations it uses, accepts `workspace/didChangeConfiguration` (settings are
+pulled through `workspace/configuration`, and a settings change reconnects the
+session), and acknowledges any other method without effect, recording it in the
+service output. It does not answer with an error: many Node servers, including
+`dockerfile-language-server`, exit on a rejected registration, and Zed, whose
+adapters install and launch these servers, acknowledges them the same way.
+
 A shared diagnostic store supplies both editor markers and Problems, including
 built-in checks. Contributions are scoped to provider, document, session and
 push/pull channel. Configuration changes restart affected sessions. Edits clear
@@ -171,8 +179,17 @@ completion, navigation and semantic tokens; semantic colors overlay lexical colo
 
 The shared language catalog supplies file associations, editing defaults and
 grammar identities to `renderer/language/syntax-runtime.ts`. Its 260 local
-TextMate grammars load on demand. Monaco's existing tokenizers remain in place for
-Python, JavaScript/TypeScript, Markdown and other built-in languages. YAML dialects
+TextMate grammars load on demand. Where Monaco also ships a tokenizer for a
+language, the catalog grammar takes precedence: Monaco's built-in tokenizers for
+shell, Dockerfile, YAML, C/C++, Rust, Go and about fifty other languages are
+coarse fallbacks (its shell tokenizer leaves commands, options and expansions in
+the plain text color), while the bundled grammars are the ones VS Code uses.
+Monaco keeps lexical ownership only for Markdown, Python, JavaScript/TypeScript,
+JSON, CSS/SCSS/Less and HTML, whose built-in workers, embedded modes or
+engine-free loading depend on it (`monacoLexicalLanguages` in
+`renderer/language/syntax-runtime.ts`). Monaco's registration, brackets and
+comment configuration for a built-in language are unchanged, and its tokenizer
+remains the fallback if a grammar cannot be loaded. YAML dialects
 can share the YAML grammar while keeping separate analyzer identities. Compatible
 runtime packages can add a Tree-sitter WASM grammar through the Zed host without
 an application rebuild. An arbitrary LSP connection alone does not supply syntax
