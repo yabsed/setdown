@@ -6,7 +6,7 @@
   import type { FileApplication, FileProperties, FolderEntry, FolderListing, FolderPlace, PathPickerRequest } from '../../protocol/files';
   import type { ExplorerClipboard, ExplorerEditCommand, ExplorerTransfer } from '../../protocol/explorer';
   import type { FolderView } from '../../core/workspace/workspace-state';
-  import { folderCrumbs, formatModified, formatSize, kindLabel, presentFolder, type FolderSort } from '../../core/files/folder-presentation';
+  import { folderCrumbs, formatModified, formatSize, kindLabel, parentFolder, presentFolder, type FolderSort } from '../../core/files/folder-presentation';
   import { acceptedPaths, activationAccepts, canAccept, canAcceptSelection, checkName, nameSelection, visibleInPicker, withFilterExtension } from '../../core/files/picker-rules';
   import { draggedPaths, PROJECT_ENTRIES, PROJECT_FILES, selectEntry, topLevelPaths, type ExplorerSelection } from '../project/explorer/explorer-selection';
   import { typeaheadMatch } from '../project/explorer/explorer-presentation';
@@ -28,7 +28,6 @@
   const token = crypto.randomUUID();
   const separator = $derived(tab.path.includes('\\') && !tab.path.includes('/') ? '\\' : '/');
   const join = (folder: string, name: string) => `${folder.replace(/[\\/]+$/, '')}${separator}${name}`;
-  const parentOf = (path: string) => { const parent = path.replace(/[\\/][^\\/]+[\\/]?$/, ''); return parent || (separator === '/' ? '/' : path); };
   const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
 
   let listing = $state<FolderListing | null>(null);
@@ -205,7 +204,7 @@
   });
 
   const navigate = (path: string, selectPaths?: string[]) => { error = ''; void actions.folderNavigate(tab.id, path, selectPaths).catch(failure => { error = message(failure); }); };
-  const goUp = () => { const parent = parentOf(tab.path); if (parent !== tab.path) navigate(parent, [tab.path]); };
+  const goUp = () => { const parent = parentFolder(tab.path); if (parent !== tab.path) navigate(parent, [tab.path]); };
   const setView = (update: Partial<FolderView>) => actions.folderViewChanged(tab.id, update);
   const sortBy = (sort: FolderSort) => setView(tab.view.sort === sort ? { descending: !tab.view.descending } : { sort, descending: false });
 
@@ -504,7 +503,7 @@
     await refreshPlaces();
   }
   const isArchive = (name: string) => /\.(zip|7z|rar|tar|tgz|tbz2|txz|tar\.(gz|bz2|xz|zst))$/i.test(name);
-  const relativeFolder = (path: string) => { const parent = parentOf(path); return parent === tab.path ? '' : parent.slice(tab.path.length).replace(/^[\\/]/, ''); };
+  const relativeFolder = (path: string) => { const parent = parentFolder(path); return parent === tab.path ? '' : parent.slice(tab.path.length).replace(/^[\\/]/, ''); };
   /** Shared pointer/drag behaviour of a row in list and grid layouts. */
   const rowEvents = (row: FolderEntry) => ({
     onclick: (event: MouseEvent) => { event.stopPropagation(); if (event.detail !== 2) { select(row.path, event); listElement?.focus({ preventScroll: true }); } },
@@ -540,7 +539,7 @@
         aria-pressed={sideVisible} onclick={togglePlaces}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM9.5 5v14"/></svg>
       </button>
-      <button class="folder-icon-button" type="button" aria-label="Parent folder" title="Parent folder (Backspace)" disabled={parentOf(tab.path) === tab.path} onclick={goUp}>
+      <button class="folder-icon-button" type="button" aria-label="Parent folder" title="Parent folder (Backspace)" disabled={parentFolder(tab.path) === tab.path} onclick={goUp}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
       </button>
       <nav class="folder-crumbs" aria-label="Folder path" bind:this={crumbBar}>
@@ -701,7 +700,7 @@
         <button type="button" role="menuitem" onclick={menuRun(chooseApplication)}>Open With…</button>
       {/if}
       {#if searchResults && single}
-        <button type="button" role="menuitem" onclick={menuRun(() => { const target = entry.path; closeSearch(); navigate(parentOf(target), [target]); })}>Open Item Location</button>
+        <button type="button" role="menuitem" onclick={menuRun(() => { const target = entry.path; closeSearch(); navigate(parentFolder(target), [target]); })}>Open Item Location</button>
       {/if}
       {#if !picker}
         <span class="menu-separator"></span>
@@ -726,7 +725,7 @@
           <button type="button" role="menuitem" onclick={menuRun(() => void toggleBookmark(entry.path, !places.some(place => place.kind === 'bookmark' && place.path === entry.path)))}>{places.some(place => place.kind === 'bookmark' && place.path === entry.path) ? 'Remove Bookmark' : 'Add to Bookmarks'}</button>
           <button type="button" role="menuitem" onclick={menuRun(() => void actions.folderOpenWorkspace(entry.path))}>Open as Workspace Folder</button>
         {/if}
-        <button type="button" role="menuitem" onclick={menuRun(() => actions.folderOpenTerminal(entry.kind === 'directory' ? entry.path : parentOf(entry.path)))}>Open in Terminal</button>
+        <button type="button" role="menuitem" onclick={menuRun(() => actions.folderOpenTerminal(entry.kind === 'directory' ? entry.path : parentFolder(entry.path)))}>Open in Terminal</button>
       {/if}
       {#if single}
         <span class="menu-separator"></span>

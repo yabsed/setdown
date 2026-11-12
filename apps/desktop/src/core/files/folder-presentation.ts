@@ -60,6 +60,21 @@ export function kindLabel(entry: FolderEntry): string {
   return extension ? `${extension.toUpperCase()} ${entry.kind === 'document' ? 'document' : 'file'}` : 'File';
 }
 
+/** Length of a path's filesystem root: `/`, `C:\` or `\\server\share\`. */
+export function rootLength(path: string): number {
+  if (/^[A-Za-z]:[\\/]/.test(path)) return 3;
+  const share = /^[\\/]{2}[^\\/]+[\\/]+[^\\/]+[\\/]?/.exec(path);
+  return share ? share[0].length : /^[\\/]/.test(path) ? 1 : 0;
+}
+
+/** The containing folder; a filesystem root is its own parent (`C:\Users` → `C:\`, never the relative `C:`). */
+export function parentFolder(path: string): string {
+  const root = rootLength(path);
+  const rest = path.slice(root).replace(/[\\/]+$/, '');
+  const cut = Math.max(rest.lastIndexOf('/'), rest.lastIndexOf('\\'));
+  return cut < 0 ? path.slice(0, root) || path : path.slice(0, root + cut);
+}
+
 /** Breadcrumb segments rooted at home or a filesystem root, as Nautilus's pathbar does. */
 export function folderCrumbs(path: string, home: string, roots: { path: string; name: string }[] = []): { name: string; path: string }[] {
   const separator = path.includes('\\') && !path.includes('/') ? '\\' : '/';
@@ -67,8 +82,8 @@ export function folderCrumbs(path: string, home: string, roots: { path: string; 
     .filter(root => path === root.path || path.startsWith(root.path.endsWith(separator) ? root.path : `${root.path}${separator}`))
     .sort((a, b) => b.path.length - a.path.length);
   const anchor = anchors[0];
-  const base = anchor ? anchor.path : separator === '/' ? '/' : path.slice(0, 3);
-  const crumbs = [{ name: anchor?.name ?? (separator === '/' ? '/' : base), path: base }];
+  const base = anchor ? anchor.path : path.slice(0, rootLength(path)) || '/';
+  const crumbs = [{ name: anchor?.name ?? base, path: base }];
   const rest = path.slice(base.length).split(separator).filter(Boolean);
   let current = base;
   for (const part of rest) {

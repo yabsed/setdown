@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AppActions } from '../ports/ui-actions';
   import type { BrowserDownload, DownloadCommand } from '../../protocol/browser';
+  import { parentFolder } from '../../core/files/folder-presentation';
   import { browser } from './browser-state.svelte';
   let { actions, query }: { actions: AppActions; query: string } = $props();
   let error = $state('');
@@ -21,7 +22,7 @@
     error = '';
     try {
       // Show the download in a Setdown folder tab instead of launching GNOME Files.
-      if (value === 'show' && item.path) await actions.openFolder(item.path.replace(/[\\/][^\\/]+$/, '') || '/', { selection: [item.path] });
+      if (value === 'show' && item.path) await actions.openFolder(parentFolder(item.path), { selection: [item.path] });
       else await actions.browserDownloadCommand(item.id, value);
     }
     catch (reason) { error = String(reason); }

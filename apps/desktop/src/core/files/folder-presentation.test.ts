@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FolderEntry } from './folder-types';
-import { compareNames, folderCrumbs, formatSize, presentFolder } from './folder-presentation';
+import { compareNames, folderCrumbs, formatSize, parentFolder, presentFolder } from './folder-presentation';
 
 const entry = (name: string, kind: FolderEntry['kind'] = 'file', extra: Partial<FolderEntry> = {}): FolderEntry =>
   ({ path: `/d/${name}`, name, kind, size: 0, modified: 0, hidden: name.startsWith('.'), ...extra });
@@ -47,5 +47,20 @@ describe('folder presentation', () => {
     expect(folderCrumbs('/run/media/me/USB/x', '/home/me', [{ path: '/run/media/me/USB', name: 'USB' }]).map(crumb => crumb.name)).toEqual(['USB', 'x']);
     expect(folderCrumbs('/etc', '/home/me')).toEqual([{ name: '/', path: '/' }, { name: 'etc', path: '/etc' }]);
     expect(folderCrumbs('/home/me', '/home/me')).toEqual([{ name: 'Home', path: '/home/me' }]);
+  });
+
+  it('stops at the drive or share root on Windows', () => {
+    expect(folderCrumbs('C:\\Users\\me\\a', 'C:\\Users\\me')).toEqual([{ name: 'Home', path: 'C:\\Users\\me' }, { name: 'a', path: 'C:\\Users\\me\\a' }]);
+    expect(folderCrumbs('D:\\data\\x', 'C:\\Users\\me')).toEqual([
+      { name: 'D:\\', path: 'D:\\' }, { name: 'data', path: 'D:\\data' }, { name: 'x', path: 'D:\\data\\x' }]);
+    expect(folderCrumbs('\\\\nas\\docs\\a', 'C:\\Users\\me').map(crumb => crumb.path)).toEqual(['\\\\nas\\docs\\', '\\\\nas\\docs\\a']);
+  });
+
+  it('finds the parent folder without leaving the filesystem root', () => {
+    expect(['/home/me/a', '/home/me/', '/home', '/'].map(parentFolder)).toEqual(['/home/me', '/home', '/', '/']);
+    // `C:` alone is drive-relative, which the main process rejects as a folder path.
+    expect(['C:\\Users\\me', 'C:\\Users', 'C:\\', 'D:/data/x'].map(parentFolder)).toEqual(['C:\\Users', 'C:\\', 'C:\\', 'D:/data']);
+    expect(['\\\\nas\\docs\\a\\b', '\\\\nas\\docs\\a', '\\\\nas\\docs\\', '\\\\nas\\docs'].map(parentFolder))
+      .toEqual(['\\\\nas\\docs\\a', '\\\\nas\\docs\\', '\\\\nas\\docs\\', '\\\\nas\\docs']);
   });
 });

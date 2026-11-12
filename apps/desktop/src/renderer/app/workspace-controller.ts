@@ -1,4 +1,5 @@
 import { fileLocation } from '../../core/document/file-location';
+import { parentFolder } from '../../core/files/folder-presentation';
 import { imageSessions } from '../image/image-edit-sessions';
 import { DocumentSessions } from '../workspace/document-sessions';
 import { notebookContent, notebookViews } from '../notebook/document-content';
@@ -73,7 +74,6 @@ export function startWorkspace(desktop: DesktopPort) {
     });
     fileMutation = result.catch(() => {}); return result;
   };
-  const parentFolder = (path: string) => path.replace(/[\\/][^\\/]+[\\/]?$/, '') || '/';
   const folderFiles = createFolderOperations({ desktop, runMutation: runFileMutation,
     relocatePath: (from, to) => tabs.relocatePath(from, to), prepareRemove: path => tabs.prepareRemove(path), commitRemove: path => tabs.commitRemove(path) });
   const actions: AppActions = {

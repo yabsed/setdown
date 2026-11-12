@@ -31,6 +31,9 @@ export function collectMatches(root: string, relativeFiles: Iterable<string>, wo
   return results;
 }
 
+// Electron runs packaged binaries from an asar path only through execFile; spawn needs the unpacked file.
+const rg = rgPath.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
+
 export class FileSearch {
   private readonly running = new Map<number, ChildProcess>();
   cancel(owner: number): void { this.running.get(owner)?.kill(); this.running.delete(owner); }
@@ -40,7 +43,7 @@ export class FileSearch {
     const words = queryWords(query);
     if (!words.length) return Promise.resolve({ paths: [], limitHit: false });
     return new Promise((resolve, reject) => {
-      const child = spawn(rgPath, ['--files', '--null', '--no-config', '--no-ignore', '--no-messages', ...(showHidden ? ['--hidden'] : []),
+      const child = spawn(rg, ['--files', '--null', '--no-config', '--no-ignore', '--no-messages', ...(showHidden ? ['--hidden'] : []),
         '--glob', '!.git', '--glob', '!node_modules'], { cwd: root, stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, RIPGREP_CONFIG_PATH: '' } });
       this.running.set(owner, child);
       const seen = new Set<string>(), paths: string[] = [];

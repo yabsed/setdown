@@ -69,6 +69,13 @@ export const trashFiles = (home = os.homedir()) => path.join(dataHome(home), 'Tr
 
 const exists = (candidate: string) => fs.stat(candidate).then(stat => stat.isDirectory(), () => false);
 
+/** Windows has one root per drive letter; an unreachable network drive must not stall the sidebar. */
+async function windowsDrives(): Promise<string[]> {
+  const drives = [...'CDEFGHIJKLMNOPQRSTUVWXYZ'].map(letter => `${letter}:\\`);
+  const reachable = (drive: string) => Promise.race([exists(drive), new Promise<boolean>(resolve => { setTimeout(resolve, 1500, false).unref(); })]);
+  return (await Promise.all(drives.map(reachable))).flatMap((found, index) => found ? [drives[index]] : []);
+}
+
 export async function listPlaces(home: string, userDirectory: (name: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos') => string | null): Promise<FolderPlace[]> {
   const places: FolderPlace[] = [{ id: 'home', name: 'Home', path: home, kind: 'home' }];
   const add = async (place: FolderPlace) => {
@@ -90,7 +97,11 @@ export async function listPlaces(home: string, userDirectory: (name: 'desktop' |
       await add({ id: `mount:${gvfs}/${name}`, name: name.replace(/^[a-z]+-share:/, '').replace(/^[a-z]+:host=/, ''), path: path.join(gvfs, name), kind: 'mount' });
     await add({ id: 'trash', name: 'Trash', path: trashFiles(home), kind: 'trash' });
   }
-  await add({ id: 'root', name: process.platform === 'win32' ? path.parse(home).root : 'Computer', path: path.parse(home).root, kind: 'root' });
+  const root = path.parse(home).root;
+  const drives = process.platform === 'win32' ? await windowsDrives() : [];
+  for (const drive of drives) await add({ id: `root:${drive}`, name: drive, path: drive, kind: 'root' });
+  if (!drives.some(drive => drive.toLowerCase() === root.toLowerCase()))
+    await add({ id: 'root', name: process.platform === 'win32' ? root : 'Computer', path: root, kind: 'root' });
   return places;
 }
 

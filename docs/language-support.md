@@ -434,7 +434,8 @@ five-second timeout; Python/npm metadata queries have a three-second timeout, wi
 1 MiB combined output limit and process cleanup on cancellation. Activated venv
 and Conda environments retain the inherited environment. Advanced launchers can
 set `SETDOWN_LSP_INHERIT_ENV=1` to preserve their environment without a shell query.
-Windows uses its inherited environment. A shell query failure falls back to the
+Windows uses its inherited environment, with `Path` renamed to the `PATH` Zed's
+adapters read. A shell query failure falls back to the
 inherited environment and appears in connection details.
 
 The resolved executable and environment are passed together to the server. They

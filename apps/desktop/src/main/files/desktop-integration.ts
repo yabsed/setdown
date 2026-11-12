@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import type { FileApplication, FileProperties, FolderVolume } from '../../core/files/folder-types';
 import { configHome, dataHome, parseBookmarks } from './places';
@@ -115,7 +116,8 @@ export async function setBookmark(folder: string, present: boolean, home = os.ho
   const text = await fs.readFile(file, 'utf8').catch(() => '');
   const lines = text.split(/\r?\n/).filter(line => line.trim());
   const kept = lines.filter(line => parseBookmarks(line)[0]?.path !== folder);
-  if (present) kept.push(glibFileUri(folder));
+  // GLib's escaping matters only where GTK shares the file; a Windows path needs the drive-letter URL form.
+  if (present) kept.push(process.platform === 'win32' ? pathToFileURL(folder).href : glibFileUri(folder));
   if (kept.join('\n') === lines.join('\n')) return;
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
@@ -219,6 +221,8 @@ async function uniqueSibling(directory: string, base: string, suffix = ''): Prom
   }
   throw new Error('Could not choose a free name.');
 }
+/** Windows has no zip/unzip, but ships libarchive's tar, which reads and writes zip. A Unix shell's GNU tar on PATH does not. */
+const windowsTar = () => path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 export const ARCHIVE = /\.(zip|7z|rar|tar|tgz|tbz2|txz|tar\.(gz|bz2|xz|zst))$/i;
 /** Extract into a new folder named after the archive; nothing existing is overwritten. */
 export async function extractArchive(archive: string): Promise<string> {
@@ -227,7 +231,8 @@ export async function extractArchive(archive: string): Promise<string> {
   const target = await uniqueSibling(path.dirname(archive), path.basename(archive).slice(0, -match[0].length) || 'Archive');
   await fs.mkdir(target);
   try {
-    if (/\.zip$/i.test(archive)) await run('unzip', ['-q', '-n', archive, '-d', target], 600_000);
+    if (process.platform === 'win32') await run(windowsTar(), ['-xf', archive, '-C', target], 600_000);
+    else if (/\.zip$/i.test(archive)) await run('unzip', ['-q', '-n', archive, '-d', target], 600_000);
     else if (/\.(7z|rar)$/i.test(archive)) await run('7z', ['x', '-y', `-o${target}`, archive], 600_000);
     else await run('tar', ['-xf', archive, '-C', target, '--no-same-owner'], 600_000);
   } catch (error) {
@@ -243,7 +248,9 @@ export async function compressFiles(files: string[]): Promise<string> {
   if (files.some(file => path.dirname(file) !== directory)) throw new Error('Compress items from one folder at a time.');
   const base = files.length === 1 ? path.basename(files[0]).replace(/\.[^.]+$/, '') || path.basename(files[0]) : 'Archive';
   const target = await uniqueSibling(directory, base, '.zip');
-  await exec('zip', ['-r', '-q', '-y', target, '--', ...files.map(file => path.basename(file))],
+  const names = files.map(file => path.basename(file));
+  const windows = process.platform === 'win32';
+  await exec(windows ? windowsTar() : 'zip', [...(windows ? ['-a', '-cf'] : ['-r', '-q', '-y']), target, '--', ...names],
     { cwd: directory, timeout: 600_000, maxBuffer: 8_000_000, env: { ...process.env, LC_ALL: 'C' } });
   return target;
 }

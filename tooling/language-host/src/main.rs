@@ -98,6 +98,15 @@ impl LspAdapterDelegate for Delegate {
         Ok(())
     }
 }
+/// Windows usually spells the variable `Path`, while Zed's adapters and `which` read `PATH`.
+/// Zed renames it after its shell capture (project/src/environment.rs), which Windows skips here.
+fn normalize_path(mut env: HashMap<String, String>) -> HashMap<String, String> {
+    if cfg!(windows) && !env.contains_key("PATH") {
+        let key = env.keys().find(|key| key.eq_ignore_ascii_case("PATH")).cloned();
+        if let Some(path) = key.and_then(|key| env.remove(&key)) { env.insert("PATH".into(), path); }
+    }
+    env
+}
 fn merge(base: &mut Value, extra: Value) {
     if let (Some(base), Some(extra)) = (base.as_object_mut(), extra.as_object()) {
         for (key, value) in extra { merge(base.entry(key).or_insert(Value::Null), value.clone()); }
@@ -228,7 +237,7 @@ fn main() -> Result<()> {
                     match request.op.as_str() {
                         "environment" => {
                             ensure!(request.root.is_absolute(), "Workspace root must be absolute");
-                            let mut env = if request.inherit_environment || cfg!(windows) { request.env.clone() } else {
+                            let mut env = if request.inherit_environment || cfg!(windows) { normalize_path(request.env.clone()) } else {
                                 let shell = request.env.get("SHELL").cloned().unwrap_or_else(util::shell::get_system_shell);
                                 util::shell_env::capture(shell, &[], &request.root).await?
                             };
@@ -248,7 +257,7 @@ fn main() -> Result<()> {
                             ensure!(!offline || !request.allow_binary_download, "Downloads are disabled for this host");
                             ensure!(request.root.is_absolute(), "Workspace root must be absolute");
                             cx.update(|cx| SettingsStore::update_global(cx, |store,cx| { let _ = store.set_user_settings(&json!({"lsp":request.settings}).to_string(),cx); }));
-                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:request.env.clone(),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });
+                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });
                             prepare(&request,&registry,delegate,cx).await
                         },
                         _ => bail!("Unknown operation"),
