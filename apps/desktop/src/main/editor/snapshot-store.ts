@@ -2,6 +2,13 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 const LIMIT = 32 * 1024 * 1024;
+/** Named snapshots belong to the user and are never removed for them. */
+const NAMED_LIMIT = 100;
+/** Recovery snapshots are written automatically, so they are also discarded automatically. */
+const RECOVERY_LIMIT = 10;
+const RECOVERY_PREFIX = 'recovery-';
+const isSnapshot = (file: string) => /^[a-zA-Z0-9-]+\.json$/.test(file);
+const isRecovery = (file: string) => file.startsWith(RECOVERY_PREFIX);
 type Envelope = { version: 1; id: string; name: string; time: number; recovery: boolean; value: unknown };
 /** Separate, bounded JSON artifacts. Reading a snapshot never opens or writes its resources. */
 export class SnapshotStore {
@@ -30,21 +37,42 @@ export class SnapshotStore {
   }
   async list(): Promise<Array<Omit<Envelope, 'value' | 'version'>>> {
     let files: string[]; try { files = await fs.readdir(this.directory); } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
-    const entries = await Promise.all(files.filter(file => /^[a-zA-Z0-9-]+\.json$/.test(file)).slice(0, 200).map(async file => {
+    const entries = await Promise.all(files.filter(isSnapshot).slice(0, 200).map(async file => {
       try { return await this.metadata(file.slice(0, -5)); }
       catch { return { id: file.slice(0, -5), name: `${file} (damaged; cannot restore)`, time: 0, recovery: false }; }
     }));
     return entries.sort((a, b) => b.time - a.time);
   }
   async read(id: string): Promise<unknown> { return (await this.envelope(id)).value; }
+  /** Keep the newest recovery snapshots and delete the rest. Named snapshots are not considered. */
+  private async discardRecovery(files: string[], keep: number): Promise<void> {
+    const recovery = files.filter(file => isSnapshot(file) && isRecovery(file));
+    if (recovery.length <= keep) return;
+    const dated = await Promise.all(recovery.map(async file => ({ file,
+      time: await fs.stat(path.join(this.directory, file)).then(stat => stat.mtimeMs, () => 0) })));
+    dated.sort((a, b) => b.time - a.time);
+    await Promise.all(dated.slice(keep).map(({ file }) => fs.rm(path.join(this.directory, file), { force: true })));
+  }
+  /** Startup housekeeping: sessions that ended without cleaning up must not accumulate. */
+  prune(): Promise<void> {
+    const operation = this.queue.then(async () => {
+      let files: string[]; try { files = await fs.readdir(this.directory); } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+      await this.discardRecovery(files, RECOVERY_LIMIT);
+    });
+    this.queue = operation.catch(() => {}); return operation;
+  }
   write(name: string, value: unknown, recoveryId?: string): Promise<string> {
     const operation = this.queue.then(async () => {
+      if (recoveryId !== undefined && !recoveryId.startsWith(RECOVERY_PREFIX)) throw Error('Invalid recovery snapshot identifier.');
       const id = recoveryId ?? randomUUID(), file = this.file(id);
       const data = JSON.stringify({ version: 1, id, name: String(name).slice(0, 120), time: Date.now(), recovery: !!recoveryId, value } satisfies Envelope);
       if (Buffer.byteLength(data) > LIMIT) throw Error('Snapshot exceeds 32 MiB. Save large documents before creating a snapshot.');
       await fs.mkdir(this.directory, { recursive: true });
-      const files = (await fs.readdir(this.directory)).filter(file => /^[a-zA-Z0-9-]+\.json$/.test(file));
-      if (files.length >= 100 && !files.includes(`${id}.json`)) throw Error('100 snapshots are retained. Remove an old snapshot first.');
+      const files = (await fs.readdir(this.directory)).filter(isSnapshot);
+      // A recovery backup must never fail because old ones were left behind:
+      // make room for it instead. Only named snapshots count against the user.
+      if (recoveryId) await this.discardRecovery(files.filter(item => item !== `${id}.json`), RECOVERY_LIMIT - 1);
+      else if (files.filter(item => !isRecovery(item)).length >= NAMED_LIMIT) throw Error(`${NAMED_LIMIT} snapshots are retained. Remove an old snapshot first.`);
       const temporary = `${file}.${randomUUID()}.tmp`;
       try {
         const handle = await fs.open(temporary, 'wx', 0o600);

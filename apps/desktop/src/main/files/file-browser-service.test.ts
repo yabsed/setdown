@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -96,5 +96,25 @@ describe('folder tab backend', () => {
     await writeFile(path.join(trash, 'info', 'a b.md.trashinfo'), `[Trash Info]\nPath=${encodeURI(original)}\n`);
     await expect(service.restore(state(), path.join(trash, 'files', 'a b.md'))).rejects.toThrow(/already exists/);
     await expect(service.restore(state(), original)).rejects.toThrow(/Trash folder/);
+  });
+
+  test('files dropped from another application move within a volume and are copied otherwise', async () => {
+    const root = await temporary();
+    await mkdir(path.join(root, 'inbox')); await mkdir(path.join(root, 'locked'));
+    await writeFile(path.join(root, 'report.txt'), 'report'); await writeFile(path.join(root, 'locked', 'kept.txt'), 'kept');
+    const service = new FileBrowserService({ clipboard, beforeMutation() {} });
+    expect(await service.dropKind([path.join(root, 'report.txt')], path.join(root, 'inbox'))).toBe('move');
+    // A source that cannot be removed from its folder is copied instead of failing halfway.
+    await chmod(path.join(root, 'locked'), 0o555);
+    try { expect(await service.dropKind([path.join(root, 'report.txt'), path.join(root, 'locked', 'kept.txt')], path.join(root, 'inbox'))).toBe('import'); }
+    finally { await chmod(path.join(root, 'locked'), 0o755); }
+    const other = await stat('/dev/shm').catch(() => null);
+    if (other?.isDirectory() && other.dev !== (await stat(root)).dev) {
+      const volume = await mkdtemp('/dev/shm/setdown-folder-'); roots.push(volume);
+      await writeFile(path.join(volume, 'remote.txt'), 'remote');
+      expect(await service.dropKind([path.join(volume, 'remote.txt')], path.join(root, 'inbox'))).toBe('import');
+    }
+    await expect(service.dropKind([path.join(root, 'missing.txt')], path.join(root, 'inbox'))).rejects.toThrow();
+    await expect(service.dropKind([], path.join(root, 'inbox'))).rejects.toThrow('Select files');
   });
 });

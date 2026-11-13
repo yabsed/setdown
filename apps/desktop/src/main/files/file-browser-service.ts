@@ -209,6 +209,22 @@ export class FileBrowserService {
   transfer = (state: WindowState, request: ExplorerTransfer) => this.operations.transfer(state, request);
   cancel = (state: WindowState) => this.operations.cancel(state);
 
+  /**
+   * Files dropped from another application follow the desktop convention:
+   * moved within a volume, copied between volumes or out of a read-only folder.
+   */
+  async dropKind(candidates: string[], target: string): Promise<'move' | 'import'> {
+    if (!Array.isArray(candidates) || !candidates.length || candidates.length > 10000) throw new Error('Select files or folders first.');
+    const destination = await fs.stat(this.paths.inside(undefined, target));
+    for (const candidate of candidates) {
+      const source = this.paths.entry(undefined, candidate);
+      const [stat, removable] = await Promise.all([fs.lstat(source),
+        fs.access(path.dirname(source), constants.W_OK).then(() => true, () => false)]);
+      if (stat.dev !== destination.dev || !removable) return 'import';
+    }
+    return 'move';
+  }
+
   async setClipboard(paths: string[], cut: boolean) {
     if (!Array.isArray(paths) || !paths.length || paths.length > 10000) throw new Error('Select files or folders first.');
     const entries = [...new Set(paths.map(candidate => this.paths.entry(undefined, candidate)))];

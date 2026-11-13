@@ -88,7 +88,9 @@ export class WorkspaceSnapshots {
   }
   private async recoverable(): Promise<void> {
     if (this.writing || this.restoring) return;
-    const dirty = this.workspace.contents.filter(content => this.tabs.dirty(content) || content.document.isUntitled);
+    // An untouched empty draft has nothing to recover; backing it up on every launch only leaves litter.
+    const dirty = this.workspace.contents.filter(content => this.tabs.dirty(content)
+      || (content.document.isUntitled && this.tabs.text(content) !== ''));
     const fingerprint = dirty.map(content => `${content.id}:${content.document.path}:${content.revision}`).join('|');
     if (fingerprint === this.fingerprint) return;
     if (fingerprint === this.failedFingerprint && Date.now() < this.retryAfter) return;

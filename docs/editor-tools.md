@@ -127,15 +127,22 @@ reported. Damaged/unsupported manifests are rejected before layout restoration.
 Recovery captures dirty contents every five seconds and writes a serialized,
 atomic JSON artifact in Electron userData's `workspace-snapshots` directory.
 A forced exit can recover the **latest completed snapshot**, not every keystroke.
-A window's clean periodic checkpoint removes that window's recovery artifact;
-older recovery artifacts remain until removed explicitly. Normal new processes
+A window's clean periodic checkpoint removes that window's recovery artifact, and
+so does closing the window normally: its edits were saved or discarded on the
+way out. A destroyed window or a crashed renderer keeps its artifact. An empty,
+untouched draft is not backed up at all. Recovery artifacts are the application's
+own, so it also discards them: only the ten newest are kept, at startup and
+whenever a new one is written, and a recovery backup never fails because older
+artifacts exist. Normal new processes
 still start empty; a recovery affordance offers explicit restore. Renderer Reload
 retains the existing native-window active-review checkpoint, a separate lifetime.
 
-Limits: 100 artifacts, 32 MiB per stored JSON envelope, 24 MiB captured text,
+Limits: 100 named snapshots/checkpoints plus ten recovery artifacts, 32 MiB per
+stored JSON envelope, 24 MiB captured text,
 200 contents, 500 views and 32 groups per workspace snapshot. Individual Monaco
 view-state JSON is bounded to 1 MiB. Atomic files use mode 0600. Artifacts may
 contain private document text: **Remove a saved snapshot** deletes the selected
-artifact only. There is no automatic pruning of user checkpoints or cross-window
-shared Undo. Browser pages, running terminals/kernels and persistent Undo stacks
+artifact only. Snapshots and checkpoints the user created are never pruned
+automatically; at the limit a new one asks for an old one to be removed. There is
+no cross-window shared Undo. Browser pages, running terminals/kernels and persistent Undo stacks
 are not serialized into this manifest.

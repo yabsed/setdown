@@ -8,9 +8,10 @@
   import type { FolderView } from '../../core/workspace/workspace-state';
   import { folderCrumbs, formatModified, formatSize, kindLabel, parentFolder, presentFolder, type FolderSort } from '../../core/files/folder-presentation';
   import { acceptedPaths, activationAccepts, canAccept, canAcceptSelection, checkName, nameSelection, visibleInPicker, withFilterExtension } from '../../core/files/picker-rules';
-  import { draggedPaths, PROJECT_ENTRIES, PROJECT_FILES, selectEntry, topLevelPaths, type ExplorerSelection } from '../project/explorer/explorer-selection';
+  import { draggedPaths, PROJECT_ENTRIES, selectEntry, topLevelPaths, type ExplorerSelection } from '../project/explorer/explorer-selection';
   import { typeaheadMatch } from '../project/explorer/explorer-presentation';
   import { fileCommandTarget } from '../files/file-command-target';
+  import { fileDrag, FILE_DRAG_END } from '../files/file-drag';
   import { zoomState } from '../zoom-state.svelte';
   import { project } from '../project/project-state.svelte';
   import FileIcon from '../project/FileIcon.svelte';
@@ -58,10 +59,10 @@
   let trashTarget = $state<string[] | null>(null);
   let conflict = $state<{ request: TransferRequest } | null>(null);
   let replaceTarget = $state('');
-  let dropTarget = $state('');
+  let dropTarget = $state(''), dropHint = $state('');
   let listElement = $state<HTMLDivElement>(), popup = $state<HTMLDivElement>(), nameInput = $state<HTMLInputElement>();
   let list = $state<VListHandle>();
-  let generation = 0, appliedPath = '', appliedRevision = -1, typeahead = '', typedAt = 0, dragged: string[] = [];
+  let generation = 0, appliedPath = '', appliedRevision = -1, typeahead = '', typedAt = 0;
 
   const picker = $derived(tab.picker);
   const ops = $derived(actions.folderFiles);
@@ -193,7 +194,9 @@
     window.addEventListener('setdown:explorer-command', command);
     window.addEventListener('setdown:focus-folder', focusRequest);
     window.addEventListener('focus', windowFocus);
+    window.addEventListener(FILE_DRAG_END, clearDrop);
     return () => {
+      window.removeEventListener(FILE_DRAG_END, clearDrop);
       stopChanges(); stopProgress(); desktop.files.watch(token, null); resize.disconnect();
       window.removeEventListener('setdown:folder-properties', propertiesRequest);
       if (owns()) { fileCommandTarget.owner = ''; actions.explorer.setEditTarget(false); }
@@ -406,31 +409,51 @@
   const menuRun = (action: () => void) => () => { menu = null; action(); };
 
   const copying = (event: DragEvent) => /Mac/i.test(navigator.platform) ? event.altKey : event.ctrlKey;
+  const clearDrop = () => { dropTarget = ''; dropHint = ''; };
+  const folderName = (path: string) => path === tab.path ? crumbs.at(-1)?.name ?? path : path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
   function dragStart(event: DragEvent, entry: FolderEntry) {
-    if (busy || picker || !event.dataTransfer) { event.preventDefault(); return; }
+    // Always an OS file drag (file-drag.ts): web pages and other applications receive the files themselves.
+    event.preventDefault();
+    if (busy || picker) return;
     if (!selected.has(entry.path)) select(entry.path);
-    dragged = topLevelPaths(selection.paths);
-    event.dataTransfer.setData(PROJECT_ENTRIES, JSON.stringify(dragged));
-    event.dataTransfer.setData('application/x-setdown-project-entry', dragged[0]);
-    const files = selectedEntries.filter(item => item.kind === 'document').map(item => item.path);
-    if (files.length) { event.dataTransfer.setData(PROJECT_FILES, JSON.stringify(files)); event.dataTransfer.setData('application/x-setdown-project-file', files[0]); }
-    event.dataTransfer.effectAllowed = 'copyMove';
+    const documents = selectedEntries.filter(item => item.kind === 'document').map(item => item.path);
+    void fileDrag.start(desktop.files, topLevelPaths(selection.paths), documents).catch(failure => { error = message(failure); });
   }
   function dragOver(event: DragEvent, target: string) {
-    if (busy || picker || !event.dataTransfer?.types.some(type => type === 'Files' || type === PROJECT_ENTRIES)) return;
-    const invalid = dragged.some(path => target === path || target.startsWith(`${path}/`) || target.startsWith(`${path}\\`));
+    const data = event.dataTransfer;
+    if (busy || picker || !data?.types.some(type => type === 'Files' || type === PROJECT_ENTRIES)) return;
+    const own = fileDrag.owns(event), files = data.types.includes('Files') && !data.types.includes(PROJECT_ENTRIES);
+    const invalid = own && fileDrag.paths.some(path => target === path || target.startsWith(`${path}/`) || target.startsWith(`${path}\\`));
     event.preventDefault(); event.stopPropagation();
-    event.dataTransfer.dropEffect = invalid ? 'none' : event.dataTransfer.types.includes('Files') || copying(event) ? 'copy' : 'move';
+    // Naming an action the source does not offer refuses the drop, and an OS drag
+    // may not offer "move" (Setdown's own offers copy and link). That only limits
+    // the cursor: what happens to the files is decided at the drop.
+    const copy = copying(event), offers = (action: RegExp) => !files || action.test(data.effectAllowed);
+    const copyable = offers(/copy|all|uninitialized/i), movable = offers(/move|all/i);
+    data.dropEffect = invalid ? 'none' : (copy || !movable) && copyable ? 'copy' : movable ? 'move' : 'link';
     dropTarget = invalid ? '' : target;
+    dropHint = invalid ? '' : `${copy ? 'Copy' : files && !own ? 'Drop' : 'Move'} into “${folderName(target)}”${copy ? '' : ` · hold ${/Mac/i.test(navigator.platform) ? 'Option' : 'Ctrl'} to copy`}`;
   }
   async function drop(event: DragEvent, target: string) {
-    const external = event.dataTransfer?.types.includes('Files') && !event.dataTransfer.types.includes(PROJECT_ENTRIES);
-    const sources = external ? actions.pathsForDroppedFiles([...event.dataTransfer?.files ?? []])
-      : draggedPaths(event.dataTransfer, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
-    dropTarget = ''; dragged = [];
+    const data = event.dataTransfer;
+    const files = !!data?.types.includes('Files') && !data.types.includes(PROJECT_ENTRIES);
+    const sources = files ? actions.pathsForDroppedFiles([...data?.files ?? []])
+      : draggedPaths(data, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
+    const copy = copying(event), move = event.shiftKey;
+    clearDrop();
     if (busy || picker || !sources.length) return;
     event.preventDefault(); event.stopPropagation();
-    await transfer({ kind: external ? 'import' : copying(event) ? 'copy' : 'move', paths: sources, target });
+    // Setdown's own drags move (Ctrl copies). Files from another application follow
+    // the desktop convention, which main decides from the volumes involved.
+    let kind: ExplorerTransfer['kind'];
+    if (!files || fileDrag.dropped(sources)) kind = copy ? 'copy' : 'move';
+    else if (copy) kind = 'import';
+    else if (move) kind = 'move';
+    else {
+      try { kind = await desktop.files.dropKind(sources, target); }
+      catch (failure) { error = message(failure); return; }
+    }
+    await transfer({ kind, paths: sources, target });
   }
 
   function openSearch() { filterOpen = true; void tick().then(() => { filterInput?.focus(); filterInput?.select(); }); }
@@ -511,7 +534,6 @@
     onauxclick: (event: MouseEvent) => { if (event.button === 1 && row.kind === 'directory' && !picker) { event.preventDefault(); void actions.openFolder(row.path, { newTab: true }); } },
     oncontextmenu: (event: MouseEvent) => openMenu(event, row),
     ondragstart: (event: DragEvent) => dragStart(event, row),
-    ondragend: () => { dragged = []; dropTarget = ''; },
     ondragover: (event: DragEvent) => dragOver(event, row.kind === 'directory' ? row.path : tab.path),
     ondrop: (event: DragEvent) => void drop(event, row.kind === 'directory' ? row.path : tab.path),
   });
@@ -533,7 +555,8 @@
 
 <section class="folder-surface" bind:this={surface} data-folder-surface={tab.id} data-zoom-tab={tab.id} aria-label={picker ? picker.title : `Folder ${tab.path}`}
   style:--folder-font={`${13 * scale}px`} style:--folder-row={`${rowHeight}px`} style:--folder-cell-width={`${cellWidth}px`} style:--folder-cell-height={`${cellHeight}px`}
-  class:picker={!!picker} class:narrow class:places-open={placesOpen} data-columns={columnCount}>
+  class:picker={!!picker} class:narrow class:places-open={placesOpen} data-columns={columnCount}
+  ondragleave={event => { if (!(event.relatedTarget instanceof Node) || !surface?.contains(event.relatedTarget)) clearDrop(); }}>
     <div class="folder-toolbar">
       <button class="folder-icon-button" type="button" aria-label={sideVisible ? 'Hide Places' : 'Show Places'} title={sideVisible ? 'Hide Places (F9)' : 'Show Places (F9)'}
         aria-pressed={sideVisible} onclick={togglePlaces}>
@@ -546,7 +569,7 @@
         {#each crumbs as crumb, index (crumb.path)}
           {#if index}<span aria-hidden="true">›</span>{/if}
           <button type="button" aria-current={index === crumbs.length - 1 ? 'location' : undefined} title={crumb.path}
-            onclick={() => navigate(crumb.path)} ondragover={event => dragOver(event, crumb.path)} ondragleave={() => dropTarget = ''}
+            onclick={() => navigate(crumb.path)} ondragover={event => dragOver(event, crumb.path)} ondragleave={clearDrop}
             ondrop={event => void drop(event, crumb.path)} class:drop-target={dropTarget === crumb.path}>{crumb.name}</button>
         {/each}
       </nav>
@@ -593,7 +616,7 @@
       aria-multiselectable={multiple} aria-busy={loading || busy || searching} aria-activedescendant={indexes.has(focusedPath) ? optionId(indexes.get(focusedPath)!) : undefined}
       onkeydown={key} oncontextmenu={event => openMenu(event, null)}
       onclick={event => { if (!(event.target as Element).closest('.folder-row, .folder-cell, .folder-columns, button, input')) { selection = { paths: [], anchor: '' }; listElement?.focus({ preventScroll: true }); } }}
-      ondragover={event => dragOver(event, tab.path)} ondragleave={event => { if (event.target === event.currentTarget) dropTarget = ''; }} ondrop={event => void drop(event, tab.path)}>
+      ondragover={event => dragOver(event, tab.path)} ondragleave={event => { if (event.target === event.currentTarget) clearDrop(); }} ondrop={event => void drop(event, tab.path)}>
       {#if !grid}
         <div class="folder-columns" role="presentation">
           {#each [['name', 'Name'], ['modified', 'Modified'], ['size', 'Size'], ['type', searchResults ? 'Folder' : 'Kind']] as [key, label] (key)}
@@ -658,6 +681,8 @@
       {#if busy}
         <span>{progress ? `${progress.completed}/${progress.total} · ${progress.path.split(/[\\/]/).at(-1)}` : 'Working on files…'}</span>
         <button type="button" onclick={() => ops.cancel()}>Cancel</button>
+      {:else if dropHint}
+        <span>{dropHint}</span>
       {:else}
         <span>{loading && !listing ? 'Loading…' : searching ? 'Searching subfolders…' : `${rows.length} ${rows.length === 1 ? 'item' : 'items'}${searchResults ? ' found' : ''}`}{selection.paths.length ? ` · ${selection.paths.length} selected` : ''}{searchResults && searchLimited ? ' · more matches exist; refine the search' : ''}{listing?.truncated ? ' · showing the first 100,000' : ''}{listing && !listing.writable ? ' · read-only' : ''}</span>
       {/if}

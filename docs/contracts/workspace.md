@@ -882,6 +882,26 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
 - **Edit commands.** `renderer/files/file-command-target.ts` decides whether the
   Explorer or one folder tab owns Ctrl+C/X/V/A/Z and the Edit menu. Inputs, Monaco
   and the terminal keep their own text commands.
+- **Drag and drop.** Dragging rows starts an OS file drag
+  (`webContents.startDrag`, `files:start-drag`), not an HTML drag: only that hands
+  real files to a web page in a web tab, to another application or to the
+  desktop. Its payload is just `Files`, so `renderer/files/file-drag.ts` records
+  the dragged paths and this window's targets recognize their own drag by the
+  dropped paths: onto a folder row, breadcrumb, Place or the list it moves (Ctrl
+  copies), onto the Explorer tree it keeps the Explorer's move/copy, and its
+  documents take tab-strip and split placements like Explorer files. Over a folder
+  tab a file drag is always a transfer into that folder, never a tab placement.
+  Files dropped from another application (or another Setdown window) are
+  transferred into the folder under the pointer instead of being opened: moved
+  within a volume, copied between volumes or out of a read-only folder; Ctrl
+  copies, Shift moves (`FileBrowserService.dropKind`). The status bar names the
+  pending action, because an OS drag that offers only copy/link still shows a copy
+  cursor for a move. Two platform limits are accepted: Electron runs the drag
+  inside `startDrag`, so main answers no other request until the drop (native
+  previews therefore cannot be captured for split guides during this drag; a drop
+  on one is an ordinary file drop), and an X11 source drops with the answer to its
+  previous pointer position, so a release in the same instant the pointer first
+  reaches a target is a cancel.
 - **Narrow panes.** Below 560 CSS px the Places sidebar becomes a drawer over the
   list only. The toolbar (and its Places toggle) always spans the pane, columns
   drop from four to two to one, and the file name column is never removed. Places
@@ -913,3 +933,7 @@ Checks: `core/files/*.test.ts`, `main/files/*.test.ts`,
 `test/e2e/workspace/folder-tab.spec.ts` (browse, Back/Forward selection, address
 completion, file operations outside a workspace, chooser accept/cancel/save, search,
 grid, properties, the Files side view, narrow panes, launch with a folder).
+`renderer/files/file-drag.test.ts` and `test/e2e/workspace/folder-drag.spec.ts`
+cover drag and drop with real pointer input: moving a file and a document into a
+subfolder, a web page receiving the dragged files' contents, a tab-strip drop, and
+a second process's files moving into the folder under the pointer.

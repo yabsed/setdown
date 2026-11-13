@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { shell } from 'electron';
+import { app, nativeImage, shell, type NativeImage } from 'electron';
+import { lstatSync } from 'node:fs';
 import type { ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
 import type { ProjectEntryKind } from '../../protocol/desktop-api';
 import type { DocumentManager } from '../documents/document-manager';
@@ -63,5 +64,28 @@ export function installFilesIpc(channels: WindowIpc, files: FileBrowserService, 
   channels.handle('files:bookmark', (_state, folder: unknown, present: unknown) => setBookmark(absolute(folder), present === true));
   channels.handle('files:extract', (_state, archive: unknown) => extractArchive(absolute(archive)));
   channels.handle('files:compress', (_state, paths: unknown) => compressFiles(list(paths)));
+  // A folder tab drags files as an OS file drag: an HTML drag cannot hand real
+  // files to web pages or other applications. Electron runs the drag inside
+  // this call, so the reply reaches the renderer when the drag has ended.
+  const dragIcons = new Map<string, NativeImage>(), dragReleased = new Set<number>();
+  channels.on('files:cancel-drag', state => { dragReleased.add(state.webContentsId); });
+  channels.handle('files:start-drag', async (state, paths: unknown) => {
+    dragReleased.delete(state.webContentsId);
+    const dragged = list(paths);
+    if (!dragged.length) throw new Error('Select files or folders first.');
+    const kind = lstatSync(dragged[0]).isDirectory() ? '/' : path.extname(dragged[0]).toLowerCase();
+    let icon = dragIcons.get(kind);
+    if (!icon) {
+      // startDrag silently does nothing without an image.
+      icon = await app.getFileIcon(dragged[0], { size: 'small' }).then(image => image.isEmpty() ? null : image, () => null)
+        ?? nativeImage.createFromBitmap(Buffer.alloc(16 * 16 * 4, 0x80), { width: 16, height: 16 });
+      dragIcons.set(kind, icon);
+    }
+    // A drag started after the button went up would stay attached to the pointer
+    // and drop on the next click. Cached images keep this path synchronous.
+    if (dragReleased.delete(state.webContentsId) || state.window.isDestroyed()) return;
+    state.window.webContents.startDrag({ file: dragged[0], files: dragged, icon });
+  });
+  channels.handle('files:drop-kind', (_state, paths: unknown, target: unknown) => files.dropKind(list(paths), absolute(target)));
   channels.handle('files:launch-requests', state => requests.take(state));
 }

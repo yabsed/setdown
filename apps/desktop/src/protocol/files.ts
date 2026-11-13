@@ -18,6 +18,12 @@ export interface FilesApi {
   trash(path: string): Promise<void>;
   restore(path: string): Promise<string>;
   transfer(request: ExplorerTransfer): Promise<ExplorerOperationResult>;
+  /** Drag these paths as an OS file drag (to web pages and other applications); resolves when the drag ends. */
+  startDrag(paths: string[]): Promise<void>;
+  /** The button was released before the OS drag began; a pending `startDrag` must not start it. */
+  cancelDrag(): void;
+  /** How files dropped from another application enter `target`: moved within a volume, otherwise copied. */
+  dropKind(paths: string[], target: string): Promise<'move' | 'import'>;
   /** Stop the running transfer; progress arrives on the shared `explorer.onProgress`. */
   cancel(): void;
   setClipboard(paths: string[], cut: boolean): Promise<ExplorerClipboard>;

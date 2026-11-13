@@ -13,6 +13,7 @@
   import ExplorerEditRow from './ExplorerEditRow.svelte';
   import FileIcon from '../FileIcon.svelte';
   import { fileCommandTarget } from '../../files/file-command-target';
+  import { fileDrag } from '../../files/file-drag';
 
   type Edit = {
     mode: 'create' | 'rename';
@@ -335,7 +336,9 @@
   function dragOver(event: DragEvent, target: string) {
     if (busy || !event.dataTransfer?.types.some(type => type === 'Files' || type === PROJECT_ENTRIES || type === 'application/x-setdown-project-entry')) return;
     event.preventDefault();
-    const invalid = dragged.some(path => target === path || target.startsWith(`${path}/`) || target.startsWith(`${path}\\`));
+    // A folder tab's drag is an OS file drag (file-drag.ts): its paths are known, its payload is only Files.
+    const moving = dragged.length ? dragged : fileDrag.owns(event) ? fileDrag.paths : [];
+    const invalid = moving.some(path => target === path || target.startsWith(`${path}/`) || target.startsWith(`${path}\\`));
     event.dataTransfer.dropEffect = invalid ? 'none' : event.dataTransfer.types.includes('Files') || copying(event) ? 'copy' : 'move';
     dropTarget = invalid ? '' : target;
     if (hoverPath !== dropTarget) {
@@ -359,9 +362,10 @@
     } finally { busy = false; }
   }
   async function drop(event: DragEvent, target: string) {
-    const external = event.dataTransfer?.types.includes('Files');
-    const sources = external ? actions.pathsForDroppedFiles([...event.dataTransfer?.files ?? []])
+    const files = event.dataTransfer?.types.includes('Files');
+    const sources = files ? actions.pathsForDroppedFiles([...event.dataTransfer?.files ?? []])
       : draggedPaths(event.dataTransfer, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
+    const external = files && !fileDrag.dropped(sources);
     endDrag();
     if (busy || !sources.length) return;
     event.preventDefault(); event.stopPropagation();

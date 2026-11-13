@@ -1,5 +1,6 @@
 import { imageSessions } from '../../image/image-edit-sessions';
 import { draggedPaths, PROJECT_FILES } from '../../project/explorer/explorer-selection';
+import { fileDrag, FILE_DRAG_END } from '../../files/file-drag';
 import type { ClaimedTabTransfer, TransferableTab } from '../../../protocol/desktop-api';
 import { splitDirection, type EditorGroupPlacement, type EditorGroups } from '../../../core/workspace/editor-groups';
 import { view } from '../workspace-view.svelte';
@@ -24,6 +25,7 @@ export function createTabDrag(options: Options) {
   let tabId: string | null = null, transferId: string | null = null;
   let canceled = false, leftWindow = false, sourceDrag = false;
   let dragging = false;
+  let fileGuide = false;
   let sharedDragId: string | null = null;
   let localOnly = false;
   const copying = (event: DragEvent) => /Mac/.test(navigator.platform) ? event.altKey : event.ctrlKey;
@@ -99,7 +101,7 @@ export function createTabDrag(options: Options) {
   }
   const reset = () => {
     if (transferId) options.desktop.setNativeTabDrag(null);
-    tabId = transferId = null; canceled = false; leftWindow = sourceDrag = false; view.draggedTabId = null;
+    tabId = transferId = null; canceled = false; leftWindow = sourceDrag = fileGuide = false; view.draggedTabId = null;
     clearTarget(); options.shell.classList.remove('is-tab-dragging');
     setDragging(false);
   };
@@ -143,7 +145,18 @@ export function createTabDrag(options: Options) {
     else window.dispatchEvent(event);
   });
   window.addEventListener('beforeunload', stopNativeDrag, { once: true });
-  const supported = (event: DragEvent) => !!transferId || Array.from(event.dataTransfer?.types ?? []).some(type => type === MIME || type === FILE || type === PROJECT_FILES);
+  // A folder tab's documents arrive as an OS file drag (file-drag.ts) and take the same placements as Explorer files.
+  const ownFiles = (event: DragEvent) => fileDrag.documents.length > 0 && fileDrag.owns(event);
+  const supported = (event: DragEvent) => !!transferId || ownFiles(event)
+    || Array.from(event.dataTransfer?.types ?? []).some(type => type === MIME || type === FILE || type === PROJECT_FILES);
+  // Over a folder tab, dragged files are a transfer into that folder: the folder
+  // surface owns the drop, so it must keep receiving pointer events. Tabs still split it.
+  const overFolder = (event: DragEvent) => !transferId && !sharedDragId
+    && !Array.from(event.dataTransfer?.types ?? []).includes(MIME)
+    && [...document.querySelectorAll<HTMLElement>('.folder-content:not(.inactive) .folder-surface:not(.picker)')].some(surface => {
+      const box = surface.getBoundingClientRect();
+      return event.clientX >= box.left && event.clientX < box.right && event.clientY >= box.top && event.clientY < box.bottom;
+    });
   function target(event: DragEvent): Target | null {
     const area = document.querySelector('.editor-area')!;
     const point = { x: event.clientX, y: event.clientY };
@@ -198,8 +211,13 @@ export function createTabDrag(options: Options) {
   window.addEventListener('dragend', () => {
     if (sourceDrag && !transferId && !sharedDragId) reset();
   });
+  // The OS file drag of a folder tab fires no dragend here; its guide must still be released.
+  window.addEventListener(FILE_DRAG_END, () => {
+    if (fileGuide && !transferId && !sharedDragId) reset();
+  });
   const acceptTarget = (event: DragEvent) => {
     if (!supported(event)) return;
+    if (overFolder(event)) { clearTarget(); options.shell.classList.remove('is-tab-dragging'); return; }
     leftWindow = false;
     const destination = target(event);
     if (sharedDragId ?? transferId) options.desktop.updateTabDragTarget((sharedDragId ?? transferId)!, !!destination, true);
@@ -210,10 +228,13 @@ export function createTabDrag(options: Options) {
     // dragenter, reporting "none" on a quick release. Placement still comes
     // only from the guide; dropping on chrome cancels without moving a tab.
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = copying(event) && options.copy ? 'copy' : 'move';
+    // An OS file drag offers copy and link only; "move" would refuse the drop.
+    if (event.dataTransfer) event.dataTransfer.dropEffect = ownFiles(event) || (copying(event) && options.copy) ? 'copy' : 'move';
     if (!destination && !detachTarget) return;
-    // A native Markdown view otherwise intercepts the next dragover/drop.
-    setDragging(true);
+    // A native Markdown view otherwise intercepts the next dragover/drop. Main
+    // cannot hide one while it runs a folder tab's OS drag, so those files
+    // skip the capture: over a native view they are an ordinary file drop.
+    if (ownFiles(event)) fileGuide = true; else setDragging(true);
     options.shell.classList.add('is-tab-dragging');
     if (activeStrip) {
       scrollList = activeStrip.querySelector<HTMLElement>('.tab-list'); scrollPointer = event.clientX;
@@ -227,6 +248,7 @@ export function createTabDrag(options: Options) {
   window.addEventListener('dragover', acceptTarget, true);
   window.addEventListener('drop', event => {
     if (!supported(event)) return;
+    if (overFolder(event)) { reset(); return; }
     // A fast native release can arrive before its final dragover. Real drop
     // coordinates supersede a previous center hover; coordinate-less Chromium
     // completions still use the placement that was actually painted.
@@ -245,7 +267,9 @@ export function createTabDrag(options: Options) {
     event.preventDefault(); event.stopPropagation();
     const localId = tabId;
     const incoming = event.dataTransfer?.getData(MIME);
-    const paths = draggedPaths(event.dataTransfer, PROJECT_FILES, FILE);
+    const dropped = ownFiles(event) ? [...event.dataTransfer?.files ?? []].map(file => options.desktop.pathForFile(file)) : [];
+    const paths = dropped.length ? (fileDrag.dropped(dropped) ? dropped.filter(path => fileDrag.documents.includes(path)) : [])
+      : draggedPaths(event.dataTransfer, PROJECT_FILES, FILE);
     reset();
     if (localId) {
       if (incoming) options.desktop.cancelTabTransfer(incoming);

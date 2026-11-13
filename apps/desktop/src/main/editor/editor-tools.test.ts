@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, utimes } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { readEditorPolicy, glob } from './editor-policy';
@@ -41,6 +41,37 @@ test('snapshot writes are atomic, serialized, bounded and cannot escape the arti
     const id = await store.write(name, { text: 'large content '.repeat(100_000) });
     expect((await store.list()).find(entry => entry.id === id)?.name).toBe(name);
     expect(await store.read(id)).toEqual({ text: 'large content '.repeat(100_000) });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+test('recovery snapshots are discarded automatically and never block a backup; named snapshots are kept', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-snapshot-'));
+  const recovery = async () => (await readdir(root)).filter(file => file.startsWith('recovery-')).sort();
+  try {
+    const store = new SnapshotStore(root);
+    const mine = await store.write('Mine', { keep: true });
+    // Sessions that ended without cleaning up left more recovery files than are retained.
+    for (let index = 0; index < 14; index++) {
+      const id = `recovery-left-${String(index).padStart(2, '0')}`, file = path.join(root, `${id}.json`);
+      await writeFile(file, JSON.stringify({ version: 1, id, name: 'Unsaved workspace recovery', time: index, recovery: true, value: {} }));
+      await utimes(file, 1000 + index, 1000 + index);
+    }
+    await store.prune();
+    expect(await recovery()).toEqual(Array.from({ length: 10 }, (_, index) => `recovery-left-${String(index + 4).padStart(2, '0')}.json`));
+    await store.write('Unsaved workspace recovery', { text: 'latest' }, 'recovery-now-1');
+    expect(await recovery()).toHaveLength(10);
+    expect(await recovery()).toContain('recovery-now-1.json'); expect(await recovery()).not.toContain('recovery-left-04.json');
+    // Rewriting the same window's backup evicts nothing further.
+    await store.write('Unsaved workspace recovery', { text: 'newer' }, 'recovery-now-1');
+    expect(await recovery()).toHaveLength(10); expect(await store.read('recovery-now-1')).toEqual({ text: 'newer' });
+    // The user's own limit ignores recovery files and is never met by deleting their snapshots.
+    for (let index = 0; index < 99; index++) await writeFile(path.join(root, `named-${index}.json`),
+      JSON.stringify({ version: 1, id: `named-${index}`, name: 'Named', time: index, recovery: false, value: {} }));
+    await expect(store.write('One too many', {})).rejects.toThrow('100 snapshots are retained');
+    await store.write('Unsaved workspace recovery', { text: 'still saved' }, 'recovery-now-2');
+    expect(await store.read('recovery-now-2')).toEqual({ text: 'still saved' });
+    expect(await store.read(mine)).toEqual({ keep: true });
+    expect((await readdir(root)).filter(file => file.startsWith('named-'))).toHaveLength(99);
+    await expect(store.write('Wrong', {}, 'mine')).rejects.toThrow('Invalid recovery snapshot identifier');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('session validation enforces content identity, tree ownership and version before restore', async () => {

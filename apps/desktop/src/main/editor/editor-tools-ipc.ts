@@ -10,6 +10,24 @@ import { pythonProjectSettings } from '../language/python-project-settings';
 export function installEditorToolsIpc(channels: WindowIpc): void {
   const snapshots = new SnapshotStore(path.join(app.getPath('userData'), 'workspace-snapshots'));
   const run = randomUUID();
+  void snapshots.prune().catch(error => console.error('Could not prune recovery snapshots', error));
+  // A window that closes normally has already saved or discarded its edits
+  // (window-manager confirms dirty tabs first), so its recovery snapshot is
+  // obsolete. Destroyed windows and crashed renderers keep theirs for recovery.
+  const recoveryOwners = new Set<number>();
+  const recoveryId = (state: WindowState): string => {
+    const id = `recovery-${run}-${state.webContentsId}`;
+    if (recoveryOwners.has(state.webContentsId) || state.window.isDestroyed()) return id;
+    recoveryOwners.add(state.webContentsId);
+    let closing = false, crashed = false;
+    state.window.on('close', event => { closing = !event.defaultPrevented; });
+    state.window.webContents.on('render-process-gone', () => { crashed = true; });
+    state.window.once('closed', () => {
+      recoveryOwners.delete(state.webContentsId);
+      if (closing && !crashed) void snapshots.remove(id).catch(error => console.error('Could not remove a recovery snapshot', error));
+    });
+    return id;
+  };
   function source(state: WindowState, file: unknown): string {
     if (typeof file !== 'string' || file.length > 16384 || !path.isAbsolute(file) || file.includes('\0')) throw Error('Invalid source path.');
     if (state.currentDocument?.path !== file && !state.rendererTabs.some(tab => tab.path === file)) throw Error('Open this document before inspecting its environment.');
@@ -65,6 +83,6 @@ export function installEditorToolsIpc(channels: WindowIpc): void {
   });
   channels.handle('editor:snapshots-list', () => snapshots.list());
   channels.handle('editor:snapshots-read', (_state, id: string) => snapshots.read(id));
-  channels.handle('editor:snapshots-write', (state, name: string, value: unknown, recovery: unknown) => snapshots.write(name, value, recovery === true ? `recovery-${run}-${state.webContentsId}` : undefined));
+  channels.handle('editor:snapshots-write', (state, name: string, value: unknown, recovery: unknown) => snapshots.write(name, value, recovery === true ? recoveryId(state) : undefined));
   channels.handle('editor:snapshots-remove', (_state, id: string) => snapshots.remove(id));
 }
