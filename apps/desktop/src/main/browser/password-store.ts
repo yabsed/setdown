@@ -113,6 +113,18 @@ export class PasswordStore {
     }
     await this.commit();
   }
+  /** Change a saved login in place. An omitted field keeps its value; the site itself is not editable. */
+  async update(id: string, changes: { username?: string; password?: string }): Promise<void> {
+    await this.load();
+    const row = this.contents.credentials.find(item => item.id === id);
+    if (!row) throw Error('Unknown password.');
+    const next = { origin: row.origin, username: changes.username ?? row.username, password: changes.password ?? row.password };
+    if (!valid(next)) throw Error('This login cannot be saved.');
+    if (next.username !== row.username && this.find(next.origin, next.username)) throw Error('Another saved login for this site already uses that user name.');
+    if (next.username === row.username && next.password === row.password) return;
+    row.username = next.username; row.password = next.password; row.modified = Date.now();
+    await this.commit();
+  }
   async remove(id: string): Promise<void> {
     await this.load();
     const before = this.contents.credentials.length;

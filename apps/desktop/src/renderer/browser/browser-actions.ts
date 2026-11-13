@@ -17,6 +17,7 @@ export type BrowserActions = {
   browserRevealPassword: BrowserApi['revealPassword'];
   browserRemovePassword: BrowserApi['removePassword'];
   browserAddPassword: BrowserApi['addPassword'];
+  browserUpdatePassword: BrowserApi['updatePassword'];
   browserAllowPasswordSaving: BrowserApi['allowPasswordSaving'];
   browserImportPasswords: BrowserApi['importPasswords'];
   browserExportPasswords: BrowserApi['exportPasswords'];
@@ -59,6 +60,7 @@ export function createBrowserActions(options: Options): BrowserActions {
     browserRevealPassword: id => api.revealPassword(id),
     browserRemovePassword: id => api.removePassword(id),
     browserAddPassword: input => api.addPassword(input),
+    browserUpdatePassword: (id, changes) => api.updatePassword(id, changes),
     browserAllowPasswordSaving: origin => api.allowPasswordSaving(origin),
     browserImportPasswords: () => api.importPasswords(),
     browserExportPasswords: () => api.exportPasswords(),

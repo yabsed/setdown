@@ -124,6 +124,26 @@ test('saved passwords are managed in the Browser side view and move through a CS
     await expect(row.locator('code')).toHaveText('p,w "1"');
     await row.getByRole('button', { name: 'Hide password', exact: true }).click();
     await expect(row.locator('code')).toHaveCount(0);
+    // A saved login is changed in place: the password alone, then the user name.
+    await row.getByRole('button', { name: 'Edit login', exact: true }).click();
+    const form = f.page.getByRole('form', { name: 'Edit login for https://example.com' });
+    await expect(form.getByLabel('User name')).toHaveValue('ann');
+    await expect(form.getByLabel('New password')).toHaveValue('');
+    await form.getByLabel('New password').fill('rotated');
+    await form.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(form).toHaveCount(0);
+    const id = (await saved(f)).entries.find(entry => entry.username === 'ann')!.id;
+    expect(await f.page.evaluate(id => window.marktex.browser.revealPassword(id), id)).toBe('rotated');
+    await row.getByRole('button', { name: 'Edit login', exact: true }).click();
+    await form.getByLabel('User name').fill('ann@example.com');
+    await form.getByRole('button', { name: 'Save', exact: true }).click();
+    const renamed = f.page.getByRole('group', { name: 'ann@example.com on https://example.com' });
+    await expect(renamed).toBeVisible();
+    expect(await f.page.evaluate(id => window.marktex.browser.revealPassword(id), id)).toBe('rotated');
+    await expect(f.page.evaluate(id => window.marktex.browser.updatePassword(id, { password: '' }), id)).rejects.toThrow('Enter a password');
+    // Put it back for the transfer checks below.
+    await f.page.evaluate(id => window.marktex.browser.updatePassword(id, { username: 'ann', password: 'p,w "1"' }), id);
+    await expect(row).toBeVisible();
     await f.page.getByLabel('Search passwords').fill('localhost');
     await expect(row).toHaveCount(0);
     await expect(f.page.getByRole('group', { name: 'No user name on http://localhost:3000' })).toBeVisible();

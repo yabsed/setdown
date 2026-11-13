@@ -957,7 +957,9 @@ Design notes and the submodule survey behind these choices:
   (`browser-passwords.ts` `frameOrigin`), never from the message, and rechecks it
   after every wait before a password is sent to that frame. The shell receives
   lists without secrets; one password crosses to it only for an explicit Show or
-  Copy of that entry.
+  Copy of that entry. Editing a saved login changes its user name and/or password
+  in place without fetching the stored password; the site is not editable, and a
+  user name already used for that site is refused.
 - **Nothing is filled on load.** A saved login reaches a page only after the user
   picks it: the address bar's key button, the context menu of a field, or
   Ctrl+\ (which fills at once only when exactly one login fits). Saving is an
@@ -987,7 +989,7 @@ Design notes and the submodule survey behind these choices:
 
 Checks: `core/browser/password-csv.test.ts`, `main/browser/password-store.test.ts`,
 `main/browser/bookmark-import.test.ts`, and `test/e2e/browser/passwords.spec.ts`
-(offer, update, decline, exact-origin matching, fill only on request, panel, CSV
-round trip), `clear-data.spec.ts` (site data gone, bookmarks and a uBlock user
+(offer, update, decline, exact-origin matching, fill only on request, panel,
+in-place edit, CSV round trip), `clear-data.spec.ts` (site data gone, bookmarks and a uBlock user
 filter kept, reload), `devtools.spec.ts` (Inspect, keys, menu target, no sleep)
 and `bookmark-import.spec.ts` (export and re-import).

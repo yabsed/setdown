@@ -8,11 +8,13 @@
   // A revealed password is held only while its row shows it.
   let revealed = $state<Record<string, string>>({});
   let url = $state(''), username = $state(''), password = $state('');
+  // The entry being edited. Its password field starts empty: the saved one is not fetched to change it.
+  let editing = $state(''), editUser = $state(''), editPassword = $state('');
   const message = (reason: unknown) => String(reason).replace(/^Error: Error invoking remote method '[^']+': (?:Error: )?/, '');
   $effect(() => {
     void browser.passwordRevision;
     let current = true;
-    void actions.browserPasswords().then(value => { if (current) { list = value; revealed = {}; removing = ''; } })
+    void actions.browserPasswords().then(value => { if (current) { list = value; revealed = {}; removing = ''; editing = ''; editPassword = ''; } })
       .catch(reason => { if (current) error = message(reason); });
     return () => { current = false; };
   });
@@ -27,6 +29,14 @@
   });
   const copy = (id: string) => run(async () => { await navigator.clipboard.writeText(await actions.browserRevealPassword(id)); status = 'Password copied.'; });
   const remove = (id: string) => run(async () => { await actions.browserRemovePassword(id); });
+  function edit(id: string, user: string) { editing = id; editUser = user; editPassword = ''; removing = ''; error = ''; }
+  const saveEdit = (id: string, user: string) => run(async () => {
+    const changes: { username?: string; password?: string } = {};
+    if (editUser.trim() !== user) changes.username = editUser;
+    if (editPassword) changes.password = editPassword;
+    if (changes.username !== undefined || changes.password !== undefined) { await actions.browserUpdatePassword(id, changes); status = 'Saved.'; }
+    editing = ''; editPassword = '';
+  });
   const add = () => run(async () => {
     await actions.browserAddPassword({ url, username, password });
     url = ''; username = ''; password = ''; adding = false;
@@ -63,11 +73,18 @@
       <div class="item" role="group" aria-label={`${entry.username || 'No user name'} on ${entry.origin}`}>
         <div class="login"><span class="site" title={entry.origin}>{entry.origin.replace(/^https:\/\//, '')}</span>
           <small>{entry.username || '(no user name)'}{#if revealed[entry.id] !== undefined} · <code>{revealed[entry.id]}</code>{/if}</small></div>
-        {#if removing === entry.id}
+        {#if editing === entry.id}
+          <form class="edit" aria-label={`Edit login for ${entry.origin}`} onsubmit={event => { event.preventDefault(); void saveEdit(entry.id, entry.username); }}>
+            <input aria-label="User name" placeholder="User name" bind:value={editUser} spellcheck="false" autocomplete="off" />
+            <input aria-label="New password" placeholder="New password (empty keeps it)" type="password" bind:value={editPassword} autocomplete="new-password" />
+            <div><button type="submit" disabled={busy}>Save</button><button type="button" disabled={busy} onclick={() => { editing = ''; editPassword = ''; }}>Cancel</button></div>
+          </form>
+        {:else if removing === entry.id}
           <button disabled={busy} onclick={() => void remove(entry.id)}>Remove</button><button disabled={busy} onclick={() => { removing = ''; }}>Keep</button>
         {:else}
           <button disabled={busy} aria-label={revealed[entry.id] !== undefined ? 'Hide password' : 'Show password'} title={revealed[entry.id] !== undefined ? 'Hide password' : 'Show password'} onclick={() => void reveal(entry.id)}>{revealed[entry.id] !== undefined ? 'Hide' : 'Show'}</button>
           <button disabled={busy} aria-label="Copy password" title="Copy password" onclick={() => void copy(entry.id)}>Copy</button>
+          <button disabled={busy} aria-label="Edit login" title="Change the user name or password" onclick={() => edit(entry.id, entry.username)}>Edit</button>
           <button disabled={busy} aria-label="Remove password" title="Remove this saved password" onclick={() => { removing = entry.id; }}>×</button>
         {/if}
       </div>
@@ -88,7 +105,9 @@
   .transfer { display: flex; flex-wrap: wrap; gap: 3px; }
   .add { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid var(--app-border); border-radius: 5px; }
   .add input { min-width: 0; padding: 6px 8px; border: 1px solid var(--app-border); border-radius: 4px; background: var(--app-canvas); color: inherit; font: inherit; }
-  .items { overflow: auto; min-height: 0; } .item { display: flex; align-items: center; gap: 2px; }
+  .items { overflow: auto; min-height: 0; } .item { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+  .edit { flex: 1 1 100%; display: flex; flex-direction: column; gap: 5px; margin: 0 7px 8px; } .edit div { display: flex; gap: 3px; }
+  .edit input { min-width: 0; padding: 6px 8px; border: 1px solid var(--app-border); border-radius: 4px; background: var(--app-canvas); color: inherit; font: inherit; }
   .login { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 4px; padding: 8px 7px; }
   .site, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { opacity: .65; } code { user-select: all; }
   h3 { margin: 12px 7px 2px; font: 600 11px var(--app-font-family); opacity: .6; text-transform: uppercase; }

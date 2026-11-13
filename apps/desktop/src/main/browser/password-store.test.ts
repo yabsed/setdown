@@ -101,3 +101,21 @@ test('an import adds new logins, replaces changed ones and reports what it would
   expect((await store.rows()).sort((a, b) => a.origin.localeCompare(b.origin))).toEqual([
     { ...ann, password: 'imported' }, { origin: 'https://new.example', username: 'me', password: 'pw' }]);
 });
+
+test('a saved login is edited in place: either field, never onto another login of the same site', async () => {
+  const target = await file();
+  const store = new PasswordStore(target, vault());
+  await store.save(ann); await store.save({ ...ann, username: 'bob', password: 'second' });
+  const id = (await store.matches(ann.origin)).find(item => item.username === 'ann')!.id;
+  await store.update(id, { password: 'rotated' });
+  expect(await store.credential(id)).toEqual({ ...ann, password: 'rotated' });
+  await store.update(id, { username: 'ann@example.com' });
+  expect(await store.credential(id)).toEqual({ origin: ann.origin, username: 'ann@example.com', password: 'rotated' });
+  // The entry keeps its identity and the change is what the next start reads.
+  expect((await new PasswordStore(target, vault()).credential(id))?.username).toBe('ann@example.com');
+  await expect(store.update(id, { username: 'bob' })).rejects.toThrow('already uses that user name');
+  await expect(store.update(id, { password: '' })).rejects.toThrow('cannot be saved');
+  await expect(store.update('missing', { password: 'x' })).rejects.toThrow('Unknown password');
+  expect(await store.credential(id)).toEqual({ origin: ann.origin, username: 'ann@example.com', password: 'rotated' });
+  expect((await store.list()).entries).toHaveLength(2);
+});

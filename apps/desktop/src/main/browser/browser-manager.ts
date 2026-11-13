@@ -1117,6 +1117,12 @@ export class BrowserManager {
         || input.username.length > PASSWORD_LIMITS.username || input.password.length > PASSWORD_LIMITS.password) throw Error('Enter a password.');
       await this.passwords.store.save({ origin, username: input.username.trim(), password: input.password }); passwordsChanged();
     });
+    channels.handle('browser:password-update', async (_state, id: unknown, changes: { username?: unknown; password?: unknown }) => {
+      const next: { username?: string; password?: string } = {};
+      if (changes?.username !== undefined) { if (typeof changes.username !== 'string') throw Error('Invalid user name.'); next.username = changes.username.trim(); }
+      if (changes?.password !== undefined) { if (typeof changes.password !== 'string' || !changes.password) throw Error('Enter a password.'); next.password = changes.password; }
+      await this.passwords.store.update(passwordId(id), next); passwordsChanged();
+    });
     channels.handle('browser:password-allow', async (_state, origin: unknown) => { await this.passwords.store.setNever(String(origin), false); passwordsChanged(); });
     let transferring = false;
     channels.handle('browser:password-import', async state => {

@@ -85,6 +85,8 @@ export type BrowserApi = {
   revealPassword(id: string): Promise<string>;
   removePassword(id: string): Promise<void>;
   addPassword(input: { url: string; username: string; password: string }): Promise<void>;
+  /** Change a saved login's user name and/or password; an omitted field is kept. */
+  updatePassword(id: string, changes: { username?: string; password?: string }): Promise<void>;
   /** Ask again for a site that was set to "never save". */
   allowPasswordSaving(origin: string): Promise<void>;
   importPasswords(): Promise<import('../core/browser/passwords').BrowserPasswordImportResult | null>;

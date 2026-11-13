@@ -140,6 +140,7 @@ const api: MarkTexApi = {
     revealPassword: id => ipcRenderer.invoke('browser:password-reveal', id),
     removePassword: id => ipcRenderer.invoke('browser:password-remove', id),
     addPassword: input => ipcRenderer.invoke('browser:password-add', input),
+    updatePassword: (id, changes) => ipcRenderer.invoke('browser:password-update', id, changes),
     allowPasswordSaving: origin => ipcRenderer.invoke('browser:password-allow', origin),
     importPasswords: () => ipcRenderer.invoke('browser:password-import'),
     exportPasswords: () => ipcRenderer.invoke('browser:password-export'),
