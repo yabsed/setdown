@@ -837,18 +837,20 @@ retains URLs referenced by other bookmarks. Folder and search lists paginate at
 100 nodes. Inputs are bounded at 10 MiB, 50,000 nodes and 32 nested folders. This
 version imports HTML; it does not read another browser's live profile database.
 
-The Browser library contains Bookmarks, History, Downloads and Extensions.
+The Browser library contains Bookmarks, History, Downloads, Passwords and Extensions.
 Appearance is removed from this sidebar; View → Theme owns app/web theme choices,
 and site controls retain their original-colors exception. Existing theme tests
 continue to cover these menu choices, page preservation and restart persistence.
 
-The built-in password manager is removed by explicit product choice. Its sidebar,
-key button, preload API, IPC handlers, form inspection/filling, vault implementation
-and lock/sleep listeners are retired. Its two unit and two Electron scenarios are
-removed with that feature; `browser/compact-location.spec.ts` checks the sidebar,
-toolbar and preload no longer expose it. Ordinary website forms, HTTP auth and
-extension functionality are unaffected. Existing encrypted profile files are
-left untouched and are no longer read by the application.
+The first built-in password manager was removed on 2026-11-09 by product choice
+(sidebar, key button, preload API, form inspection, vault, lock/sleep listeners).
+Saving passwords was requested again on 2026-11-14 and returns with a different
+design, described under [Browser library](#browser-library-passwords-bookmark-export-page-developer-tools-clearing-data):
+no lock or unlock step, logins keyed by exact origin, nothing filled until the
+user picks a login. `browser/compact-location.spec.ts` now checks that the
+toolbar shows no password button on a page without a login form and that the
+library lists Passwords. The old `passwords.v1.enc` profile file is still left
+untouched and is never read; the new store is a separate file.
 
 The empty workspace offers Open Terminal alongside New Document, Open File,
 Open Folder and Open Web Page. It uses the existing new-terminal action, current
@@ -937,3 +939,55 @@ grid, properties, the Files side view, narrow panes, launch with a folder).
 cover drag and drop with real pointer input: moving a file and a document into a
 subfolder, a web page receiving the dragged files' contents, a tab-strip drop, and
 a second process's files moving into the folder under the pointer.
+
+## Browser library: passwords, bookmark export, page developer tools, clearing data
+
+Design notes and the submodule survey behind these choices:
+[the implementation report](../../reports/2026_11_14_01_05_browser_passwords_bookmarks_devtools_clear_data_plan.md).
+
+- **Saved passwords.** `main/browser/password-store.ts` keeps every login in one
+  file encrypted through Electron `safeStorage`, written atomically with mode
+  0600. A login is keyed by its exact origin (scheme, host and port), and only
+  HTTPS or loopback origins are kept (`core/browser/passwords.ts`). Without a
+  usable OS keyring (Linux `basic_text`) nothing is written: logins last until
+  the application quits and the Passwords panel says so. A file the current
+  keyring cannot decrypt is renamed aside, never overwritten.
+- **Whose login it is.** The page preload only reports that a login form exists
+  or was submitted. Main takes the site from the sending frame
+  (`browser-passwords.ts` `frameOrigin`), never from the message, and rechecks it
+  after every wait before a password is sent to that frame. The shell receives
+  lists without secrets; one password crosses to it only for an explicit Show or
+  Copy of that entry.
+- **Nothing is filled on load.** A saved login reaches a page only after the user
+  picks it: the address bar's key button, the context menu of a field, or
+  Ctrl+\ (which fills at once only when exactly one login fits). Saving is an
+  offer on the same key button; it survives the navigation a sign-in causes,
+  expires after five minutes and can be declined per site.
+- **CSV.** Export writes Chrome's `name,url,username,password,note` layout after a
+  plain-text warning, owner-readable only. Import accepts the column aliases of
+  the common browsers and managers, previews how many logins are new or replaced,
+  and skips rows without a password or an HTTPS address. Other browsers' profile
+  files are not read: their passwords are encrypted with those browsers' keys.
+- **Bookmark export.** `serializeBookmarks` (`core/browser/bookmarks.ts`) is the
+  inverse of the HTML import: Chrome's Netscape header, folders in order, every
+  item on its own line. An item whose folder is missing is kept at the top level.
+- **Page developer tools.** A web tab's tools open in a detached window, so the
+  native-view layout, drag shields and overlay captures are unaffected. Inspect
+  (context menu), F12 and Ctrl+Shift+I target the page; the application menu's
+  Toggle Developer Tools targets the active web tab and otherwise the app, whose
+  own tools are always at Ctrl+Shift+Alt+I. A tab with open tools is not put to
+  sleep.
+- **Clear browsing data.** One request clears the chosen kinds (history, cookies
+  and site data, cache, download list, site settings, saved passwords) for every
+  site and all time; there is no time range because neither `session.clearData`
+  nor the visit store has one. It uses `session.clearData`, which removes by web
+  origin, so extension storage (uBlock's filters and settings) is kept; bookmarks
+  are never a choice. Kinds are cleared independently and failures are reported
+  per kind. Open pages reload after cookies or site settings are cleared.
+
+Checks: `core/browser/password-csv.test.ts`, `main/browser/password-store.test.ts`,
+`main/browser/bookmark-import.test.ts`, and `test/e2e/browser/passwords.spec.ts`
+(offer, update, decline, exact-origin matching, fill only on request, panel, CSV
+round trip), `clear-data.spec.ts` (site data gone, bookmarks and a uBlock user
+filter kept, reload), `devtools.spec.ts` (Inspect, keys, menu target, no sleep)
+and `bookmark-import.spec.ts` (export and re-import).

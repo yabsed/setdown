@@ -118,6 +118,19 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
           document.querySelector('#guard').onclick = () => window.onbeforeunload = event => { event.preventDefault(); event.returnValue = ''; };
         </script>`); return;
     }
+    // A query string only tells apart tabs that show the same form.
+    const route = req.url?.split('?')[0];
+    if (route === '/login' || route === '/signup') {
+      // A real form post: the page navigates away, like most sign-ins.
+      res.end(`<!doctype html><title>Sign in</title><form action="/welcome" method="post">
+        <input id="search" name="q" placeholder="Search">
+        <input id="user" name="username" autocomplete="username">
+        <input id="pass" name="password" type="password" ${route === '/signup' ? 'autocomplete="new-password"' : ''}>
+        <button id="show" type="button">Show</button><button id="go" type="submit">Sign in</button></form>
+        <script>window.filled = []; for (const id of ['user', 'pass']) document.getElementById(id).addEventListener('input', () => window.filled.push(id));</script>`);
+      return;
+    }
+    if (route === '/welcome') { req.resume(); res.end('<!doctype html><title>Welcome</title><p id="state">Signed in.</p><input id="draft">'); return; }
     if (req.url === '/frame') { res.end('<!doctype html><div class="frame-ad">Frame advertisement</div><div class="removable">Control</div>'); return; }
     if (req.url === '/article') {
       const paragraphs = Array.from({ length: 40 }, (_, i) => `<p data-marker="${i}">Paragraph ${i}: reading mode should feel`

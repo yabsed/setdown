@@ -93,3 +93,84 @@ ipcRenderer.on('browser:css', (_event, request: { id: string; code: string; remo
     } catch (error) { ipcRenderer.send('browser:css-result', request.id, String(error)); }
   });
 });
+
+// Saved passwords. This isolated script only notices login forms and fills the
+// one login the user picked in the shell. It never receives the list of saved
+// logins, and main takes the site from this frame, not from anything sent here.
+// Nothing is filled on load: a script injected into the page then finds no
+// password waiting in a field the user has not asked to fill.
+type LoginFields = { username: HTMLInputElement | null; password: HTMLInputElement };
+const USER_HINTS = ['user', 'name', 'mail', 'login', 'auth', 'identifier', 'account', 'acct'];
+const NOT_USER = ['confirm', 'filename', 'search', 'captcha', 'otp', 'code'];
+const shown = (input: HTMLInputElement) => !input.disabled && input.getClientRects().length > 0;
+const hinted = (input: HTMLInputElement, words: string[]) => ['name', 'id', 'autocomplete', 'placeholder', 'aria-label', 'formcontrolname'].some(name => {
+  const value = input.getAttribute(name)?.toLowerCase();
+  return !!value && words.some(word => value.includes(word));
+});
+const passwordInputs = (scope: ParentNode) => [...scope.querySelectorAll<HTMLInputElement>('input[type="password"]')].filter(shown);
+function loginFields(near?: Element | null): LoginFields | null {
+  const form = near?.closest('form');
+  const scope: ParentNode = form && passwordInputs(form).length ? form : document;
+  const passwords = passwordInputs(scope);
+  if (!passwords.length) return null;
+  const password = near instanceof HTMLInputElement && passwords.includes(near) ? near : passwords[0];
+  const before = [...scope.querySelectorAll<HTMLInputElement>('input')].filter(input => ['text', 'email', 'tel'].includes(input.type)
+    && shown(input) && !hinted(input, NOT_USER) && !!(input.compareDocumentPosition(password) & Node.DOCUMENT_POSITION_FOLLOWING));
+  const username = before.find(input => /username|email/.test(input.autocomplete)) ?? [...before].reverse().find(input => hinted(input, USER_HINTS)) ?? before.at(-1)
+    // A two-step sign-in keeps the name from its first step in a hidden field.
+    ?? scope.querySelector<HTMLInputElement>('input[autocomplete="username"], input[type="email"]');
+  return { username, password };
+}
+let focusedLogin: LoginFields | null = null, formReported = 0, lastSubmit = '';
+const reportForm = () => {
+  if (Date.now() - formReported < 500) return;
+  formReported = Date.now(); ipcRenderer.send('browser:password-form');
+};
+function reportSubmit(near: Element | null) {
+  const fields = loginFields(near);
+  if (!fields) return;
+  const filled = passwordInputs(fields.password.form ?? document).filter(input => input.value);
+  if (!filled.length) return;
+  // Sign-up and change-password forms: the new password, not the current one.
+  const chosen = filled.find(input => input.autocomplete === 'new-password')
+    ?? (filled.length > 1 && filled[0].value !== filled[1].value ? filled[1] : filled[0]);
+  const login = { username: fields.username?.value ?? '', password: chosen.value };
+  const key = JSON.stringify(login);
+  if (key === lastSubmit) return;
+  lastSubmit = key; setTimeout(() => { if (lastSubmit === key) lastSubmit = ''; }, 2000);
+  ipcRenderer.send('browser:password-submit', login);
+}
+window.addEventListener('focusin', event => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const fields = loginFields(target);
+  if (!fields || (target !== fields.password && target !== fields.username)) return;
+  focusedLogin = fields; reportForm();
+}, true);
+const scanForLogin = () => { if (loginFields()) reportForm(); };
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scanForLogin, { once: true });
+else scanForLogin();
+window.addEventListener('load', scanForLogin, { once: true });
+window.addEventListener('submit', event => { if (event.isTrusted && event.target instanceof Element) reportSubmit(event.target); }, true);
+window.addEventListener('click', event => {
+  if (!event.isTrusted || !(event.target instanceof Element)) return;
+  const button = event.target.closest<HTMLButtonElement | HTMLInputElement>('button, input[type="submit"]');
+  // "Show password" toggles are type=button; only a submitting control ends a login.
+  if (button && button.type === 'submit' && !button.disabled) reportSubmit(button);
+}, true);
+window.addEventListener('keydown', event => {
+  if (event.isTrusted && event.key === 'Enter' && !event.isComposing && event.target instanceof HTMLInputElement
+    && ['password', 'text', 'email', 'tel'].includes(event.target.type)) reportSubmit(event.target);
+}, true);
+ipcRenderer.on('browser:password-fill', (_event, login: { username: string; password: string }) => {
+  const fields = focusedLogin?.password.isConnected && shown(focusedLogin.password) ? focusedLogin
+    : loginFields(document.activeElement);
+  if (!fields || typeof login?.password !== 'string') return;
+  // Framework-controlled inputs take the value from these events, not from the property alone.
+  const put = (input: HTMLInputElement, value: string) => {
+    input.focus(); input.value = value;
+    for (const type of ['input', 'change']) input.dispatchEvent(new Event(type, { bubbles: true }));
+  };
+  if (fields.username && shown(fields.username) && login.username) put(fields.username, login.username);
+  put(fields.password, login.password);
+});

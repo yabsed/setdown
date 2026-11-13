@@ -26,6 +26,7 @@ import type { AppActions } from '../../ports/ui-actions';
   let selectOnClick = false;
   let activeTabId: string | undefined;
   const requests = $derived(tab ? browser.permissions[tab.id] ?? [] : []);
+  const passwords = $derived(tab ? browser.passwords[tab.id] ?? null : null);
   const media = $derived(view.mediaTabs.find(item => item.id === tab?.id));
   const zoomScope = $derived(tab?.kind === 'terminal' && !review ? 'terminal' : 'text');
   const folder = $derived(!review && tab?.kind === 'folder');
@@ -214,6 +215,14 @@ import type { AppActions } from '../../ports/ui-actions';
     <button class="location-icon permission-request" aria-label={`Review permissions: ${requests.map(r => r.label).join(', ')}`}
       title={requests.map(r => `${r.origin}: ${r.label}`).join('\n')} onclick={() => actions.browserCommand(tab!.id, 'permissions')}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a6 6 0 0 0-6 6v4l-2 4v2h16v-2l-2-4V8a6 6 0 0 0-6-6zm0 2a4 4 0 0 1 4 4v4.5l1.75 3.5H6.25L8 12.5V8a4 4 0 0 1 4-4zm-2 16a2 2 0 0 0 4 0z"/></svg>
+    </button>
+  {/if}
+  {#if web && passwords}
+    <button class="location-icon password-key" class:permission-request={!!passwords.save}
+      aria-label={passwords.save ? `Save password for ${passwords.save.username || 'this login'}` : 'Fill a saved password'}
+      title={passwords.save ? `${passwords.save.update ? 'Update the saved password' : 'Save the password'} for ${passwords.save.origin}` : `${passwords.fill} saved ${passwords.fill === 1 ? 'password fits' : 'passwords fit'} this page (Ctrl+\\)`}
+      onclick={() => actions.browserCommand(tab!.id, 'passwords')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5a4 4 0 1 1 3.87 5H10.5v2H8.25v2H5.5v-2.75l4.06-4.06A4 4 0 0 1 8 9.5Zm6-1.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Z" transform="translate(1 0)"/></svg>
     </button>
   {/if}
   {#if tab && browser.auth[tab.id]}

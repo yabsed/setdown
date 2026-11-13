@@ -794,6 +794,10 @@ Current guarantees, ownership and required coverage: [Preview tabs](contracts/wo
 
 Current guarantees, ownership and required coverage: [Explorer selection and tab-strip drops](contracts/workspace.md#explorer-selection-and-tab-strip-drops).
 
+## Browser library: passwords, bookmark export, page developer tools, clearing data
+
+Current guarantees, ownership and required coverage: [Browser library](contracts/workspace.md#browser-library-passwords-bookmark-export-page-developer-tools-clearing-data).
+
 ## Browser lifecycle validation, 2026-10-15
 
 Dated validation evidence: [Browser lifecycle validation, 2026-10-15](validation/2026-10-16-feature-regressions.md#browser-lifecycle-validation-2026-10-15).

@@ -9,8 +9,17 @@ export type BrowserActions = {
   browserBookmarks: BrowserApi['bookmarks'];
   browserImportBookmarks: BrowserApi['importBookmarks'];
   browserUndoBookmarkImport: BrowserApi['undoBookmarkImport'];
+  browserExportBookmarks: BrowserApi['exportBookmarks'];
   browserBookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
   browserDeleteHistory(url?: string): Promise<void>;
+  browserClearData: BrowserApi['clearData'];
+  browserPasswords: BrowserApi['passwords'];
+  browserRevealPassword: BrowserApi['revealPassword'];
+  browserRemovePassword: BrowserApi['removePassword'];
+  browserAddPassword: BrowserApi['addPassword'];
+  browserAllowPasswordSaving: BrowserApi['allowPasswordSaving'];
+  browserImportPasswords: BrowserApi['importPasswords'];
+  browserExportPasswords: BrowserApi['exportPasswords'];
   browserDownloadCommand(id: string, command: import('../../protocol/browser').DownloadCommand): Promise<void>;
   browserFind(id: string, query: string, forward?: boolean, next?: boolean): void;
   browserReaderExport(id: string, format: 'markdown' | 'pdf'): Promise<void>;
@@ -45,10 +54,19 @@ export function createBrowserActions(options: Options): BrowserActions {
     },
     browserPlaces: (query, scope) => api.places(query, scope),
     browserDeleteHistory: (url) => api.deleteHistory(url),
+    browserClearData: categories => api.clearData(categories),
+    browserPasswords: () => api.passwords(),
+    browserRevealPassword: id => api.revealPassword(id),
+    browserRemovePassword: id => api.removePassword(id),
+    browserAddPassword: input => api.addPassword(input),
+    browserAllowPasswordSaving: origin => api.allowPasswordSaving(origin),
+    browserImportPasswords: () => api.importPasswords(),
+    browserExportPasswords: () => api.exportPasswords(),
     browserDownloadCommand: (id, command) => api.downloadCommand(id, command),
     browserBookmarks: (...args) => api.bookmarks(...args),
     browserImportBookmarks: () => api.importBookmarks(),
     browserUndoBookmarkImport: batch => api.undoBookmarkImport(batch),
+    browserExportBookmarks: () => api.exportBookmarks(),
     browserBookmark: async (url, title, bookmarked) => {
       try { await api.bookmark(url, title, bookmarked); browser.revision++; }
       catch (error) { browser.error = String(error); }

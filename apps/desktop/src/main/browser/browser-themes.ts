@@ -37,6 +37,15 @@ export class BrowserThemes {
       if (update.site.original) this.settings.originalSites.push(origin);
     }
     if (typeof update.restoreSite === 'string') this.settings.originalSites = this.settings.originalSites.filter(site => site !== update.restoreSite);
+    return this.commit();
+  }
+  /** Forget every per-site choice; the global mode is a preference, not site data. */
+  async clearSites(): Promise<void> {
+    if (!this.snapshot().originalSites.length) return;
+    this.settings.originalSites = [];
+    await this.commit();
+  }
+  private async commit(): Promise<BrowserThemeSettings> {
     this.refresh();
     this.changed(this.snapshot());
     const data = JSON.stringify(this.settings, null, 2), file = this.file();

@@ -24,8 +24,12 @@ export type ExtensionInstallKind = 'folder' | 'archive' | 'web-store';
 export type ExtensionPage = 'popup' | 'options';
 export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
 export type BrowserAuthRequest = { token: string; origin: string; realm: string };
+/** What "Clear browsing data" can remove. Bookmarks are never part of it. */
+export const BROWSER_DATA_CATEGORIES = ['history', 'cookies', 'cache', 'downloads', 'site-settings', 'passwords'] as const;
+export type BrowserDataCategory = typeof BROWSER_DATA_CATEGORIES[number];
+export type BrowserDataClearResult = { cleared: BrowserDataCategory[]; failed: Array<{ category: BrowserDataCategory; error: string }> };
 export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'activate' | 'focus' | 'mute' | 'external' | 'save' | 'protection'
-  | 'pdf-original' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'reload-no-cache' | 'permissions' | 'site-info';
+  | 'pdf-original' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'reload-no-cache' | 'permissions' | 'passwords' | 'site-info';
 export type BrowserEvent =
   | { type: 'page'; page: BrowserPage }
   | { type: 'open'; page: BrowserPage; background: boolean }
@@ -42,6 +46,8 @@ export type BrowserEvent =
   | { type: 'download-removed'; id: string }
   | { type: 'permissions'; id: string; requests: BrowserPermissionRequest[] }
   | { type: 'auth'; id: string; request: BrowserAuthRequest | null }
+  | { type: 'passwords'; id: string; state: import('../core/browser/passwords').BrowserPasswordState | null }
+  | { type: 'password-store' }
   | { type: 'find'; id: string; query: string; active: number; matches: number };
 export type BrowserApi = {
   themeSettings(): Promise<import('./browser-theme').BrowserThemeSettings>;
@@ -67,8 +73,22 @@ export type BrowserApi = {
   bookmarks(parentId: string, query: string, offset: number): Promise<import('../core/browser/bookmarks').BookmarkListing>;
   importBookmarks(): Promise<import('../core/browser/bookmarks').BookmarkImportResult | null>;
   undoBookmarkImport(batch: string): Promise<void>;
+  /** Writes every bookmark as a Netscape HTML file other browsers import; null when the save was canceled. */
+  exportBookmarks(): Promise<import('../core/browser/bookmarks').BookmarkExportResult | null>;
   bookmark(url: string, title: string, bookmarked: boolean): Promise<void>;
   deleteHistory(url?: string): Promise<void>;
+  /** Clears the chosen categories for every site, for all time. One failing category does not stop the others. */
+  clearData(categories: BrowserDataCategory[]): Promise<BrowserDataClearResult>;
+  /** Saved logins without their passwords. */
+  passwords(): Promise<import('../core/browser/passwords').BrowserPasswordList>;
+  /** The one password the user asked to see or copy. */
+  revealPassword(id: string): Promise<string>;
+  removePassword(id: string): Promise<void>;
+  addPassword(input: { url: string; username: string; password: string }): Promise<void>;
+  /** Ask again for a site that was set to "never save". */
+  allowPasswordSaving(origin: string): Promise<void>;
+  importPasswords(): Promise<import('../core/browser/passwords').BrowserPasswordImportResult | null>;
+  exportPasswords(): Promise<import('../core/browser/passwords').BrowserPasswordExportResult | null>;
   downloads(): Promise<BrowserDownload[]>;
   downloadCommand(id: string, command: DownloadCommand): Promise<void>;
   restore(): Promise<BrowserPage[]>;

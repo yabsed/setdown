@@ -93,6 +93,15 @@ export class BrowserDownloads {
     record.state = live!.item.getState(); record.paused = live!.item.isPaused(); record.resumable = live!.item.canResume();
     this.broadcast({ type: 'download', download: { ...record } }); this.persist();
   }
+  /** Forget finished transfers. Running ones stay listed, and no downloaded file is touched. */
+  async clearFinished(): Promise<void> {
+    await this.load();
+    for (const record of this.snapshot().filter(record => !active(record))) {
+      this.records.delete(record.id);
+      this.broadcast({ type: 'download-removed', id: record.id });
+    }
+    this.persist();
+  }
   private persist() {
     this.timer ??= setTimeout(() => {
       this.timer = undefined;

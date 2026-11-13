@@ -97,6 +97,10 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
     else if (event.type === 'permissions') {
       if (event.requests.length) browser.permissions[event.id] = event.requests; else delete browser.permissions[event.id];
     }
+    else if (event.type === 'passwords') {
+      if (event.state) browser.passwords[event.id] = event.state; else delete browser.passwords[event.id];
+    }
+    else if (event.type === 'password-store') browser.passwordRevision++;
     else if (event.type === 'auth') {
       if (event.request) browser.auth[event.id] = event.request;
       else { delete browser.auth[event.id]; if (browser.authId === event.id) browser.authId = null; }

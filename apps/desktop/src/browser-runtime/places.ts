@@ -28,6 +28,9 @@ window.addEventListener('message', function connected(event) {
       if (action === 'bookmark-list') {
         await mutations;
         port.postMessage({ id, result: await bookmarks.list(input.parentId, input.query, input.offset) });
+      } else if (action === 'bookmark-export') {
+        await mutations;
+        port.postMessage({ id, result: await bookmarks.all() });
       } else if (action === 'bookmark-import' || action === 'bookmark-undo') {
         mutations = mutations.catch(() => {}).then(async () => {
           if (action === 'bookmark-import') await bookmarks.import(input.nodes, input.batch);

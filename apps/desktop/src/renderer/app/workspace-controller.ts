@@ -584,6 +584,10 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'language-support') { window.dispatchEvent(new Event('setdown:language-support')); return; }
       if (command === 'new-web-tab') { actions.newWebTab(); return; }
       if (command === 'new-folder-tab') { actions.newFolderTab(); return; }
+      if (command === 'clear-browsing-data') {
+        if (!(project.visible && project.open && project.activeView === 'browser')) projects.select('browser');
+        browser.clearingData = true; return;
+      }
       if (command === 'reopen-web-tab') { void desktop.browser.reopen().catch(error => { browser.error = String(error); }); return; }
       if (command === 'reader-select-all') {
         // Address/search fields retain their own Select All even while a Reader

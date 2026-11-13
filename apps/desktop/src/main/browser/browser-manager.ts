@@ -8,7 +8,7 @@ import { browserURL, isWebURL } from '../../core/browser/browser-url';
 import { browserFailure, browserFailureMessage } from '../../core/browser/browser-failure';
 import { permissionSummaryLines } from './extension-package';
 import { appZoomStep } from '../../core/zoom';
-import type { BrowserCommand, BrowserEvent, BrowserExtensionInfo, BrowserPage, BrowserPlaceScope, DownloadCommand, ExtensionInstallKind, ExtensionPage } from '../../protocol/browser';
+import { BROWSER_DATA_CATEGORIES, type BrowserCommand, type BrowserDataCategory, type BrowserDataClearResult, type BrowserEvent, type BrowserExtensionInfo, type BrowserPage, type BrowserPlaceScope, type DownloadCommand, type ExtensionInstallKind, type ExtensionPage } from '../../protocol/browser';
 import type { WebHistory } from '../../core/workspace/tab-navigation';
 import { readPreviewBounds, type PreviewBounds } from '../../protocol/preview-preparation';
 import type { WindowState } from '../windows/window-state';
@@ -16,12 +16,17 @@ import { nativeZoomBounds, type WorkspaceZoom } from '../windows/workspace-zoom'
 import type { WindowIpc } from '../ipc/window-ipc';
 import { BrowserExtensions } from './browser-extensions';
 import { parseBookmarks } from './bookmark-import';
+import { serializeBookmarks } from '../../core/browser/bookmarks';
 import { BrowserPlaces } from './browser-places';
 import { BrowserDownloads } from './browser-downloads';
 import { BrowserPdf } from './browser-pdf';
 import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
 import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-article';
 import { BrowserPermissions } from './browser-permissions';
+import { BrowserPasswords } from './browser-passwords';
+import { PasswordStore } from './password-store';
+import { parsePasswordCsv, serializePasswordCsv } from '../../core/browser/password-csv';
+import { PASSWORD_LIMITS, typedPasswordOrigin } from '../../core/browser/passwords';
 import { browserContextMenu } from './browser-context-menu';
 import { showReadingMenu } from '../menu/reading-menu';
 import { showContextMenu } from '../menu/menu-overlay';
@@ -77,6 +82,8 @@ export class BrowserManager {
     const entry = this.forContents(contents);
     return entry ? { id: entry.page.id, owner: entry.owner, contents: entry.contents, visible: entry.view.getVisible() } : undefined;
   }, (owner, id, requests) => this.send(owner, { type: 'permissions', id, requests }));
+  private readonly passwords = new BrowserPasswords(new PasswordStore(path.join(app.getPath('userData'), 'browser-passwords.bin')),
+    (owner, id, state) => this.send(owner, { type: 'passwords', id, state }), () => this.broadcast({ type: 'password-store' }));
   readonly webThemes = new BrowserThemes(() => this.views.values(), () => this.options.theme?.() ?? DEFAULT_PREVIEW_THEME, settings => {
     const item = Menu.getApplicationMenu()?.getMenuItemById('menu-theme-web');
     if (item) item.checked = settings.mode === 'app';
@@ -99,6 +106,8 @@ export class BrowserManager {
         && !this.options.memoryProtected?.(id) && !entry.page.keepAwake && !entry.edited && !entry.popup && !entry.popups.length && !entry.pdf && !entry.reader
         && !entry.externalPending && !entry.page.loading && !entry.contents.isLoading() && !entry.contents.isCurrentlyAudible()
         && !this.permissions.protects(id) && !this.auth.protects(id) && isWebURL(entry.page.url)
+        // Sleeping destroys the page that an open DevTools window is inspecting.
+        && !entry.contents.isDevToolsOpened()
         && Date.now() - entry.lastUsed >= idle;
     };
     for (const entry of [...this.views.values()].sort((a, b) => a.lastUsed - b.lastUsed).filter(eligible).slice(0, 2)) {
@@ -258,6 +267,23 @@ export class BrowserManager {
     else if (ignoreCache) wc.reloadIgnoringCache(); else wc.reload();
     return true;
   }
+  /** Web pages get their own DevTools in a separate window: a WebContentsView
+   * has no window frame to dock into, and a detached window stays clear of the
+   * shell's native-view layout, drag shields and overlay captures. */
+  private toggleInspector(entry: Entry, point?: { x: number; y: number }): void {
+    const wc = entry.contents;
+    if (wc.isDestroyed()) return;
+    if (point) { if (!wc.isDevToolsOpened()) wc.openDevTools({ mode: 'detach' }); wc.inspectElement(point.x, point.y); }
+    else if (wc.isDevToolsOpened()) wc.closeDevTools();
+    else wc.openDevTools({ mode: 'detach' });
+  }
+  /** The window's active tab decides the target: its page when it is a web tab, otherwise the caller opens the app's own tools. */
+  toggleDevTools(owner: number): boolean {
+    const id = this.options.zoom.activeTab(owner), entry = id ? this.views.get(id) : undefined;
+    if (!entry || entry.owner !== owner || entry.contents.isDestroyed()) return false;
+    this.toggleInspector(entry);
+    return true;
+  }
   private send(owner: number, event: BrowserEvent) {
     const state = this.options.stateFor(owner);
     if (state && !state.window.isDestroyed() && !state.window.webContents.isDestroyed()) state.window.webContents.send('browser:event', event);
@@ -376,6 +402,7 @@ export class BrowserManager {
       this.clearPdf(entry);
       this.permissions.clear(owner, entry.page.id);
       this.auth.clear(entry.page.id);
+      this.passwords.clear(entry.page.id);
       const resolve = entry.closing; entry.closing = undefined; resolve?.(true);
       if (!entry.contents.isDestroyed()) entry.contents.close();
     }
@@ -405,6 +432,11 @@ export class BrowserManager {
       if (channel === 'browser:memory-edited') entry.edited = true;
       if (channel === 'browser:wheel-zoom') this.zoomPage(entry, steps);
       const frame = event.senderFrame;
+      // The frame itself, not its message, says which site a login belongs to.
+      if (frame && this.live(entry) && (channel === 'browser:password-form' || channel === 'browser:password-submit')) {
+        const page = { owner: entry.owner, id };
+        void (channel === 'browser:password-form' ? this.passwords.form(page, frame) : this.passwords.submitted(page, frame, steps)).catch(console.error);
+      }
       if (channel === 'browser:escape' && frame && frame === wc.focusedFrame && view.getVisible() && !this.fullscreens.has(entry.owner)) {
         if (wc.isLoading()) wc.stop();
         else if (isWebURL(wc.getURL())) {
@@ -444,6 +476,7 @@ export class BrowserManager {
       this.send(entry.owner, { type: 'document', id });
       this.auth.clear(id);
       this.permissions.clear(entry.owner, id);
+      this.passwords.navigated(id);
       this.send(entry.owner, { type: 'find', id, query: '', active: 0, matches: 0 });
     });
     wc.on('enter-html-full-screen', () => this.enterFullscreen(entry));
@@ -526,6 +559,7 @@ export class BrowserManager {
       if (this.views.get(id) !== entry) return;
       this.permissions.clear(entry.owner, id);
       this.auth.clear(id);
+      this.passwords.clear(id);
       this.views.delete(id);
       if (entry.sleeping && this.options.stateFor(entry.owner)) {
         this.sleeping.set(id, entry.sleeping); this.dormant.set(id, entry.owner);
@@ -577,8 +611,11 @@ export class BrowserManager {
       const key = input.key.toLowerCase(), modifier = input.control || input.meta;
       const command = modifier && key === 't' ? input.shift ? 'reopen-web-tab' : 'new-web-tab'
         : modifier && key === 'w' ? 'close-tab' : modifier && key === 'f' ? 'open-find'
+        : modifier && input.shift && key === 'delete' ? 'clear-browsing-data'
         : input.control && key === 'tab' ? input.shift ? 'previous-tab' : 'next-tab' : null;
       if (command) { event.preventDefault(); this.leaveFullscreen(entry); owner.window.webContents.focus(); owner.window.webContents.send('app:command', command); }
+      else if (key === 'f12' || (modifier && input.shift && !input.alt && key === 'i')) { event.preventDefault(); this.toggleInspector(entry); }
+      else if (modifier && !input.shift && !input.alt && key === '\\') { event.preventDefault(); this.fillPassword(entry); }
       else if ((modifier && key === 'r') || key === 'f5') { event.preventDefault(); if (input.shift || (key === 'f5' && modifier)) wc.reloadIgnoringCache(); else wc.reload(); }
       else if (input.alt && (key === 'arrowleft' || key === 'arrowright')) {
         event.preventDefault(); this.send(entry.owner, { type: 'history', id, direction: key === 'arrowleft' ? -1 : 1 });
@@ -589,6 +626,8 @@ export class BrowserManager {
       if (!owner) return;
       const generation = entry.menuGeneration, sourceOwner = entry.owner;
       const valid = () => !wc.isDestroyed() && entry.menuGeneration === generation && entry.owner === sourceOwner;
+      // Plain copies: the event's native storage is gone once this handler returns.
+      const point = { x: params.x, y: params.y }, field = params.isEditable ? params.frame : null;
       const items: Array<Electron.MenuItem | Electron.MenuItemConstructorOptions> = browserContextMenu(wc, params, valid, (url, background) => {
         // Finish the native menu dispatch before constructing another native
         // view. Recheck ownership/document after leaving the menu's event loop.
@@ -599,9 +638,17 @@ export class BrowserManager {
       const extensionItems = this.extensions?.host?.getContextMenuItems(wc, params) ?? [];
       if (extensionItems.length) items.push({ type: 'separator' }, ...extensionItems, { type: 'separator' });
       items.push({ label: 'Open in Default Browser', enabled: isWebURL(wc.getURL()), click: () => { if (valid()) void this.external(entry, wc.getURL(), true); } },
-        { label: 'Site Controls…', enabled: isWebURL(wc.getURL()), click: () => { setImmediate(() => { if (valid()) this.siteMenu(entry); }); } });
+        { label: 'Site Controls…', enabled: isWebURL(wc.getURL()), click: () => { setImmediate(() => { if (valid()) this.siteMenu(entry); }); } },
+        { type: 'separator' },
+        { label: 'Inspect', click: () => { if (valid()) this.toggleInspector(entry, point); } });
       const bounds = entry.view.getBounds();
-      void showContextMenu(owner, items, { source: wc, point: { x: bounds.x + params.x, y: bounds.y + params.y } });
+      const show = () => { if (valid()) void showContextMenu(owner, items, { source: wc, point: { x: bounds.x + point.x, y: bounds.y + point.y } }); };
+      if (!field) { show(); return; }
+      // Saved logins for the clicked field's own frame lead the menu of an input.
+      void this.passwords.contextItems({ owner: sourceOwner, id }, field).catch(() => []).then(fill => {
+        if (fill.length) items.unshift(...fill, { type: 'separator' });
+        show();
+      });
     });
     return entry;
   }
@@ -793,6 +840,8 @@ export class BrowserManager {
         click: item => { if (valid()) void this.webThemes.update({ site: { tabId: entry.page.id, original: item.checked } }, wc.getURL())
           .catch(error => this.error(entry, error)); } },
       { label: entry.page.muted ? 'Unmute Tab' : 'Mute Tab', click: () => { if (valid()) { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); } } },
+      { label: 'Developer Tools', type: 'checkbox', checked: wc.isDevToolsOpened(), accelerator: 'F12', registerAccelerator: false,
+        click: () => { if (valid()) this.toggleInspector(entry); } },
       { label: 'Reset Page Permissions', click: () => { if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); } } },
       { label: 'Clear This Site’s Data…', click: () => { void (async () => {
         if (!valid()) return;
@@ -804,6 +853,54 @@ export class BrowserManager {
         if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); }
       })().catch(error => this.error(entry, error)); } },
     ], { source: wc });
+  }
+  private passwordMenu(entry: Entry) {
+    const owner = entry.owner, state = this.options.stateFor(owner);
+    if (!state) return;
+    void this.passwords.menu({ owner, id: entry.page.id }).then(items => {
+      if (this.live(entry) && entry.owner === owner) void showContextMenu(state, items, { source: entry.contents });
+    }).catch(error => this.error(entry, error));
+  }
+  private fillPassword(entry: Entry) {
+    void this.passwords.fillOnly({ owner: entry.owner, id: entry.page.id }).then(filled => { if (!filled && this.live(entry)) this.passwordMenu(entry); })
+      .catch(error => this.error(entry, error));
+  }
+  /**
+   * Clears the chosen kinds of data for every site and all time. Electron offers
+   * no time range, and visits are stored without one. Bookmarks are never touched.
+   */
+  async clearBrowsingData(categories: unknown): Promise<BrowserDataClearResult> {
+    if (!Array.isArray(categories) || !categories.length || categories.some(item => !BROWSER_DATA_CATEGORIES.includes(item)))
+      throw Error('Choose what to clear.');
+    const selected = BROWSER_DATA_CATEGORIES.filter(item => categories.includes(item)), profile = this.session;
+    // session.clearData removes by web origin, so extensions keep their own
+    // storage (uBlock's filters and settings). clearStorageData does not.
+    const tasks: Record<BrowserDataCategory, () => Promise<unknown>> = {
+      history: async () => { await this.places.deleteHistory(); this.closedTabs.clear(); this.broadcast({ type: 'places' }); },
+      cookies: async () => {
+        await profile.clearData({ dataTypes: ['cookies', 'localStorage', 'indexedDB', 'serviceWorkers', 'fileSystems', 'webSQL', 'backgroundFetch'] });
+        await profile.clearAuthCache();
+      },
+      cache: async () => {
+        await profile.clearData({ dataTypes: ['cache'] });
+        await Promise.all([profile.clearCodeCaches({}), profile.clearHostResolverCache(), profile.clearSharedDictionaryCache()]);
+      },
+      downloads: () => this.downloads.clearFinished(),
+      'site-settings': async () => {
+        await this.webThemes.clearSites();
+        for (const entry of this.views.values()) this.permissions.clear(entry.owner, entry.page.id);
+      },
+      passwords: async () => { await this.passwords.store.clear(); this.passwords.reset(); this.broadcast({ type: 'password-store' }); },
+    };
+    // One failing kind must not keep the others from being cleared.
+    const results = await Promise.allSettled(selected.map(item => tasks[item]()));
+    const failed = results.flatMap((result, index) => result.status === 'rejected'
+      ? [{ category: selected[index], error: result.reason instanceof Error ? result.reason.message : String(result.reason) }] : []);
+    // An open page would keep showing the session that no longer exists.
+    if (selected.some(item => item === 'cookies' || item === 'site-settings')) {
+      for (const entry of this.views.values()) if (this.live(entry) && isWebURL(entry.contents.getURL()) && !entry.contents.isCrashed()) entry.contents.reload();
+    }
+    return { cleared: selected.filter(item => !failed.some(failure => failure.category === item)), failed };
   }
   registerIpc(channels: WindowIpc) {
     ipcMain.handle('browser:theme-fetch', (event, request) => {
@@ -906,6 +1003,7 @@ export class BrowserManager {
         if (wc.getURL() === entry.page.url && !wc.isCrashed()) wc.reloadIgnoringCache(); else await this.load(entry, entry.page.url);
       }
       else if (command === 'permissions') this.permissionMenu(entry);
+      else if (command === 'passwords') this.passwordMenu(entry);
       else if (command === 'site-info') this.siteMenu(entry);
       else if (command === 'stop') {
         entry.navigation++; wc.stop();
@@ -977,6 +1075,16 @@ export class BrowserManager {
         return { batch, added: count, skipped: parsed.skipped };
       } finally { importing = false; }
     });
+    channels.handle('browser:bookmark-export', async state => {
+      const nodes = await this.places.exportBookmarks(), count = nodes.filter(node => node.kind === 'bookmark').length;
+      if (!count) throw Error('There are no bookmarks to export.');
+      const now = new Date(), stamp = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}`;
+      const picked = await pathDialog.showSaveDialog(state.window, { title: 'Export bookmarks', defaultPath: `bookmarks_${stamp}.html`,
+        filters: [{ name: 'Bookmark HTML', extensions: ['html'] }] });
+      if (picked.canceled || !picked.filePath) return null;
+      await fs.writeFile(picked.filePath, serializeBookmarks(nodes), 'utf8');
+      return { path: picked.filePath, bookmarks: count };
+    });
     channels.handle('browser:bookmark-undo', async (_state, batch: string) => {
       if (typeof batch !== 'string' || !/^[\da-f-]{36}$/i.test(batch)) throw Error('Invalid bookmark import.');
       await this.places.undoBookmarks(batch); this.broadcast({ type: 'places' });
@@ -989,6 +1097,63 @@ export class BrowserManager {
     channels.handle('browser:delete-history', async (_state, url?: string) => {
       if (url !== undefined && !isWebURL(url)) throw Error('Invalid history URL.');
       await this.places.deleteHistory(url); this.broadcast({ type: 'places' });
+    });
+    channels.handle('browser:clear-data', (_state, categories: unknown) => this.clearBrowsingData(categories));
+    // Saved logins. Lists carry no secrets; one password leaves this process
+    // only when the user asks to see or copy that entry.
+    const passwordId = (id: unknown) => { if (typeof id !== 'string' || !/^[\da-f-]{36}$/i.test(id)) throw Error('Unknown password.'); return id; };
+    const passwordsChanged = () => this.broadcast({ type: 'password-store' });
+    channels.handle('browser:passwords', () => this.passwords.store.list());
+    channels.handle('browser:password-reveal', async (_state, id: unknown) => {
+      const login = await this.passwords.store.credential(passwordId(id));
+      if (!login) throw Error('Unknown password.');
+      return login.password;
+    });
+    channels.handle('browser:password-remove', async (_state, id: unknown) => { await this.passwords.store.remove(passwordId(id)); passwordsChanged(); });
+    channels.handle('browser:password-add', async (_state, input: { url?: unknown; username?: unknown; password?: unknown }) => {
+      const origin = typeof input?.url === 'string' ? typedPasswordOrigin(input.url) : null;
+      if (!origin) throw Error('Enter an HTTPS address, such as example.com.');
+      if (typeof input.username !== 'string' || typeof input.password !== 'string' || !input.password
+        || input.username.length > PASSWORD_LIMITS.username || input.password.length > PASSWORD_LIMITS.password) throw Error('Enter a password.');
+      await this.passwords.store.save({ origin, username: input.username.trim(), password: input.password }); passwordsChanged();
+    });
+    channels.handle('browser:password-allow', async (_state, origin: unknown) => { await this.passwords.store.setNever(String(origin), false); passwordsChanged(); });
+    let transferring = false;
+    channels.handle('browser:password-import', async state => {
+      if (transferring) throw Error('Another password import or export is in progress.');
+      transferring = true;
+      try {
+        const picked = await pathDialog.showOpenDialog(state.window, { title: 'Import passwords', properties: ['openFile'], filters: [{ name: 'Password CSV', extensions: ['csv'] }] });
+        if (picked.canceled || !picked.filePaths[0] || state.window.isDestroyed()) return null;
+        if ((await fs.stat(picked.filePaths[0])).size > 5 * 1024 * 1024) throw Error('Password files must be smaller than 5 MiB.');
+        const parsed = parsePasswordCsv(await fs.readFile(picked.filePaths[0], 'utf8'));
+        if (!parsed.rows.length) throw Error('No passwords for HTTPS sites were found in this file.');
+        const preview = await this.passwords.store.preview(parsed.rows);
+        const answer = await dialog.showMessageBox(state.window, { type: 'question', message: `Import ${parsed.rows.length} passwords?`,
+          detail: `${preview.added} new, ${preview.updated} will replace a saved password for the same site and user name. ${parsed.skipped} rows without a password or an HTTPS address were skipped.`,
+          buttons: ['Import', 'Cancel'], defaultId: 0, cancelId: 1 });
+        if (answer.response !== 0) return null;
+        const result = await this.passwords.store.merge(parsed.rows); passwordsChanged();
+        return { ...result, skipped: result.skipped + parsed.skipped };
+      } finally { transferring = false; }
+    });
+    channels.handle('browser:password-export', async state => {
+      if (transferring) throw Error('Another password import or export is in progress.');
+      transferring = true;
+      try {
+        const rows = await this.passwords.store.rows();
+        if (!rows.length) throw Error('There are no saved passwords to export.');
+        const answer = await dialog.showMessageBox(state.window, { type: 'warning', message: `Export ${rows.length} passwords as plain text?`,
+          detail: 'The file is not encrypted. Anyone who can open it can read every password. Delete it once it has been imported elsewhere.',
+          buttons: ['Cancel', 'Export'], defaultId: 0, cancelId: 0 });
+        if (answer.response !== 1 || state.window.isDestroyed()) return null;
+        const picked = await pathDialog.showSaveDialog(state.window, { title: 'Export passwords', defaultPath: 'setdown-passwords.csv', filters: [{ name: 'Password CSV', extensions: ['csv'] }] });
+        if (picked.canceled || !picked.filePath) return null;
+        // Owner-only from creation; an existing file keeps its content out of other accounts too.
+        await fs.rm(picked.filePath, { force: true });
+        await fs.writeFile(picked.filePath, serializePasswordCsv(rows), { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+        return { path: picked.filePath, passwords: rows.length };
+      } finally { transferring = false; }
     });
     channels.on('browser:ready', state => { this.rendererWaiters.get(state.webContentsId)?.(); });
     channels.handle('browser:extensions', async (): Promise<BrowserExtensionInfo[]> => {

@@ -85,12 +85,12 @@ test('compact address panels own input above live pages and work for Markdown, f
       expect(bounds.x).toBeGreaterThanOrEqual(container.x);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(container.x + container.width);
     }
-    await expect(bar.getByRole('button', { name: 'Passwords for this page' })).toHaveCount(0);
-    expect(await f.page.evaluate(() => Object.keys(window.marktex.browser).filter(name => /password/i.test(name)))).toEqual([]);
+    // The password key belongs to pages with a login form or a pending offer; this page has neither.
+    await expect(bar.getByRole('button', { name: /password/i })).toHaveCount(0);
     await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
     await f.page.getByRole('button', { name: 'Browser', exact: true }).click();
     const library = f.page.getByRole('navigation', { name: 'Browser library' });
-    await expect(library.getByRole('button')).toHaveText(['Bookmarks', 'History', 'Downloads', 'Extensions']);
+    await expect(library.getByRole('button')).toHaveText(['Bookmarks', 'History', 'Downloads', 'Passwords', 'Extensions']);
     await f.page.locator('.browser-sidebar').screenshot({ path: test.info().outputPath('browser-sidebar.png') });
     await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
     await f.page.locator('.location-bar').screenshot({ path: test.info().outputPath('compact-search-button.png') });

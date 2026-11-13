@@ -59,6 +59,7 @@ export class BrowserPlaces {
   }
   importBookmarks(nodes: BookmarkNode[], batch: string): Promise<void> { return this.request('bookmark-import', { nodes, batch }); }
   undoBookmarks(batch: string): Promise<void> { return this.request('bookmark-undo', { batch }); }
+  exportBookmarks(): Promise<BookmarkNode[]> { return this.request('bookmark-export', {}); }
   deleteHistory(url?: string): Promise<void> { return this.request('delete-history', { url }); }
   update(url: string, title: string, options: { visit?: boolean; bookmarked?: boolean } = {}): Promise<void> {
     return this.request('update', { url, title: title.slice(0, 1000), ...options });

@@ -20,6 +20,7 @@ export class BookmarkStore {
     }
     return { nodes, trail, total };
   }
+  all(): Promise<BookmarkNode[]> { return this.nodes.toArray(); }
   async star(url: string, title: string, bookmarked: boolean) {
     if (!bookmarked) { await this.nodes.where('url').equals(url).delete(); return; }
     if (await this.nodes.where('url').equals(url).count()) return;

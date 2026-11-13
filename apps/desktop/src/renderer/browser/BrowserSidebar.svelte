@@ -5,13 +5,15 @@
   import BrowserBookmarks from './BrowserBookmarks.svelte';
   import BrowserDownloads from './BrowserDownloads.svelte';
   import BrowserExtensions from './BrowserExtensions.svelte';
+  import BrowserPasswords from './BrowserPasswords.svelte';
+  import BrowserClearData from './BrowserClearData.svelte';
   let { actions }: { actions: AppActions } = $props();
-  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'extensions'>('bookmarks');
+  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'passwords' | 'extensions'>('bookmarks');
   let rows = $state<BrowserPlace[]>([]), error = $state(''), loading = $state(false), confirming = $state(false), deleting = $state(false);
   const activeDownloads = $derived(browser.downloads.filter(item => item.state === 'progressing').length);
   $effect(() => {
     const text = query, scope = section; void browser.revision;
-    if (scope === 'bookmarks' || scope === 'downloads' || scope === 'extensions') return;
+    if (scope !== 'history') return;
     let current = true; loading = true;
     const timer = setTimeout(() => void actions.browserPlaces(text, scope).then(result => {
       if (current) { rows = result; error = ''; }
@@ -33,13 +35,19 @@
     <button class:selected={section === 'bookmarks'} aria-pressed={section === 'bookmarks'} onclick={() => select('bookmarks')}>Bookmarks</button>
     <button class:selected={section === 'history'} aria-pressed={section === 'history'} onclick={() => select('history')}>History</button>
     <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} onclick={() => select('downloads')}>Downloads{#if activeDownloads}<span class="count">{activeDownloads}</span>{/if}</button>
+    <button class:selected={section === 'passwords'} aria-pressed={section === 'passwords'} onclick={() => select('passwords')}>Passwords</button>
     <button class:selected={section === 'extensions'} aria-pressed={section === 'extensions'} onclick={() => select('extensions')}>Extensions</button>
   </nav>
-  {#if section !== 'extensions'}<input aria-label={section === 'downloads' ? 'Search downloads' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
+  {#if browser.clearingData}
+    <BrowserClearData {actions} close={() => { browser.clearingData = false; }} />
+  {:else}
+  {#if section !== 'extensions'}<input aria-label={section === 'downloads' ? 'Search downloads' : section === 'passwords' ? 'Search passwords' : 'Search bookmarks and history'} placeholder={`Search ${section}`} bind:value={query} />{/if}
   {#if section === 'extensions'}
     <BrowserExtensions {actions} />
   {:else if section === 'downloads'}
     <BrowserDownloads {actions} {query} />
+  {:else if section === 'passwords'}
+    <BrowserPasswords {actions} {query} />
   {:else if section === 'bookmarks'}<BrowserBookmarks {actions} {query} />
   {:else}
   {#if error}<p role="alert">{error}</p>{/if}
@@ -49,7 +57,7 @@
         <span>Clear all browsing history?</span><small>Your bookmarks will be kept.</small>
         <div><button disabled={deleting} onclick={() => void deleteHistory()}>Clear all history</button><button disabled={deleting} onclick={() => { confirming = false; }}>Cancel</button></div>
       </div>
-    {:else}<button class="clear-history" disabled={deleting} onclick={() => { confirming = true; }}>Clear history…</button>{/if}
+    {:else}<div class="clear-actions"><button class="clear-history" disabled={deleting} onclick={() => { confirming = true; }}>Clear history…</button><button class="clear-history" onclick={() => { browser.clearingData = true; }}>Clear browsing data…</button></div>{/if}
   {/if}
   {#if !loading && !rows.length}<p class="empty">Your recently visited pages appear here.</p>{/if}
   <div class="places">
@@ -67,6 +75,7 @@
     {/each}
   </div>
   {/if}
+  {/if}
 </div>
 
 <style>
@@ -81,7 +90,8 @@
   nav button { flex: 1 1 40%; min-width: 0; padding: 6px; font: inherit; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   nav .selected { background: var(--app-hover); opacity: 1; }
   .count { margin-left: 4px; font-size: 10px; }
-  .clear-history { align-self: flex-end; margin: 0 12px 6px; padding: 5px 7px; font: inherit; color: var(--app-muted-text); }
+  .clear-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; margin: 0 12px 6px; }
+  .clear-history { padding: 5px 7px; font: inherit; color: var(--app-muted-text); }
   .history-confirm { display: flex; flex-direction: column; gap: 7px; margin: 0 12px 10px; padding: 9px; border: 1px solid var(--app-border); border-radius: 5px; }
   .history-confirm button { padding: 6px; font: inherit; } button:disabled { opacity: .4; cursor: default; }
   .delete-history { width: 22px; height: 28px; font-size: 17px; opacity: .6; }

@@ -10,6 +10,8 @@ type MenuContext = {
   createWindow: () => unknown;
   openDocument: (state: WindowState) => unknown;
   reloadWindow: (state: WindowState, ignoreCache?: boolean) => void;
+  /** Toggles the active web tab's DevTools; false when the active tab is not a web page. */
+  toggleWebDevTools: (state: WindowState) => boolean;
   sendCommand: (command: AppCommand) => void;
   selectReaderContents: (state: WindowState) => boolean;
   setTheme: (theme: PreviewThemeId) => void;
@@ -69,6 +71,7 @@ export function installApplicationMenu(context: MenuContext) {
   const state = () => context.focusedState();
   const contents = () => state()?.window.webContents;
   const command = context.sendCommand;
+  const toggleDevTools = () => { const current = state(); if (!current || !context.toggleWebDevTools(current)) contents()?.toggleDevTools(); };
   const focusedNativeContents = () => {
     const current = state(), focused = webContents.getFocusedWebContents();
     return focused && focused !== current?.window.webContents
@@ -102,6 +105,7 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-new-web', label: 'New Web Tab', accelerator: 'CmdOrCtrl+T', click: () => command('new-web-tab') },
         { id: 'menu-new-folder-tab', label: 'New Folder Tab', accelerator: 'CmdOrCtrl+Shift+E', click: () => command('new-folder-tab') },
         { id: 'menu-reopen-web', label: 'Reopen Closed Web Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => command('reopen-web-tab') },
+        { id: 'menu-clear-browsing-data', label: 'Clear Browsing Data…', accelerator: 'CmdOrCtrl+Shift+Delete', click: () => command('clear-browsing-data') },
         { id: 'menu-location', label: 'Open Location…', click: () => command('focus-location') },
         { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => command('new-document') },
         { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {
@@ -149,7 +153,11 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-reload-no-cache', label: 'Reload Without Cache', accelerator: 'CmdOrCtrl+Shift+R', click: () => {
           const current = state(); if (current) context.reloadWindow(current, true);
         } },
-        { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => contents()?.toggleDevTools() },
+        // A web tab is inspected like a page in any browser; other tabs have only the app itself to inspect.
+        { id: 'menu-toggle-devtools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: toggleDevTools },
+        // Declared twice to give the same command its second, conventional key.
+        { id: 'menu-toggle-devtools-f12', label: 'Toggle Developer Tools', accelerator: 'F12', visible: false, click: toggleDevTools },
+        { id: 'menu-toggle-app-devtools', label: 'Toggle App Developer Tools', accelerator: 'CmdOrCtrl+Shift+Alt+I', click: () => contents()?.toggleDevTools() },
         { type: 'separator' },
         { id: 'menu-reset-zoom', label: 'Reset App Zoom', accelerator: 'CmdOrCtrl+0', click: () => context.zoom(0) },
         { id: 'menu-zoom-in', label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => context.zoom(1) },

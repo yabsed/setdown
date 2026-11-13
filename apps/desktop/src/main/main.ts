@@ -265,6 +265,7 @@ else {
       if (answer.response === 1) await memory.trim();
     })().catch(console.error); }, focusedState: () => registry.focused(), createWindow: windows.create,
       openDocument: (state) => documents.chooseAndOpen(state).catch(openError),
+      toggleWebDevTools: state => browsers.toggleDevTools(state.webContentsId),
       reloadWindow: (state, ignoreCache) => {
         if (browsers.reloadFocused(state.webContentsId, ignoreCache)) return;
         state.window.webContents.send('app:command', 'reload-document');
