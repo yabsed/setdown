@@ -874,6 +874,40 @@ test('copies a sole view into a split and reuses an existing target view', async
   assert.equal(f.workspace.contents.length, 1);
 });
 
+test('folder tabs showing one directory stay separate when reordered, moved or copied', async () => {
+  const f = fixture();
+  const first = (await f.controller.openFolder('/project', { reuse: false }))!, second = (await f.controller.openFolder('/project', { reuse: false }))!;
+  second.selection = ['/project/a.txt'];
+  const group = f.workspace.groups.focusedId, folders = () => f.workspace.tabs.filter(tab => tab.kind === 'folder');
+  assert.notEqual(first.id, second.id);
+  // Reordering within the strip is a move into the group that already holds the other tab.
+  await f.controller.moveToGroup(second.id, { groupId: group, direction: null, index: 0 });
+  assert.deepEqual(f.workspace.groups.groups[0].tabs, [second.id, first.id]);
+  assert.deepEqual(folders().map(tab => tab.id).sort(), [first.id, second.id].sort());
+  // Moving next to a tab of the same directory in another group keeps both, with their own state.
+  await f.controller.moveToGroup(second.id, { groupId: group, direction: 'right' });
+  const side = f.workspace.groups.owner(second.id)!.id;
+  assert.notEqual(side, group);
+  await f.controller.moveToGroup(first.id, { groupId: side, direction: null });
+  assert.equal(folders().length, 2);
+  assert.deepEqual(f.workspace.find(second.id)?.kind === 'folder' && f.workspace.find(second.id), second);
+  assert.deepEqual(second.selection, ['/project/a.txt']);
+  // A copy is a new tab, also in a group that already shows the directory.
+  await f.controller.copyToGroup(first.id, side, 'down');
+  const below = f.workspace.groups.focusedId;
+  assert.notEqual(below, side);
+  await f.controller.copyToGroup(first.id, below);
+  assert.equal(folders().length, 4);
+  assert.equal(new Set(folders().map(tab => tab.id)).size, 4);
+  assert.equal(f.workspace.groups.groups.find(candidate => candidate.id === below)!.tabs.length, 2);
+  // Copying onto its own group has nothing to add.
+  await f.controller.copyToGroup(first.id, side);
+  assert.equal(folders().length, 4); assert.equal(f.workspace.activeId, first.id);
+  // Revealing a directory still focuses a tab that already shows it instead of opening another.
+  const revealed = (await f.controller.openFolder('/project', { groupId: side }))!;
+  assert.equal(folders().length, 4); assert.equal(f.workspace.activeId, revealed.id);
+});
+
 test('replacing one view with a URL preserves another view of its dirty document', async () => {
   const f = fixture(); await f.controller.show(snapshot('/project/a.txt'));
   const first = f.workspace.activeDocument!;

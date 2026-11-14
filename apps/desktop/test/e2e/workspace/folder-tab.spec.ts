@@ -126,6 +126,30 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
+test('two folder tabs of one directory stay two tabs when one is dragged along the tab strip', async () => {
+  const { root, app, page } = await launch();
+  try {
+    await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
+    await page.locator('.new-folder-tab-button').click();
+    const tabs = page.locator('.document-tab');
+    const ids = () => tabs.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-tab-id')));
+    await expect(tabs).toHaveCount(2);
+    expect(new Set(await tabs.evaluateAll(nodes => nodes.map(node => node.getAttribute('title')))).size).toBe(1);
+    // The dragged tab keeps its own state; a path is not a tab identity.
+    await row(page, 'Projects').click();
+    const [first, second] = await ids();
+    const from = (await tabs.nth(1).boundingBox())!, to = (await tabs.nth(0).boundingBox())!;
+    await page.mouse.move(from.x + 30, from.y + from.height / 2); await page.mouse.down();
+    await page.mouse.move(from.x + 10, from.y + from.height / 2, { steps: 5 });
+    await page.mouse.move(to.x + 8, to.y + to.height / 2, { steps: 12 });
+    await page.mouse.up();
+    await expect(page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+    await expect.poll(ids).toEqual([second, first]);
+    await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+    await expect(row(page, 'Projects')).toHaveAttribute('aria-selected', 'true');
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('Open Folder and Save As use the in-app chooser instead of the platform dialog', async () => {
   const { root, home, app, page } = await launch();
   const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html'); response.end('<title>Chooser detour</title><p>Web page</p>'); });

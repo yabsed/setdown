@@ -870,6 +870,14 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   left (`core/workspace/tab-navigation.ts`, `tab-navigation-controller.ts`). A file
   address still reads the document first; only a failed read asks whether the
   address is a folder, so document navigation timing is unchanged.
+- **A path is not a tab identity.** Several folder tabs may show the same
+  directory, each with its own history, selection and view. Reordering a tab,
+  moving it to another group or copying it never merges it with another tab of
+  that directory (`editorInputKey`, `TabController.moveToGroup`/`copyToGroup`); a
+  copy into another group is always a new tab. Only reveal requests — the
+  Explorer's Open in File Manager, a download's Show in folder, launch arguments
+  and `org.freedesktop.FileManager1` — focus a tab of the focused group that
+  already shows the folder instead of opening another.
 - **DOM surface.** `renderer/folder/FolderSurface.svelte` is a shell layer like the
   terminal: it adds no `WebContentsView`, native bounds or preview preparation. It
   consumes the tab's content zoom for row height and font size. Rows are virtualized

@@ -797,8 +797,10 @@ export class TabController {
     const source = workspace.find(id);
     if (source?.kind === 'diff') { await this.options.copyReview?.(id, groupId, direction); return; }
     if (source?.kind === 'folder' && !source.picker && workspace.groups.groups.some(group => group.id === groupId)) {
+      if (!direction && workspace.groups.owner(id)?.id === groupId) { await this.activate(id); return; }
       const target = direction ? workspace.groups.split(groupId, direction) : workspace.groups.groups.find(group => group.id === groupId)!;
-      await this.openFolder(source.path, { groupId: target.id, selection: source.selection });
+      // A copy is a new tab even when the target group already shows this directory.
+      await this.openFolder(source.path, { groupId: target.id, selection: source.selection, reuse: false });
       return;
     }
     if (!source || !isDocumentTab(source) || !source.documentId || !workspace.groups.groups.some(group => group.id === groupId)) return;

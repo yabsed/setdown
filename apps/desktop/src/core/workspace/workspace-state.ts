@@ -53,7 +53,12 @@ const folderTitle = (tab: FolderTab) => tab.picker ? tab.picker.title : tab.path
 export const isDocumentTab = (tab: WorkspaceTab): tab is DocumentTab => tab.kind === undefined || tab.kind === 'document';
 export const tabTitle = (tab: WorkspaceTab): string => tab.kind === 'folder' ? folderTitle(tab) : tab.kind === 'terminal' ? `${tab.title}${tab.exited ? ' (exited)' : ''}` : tab.kind === 'web' ? tab.page.title || 'New web tab' : tab.kind === 'diff' ? `${tab.filePath.split(/[\\/]/).at(-1)} (${tab.history ? tab.history.head.slice(0, 8) : tab.staged ? 'Index' : 'Working Tree'})` : tab.document.name;
 export const tabLocation = (tab: WorkspaceTab): string => tab.kind === 'folder' ? tab.path : tab.kind === 'terminal' ? `terminal://${tab.sessionId ?? tab.id}` : tab.kind === 'web' ? tab.page.url : tab.kind === 'diff' ? tab.filePath : tab.document.path;
-export const editorInputKey = (tab: WorkspaceTab): string => tab.kind === 'folder' ? (tab.picker ? tab.id : JSON.stringify(['folder', tab.path])) : tab.kind === 'diff'
+/**
+ * Views of one input are deduplicated within a group. A folder tab is its own input, like a
+ * web page or a terminal: two tabs may show the same directory with separate history,
+ * selection and view, so their path never identifies them.
+ */
+export const editorInputKey = (tab: WorkspaceTab): string => tab.kind === 'diff'
   ? JSON.stringify(['diff', tab.filePath, tab.staged, tab.history ?? null])
   : isDocumentTab(tab) ? JSON.stringify(['file', tab.documentId ?? tab.document.path]) : tab.id;
 
