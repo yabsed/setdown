@@ -27,7 +27,7 @@ desktop 빌드 스크립트에서 소스 입력으로 직접 사용하지 않는
 aura-browser, brave-core, bypass-paywalls-chrome-clean,
 commit-graph, commonmark-spec, cosmic-files, crossnote, dolphin, fabric.js,
 filerobot-image-editor, gitgraph.js,
-jupyterlab, jupyterlab-desktop, linear-algebra, monaco-editor,
+jupyterlab, jupyterlab-desktop, kimi-code, linear-algebra, monaco-editor,
 monaco-languageclient, nautilus, nbformat, ptyxis, pulsar, react-git-log,
 sigma-file-manager, sublime-lsp, svelte-chop-chop, theia, vscode, vscode-jupyter,
 vscode-languageserver-node, vscode-markdown-preview-enhanced, web-git-graph,
