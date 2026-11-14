@@ -17,15 +17,13 @@ describe('theme catalog', () => {
   it('adds the pinned VS Code theme without changing the default or existing choices', () => {
     expect(DEFAULT_THEME).toBe('github-light');
     expect(THEME_IDS).toEqual(['github-light', 'paper', 'solarized-light',
-      'github-light-high-contrast',
-      'github-dark', 'night', 'one-dark', 'solarized-dark', 'vscode-dark-2026', 'github-dark-high-contrast', 'night-owl', 'dracula']);
+      'github-dark', 'night', 'one-dark', 'solarized-dark', 'vscode-dark-2026', 'night-owl', 'dracula']);
     expect(themeProfile('vscode-dark-2026')).toMatchObject({ label: 'VS Code Dark 2026', appearance: 'dark',
       palette: { editorBackground: '#121314', chrome: '#191A1B' },
       workbenchColors: { 'editor.selectionBackground': '#276782dd', 'editor.lineHighlightBackground': '#242526' } });
     expect(terminalTheme('vscode-dark-2026')).toMatchObject({ background: '#191A1B', foreground: '#CCCCCC', blue: '#2472c8', selectionBackground: '#3994BC33' });
   });
   it.each([
-    ['github-dark-high-contrast', '#0a0c10', '#f0f3f6', '#bdc4cc', '#dbb7ff', '#ff9492'],
     ['night-owl', '#011627', '#d6deeb', '#7c9090', '#82AAFF', '#EF5350'],
     ['dracula', '#282A36', '#F8F8F2', '#8293bf', '#50FA7B', '#FF5555'],
   ])('keeps %s source roles across lexical, TextMate and terminal surfaces', (id, background, foreground, comment, fn, red) => {
@@ -40,22 +38,8 @@ describe('theme catalog', () => {
     expect(terminalTheme(id)).toMatchObject({ background, foreground, red });
     expect(Object.values(theme.colors).every(color => typeof color === 'string')).toBe(true);
   });
-  it.each([
-    ['github-light-high-contrast', '#ffffff', '#0e1116', '#66707b', '#622cbc', '#a0111f'],
-  ])('uses light defaults and upstream colors for %s on every adapter', (id, background, foreground, comment, fn, red) => {
-    const profile = themeProfile(id), theme = profile.vscodeTheme!;
-    expect(profile).toMatchObject({ appearance: 'light', preview: { stylesheet: 'github-light.css', prismStylesheet: 'github.css', background },
-      palette: { editorBackground: background }, syntax: { foreground, comment } });
-    const monaco = communityMonacoTheme(theme);
-    expect(monaco.base).toBe('vs');
-    expect(monaco.rules.find(rule => rule.token === 'function')?.foreground).toBe(fn.slice(1));
-    expect(monaco.rules.find(rule => rule.token === 'comment')?.foreground).toBe(comment.slice(1));
-    expect(syntaxThemes.find(theme => theme.name === `setdown-${id}`)).toMatchObject({ type: 'light', tokenColors: theme.tokenColors });
-    expect(terminalTheme(id).red).toBe(red);
-    for (const color of Object.values(terminalTheme(id))) if (color !== undefined) expect(color).toMatch(/^#[\da-f]{6}([\da-f]{2})?$/i);
-    for (const color of Object.values(profile.palette)) expect(typeof color).toBe('string');
-  });
-  it.each(['vscode-light-2026', 'light-owl', 'atom-one-light', 'medium'])('restores removed %s preferences to the default light theme', id => {
+  it.each(['vscode-light-2026', 'light-owl', 'atom-one-light', 'medium', 'github-light-high-contrast',
+    'github-dark-high-contrast'])('restores removed %s preferences to the default light theme', id => {
     expect(normalizeTheme(id)).toBe(DEFAULT_THEME);
     expect(themeProfile(id)).toEqual(themeProfile(DEFAULT_THEME));
     expect(terminalTheme(id)).toEqual(terminalTheme(DEFAULT_THEME));

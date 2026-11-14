@@ -300,7 +300,7 @@ showing/replacing the native view, and is removed when selecting another theme.
 identity, Undo, menu selection and restart persistence; existing all-theme
 notebook, terminal and browser scenarios include the new choice.
 
-GitHub Dark High Contrast, Night Owl and Dracula are additional imported choices.
+Night Owl and Dracula are additional imported choices.
 Pinned upstream JSON, original licenses and adaptation notices live beside the
 VS Code snapshot. Their workbench, ANSI and ordered token palettes feed shell,
 Monaco lexical/LSP roles, lazy TextMate grammars and ordinary/Git Markdown
@@ -311,18 +311,15 @@ imports updates the retained reader stylesheet, including while hidden; selectin
 a legacy palette removes it. Theme changes preserve native/editor/terminal/page
 identity, focus, unsaved content and Undo. The workspace theme and Git document
 style E2E tests cover these transitions, colors and restart persistence; the
-existing all-theme notebook, browser and terminal checks include all three.
+existing all-theme notebook, browser and terminal checks include both.
 
-GitHub Light High Contrast is an additional light choice. It uses light
-Monaco/TextMate defaults and the GitHub Light reader base with the same retained
-theme stylesheet. Source snapshots, pins and licenses live in
-`src/core/theme/upstream/`. Its notebook input surface retains the editor
-background without a tint. VS Code Light 2026, Light Owl and Atom One Light are
-removed from the catalog; saved preferences for these IDs normalize to GitHub
-Light. Their dedicated color scenarios are retired with the choices, while
-fallback checks cover all three IDs. The workspace theme tests cover the
-remaining imports on the real editor and visible/hidden native reader, including
-Undo, focus, appearance and restart persistence.
+GitHub Light High Contrast, GitHub Dark High Contrast, VS Code Light 2026, Light
+Owl and Atom One Light are removed from the catalog; saved preferences for these
+IDs normalize to GitHub Light. Their source snapshots, pins and licenses remain
+in `src/core/theme/upstream/`. Their dedicated color scenarios are retired with
+the choices, while fallback checks cover all five IDs. The workspace theme tests
+cover the remaining imports on the real editor and visible/hidden native reader,
+including Undo, focus, appearance and restart persistence.
 Git document style and all-theme notebook, browser and terminal checks include
 these choices. Existing defaults, palettes, layout and preparation guarantees
 remain unchanged.

@@ -1,7 +1,5 @@
-import github from './upstream/github-dark-high-contrast.json' with { type: 'json' };
 import nightOwl from './upstream/night-owl.json' with { type: 'json' };
 import dracula from './upstream/dracula.json' with { type: 'json' };
-import githubLight from './upstream/github-light-high-contrast.json' with { type: 'json' };
 import type { ThemeProfile } from './theme-catalog';
 import { vscodeToken, type VscodeTheme, type VscodeTokenRule } from './vscode-token';
 
@@ -10,7 +8,7 @@ type SourceTheme = { colors: Record<string, unknown>; tokenColors: VscodeTokenRu
 function profile(id: ThemeProfile['id'], label: string, source: SourceTheme, accent: string,
   { appearance = 'dark', commentCorrection }: { appearance?: ThemeProfile['appearance']; commentCorrection?: [string, string] } = {}): ThemeProfile {
   // VS Code ignores null/invalid color entries. Keep the checked-in source
-  // intact, including GitHub's upstream array-valued symbolIcon entry.
+  // intact and filter them here.
   const raw = Object.fromEntries(Object.entries(source.colors)
     .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && /^#[\da-f]{3,8}$/i.test(entry[1])));
   const background = raw['editor.background'], foreground = raw['editor.foreground'];
@@ -72,11 +70,6 @@ function profile(id: ThemeProfile['id'], label: string, source: SourceTheme, acc
 }
 
 export const COMMUNITY_THEMES: readonly ThemeProfile[] = [
-  profile('github-dark-high-contrast', 'GitHub Dark High Contrast', github, '#71b7ff'),
   profile('night-owl', 'Night Owl', nightOwl, '#82aaff', { commentCorrection: ['#637777', '#7c9090'] }),
   profile('dracula', 'Dracula', dracula, '#8be9fd', { commentCorrection: ['#6272a4', '#8293bf'] }),
-];
-
-export const IMPORTED_LIGHT_THEMES: readonly ThemeProfile[] = [
-  profile('github-light-high-contrast', 'GitHub Light High Contrast', githubLight, '#0349b4', { appearance: 'light' }),
 ];
