@@ -159,8 +159,13 @@ export function startWorkspace(desktop: DesktopPort) {
       const id = target?.activeId;
       const previous = id ? workspace.find(id) : null;
       if (id && previous?.kind === 'folder' && previous.picker) {
-        // A file chooser's address bar moves within the filesystem; it never opens documents or websites.
-        if (!isFileLocation(input)) throw Error('Enter a folder or file path to choose from.');
+        // A file chooser stays until it is answered or closed. A path moves it within the
+        // filesystem; a web address or search opens beside it, as in any other tab.
+        if (!isFileLocation(input)) {
+          if (workspace.activeId !== id) await tabs.activate(id);
+          await tabs.openWeb(input);
+          return;
+        }
         const location = await desktop.files.resolve(input);
         if (location.kind === 'missing') throw Error(`No file or folder exists at ${location.path}.`);
         await tabs.navigateLocation(id, fileLocation(location.kind === 'folder' ? location.path : parentFolder(location.path)), undefined,

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, electron, focusApplication, type TestApplication } from '../../support/electron/electron-app';
@@ -126,6 +128,8 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
 
 test('Open Folder and Save As use the in-app chooser instead of the platform dialog', async () => {
   const { root, home, app, page } = await launch();
+  const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html'); response.end('<title>Chooser detour</title><p>Web page</p>'); });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
     await app.evaluate(({ dialog }) => {
       const fail = () => { throw Error('The platform dialog must not open.'); };
@@ -166,13 +170,22 @@ test('Open Folder and Save As use the in-app chooser instead of the platform dia
     await expect(name).toBeFocused();
     await expect(name).toHaveValue('README.md');
     expect(await name.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])).toEqual([0, 6]);
+    // The address bar works as in any tab: a web address or search opens beside the chooser,
+    // which keeps waiting for its answer.
+    const address = page.locator('.editor-group.focused .location-bar input');
+    await address.click(); await address.fill(`127.0.0.1:${(server.address() as AddressInfo).port}/detour`); await address.press('Enter');
+    await expect(page.getByRole('tab', { name: /Chooser detour/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.location-error')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: /Save/ })).toHaveCount(1);
+    await page.getByRole('tab', { name: /Save/ }).click();
+    await expect(page.locator('.editor-group.focused .location-bar input')).toHaveValue(new RegExp(`${path.join(home, 'Projects', 'alpha').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
     await name.fill('chooser.md');
     await name.press('Enter');
     const saved = path.join(home, 'Projects', 'alpha', 'chooser.md');
     await expect.poll(() => readFile(saved, 'utf8').catch(() => '')).toContain('Folder tab fixture.');
     await expect(page.getByRole('tab', { name: /chooser\.md/ })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tab', { name: /Save/ })).toHaveCount(0);
-  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+  } finally { await disposeApplication(app); server.close(); await rm(root, { recursive: true, force: true }); }
 });
 
 test('the file manager searches subfolders, shows a grid, properties and stays usable in a narrow pane', async () => {

@@ -72,9 +72,12 @@ commit IDs before combining their outputs. The full build keeps them in sync.
 ## Measurement policy
 
 Included code suffixes: `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.svelte`,
-`.css`, `.html`, `.sh`, `.py`. Supported roots are `src/`, `test/`, `tests/`,
-`scripts/` and their `apps/desktop/` equivalents, plus `index.html` and executable
-`*.config.*` files directly in the repository or desktop app root.
+`.css`, `.html`, `.sh`, `.py`, `.rs`. Supported roots are `src/`, `test/`, `tests/`,
+`scripts/` and their `apps/desktop/` equivalents, `tooling/language-host/src/` and
+`tooling/language-host/test/`, plus `index.html` and executable `*.config.*` files
+directly in the repository or desktop app root. Repository-root `scripts/ci/`
+counts as tooling. Other `tooling/` files, such as Cargo manifests and lockfiles,
+are excluded.
 
 Excluded: `docs/`, `reports/`, `vendor/` submodules, assets outside those code
 roots, lockfiles, JSON/data files, other apps, and this analysis tool (including
@@ -85,14 +88,20 @@ Copied or generated source inside the supported roots, such as `min-places.js`,
 is included; this is not a measure of originally authored code.
 
 Architecture groups include Renderer, Main, Core, Protocol, Preload, Preview
-runtime, Browser runtime, Image runtime, Image export runtime, Launcher and
-shared declarations. Tests take precedence over their containing architecture;
+runtime, Browser runtime, Image runtime, Image export runtime, Language host,
+Launcher and shared declarations. The Rust language host under
+`tooling/language-host/src/` is a shipped runtime, so it is production code
+despite its `tooling/` location. Tests take precedence over their containing architecture;
 script/config tests belong to tests rather than tooling. Former `src/shared/`
 and `src/preview/` paths retain their semantic groups after the monorepo move.
 
 Feature groups cross execution environments: workspace/documents, reading/preview,
 text editing, browser, language support, notebooks, Git/review, explorer/search,
-media, terminal, themes/shared UI and shared infrastructure. Classification is an
+folder tab/file manager, media, terminal, themes/shared UI and shared infrastructure.
+The folder tab group owns every runtime's `files/` and `folder/` directories and the
+native path picker in `main/dialogs/`. Media covers images, PDF, video and the
+Office viewer (`renderer/office/`, `main/documents/office-*`). `core/memory/` and
+`main/memory/` belong to shared infrastructure. Classification is an
 explicit **path-based approximation of responsibility**, not dependency or
 complexity analysis. Known moves, such as language UI leaving `renderer/editor`
 and the location bar moving into workspace, retain their feature. A real change
@@ -100,10 +109,13 @@ of execution environment may still change its architecture group.
 
 Removed HWP support retains its own historical feature and runtime groups; its
 disappearance remains visible without being confused with unclassified code.
+HWP/HWPX files opened by the current Office viewer count under media, not
+under the historical HWP groups.
 
 Test fixtures and support directories take precedence over filename patterns.
-`*.spec.*` and `*.integration.test.*` are E2E/integration; other `*.test.*` files
-are unit/service tests. Remaining code under test roots is support, including
+`*.spec.*` and `*.integration.test.*` are E2E/integration, as are the language
+host's binary-level gates under `tooling/language-host/test/`; other `*.test.*`
+files are unit/service tests. Remaining code under test roots is support, including
 historical helpers that lived beside E2E specs. This classification does not run
 or infer the outcome of any desktop test.
 

@@ -70,6 +70,34 @@ class ClassificationTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertFalse(metrics.is_code_file(path))
 
+    def test_language_host_integration_gates_count_as_tests(self):
+        path = "tooling/language-host/test/resolution.mjs"
+        self.assertTrue(metrics.is_code_file(path))
+        self.assertEqual(metrics.test_kind_for_path(path), "integration")
+        self.assertEqual(metrics.component_for_path(path), "tests")
+        for path in ("tooling/language-host/test/fixture.json", "tooling/other/test/run.mjs"):
+            with self.subTest(path=path):
+                self.assertFalse(metrics.is_code_file(path))
+
+    def test_folder_tab_office_and_memory_have_owners(self):
+        cases = {
+            "apps/desktop/src/core/files/picker-rules.ts": "files",
+            "apps/desktop/src/core/files/file-icon.ts": "files",
+            "apps/desktop/src/main/files/file-manager-dbus.py": "files",
+            "apps/desktop/src/main/dialogs/path-picker.ts": "files",
+            "apps/desktop/src/renderer/files/file-drag.ts": "files",
+            "apps/desktop/src/renderer/folder/FolderSurface.svelte": "files",
+            "apps/desktop/src/renderer/office/OfficeSurface.svelte": "media",
+            "apps/desktop/src/main/documents/office-file.ts": "media",
+            "apps/desktop/src/main/documents/document-manager.ts": "workspace",
+            "apps/desktop/src/core/memory/byte-cache.ts": "shared",
+            "apps/desktop/src/main/memory/memory-monitor.ts": "shared",
+        }
+        for path, expected in cases.items():
+            with self.subTest(path=path):
+                self.assertTrue(metrics.is_code_file(path))
+                self.assertEqual(metrics.feature_for_path(path), expected)
+
     def test_test_helpers_and_fixtures_are_not_scenarios(self):
         cases = {
             "test/e2e/app.ts": "support",

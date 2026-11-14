@@ -914,8 +914,10 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   modes (`core/files/picker-rules.ts`): the selection when it fits the request,
   otherwise the current folder for folder requests; filters never hide folders; a
   save name is validated live and overwriting asks first. A file that cannot answer
-  a folder request still opens on activation. Closing the tab, Escape, Cancel or
-  closing the window cancels. Main re-validates every reply (kind, count, existing
+  a folder request still opens on activation. Its address bar moves within the
+  filesystem for a path and, as in every other tab, opens a web address or search
+  in a browser tab beside it; neither answers nor cancels the request. Closing the
+  tab, Escape, Cancel or closing the window cancels. Main re-validates every reply (kind, count, existing
   parent) and ignores replies from another window. Focus returns to the requesting
   tab before the chooser closes. Picker tabs are not transferable or restorable.
   `SETDOWN_NATIVE_DIALOGS=1` keeps the platform dialog; the shared E2E launcher

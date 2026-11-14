@@ -13,6 +13,7 @@ APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = APP_DIR / "output"
 DEFAULT_REF = "main"
 LANGUAGE_HOST_SOURCE_ROOT = "tooling/language-host/src/"
+LANGUAGE_HOST_TEST_ROOT = "tooling/language-host/test/"
 
 COMPONENTS = {
     "tests": "Tests / support",
@@ -41,7 +42,8 @@ FEATURES = {
     "notebook": "Notebooks",
     "git": "Git / review",
     "project": "Explorer / search",
-    "media": "Images / PDF / video",
+    "files": "Folder tab / file manager",
+    "media": "Images / PDF / video / Office",
     "hwp": "HWP (historical)",
     "terminal": "Terminal",
     "theme": "Themes / shared UI",
@@ -82,7 +84,7 @@ def is_code_file(path: str) -> bool:
     return candidate.suffix in CODE_SUFFIXES and (
         path == "index.html"
         or path.startswith(("src/", "test/", "tests/", "scripts/"))
-        or path.startswith(LANGUAGE_HOST_SOURCE_ROOT)
+        or path.startswith((LANGUAGE_HOST_SOURCE_ROOT, LANGUAGE_HOST_TEST_ROOT))
         or (candidate.parent == PurePosixPath(".") and ".config." in candidate.name)
     )
 
@@ -97,6 +99,9 @@ def test_kind_for_path(path: str) -> str | None:
     if in_tests and "support" in parts:
         return "support"
     if ".spec." in name or ".integration.test." in name:
+        return "integration"
+    # The language host's test root holds integration gates run against the built binary.
+    if path.startswith(LANGUAGE_HOST_TEST_ROOT):
         return "integration"
     if ".test." in name:
         return "unit"
@@ -162,10 +167,15 @@ def feature_for_path(path: str) -> str:
         return "browser"
     if "hwp" in parts or "hwp-runtime" in parts:
         return "hwp"
-    if any(p in parts for p in ("image", "pdf", "video", "image-runtime", "image-export-runtime")):
+    if any(p in parts for p in ("image", "pdf", "video", "office", "image-runtime", "image-export-runtime")):
         return "media"
-    if path.startswith("src/main/documents/") and name.startswith(("image-", "pdf-", "video-")):
+    if path.startswith("src/main/documents/") and name.startswith(("image-", "pdf-", "video-", "office-")):
         return "media"
+    # Folder tab, native path picker and file-manager integration across runtimes.
+    if any(p in parts for p in ("files", "folder", "dialogs")):
+        return "files"
+    if "memory" in parts:
+        return "shared"
     if "terminal" in parts or name.startswith("terminal"):
         return "terminal"
     if "theme" in parts or name.startswith(("theme", "vscode-theme")) or name == "style.css":
