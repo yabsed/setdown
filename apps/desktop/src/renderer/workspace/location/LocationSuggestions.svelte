@@ -69,7 +69,7 @@
   button { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; height: 46px; padding: 8px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; font-size: 16px; }
   button:hover, .selected { background: var(--app-hover); }
   .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
-  strong, small { font: 12px D2Coding, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  strong, small { font: 12px var(--app-font-family); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   small { opacity: .55; font-size: 11px; }
   .panel { border-radius: 8px; padding: 8px; font: 12px var(--app-font-family); }
   .panel [role="listbox"]:not(:empty) { margin-top:6px; }

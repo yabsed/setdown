@@ -249,9 +249,15 @@ single/triple-star delimiters and ordinary CommonMark behavior remain unchanged.
 Unit cases and `preview/korean-emphasis.spec.ts` cover ordinary Markdown, Git
 review and notebook rendering with byte-for-byte source preservation.
 
-App typography uses the locally installed D2Coding family with a monospace
-fallback across shell controls, ordinary/Git editors, terminals, and Markdown
-body, heading, and code styles in every theme. Math and diagram renderers retain
+App typography uses the locally installed Monoplex KR family (IBM Plex Mono with
+IBM Plex Sans KR; it replaced D2Coding as the first choice on 2026-11-15), then
+D2Coding where it is absent, then a monospace fallback, across shell controls,
+ordinary/Git editors, terminals, Web Reader, and Markdown body, heading, and code
+styles in every theme. `APP_FONT_FAMILY` and `--app-font-family` declare that one
+stack and no other source file names a family; `typography.test.ts` checks both.
+A Monoplex KR Hangul syllable is 1.056em, exactly two Latin cells, so the 840px
+measure holds about 40 syllables of the 20px Reader body and 57 of Markdown's
+14px. Math and diagram renderers retain
 their specialized fonts. Notebooks intentionally use a separate content/UI font
 stack for prose and HTML tables; their code and plain-text outputs use Monaco's
 platform-default monospace font, matching VS Code notebooks. This notebook-only exception and its real Electron coverage are

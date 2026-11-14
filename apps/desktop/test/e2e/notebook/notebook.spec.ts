@@ -94,7 +94,7 @@ test('notebook reading hierarchy keeps content, actions and focus distinct, incl
         tableFont: getComputedStyle(document.querySelector('.output-html td')!).fontFamily };
     });
     expect(measure.prose).toBeGreaterThan(measure.editor * .95); expect(measure.prose).toBeLessThanOrEqual(measure.editor);
-    expect(measure.proseFont).not.toContain('D2Coding'); expect(measure.tableFont).not.toContain('D2Coding');
+    for (const appFont of ['Monoplex KR', 'D2Coding']) { expect(measure.proseFont).not.toContain(appFont); expect(measure.tableFont).not.toContain(appFont); }
     expect(measure.inlineFont).toBe(measure.codeFont); expect(measure.codeFont).toContain('monospace');
     await expect(md).toHaveCSS('border-top-width', '0px');
     await page.mouse.move(1, 1);

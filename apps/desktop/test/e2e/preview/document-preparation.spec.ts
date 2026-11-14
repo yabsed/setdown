@@ -117,7 +117,7 @@ test('hidden ordinary math document is prepared without focus changes and keeps 
       }, { id: hidden.id, zoom });
       expect(result.count).toBeGreaterThan(1500);
       expect(result.textFonts.length).toBeGreaterThan(0);
-      for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('D2Coding');
+      for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('Monoplex KR');
       expect(result.differences).toEqual([]);
       expect(result.pinned).toEqual(result.natural);
     }

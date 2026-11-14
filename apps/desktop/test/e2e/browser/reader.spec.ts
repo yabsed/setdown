@@ -194,7 +194,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
       const style = getComputedStyle(el);
       return { font: style.fontFamily, size: style.fontSize };
     });
-    expect(look.font).toContain('D2Coding');
+    expect(look.font.split(',')[0].replaceAll('"', '').trim()).toBe('Monoplex KR');
     expect(look.size).toBe('20px');
     await expect.poll(() => reader.evaluate(el => {
       const rect = el.getBoundingClientRect();

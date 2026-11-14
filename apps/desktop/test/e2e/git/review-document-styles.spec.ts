@@ -124,7 +124,7 @@ test('review document styles preserve real math geometry across widths and zoom'
       expect(result.prepared).toEqual(result.natural);
       expect(result.math).toBeGreaterThan(700);
       expect(result.textFonts.length).toBeGreaterThan(0);
-      for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('D2Coding');
+      for (const font of result.textFonts) expect(font.split(',')[0].replaceAll('"', '').trim()).toBe('Monoplex KR');
       expect(result.differences, JSON.stringify({ width, zoom, ...result })).toEqual([]);
     }
     const identity = (await reviews(app)).map(({ id, context }) => ({ id, context }));
