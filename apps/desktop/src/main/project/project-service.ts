@@ -96,7 +96,11 @@ export class ProjectService {
     const folderPath = canonicalPath(candidate);
     const stat = await fs.stat(folderPath).catch(() => null);
     if (!stat?.isDirectory() || this.folderRequests.get(state) !== request) return null;
-    if (state.projectRoot !== folderPath) { state.gitRoot = null; state.gitRepositories = []; }
+    if (state.projectRoot !== folderPath) {
+      state.gitRoot = null; state.gitRepositories = [];
+      // A draft made in the previous folder first-saves into the folder the user switched to.
+      state.documentDirectory = folderPath;
+    }
     state.projectRoot = folderPath;
     this.recentFolders.visit(folderPath);
     this.watch(state, folderPath);

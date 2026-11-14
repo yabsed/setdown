@@ -8,6 +8,7 @@ import { rewriteDraftAssetReferences, saveDraftBundle } from '../../main/documen
 import { GitService, parseGitDiffHunks } from '../../main/project/git-service';
 import { GitCli } from '../../main/project/engines/git-cli';
 import { ProjectPaths } from '../../main/project/project-paths';
+import { ProjectService } from '../../main/project/project-service';
 import { copyExclusive } from '../../main/project/file-transfer';
 import { indexVisibleHtml, searchVisibleText } from '../../main/project/visible-search';
 import { NotebookDocument } from '../../core/notebook/notebook-document';
@@ -71,6 +72,28 @@ test('first save in a folder-only workspace uses that folder and Save As uses th
   owner.currentDocument = await manager.read(file);
   await manager.saveAs(owner, 'original', 0);
   expect(electron.save).toHaveBeenLastCalledWith(owner.window, expect.objectContaining({ defaultPath: file }));
+});
+
+test('first save of a draft follows a workspace switch, until a real document is activated', async () => {
+  const first = await temp(), second = await temp(), manager = new DocumentManager(() => {});
+  const projects = new ProjectService(async () => [], { watch: async () => {}, unwatch: async () => {}, dispose: async () => {} });
+  const owner = state(null as unknown as string); owner.webContentsId = 1;
+  electron.save.mockResolvedValue({ canceled: true });
+  const startsIn = (directory: string) => expect(electron.save).toHaveBeenLastCalledWith(owner.window,
+    expect.objectContaining({ defaultPath: path.join(directory, draft.name) }));
+  await projects.restore(owner, first);
+  const draft = manager.newDocument(owner);
+  await manager.saveCurrent(owner, 'draft', 1); startsIn(first);
+  await projects.restore(owner, second);
+  await manager.saveCurrent(owner, 'draft', 1); startsIn(second);
+  // Reselecting the same folder keeps the more specific document directory.
+  const nested = path.join(second, 'nested'), file = path.join(nested, 'note.md');
+  await fs.mkdir(nested); await fs.writeFile(file, 'note'); watched.push(file);
+  manager.activate(owner, await manager.read(file), 'note', 0);
+  manager.activate(owner, draft, 'draft', 1);
+  await projects.restore(owner, second);
+  await manager.saveCurrent(owner, 'draft', 1); startsIn(nested);
+  await projects.dispose();
 });
 
 // Regression coverage for the 2026-10-22 audit. Real filesystem/Git boundaries
