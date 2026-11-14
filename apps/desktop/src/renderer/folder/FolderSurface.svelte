@@ -406,7 +406,8 @@
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
     buttons[next]?.focus();
   }
-  const menuRun = (action: () => void) => () => { menu = null; action(); };
+  // The action runs before the menu closes: template values such as `entry` derive from `menu` and cannot be read once it is null.
+  const menuRun = (action: () => void) => () => { try { action(); } finally { menu = null; } };
 
   const copying = (event: DragEvent) => /Mac/i.test(navigator.platform) ? event.altKey : event.ctrlKey;
   const clearDrop = () => { dropTarget = ''; dropHint = ''; };

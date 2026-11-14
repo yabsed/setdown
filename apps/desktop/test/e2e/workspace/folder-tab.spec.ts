@@ -90,6 +90,24 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
     const rename = list(page).getByRole('textbox', { name: 'Rename' });
     await rename.fill('table.csv'); await rename.press('Enter');
     await expect.poll(() => readdir(alpha)).toContain('table.csv');
+    // The context menu reaches the same commands with the pointer as the keyboard shortcuts do.
+    const menu = page.getByRole('menu');
+    await row(page, 'table.csv').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Rename' }).click();
+    await expect(menu).toHaveCount(0);
+    await expect(rename).toBeFocused();
+    await rename.fill('sheet.csv'); await rename.press('Enter');
+    await expect.poll(() => readdir(alpha)).toContain('sheet.csv');
+    await row(page, 'sheet.csv').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Properties' }).click();
+    const properties = page.getByRole('dialog', { name: 'Properties' });
+    await expect(properties).toContainText('sheet.csv');
+    await properties.getByRole('button', { name: 'Close' }).click();
+    await expect(properties).toHaveCount(0);
+    await row(page, 'sheet.csv').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Rename' }).click();
+    await rename.fill('table.csv'); await rename.press('Enter');
+    await expect.poll(() => readdir(alpha)).toContain('table.csv');
     await row(page, 'table.csv').click();
     await page.keyboard.press('Control+c');
     await row(page, 'drafts').dblclick();
