@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "ref": "main",
-  "resolved_commit": "efe5699697fad931a486781f1c83c9bebd270042",
-  "committed_at": "2026-11-14T14:39:06+09:00",
+  "resolved_commit": "993494fe24cc344b74c6df0984cd345add41df1c",
+  "committed_at": "2026-11-14T15:01:39+09:00",
   "history": "first-parent",
-  "commit_count": 407,
+  "commit_count": 409,
   "metric": "Physical lines including blanks/comments; committed files only.",
   "limitations": "Code volume does not measure coverage, passing tests, quality or productivity.",
   "excluded": [
@@ -20,16 +20,16 @@
   "feature_scope": "Production source only; path-based responsibility, not dependency analysis",
   "test_scope": "Test source, support and code fixtures; no test execution results",
   "totals": {
-    "lines": 91592,
-    "production": 51375,
-    "testing": 38116,
+    "lines": 91675,
+    "production": 51387,
+    "testing": 38187,
     "tooling": 2101
   },
   "components": {
-    "tests": 38116,
-    "renderer": 23765,
+    "tests": 38187,
+    "renderer": 23772,
     "main": 17825,
-    "core": 5161,
+    "core": 5166,
     "language_host": 272,
     "preview_runtime": 1862,
     "browser_runtime": 838,
@@ -44,7 +44,7 @@
     "other": 0
   },
   "features": {
-    "workspace": 7673,
+    "workspace": 7685,
     "reading": 5794,
     "editor": 3597,
     "browser": 6800,
@@ -61,8 +61,8 @@
     "other": 0
   },
   "tests": {
-    "unit": 17230,
-    "integration": 19930,
+    "unit": 17264,
+    "integration": 19967,
     "support": 845,
     "fixtures": 111
   },
