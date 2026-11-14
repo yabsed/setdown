@@ -51,6 +51,36 @@ test('all web themes cover light-dark surfaces and external CSS without replacin
   } finally { await f.dispose(); }
 });
 
+test('raw HSL color tokens follow the cascade, not the last definition in the stylesheet', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/theme-tokens`);
+    await expect(f.page.getByRole('tab', { name: /Token fixture/ })).toBeVisible();
+    await evaluatePage(f.app, f.origin, 'window.keptNode = document.querySelector("#draft"); keptNode.value = "보존할 입력"; true');
+    const paint = () => evaluatePage<{ surfaces: string[]; scope: number; ratios: number[] }>(f.app, f.origin, `(() => {
+      const lum = value => (value.match(/[\\d.]+/g) ?? []).slice(0, 3).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
+      const style = selector => getComputedStyle(document.querySelector(selector));
+      const ratio = (text, surface) => { const a = lum(style(text).color), b = lum(style(surface).backgroundColor); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); };
+      return { surfaces: ['body', '#page', '#panel', '#bubble'].map(selector => style(selector).backgroundColor),
+        scope: lum(style('#scope').backgroundColor), ratios: [ratio('#text', '#page'), ratio('#scope', '#scope')] };
+    })()`);
+    for (const id of THEME_IDS) {
+      await f.app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), id);
+      // The light token set applies to the page: every surface is the app's,
+      // whether the token is used directly, through aliases or inside a color.
+      const surface = rgb(themeProfile(id).palette.surface);
+      await expect.poll(async () => (await paint()).surfaces, id).toEqual([surface, surface, surface, surface]);
+      // Only the subtree that selects the dark token set keeps a dark panel.
+      await expect.poll(async () => { const { scope, ratios } = await paint(); return scope < .3 && ratios.every(ratio => ratio >= 4.5); }, id).toBe(true);
+    }
+    expect(await evaluatePage(f.app, f.origin, 'keptNode === document.querySelector("#draft") && keptNode.value === "보존할 입력"')).toBe(true);
+    expect(f.requests.filter(url => url === '/theme-tokens')).toHaveLength(1);
+    await f.page.evaluate(() => window.marktex.browser.updateThemeSettings({ mode: 'original' }));
+    await expect.poll(async () => (await paint()).surfaces).toEqual(Array(4).fill('rgb(255, 255, 255)'));
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('Theme menu toggles web colors live, preserves site exceptions and persists after restart', async () => {
   const f = await fixture();
   try {

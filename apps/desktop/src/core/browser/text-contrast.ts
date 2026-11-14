@@ -14,6 +14,10 @@ export function contrast(foreground: Color, background: Color): number {
   const a = luminance(over(foreground, background)), b = luminance(background);
   return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
 }
+/** A panel dark enough to carry a fixed white foreground: 3:1, the minimum for interface text. */
+export function carriesWhiteText(surface: Color): boolean {
+  return contrast([255, 255, 255, 1], surface) >= 3;
+}
 /** Correct the actual painted pair, never a theme-wide assumption about its surface. */
 export function readableText(foreground: Color, background: Color): string | null {
   if (foreground[3] === 0 || contrast(foreground, background) >= 4.5) return null;

@@ -16,7 +16,7 @@ import {
 describe('theme catalog', () => {
   it('adds the pinned VS Code theme without changing the default or existing choices', () => {
     expect(DEFAULT_THEME).toBe('github-light');
-    expect(THEME_IDS).toEqual(['github-light', 'paper', 'medium', 'solarized-light',
+    expect(THEME_IDS).toEqual(['github-light', 'paper', 'solarized-light',
       'github-light-high-contrast',
       'github-dark', 'night', 'one-dark', 'solarized-dark', 'vscode-dark-2026', 'github-dark-high-contrast', 'night-owl', 'dracula']);
     expect(themeProfile('vscode-dark-2026')).toMatchObject({ label: 'VS Code Dark 2026', appearance: 'dark',
@@ -55,7 +55,7 @@ describe('theme catalog', () => {
     for (const color of Object.values(terminalTheme(id))) if (color !== undefined) expect(color).toMatch(/^#[\da-f]{6}([\da-f]{2})?$/i);
     for (const color of Object.values(profile.palette)) expect(typeof color).toBe('string');
   });
-  it.each(['vscode-light-2026', 'light-owl', 'atom-one-light'])('restores removed %s preferences to the default light theme', id => {
+  it.each(['vscode-light-2026', 'light-owl', 'atom-one-light', 'medium'])('restores removed %s preferences to the default light theme', id => {
     expect(normalizeTheme(id)).toBe(DEFAULT_THEME);
     expect(themeProfile(id)).toEqual(themeProfile(DEFAULT_THEME));
     expect(terminalTheme(id)).toEqual(terminalTheme(DEFAULT_THEME));

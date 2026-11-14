@@ -317,10 +317,14 @@ changes. A moved live tab receives a fresh policy, so later CSS loads still work
 the upstream
 cross-origin guards remain enabled. No resource API enters the website world.
 Guarded build adapters normalize CSS light-dark() input and preserve readable
-opaque dark text in light palettes. The bundled CSSOM proxy runs in the page world
+opaque dark text in light palettes. Raw HSL component tokens (`--bg: 48 33% 97%`
+used as `hsl(var(--bg) / a)`) stay on the engine's variable path: each token
+definition is themed in place and the cascade selects the one that applies to an
+element. A dark token set written later in the stylesheet, as a selector or a
+media query, therefore cannot paint a light page. The bundled CSSOM proxy runs in the page world
 without inline-script injection, including under strict script CSP; disabling the
 theme restores original CSS and proxy descriptors. The theme E2E checks all registered
-palettes, cross-origin styles after in-page navigation and window transfer,
+palettes, raw token cascades, cross-origin styles after in-page navigation and window transfer,
 CSSOM updates, site exceptions, persistence and
 page identity. The folder picker stays within the sidebar and leaves native web
 content visible. Repeated native clicks on the extension toolbar toggle a strip
@@ -816,10 +820,12 @@ invalidate contrast. Link/button corrections include inherited currentColor
 icons, and dynamically inserted labels are rechecked. `browser/themes.spec.ts`
 uses the public sidebar's relative/mixed background expressions across all app
 themes and checks text/icon contrast, retained input and original-color cleanup.
-In Solarized Light, ChatGPT's sidebar explicitly uses white text and currentColor
-icons for both pinned and recent conversations, including dynamically added rows.
-This site/theme rule takes precedence over automatic foreground selection and
-is removed with the contrast stylesheet when the theme or original-site mode changes.
+In Solarized Light, ChatGPT's sidebar uses white text and currentColor icons for
+both pinned and recent conversations, including dynamically added rows, while its
+painted panel is dark (white reaches 3:1). On the light app surface the same
+sidebar uses the automatic foreground. Where it applies, this site/theme rule takes
+precedence over automatic foreground selection; it is removed with the contrast
+stylesheet when the theme or original-site mode changes.
 Transparent text, disabled controls, images/gradients, blend/filter and
 translucent-group backgrounds are excluded
 rather than assigned a guessed background. Work is event-driven, capped at 100

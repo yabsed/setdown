@@ -35,7 +35,7 @@ await build({ entryPoints: ['src/browser-runtime/page-preload.ts'], outfile: 'di
     '@setdown/darkreader-fixes': path.resolve('scripts/browser/darkreader-fixes.ts') },
   loader: { '.config': 'text' }, banner: { js: 'const __setdownDarkReaderChrome = {};' },
   plugins: [{ name: 'darkreader-colors', setup(build) {
-    build.onLoad({ filter: /[/\\]darkreader[/\\]src[/\\]inject[/\\]dynamic-theme[/\\](css-rules|modify-css|modify-colors|index|stylesheet-proxy)\.ts$/ }, async ({ path: file }) => ({
+    build.onLoad({ filter: /[/\\]darkreader[/\\]src[/\\]inject[/\\]dynamic-theme[/\\](css-rules|modify-css|modify-colors|index|stylesheet-proxy|variables)\.ts$/ }, async ({ path: file }) => ({
       contents: patchDarkReaderColors(await fs.readFile(file, 'utf8'), path.basename(file)), loader: 'ts',
     }));
   } }],

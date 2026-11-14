@@ -5,7 +5,6 @@ import { vscodeDark2026Colors as vscode, vscodeDark2026Token } from './vscode-da
 export const THEME_IDS = [
   'github-light',
   'paper',
-  'medium',
   'solarized-light',
   'github-light-high-contrast',
   'github-dark',
@@ -58,7 +57,6 @@ export type SyntaxPalette = {
 export type PreviewStylesheet =
   | 'github-light.css'
   | 'newsprint.css'
-  | 'medium.css'
   | 'solarized-light.css'
   | 'github-dark.css'
   | 'night.css'
@@ -100,12 +98,6 @@ export const THEME_PROFILES: readonly ThemeProfile[] = [
     preview: { stylesheet: 'newsprint.css', prismStylesheet: 'pen-paper-coffee.css', background: '#f3f2ee' },
     palette: { ...lightBase, canvas: '#ebe9e3', surface: '#f3f2ee', raisedSurface: '#fbfaf6', chrome: '#dfddd6', editorBackground: '#f3f2ee', text: '#2d2520', mutedText: '#746d65', border: '#d0ccc2', strongBorder: '#b8b1a5', hover: '#e4e0d7', selected: '#f3f2ee', accent: '#065588', focusRing: '#4c7d98' },
     syntax: { foreground: '#342b26', comment: '#6e655d', keyword: '#8a3b32', string: '#48643f', number: '#765b2f', link: '#065588', heading: '#6b493b', code: '#3e5f57', punctuation: '#716960' },
-  },
-  {
-    id: 'medium', label: 'Medium', appearance: 'light',
-    preview: { stylesheet: 'medium.css', prismStylesheet: 'github.css', background: '#ffffff' },
-    palette: { ...lightBase, canvas: '#f7f7f7', surface: '#ffffff', chrome: '#f0f0ed', editorBackground: '#ffffff', text: '#202123', mutedText: '#71737a', border: '#dededb', hover: '#ededeb', selected: '#fafafa', accent: '#2484c1', focusRing: '#4b96c5' },
-    syntax: { foreground: '#404247', comment: '#6c7078', keyword: '#a43f4b', string: '#376b54', number: '#7657a6', link: '#2484c1', heading: '#202123', code: '#3f6577', punctuation: '#707279' },
   },
   {
     id: 'solarized-light', label: 'Solarized Light', appearance: 'light',

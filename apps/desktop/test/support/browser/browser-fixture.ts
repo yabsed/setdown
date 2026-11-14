@@ -34,6 +34,25 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
         <aside id="sidebar">Sidebar</aside><div id="external">External CSS without CORS</div><iframe src="/frame"></iframe>`);
       return;
     }
+    if (req.url === '/theme-tokens') {
+      // Raw HSL component tokens: the dark set follows the light one, both as a
+      // selector and as a media query, and one subtree opts into it.
+      res.setHeader('content-type', 'text/html');
+      res.end(`<!doctype html><html data-mode="auto"><title>Token fixture</title><style>
+        :root, [data-mode=light] { --surface: 0 0% 100%; --ink: 0 0% 0%; --gray-0: 0, 0%, 100%; --alias: var(--gray-0); --panel: var(--alias); --bubble: hsl(var(--surface)) }
+        [data-mode=dark] { --surface: 60 3% 8%; --ink: 48 33% 97%; --gray-0: 60, 3%, 8% }
+        @media (prefers-color-scheme: dark) { :root { --surface: 60 3% 8%; --ink: 48 33% 97%; --gray-0: 60, 3%, 8% } }
+        body { margin: 0; background-color: hsl(var(--surface)); color: hsl(var(--ink)) }
+        #page { background-color: hsl(var(--surface) / 1); padding: 24px }
+        #panel { background-color: hsla(var(--panel), 1) }
+        #bubble { background-color: var(--bubble) }
+        #muted { color: hsl(var(--ink) / .8) }
+        #scope { background-color: hsl(var(--surface)); color: hsl(var(--ink)) }
+      </style><main id="page"><input id="draft"><p id="text">Chat text</p><div id="panel">Aliased token</div>
+        <div id="bubble">Token color</div><p id="muted">Muted text</p>
+        <section id="scope" data-mode="dark">Dark scope</section></main>`);
+      return;
+    }
     if (req.url === '/private') {
       if (req.headers.authorization !== `Basic ${Buffer.from('reader:secret').toString('base64')}`) {
         res.writeHead(401, { 'www-authenticate': 'Basic realm="Fixture library"' }); res.end('Authentication required');

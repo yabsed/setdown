@@ -100,10 +100,10 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     })`)).toEqual({ externalScripts: 0, diagramRuntimeRequests: 0 });
     await reading.evaluate('window.scrollTo(0, 0), true');
     await application.evaluate(({ Menu }) => {
-      Menu.getApplicationMenu()?.getMenuItemById('preview-theme-medium')?.click();
+      Menu.getApplicationMenu()?.getMenuItemById('preview-theme-paper')?.click();
     });
     await expect.poll(() =>
-      reading.evaluate('document.body.dataset.setdownPreviewTheme')).toBe('medium');
+      reading.evaluate('document.body.dataset.setdownPreviewTheme')).toBe('paper');
     expect(await reading.evaluate('Math.round(scrollY)')).toBe(0);
 
     await expect(window.locator('.location-actions .toc-toggle')).toBeVisible();

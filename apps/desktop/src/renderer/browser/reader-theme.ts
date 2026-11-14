@@ -8,7 +8,6 @@ const preview = {
   'github-light.css': () => import('@crossnote-styles/preview_theme/github-light.css?inline'),
   'github-dark.css': () => import('@crossnote-styles/preview_theme/github-dark.css?inline'),
   'newsprint.css': () => import('@crossnote-styles/preview_theme/newsprint.css?inline'),
-  'medium.css': () => import('@crossnote-styles/preview_theme/medium.css?inline'),
   'night.css': () => import('@crossnote-styles/preview_theme/night.css?inline'),
   'one-dark.css': () => import('@crossnote-styles/preview_theme/one-dark.css?inline'),
   'solarized-light.css': () => import('@crossnote-styles/preview_theme/solarized-light.css?inline'),
