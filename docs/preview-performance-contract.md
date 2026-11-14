@@ -304,7 +304,10 @@ Night Owl and Dracula are additional imported choices.
 Pinned upstream JSON, original licenses and adaptation notices live beside the
 VS Code snapshot. Their workbench, ANSI and ordered token palettes feed shell,
 Monaco lexical/LSP roles, lazy TextMate grammars and ordinary/Git Markdown
-readers; missing app roles use colors from the same palette. Night Owl and
+readers; missing app roles use colors from the same palette. The shell
+separator must stay distinguishable from the surfaces it divides: Night Owl
+paints `sideBar.border` in its editor background, so its tab-strip hairline
+(`editorGroupHeader.tabsBorder`) divides the shell instead. Night Owl and
 Dracula comment tokens are brightened to retain the existing 4.5:1 notebook/editor
 guarantee. Existing choices and the default remain unchanged. Switching between
 imports updates the retained reader stylesheet, including while hidden; selecting

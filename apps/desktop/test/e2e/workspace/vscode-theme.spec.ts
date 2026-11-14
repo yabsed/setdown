@@ -114,9 +114,11 @@ test('VS Code Dark 2026 colors native Markdown and hidden previews without repla
 });
 
 const communityThemes = [
-  { id: 'night-owl', background: 'rgb(1, 22, 39)', foreground: 'rgb(214, 222, 235)',
+  // `separator` is the shell hairline. Night Owl's own sideBar.border equals
+  // its background, so the tab-strip hairline must divide the shell instead.
+  { id: 'night-owl', background: 'rgb(1, 22, 39)', foreground: 'rgb(214, 222, 235)', separator: 'rgb(38, 42, 57)',
     comment: 'rgb(124, 144, 144)', string: 'rgb(236, 196, 141)', link: 'rgb(130, 170, 255)' },
-  { id: 'dracula', background: 'rgb(40, 42, 54)', foreground: 'rgb(248, 248, 242)',
+  { id: 'dracula', background: 'rgb(40, 42, 54)', foreground: 'rgb(248, 248, 242)', separator: 'rgb(25, 26, 33)',
     comment: 'rgb(130, 147, 191)', string: 'rgb(241, 250, 140)', link: 'rgb(139, 233, 253)' },
 ];
 for (const theme of communityThemes) test(`${theme.id} colors editor and retained native readers, preserves Undo, focus and restart`, async () => {
@@ -136,6 +138,7 @@ for (const theme of communityThemes) test(`${theme.id} colors editor and retaine
     const appearance = 'dark';
     await expect(page.locator('html')).toHaveAttribute('data-appearance', appearance);
     await expect(page.locator('.monaco-editor').first()).toHaveCSS('background-color', theme.background);
+    for (const region of ['.product-titlebar', '.tab-strip']) await expect(page.locator(region).first()).toHaveCSS('border-bottom-color', theme.separator);
     await expect(page.locator('.view-line span span').filter({ hasText: 'A theme comment' }).first()).toHaveCSS('color', theme.comment);
     await expect(page.locator('.view-line span span').filter({ hasText: '"palette"' }).first()).toHaveCSS('color', theme.string);
     expect(await identity!.evaluate(node => node === document.querySelector('.editor-surface .monaco-editor'))).toBe(true);

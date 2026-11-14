@@ -14,6 +14,12 @@ function profile(id: ThemeProfile['id'], label: string, source: SourceTheme, acc
   const background = raw['editor.background'], foreground = raw['editor.foreground'];
   const surface = raw['editorWidget.background'] ?? raw['sideBar.background'] ?? background;
   const border = raw['input.border'] ?? raw['panel.border'] ?? raw['editorWidget.border'] ?? accent;
+  // The shell divides its regions with one separator role. Night Owl hides
+  // sideBar.border by painting it in the editor background, which would leave
+  // the title bar, tabs, sidebar and panes undivided; use the theme's next
+  // structural hairline instead.
+  const separator = [raw['sideBar.border'], raw['editorGroupHeader.tabsBorder'], raw['tab.border']]
+    .find(color => color && color.toLowerCase() !== background.toLowerCase()) ?? border;
   const colors: Record<string, string> = {
     'foreground': foreground, 'descriptionForeground': foreground, 'icon.foreground': foreground,
     'activityBar.inactiveForeground': foreground, 'activityBar.activeBorder': accent,
@@ -53,7 +59,7 @@ function profile(id: ThemeProfile['id'], label: string, source: SourceTheme, acc
     palette: { canvas: background, surface: background, raisedSurface: surface,
       chrome: colors['titleBar.activeBackground'] ?? background, editorBackground: background,
       text: foreground, mutedText: colors.descriptionForeground, subtleText: colors['editorLineNumber.foreground'] ?? foreground,
-      border: colors['sideBar.border'] ?? border, strongBorder: border,
+      border: separator, strongBorder: border,
       hover: colors['list.hoverBackground'] ?? surface, selected: colors['tab.activeBackground'] ?? surface,
       accent: colors['textLink.foreground'], focusRing: colors.focusBorder ?? accent,
       warningSurface: colors['inputValidation.warningBackground'] ?? surface,
