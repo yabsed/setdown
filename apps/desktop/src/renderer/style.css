@@ -771,12 +771,11 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 .empty-state p { max-width: 440px; margin: 0 0 28px; color: var(--app-muted-text); line-height: 1.65; }
 .primary-button { padding: 10px 17px; color: var(--app-surface); border: 0; border-radius: 8px; background: var(--app-text); cursor: pointer; }
 .primary-button:hover { filter: brightness(.86); }
-.empty-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.empty-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
 .secondary-button { padding: 9px 16px; color: var(--app-text); border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-raised-surface); cursor: pointer; }
 .secondary-button:hover { background: var(--app-hover); }
 .danger-button { padding: 9px 16px; color: #fff; border: 1px solid transparent; border-radius: 8px; background: var(--app-danger-text); cursor: pointer; }
 .danger-button:hover { filter: brightness(.88); }
-.shortcut { margin-top: 9px; color: var(--app-subtle-text); font-size: 11px; }
 
 .viewer-surface, .editor-surface { position: relative; overflow: hidden; }
 /* Monaco clips code in its own overflow guard. Let toolbar tooltips extend
