@@ -17,26 +17,42 @@ export function videoMimeType(filePath: string): string | undefined {
   return Object.hasOwn(VIDEO_TYPES, extension) ? VIDEO_TYPES[extension] : undefined;
 }
 export const isVideoDocument = (filePath: string): boolean => !!videoMimeType(filePath);
+/** Microsoft Office and Hancom Hangul families shown by the read-only Office viewer; OpenDocument and CSV are not routed here. */
+const OFFICE_FAMILIES = {
+  word: ['docx', 'docm', 'dotx', 'dotm', 'doc', 'dot'],
+  spreadsheet: ['xlsx', 'xlsm', 'xltx', 'xltm', 'xlsb', 'xls', 'xlt'],
+  presentation: ['pptx', 'pptm', 'potx', 'potm', 'ppsx', 'ppsm', 'ppt', 'pot'],
+  hangul: ['hwp', 'hwpx'],
+} as const;
+export type OfficeFamily = keyof typeof OFFICE_FAMILIES;
+export const OFFICE_EXTENSIONS: readonly string[] = Object.values(OFFICE_FAMILIES).flat();
+export function officeFamily(filePath: string): OfficeFamily | undefined {
+  const extension = /\.([a-z0-9]+)$/i.exec(filePath)?.[1].toLowerCase() ?? '';
+  return (Object.keys(OFFICE_FAMILIES) as OfficeFamily[]).find(family => (OFFICE_FAMILIES[family] as readonly string[]).includes(extension));
+}
+export const isOfficeDocument = (filePath: string): boolean => !!officeFamily(filePath);
 export const isReadOnlyDocument = (filePath: string): boolean =>
-  isPdfDocument(filePath) || isImageDocument(filePath) || isVideoDocument(filePath);
+  isPdfDocument(filePath) || isImageDocument(filePath) || isVideoDocument(filePath) || isOfficeDocument(filePath);
 const MARKDOWN = /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i;
 const BINARY = new Set(('pdf png jpg jpeg gif webp avif bmp ico icns tif tiff heic '
-  + 'zip gz bz2 xz zst 7z rar tar tgz jar war hwp hwpx doc docx xls xlsx ppt pptx odt ods odp '
+  + 'zip gz bz2 xz zst 7z rar tar tgz jar war odt ods odp '
+  + OFFICE_EXTENSIONS.join(' ') + ' '
   + 'exe dll so dylib bin class pyc pyo wasm sqlite sqlite3 db woff woff2 ttf otf eot '
   + 'mp3 mp4 m4a wav ogg flac avi mov mkv webm psd ai sketch').split(' '));
 
 export const isNotebookDocument = (filePath: string): boolean => /\.ipynb$/i.test(filePath);
-export type DocumentSurface = 'notebook' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video';
-export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf' | 'image' | 'video'; readonly preview: 'markdown' | 'pdf' | 'image' | 'video' | null };
+export type DocumentSurface = 'notebook' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office';
+export type DocumentProfile = { readonly kind: 'markdown' | 'text' | 'pdf' | 'image' | 'video' | 'office'; readonly preview: 'markdown' | 'pdf' | 'image' | 'video' | 'office' | null };
 const pdf: DocumentProfile = Object.freeze({ kind: 'pdf', preview: 'pdf' });
 const image: DocumentProfile = Object.freeze({ kind: 'image', preview: 'image' });
 const video: DocumentProfile = Object.freeze({ kind: 'video', preview: 'video' });
+const office: DocumentProfile = Object.freeze({ kind: 'office', preview: 'office' });
 export const isPdfDocument = (filePath: string): boolean => /\.pdf$/i.test(filePath);
 export const isOpenableDocument = (filePath: string): boolean => isReadOnlyDocument(filePath) || isTextCandidate(filePath);
 const markdown: DocumentProfile = Object.freeze({ kind: 'markdown', preview: 'markdown' });
 const text: DocumentProfile = Object.freeze({ kind: 'text', preview: null });
 export const isMarkdownDocument = (filePath: string): boolean => MARKDOWN.test(filePath);
-export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : isImageDocument(filePath) ? image : isVideoDocument(filePath) ? video : text;
+export const documentProfile = (filePath: string): DocumentProfile => isMarkdownDocument(filePath) ? markdown : isPdfDocument(filePath) ? pdf : isImageDocument(filePath) ? image : isVideoDocument(filePath) ? video : isOfficeDocument(filePath) ? office : text;
 export const fileName = (filePath: string): string => filePath.split(/[\\/]/).at(-1) ?? filePath;
 /** A cheap navigation/search filter, NOT proof that bytes are editable text. */
 export function isTextCandidate(filePath: string): boolean {
@@ -45,7 +61,7 @@ export function isTextCandidate(filePath: string): boolean {
 }
 export function documentSurface(filePath: string, preferred: DocumentSurface = 'viewer'): DocumentSurface {
   return isNotebookDocument(filePath) ? 'notebook' : isPdfDocument(filePath) ? 'pdf' : isImageDocument(filePath) ? 'image'
-    : isVideoDocument(filePath) ? 'video'
+    : isVideoDocument(filePath) ? 'video' : isOfficeDocument(filePath) ? 'office'
     : isMarkdownDocument(filePath) ? (preferred === 'editor' ? 'editor' : 'viewer') : 'editor';
 }
 export type RegisteredLanguage = {

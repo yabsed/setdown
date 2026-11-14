@@ -625,6 +625,13 @@ list so opening or saving through the text editor cannot corrupt them.
 `text-files.integration.test.ts` covers that boundary. Existing Markdown,
 Git review, notebook, image, PDF, browser and focus/IME guarantees remain in force.
 
+Since 2026-11-14 HWP/HWPX open again, read-only, in the Office viewer described in
+[Office and Hangul documents](contracts/reading-surfaces.md#office-and-hangul-documents--2026-11-14).
+The native editor, its IPC, save/recovery paths and the HOP/RHWP submodules stay
+retired. Opening or saving these files through the text editor is still
+impossible, and `text-files.integration.test.ts` now covers that boundary for
+HWP/HWPX and Microsoft Office files together.
+
 ## Reading surface capabilities
 
 Current guarantees, ownership and required coverage: [Reading surface capabilities](contracts/reading-surfaces.md#reading-surface-capabilities).

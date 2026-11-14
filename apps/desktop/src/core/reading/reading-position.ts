@@ -15,7 +15,11 @@ export type ImageReadingPosition = {
 export type VideoReadingPosition = {
   kind: 'video'; time: number;
 };
-export type ReadingPosition = TextReadingPosition | PdfReadingPosition | ImageReadingPosition | VideoReadingPosition;
+/** Scroll ratios inside the Office viewer. Slide decks report none and reopen at the first slide. */
+export type OfficeReadingPosition = {
+  kind: 'office'; top: number; left: number; sheet?: number;
+};
+export type ReadingPosition = TextReadingPosition | PdfReadingPosition | ImageReadingPosition | VideoReadingPosition | OfficeReadingPosition;
 export type ReadingRecord = {
   version: 1; path: string; diskVersion: DiskVersion; position: ReadingPosition; observedAt: number;
 };
@@ -29,6 +33,9 @@ export function validReadingRecord(value: unknown): value is ReadingRecord {
     || !Number.isFinite(r.diskVersion.size) || r.diskVersion.size < 0 || !r.position) return false;
   const p = r.position;
   if (p.kind === 'video') return Number.isFinite(p.time) && p.time >= 0 && p.time <= 86400;
+  if (p.kind === 'office') return Number.isFinite(p.top) && p.top >= 0 && p.top <= 1
+    && Number.isFinite(p.left) && p.left >= 0 && p.left <= 1
+    && (p.sheet === undefined || (Number.isInteger(p.sheet) && p.sheet >= 0 && p.sheet <= 100_000));
   if (p.kind === 'image') return [0, 90, 180, 270].includes(p.rotation)
     && (p.zoom === 'fit' || p.zoom === 'fit-width' || (typeof p.zoom === 'number' && Number.isFinite(p.zoom) && p.zoom >= .1 && p.zoom <= 10))
     && Number.isFinite(p.centerX) && p.centerX >= 0 && p.centerX <= 1

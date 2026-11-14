@@ -68,18 +68,26 @@ test('new text loader rejects binary formats, directories and oversized files be
   });
 });
 
-test('unsupported HWP/HWPX files cannot open or become text save destinations', async () => {
+test('HWP/HWPX and Office files open read-only and never as text or text save destinations', async () => {
   await temporary(async root => {
     const manager = new DocumentManager(() => {});
-    for (const extension of ['hwp', 'HWP', 'hwpx', 'HWPX']) {
+    for (const extension of ['hwp', 'HWP', 'hwpx', 'HWPX', 'docx', 'xls', 'PPTX']) {
       const file = path.join(root, `document.${extension}`), original = Buffer.from('Keep this binary document untouched');
       await fs.writeFile(file, original);
-      assert.equal(isOpenableDocument(file), false);
-      assert.equal(documentPathFromArgs(['/bin/setdown', file], true, () => true), undefined);
-      await assert.rejects(manager.read(file), /binary/);
+      assert.equal(isOpenableDocument(file), true);
+      assert.equal(documentPathFromArgs(['/bin/setdown', file], true, () => true), file);
+      // The viewer receives metadata only; the bytes are never decoded into an editable text model.
+      const opened = await manager.read(file);
+      assert.equal(opened.kind, 'office'); assert.equal(opened.text, '');
+      await assert.rejects(readTextFile(file));
+      assert.throws(() => prepareDocumentSave(opened, 'replacement', file), /read-only/);
       assert.throws(() => prepareDocumentSave({ path: '/note.md' } as DocumentSnapshot, 'replacement', file), /binary/);
       assert.deepEqual(await fs.readFile(file), original);
     }
+    // Formats without a viewer stay unsupported.
+    const unsupported = path.join(root, 'document.odt'); await fs.writeFile(unsupported, 'binary');
+    assert.equal(isOpenableDocument(unsupported), false);
+    await assert.rejects(manager.read(unsupported), /binary/);
   });
 });
 

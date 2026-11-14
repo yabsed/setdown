@@ -270,7 +270,7 @@ import type { AppActions } from '../../ports/ui-actions';
       <ZoomControls label="Website" percent={web.zoomPercent}
         change={step => actions.browserCommand(tab!.id, step === 0 ? 'zoom-reset' : step < 0 ? 'zoom-out' : 'zoom-in')} />
     {:else}
-      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : folder ? 'Folder' : media?.document.kind === 'video' ? 'Video' : media?.document.kind === 'pdf' ? 'PDF' : media?.document.kind === 'image' ? 'Image' : 'Text'}
+      <ZoomControls label={zoomScope === 'terminal' ? 'Terminal' : folder ? 'Folder' : media?.document.kind === 'video' ? 'Video' : media?.document.kind === 'office' ? 'Document' : media?.document.kind === 'pdf' ? 'PDF' : media?.document.kind === 'image' ? 'Image' : 'Text'}
         percent={zoomState.tabs?.[zoomId ?? ''] ?? 100} change={step => actions.changeZoom(step, zoomScope, zoomId)} />
     {/if}
   {/if}

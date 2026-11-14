@@ -98,6 +98,11 @@ import type { AppActions } from './ports/ui-actions';
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
           {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
       {:catch error}{#if active}<div role="alert">Could not load the video player: {String(error)}</div>{/if}{/await}
+    {:else if tab.document.kind === 'office'}
+      {#await import('./office/OfficeSurface.svelte') then module}
+        <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
+          focused={group?.id === view.focusedGroupId} {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+      {:catch error}{#if active}<div role="alert">Could not load the Office viewer: {String(error)}</div>{/if}{/await}
     {:else}
       {#await import('./image/ImageSurface.svelte') then module}
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}

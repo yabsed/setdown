@@ -77,6 +77,13 @@ export class WindowManager {
       });
     });
     window.setMenuBarVisibility(false);
+    // The shell shows untrusted content (notebook output, Office documents) next to the desktop API.
+    // It never opens a child window, which would inherit this preload, and never leaves its own page;
+    // surfaces route links through document:open-link instead.
+    window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    window.webContents.on('will-navigate', (event, url) => {
+      if (url.split('#')[0] !== window.webContents.getURL().split('#')[0]) event.preventDefault();
+    });
     window.webContents.on('before-input-event', (event, input) => {
       if (state.explorerEditTarget && input.type === 'keyDown' && !input.isComposing
         && (input.control || input.meta) && !input.alt && !input.shift) {

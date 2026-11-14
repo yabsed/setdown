@@ -185,7 +185,7 @@ export type TransferableDocumentTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook';
+  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook';
   readingPosition?: import('../core/reading/reading-position').ReadingPosition;
   anchor: {
     sourceLine: number;
@@ -298,6 +298,7 @@ export type MarkTexApi = {
   showPdfSelectionMenu(path: string, selection: string): Promise<void>;
   imageEdit: import('./image-edit').ImageEditApi;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
+  readOfficeBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;
   terminal: import('./terminal').TerminalApi;
   language: import('./language').LanguageApi;

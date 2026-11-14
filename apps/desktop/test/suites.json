@@ -33,6 +33,8 @@
       "src/main/documents/bug-audit.integration.test.ts",
       "src/main/ipc/open-link.test.ts",
       "src/main/documents/image-file.test.ts",
+      "src/main/documents/office-file.test.ts",
+      "src/main/documents/text-files.integration.test.ts",
       "src/main/project/recent-folders.test.ts",
       "src/main/project/project-service.test.ts",
       "src/main/project/engines/project-watcher.test.ts",
@@ -283,6 +285,9 @@
       "previewContract": true
     },
     "media/reading-positions.spec.ts": {
+      "previewContract": true
+    },
+    "media/office-reader.spec.ts": {
       "previewContract": true
     },
     "media/video-reader.spec.ts": {

@@ -38,7 +38,7 @@ export const view = $state({
   tabs: [] as TabView[],
   terminalSessions: [] as import('../../core/workspace/workspace-state').TerminalSession[],
   draggedTabId: null as string | null,
-  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder',
+  surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder',
   /** Reactive copies of folder tabs for their surfaces. */
   folderTabs: [] as Array<{ id: string; path: string; view: import('../../core/workspace/workspace-state').FolderView; selection?: string[]; picker?: import('../../protocol/files').PathPickerRequest; revision: number }>,
   notebookTabs: [] as { id: string; path: string; entry: import('../notebook/document-content').NotebookEntry }[],

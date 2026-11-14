@@ -1,5 +1,6 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
+import { officeViewerNotices } from './office-viewer-notices.mjs';
 
 const shared = {
   bundle: true,
@@ -50,3 +51,5 @@ for (const license of ['GITHUB-THEME-LICENSE', 'NIGHT-OWL-LICENSE', 'DRACULA-LIC
   await copyFile(`src/core/theme/upstream/${license}`, `dist-electron/${license}`);
 }
 await copyFile('src/core/files/SETI-NOTICE.txt', 'dist-electron/SETI-NOTICE.txt');
+// The renderer bundles File Viewer's Office renderers and their parsing workers.
+await writeFile('dist-electron/OFFICE-VIEWER-NOTICES.txt', officeViewerNotices());

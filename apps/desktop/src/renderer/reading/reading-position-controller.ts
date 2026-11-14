@@ -19,7 +19,7 @@ export class ReadingPositionController {
     clearTimeout(this.timer);
     if (!tab || tab.restoringPosition || this.options.suspended()) return;
     if (tab.surface === 'notebook') return;
-    if (tab.surface === 'pdf' || tab.surface === 'image' || tab.surface === 'video') return;
+    if (tab.surface === 'pdf' || tab.surface === 'image' || tab.surface === 'video' || tab.surface === 'office') return;
     const { editor } = this.options;
     if (tab.surface === 'editor') {
       editor.saveView(tab);

@@ -739,7 +739,7 @@ export class TabController {
     this.render(); this.updateChrome();
     return tab;
   };
-  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' = 'viewer',
+  show = async (documentSnapshot: DocumentSnapshot, initialSurface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook' = 'viewer',
     presentation: 'document' | 'review' = 'document', placement?: EditorGroupPlacement, openOptions: EditorOpenOptions = {}): Promise<void> => {
     const { editor, workspace } = this.options;
     const requested = placement?.groupId ?? openOptions.groupId ?? workspace.groups.focusedId;

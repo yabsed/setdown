@@ -1,12 +1,13 @@
 import { clipboard, ipcMain } from 'electron';
 import { showContextMenu } from '../menu/menu-overlay';
-import { isPdfDocument, isImageDocument, isVideoDocument } from '../../core/document/document-profile';
+import { isPdfDocument, isImageDocument, isVideoDocument, isOfficeDocument } from '../../core/document/document-profile';
 import type { DiskVersion } from '../../core/document/document';
 import type { WindowIpc } from '../ipc/window-ipc';
 import type { WindowState } from '../windows/window-state';
 import { canonicalPath } from '../documents/file-system';
 import { readPdfRange } from '../documents/pdf-file';
 import { readImageBytes } from '../documents/image-file';
+import { readOfficeBytes } from '../documents/office-file';
 import { validReadingRecord } from '../../core/reading/reading-position';
 import type { ReadingPositionStore } from './reading-position-store';
 
@@ -20,6 +21,7 @@ export function installReadingIpc(channels: WindowIpc, positions: ReadingPositio
     if ((value.position.kind === 'pdf') !== isPdfDocument(value.path)) return;
     if ((value.position.kind === 'image') !== isImageDocument(value.path)) return;
     if ((value.position.kind === 'video') !== isVideoDocument(value.path)) return;
+    if ((value.position.kind === 'office') !== isOfficeDocument(value.path)) return;
     positions.save({ ...value, path: canonicalPath(value.path) });
   });
   // Used only on close/reload, after the final queued save messages.
@@ -45,5 +47,9 @@ export function installReadingIpc(channels: WindowIpc, positions: ReadingPositio
   channels.handle('image:read', (state, file: string, version: DiskVersion) => {
     if (typeof file !== 'string' || !isImageDocument(file) || !owned(state, file)) throw new Error('Image is not open in this window.');
     return readImageBytes(canonicalPath(file), version);
+  });
+  channels.handle('office:read', (state, file: string, version: DiskVersion) => {
+    if (typeof file !== 'string' || !isOfficeDocument(file) || !owned(state, file)) throw new Error('Document is not open in this window.');
+    return readOfficeBytes(canonicalPath(file), version);
   });
 }

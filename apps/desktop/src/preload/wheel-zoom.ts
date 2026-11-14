@@ -10,7 +10,7 @@ export function wheelZoomScope(target: EventTarget | null): WheelZoomScope | nul
   const element = target as Element | null;
   if (element?.closest?.('.pdf-host, .image-viewport')) return null;
   if (element?.closest?.('.terminal-surface')) return 'terminal';
-  return element?.closest?.('.monaco-editor, .web-reader, .notebook-surface, .video-surface') ? 'text' : null;
+  return element?.closest?.('.monaco-editor, .web-reader, .notebook-surface, .video-surface, .office-surface') ? 'text' : null;
 }
 
 export function isTextZoomTarget(target: EventTarget | null): boolean {

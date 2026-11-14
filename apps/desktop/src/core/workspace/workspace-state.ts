@@ -14,7 +14,7 @@ export type DocumentTab = {
   document: DocumentSnapshot;
   text: string;
   revision: number;
-  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook';
+  surface: 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook';
   readingPosition?: import('../reading/reading-position').ReadingPosition;
   restoringPosition?: boolean;
   anchor: ViewportAnchor;
@@ -141,8 +141,8 @@ export function createTabSession(active: () => WorkspaceTab | null, emptyAnchor:
       const tab = documentTab();
       if (tab) tab.revision = value;
     },
-    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder' { return active()?.surface ?? 'empty'; },
-    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder') {
+    get surface(): 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder' { return active()?.surface ?? 'empty'; },
+    set surface(value: 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder') {
       const tab = documentTab();
       if (tab && value !== 'empty' && value !== 'web' && value !== 'terminal' && value !== 'diff' && value !== 'folder') tab.surface = documentSurface(tab.document.path, value);
     },

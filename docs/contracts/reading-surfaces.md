@@ -394,3 +394,46 @@ web pages and find inputs retain their own selection target; address fields and
 terminal readline Ctrl+A keep their normal behavior.
 `browser/reader-selection.spec.ts` exercises DOM and native keyboard input,
 menu selection, clipboard-visible ranges, sibling terminals and live pages.
+
+### Office and Hangul documents — 2026-11-14
+
+Word (`docx`, `docm`, `dotx`, `dotm`, `doc`, `dot`), Excel (`xlsx`, `xlsm`,
+`xltx`, `xltm`, `xlsb`, `xls`, `xlt`), PowerPoint (`pptx`, `pptm`, `potx`, `potm`,
+`ppsx`, `ppsm`, `ppt`, `pot`) and Hangul (`hwp`, `hwpx`) files open as read-only
+`office` documents in an ordinary media tab. `core/document/document-profile.ts`
+owns the extension families; OpenDocument and delimited text keep their previous
+routes. Main sends metadata on open and the whole file (at most 128 MiB) through
+`office:read` only to the window that owns the tab, and only for the disk version
+the tab was opened with. No text model, Markdown preview or save path exists for
+these documents: Save and Save As leave the file untouched, and they cannot
+become text save destinations.
+
+`renderer/office/office-runtime.ts` is the only importer of
+flyfish-dev/file-viewer. Each family loads its renderer and parsing Worker on
+first use, so startup and other surfaces do not load them. Exactly one renderer
+is active per document, with no automatic renderer discovery. The viewer's
+download, print and HTML export actions are disabled. `OfficeSurface.svelte`
+creates and destroys the viewer with the media cache entry.
+
+Document content is untrusted. A link inside a document never navigates the
+shell or opens a child window: `http(s)` links open a Setdown browser tab through
+`document:open-link`, in-document bookmarks stay with the viewer, and every other
+target is ignored. Word keeps the viewer's default block on external links and
+linked resources. Independently of any surface, main denies child windows and
+navigation away from the shell page for every application window
+(`main/windows/window-manager.ts`).
+
+The tab zoom owns zoom: its buttons and Ctrl+wheel scale the document relative
+to the viewer's own initial fit, and the viewer's zoom gestures are off. Find
+(Ctrl/Cmd+F and the menu) focuses the viewer's search field in the focused group.
+Word, Hangul and spreadsheet documents restore their scroll ratio (and active
+sheet) across tab eviction and restart; only scrolling that follows real input
+is recorded, so reopening does not drift the stored position. Slide decks reopen
+at the first slide. Theme changes re-render in the app's light or dark
+appearance at the current position.
+
+`office-file.test.ts`, `text-files.integration.test.ts`,
+`reading-position-store.test.ts` and `media/office-reader.spec.ts` cover routing,
+bounded version-checked reads, the read-only boundary, zoom, find, every family in
+real Electron, link containment and position restoration.
+`scripts/office-viewer-notices.test.mjs` covers the bundled license notices.

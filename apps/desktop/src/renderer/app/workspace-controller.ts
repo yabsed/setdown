@@ -637,6 +637,7 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'open-find' && !project.gitDiffActive) {
         if (session.surface === 'notebook') window.dispatchEvent(new Event('setdown:notebook-find'));
         else if (session.surface === 'pdf') window.dispatchEvent(new Event('setdown:pdf-find'));
+        else if (session.surface === 'office') window.dispatchEvent(new Event('setdown:office-find'));
         else if (session.surface === 'editor') editor.find(); else reader.openFind();
       }
       if (command === 'escape' && project.gitDiffActive) {
@@ -681,8 +682,8 @@ export function startWorkspace(desktop: DesktopPort) {
       if (terminalOwnsInput(event.target)) return;
       // Shadow-DOM inputs and graph navigation own Escape/Find themselves.
       if (event.composedPath().some((node) => node instanceof HTMLElement && node.localName === 'web-git-graph')) return;
-      if (session.surface === 'pdf' && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
-        event.preventDefault(); window.dispatchEvent(new Event('setdown:pdf-find')); return;
+      if ((session.surface === 'pdf' || session.surface === 'office') && !project.gitDiffActive && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault(); window.dispatchEvent(new Event(`setdown:${session.surface}-find`)); return;
       }
       if (event.key === 'Escape' && insertions.dismissOnEscape('dom')) {
         event.preventDefault(); event.stopImmediatePropagation(); return;

@@ -41,6 +41,11 @@
     "update:zed-language-packages": "node scripts/update-zed-language-packages.mjs --refresh && node scripts/update-language-packages.mjs"
   },
   "dependencies": {
+    "@file-viewer/renderer-hangul": "3.3.3",
+    "@file-viewer/renderer-presentation": "3.3.3",
+    "@file-viewer/renderer-spreadsheet": "3.3.3",
+    "@file-viewer/renderer-word": "3.3.3",
+    "@file-viewer/web": "3.3.3",
     "@parcel/watcher": "^2.6.0",
     "@sanity/diff-match-patch": "^3.2.0",
     "@shikijs/core": "4.5.0",
