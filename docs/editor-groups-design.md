@@ -69,7 +69,51 @@ No vendor sources or dependency versions are changed.
   retain the existing acknowledgment protocol; a destination already owning the
   same path rejects the incoming transfer without discarding either buffer.
 
+## Tab context menu and pinned tabs
+
+Right-clicking a tab opens VS Code's tab commands that have a Setdown counterpart.
+The menu acts on the clicked tab without selecting it.
+
+| VS Code | Setdown |
+| --- | --- |
+| Close, Close Others, Close to the Right, Close Saved, Close All | Same, scoped to the tab's group. Bulk closes ask once for every document whose last view is closing, and stop at Cancel or at an edit made while the prompt was open. |
+| Copy Path, Copy Relative Path | Same for files and folder tabs; relative to the open project folder. A web tab offers Copy Address. |
+| Open Containing Folder, Reveal in Explorer View | Reveal in Folder Tab opens the parent folder with the file selected; Reveal in Explorer View needs the file inside the project folder. |
+| Keep Open | Same: turns a replaceable preview tab into an ordinary one. |
+| Pin, Unpin | Same; see below. |
+| Split Right, Split & Move | Split copies shareable inputs (text, reviews, folders) into a new group. Move joins the adjacent group on that side, or opens one while other tabs stay behind. |
+| Move into New Window | Same, through the window-transfer protocol without a drag. Reviews and file choosers stay in their window. |
+
+Copy Breadcrumbs Path, Reopen Editor With, Share, Add File to Chat, Copy into New
+Window and Find File References have no counterpart and are not offered.
+
+`core/workspace/tab-menu.ts` is the menu model. The renderer describes the tab
+(`renderer/workspace/tabs/tab-menu.ts`), main shows the model in the native menu
+layer, so it stays above live readers and web pages, and resolves with the chosen
+command for the renderer to run. Main writes the clipboard itself: the shell
+document does not hold focus while the menu layer is open.
+
+Pinned tabs follow VS Code's `EditorGroupModel` sticky editors. `Group.sticky`
+counts the leading pinned tabs. They keep the order in which they were pinned, new
+tabs open after them, and Unpin makes a tab the first ordinary one. Dragging a tab
+among them pins it, dragging one past them releases it, and a pinned tab stays
+pinned when it changes groups. A pinned tab shows a pin in place of its close
+button, is skipped by the bulk closes, and Ctrl/Cmd+W selects the next ordinary
+tab instead of closing it; Close in its menu still closes it. Pins last for the
+window session: workspace snapshots and tabs moved to another window do not
+carry them.
+
+A menu move creates its window at that moment. Main delivers the tab only after
+that window's renderer publishes its first tab state, because the page finishes
+loading before the shell's lazily imported workspace subscribes to transfers.
+
 ## Verification
+
+`tab-menu.spec.ts` drives the menu in real Electron above a live reader: position,
+clipboard, Explorer reveal, pinning, bulk closes, split, move and the new window.
+Unit tests cover the menu model, sticky ordering, the single close prompt and the
+transfer without a drag.
+
 
 `editor-groups.spec.ts` exercises simultaneous native readers, image bounds, nested
 splits, pointer resizing, multiple live Monaco editors, editing/Undo across focus,

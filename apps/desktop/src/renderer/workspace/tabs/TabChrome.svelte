@@ -8,6 +8,11 @@ import type { AppActions } from '../../ports/ui-actions';
   const group = $derived(view.groups.find(g => g.id === groupId));
   const selected = $derived(group?.activeId);
   const tabs = $derived((group?.tabs ?? []).flatMap(id => view.tabs.find(tab => tab.id === id) ?? []));
+  const pinned = $derived(new Set((group?.tabs ?? []).slice(0, group?.sticky ?? 0)));
+  const press = (run: () => void) => (event: KeyboardEvent) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault(); event.stopPropagation(); run();
+  };
   $effect(() => {
     const id = selected;
     void tick().then(() => {
@@ -28,7 +33,9 @@ import type { AppActions } from '../../ports/ui-actions';
         type="button" role="tab" aria-selected={tab.id === selected}
         title={tab.preview ? `${tab.path}\nDouble-click to keep open` : tab.path}
         draggable="true" data-sleeping={tab.page?.sleeping || undefined} data-tab-id={tab.id} data-preview={tab.preview}
+        data-pinned={pinned.has(tab.id) || undefined}
         onclick={() => actions.activateTab(tab.id)}
+        oncontextmenu={(event) => { event.preventDefault(); actions.showTabMenu(tab.id, { x: event.clientX, y: event.clientY }); }}
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
         <span class="tab-name">{tab.page?.sleeping ? '☾ ' : tab.page?.loading ? '◌ ' : ''}{tab.name}</span>
@@ -41,12 +48,18 @@ import type { AppActions } from '../../ports/ui-actions';
           </span>
         {/if}
         {#if tab.dirty}<span class="tab-dirty" aria-label="Unsaved changes">•</span>{/if}
-        <span class="tab-close" title="Close tab" role="button" tabindex="0"
-          onclick={(event) => { event.stopPropagation(); actions.closeTab(tab.id); }}
-          onkeydown={(event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault(); event.stopPropagation(); actions.closeTab(tab.id);
-          }}>×</span>
+        {#if pinned.has(tab.id)}
+          <!-- VS Code: a pinned tab trades its close button for the pin that releases it. -->
+          <span class="tab-close tab-unpin" title="Unpin tab" aria-label="Unpin tab" role="button" tabindex="0"
+            onclick={(event) => { event.stopPropagation(); actions.stickTab(tab.id, false); }}
+            onkeydown={press(() => actions.stickTab(tab.id, false))}>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5h6M6 2.5V7L4.5 9.5h7L10 7V2.5M8 9.5V14"/></svg>
+          </span>
+        {:else}
+          <span class="tab-close" title="Close tab" role="button" tabindex="0"
+            onclick={(event) => { event.stopPropagation(); actions.closeTab(tab.id); }}
+            onkeydown={press(() => actions.closeTab(tab.id))}>×</span>
+        {/if}
       </button>
     {/each}
 
@@ -78,4 +91,5 @@ import type { AppActions } from '../../ports/ui-actions';
   .tab-audio { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; }
   .tab-audio:hover { background: var(--app-hover); }
   .tab-audio svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .tab-unpin svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 </style>

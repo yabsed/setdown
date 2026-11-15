@@ -17,7 +17,7 @@ import { isFileLocation } from '../../core/document/file-location';
 import { isMarkdownDocument, isNotebookDocument } from '../../core/document/document-profile';
 import { createTabSession, isDocumentTab, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { ThemeSnapshot } from '../../protocol/desktop-api';
-import { mount } from 'svelte';
+import { mount, tick } from 'svelte';
 import App from '../App.svelte';
 import { MonacoEditor } from '../adapters/monaco-editor';
 import { SurfaceController } from '../workspace/surface-controller';
@@ -36,6 +36,7 @@ import { PreviewSession } from '../reader/preview-session';
 import { PreviewLayoutCoordinator } from '../reader/preview-layout-coordinator';
 import { ReaderController } from '../reader/reader-controller';
 import { createTabDrag } from '../workspace/tabs/tab-drag';
+import { createTabMenu } from '../workspace/tabs/tab-menu';
 import { applyShellTheme } from '../theme';
 import { restorePanelWidths } from '../shell/panel-resize';
 import { rememberOutlineOpen } from '../shell/layout-session';
@@ -224,6 +225,8 @@ export function startWorkspace(desktop: DesktopPort) {
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),
     activateTab: (id) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.activate(id); },
     pinTab: (id) => tabs.pin(id),
+    stickTab: (id, sticky) => tabs.stick(id, sticky),
+    showTabMenu: (id, point) => void tabMenu.show(id, point),
     closeTab: (id) => void closeDocumentTab(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
     endTabDrag: (event) => tabDrag.end(event),
@@ -426,6 +429,15 @@ export function startWorkspace(desktop: DesktopPort) {
     move: (id, target) => { void tabs.moveToGroup(id, target); },
     serialize: tabs.transferable, render: tabs.render,
     install: (transfer, placement) => tabs.installTransferred(transfer, placement) });
+  const tabMenu = createTabMenu({ desktop, workspace, tabs, root: () => project.folder?.path ?? null,
+    revealInFolder: (path, groupId) => actions.openFolder(parentFolder(path), { selection: [path], groupId }),
+    revealInExplorer: async path => {
+      if (!(project.visible && project.open && project.activeView === 'explorer')) projects.select('explorer');
+      await projects.revealEntry(path); await tick();
+      [...document.querySelectorAll<HTMLElement>('.explorer-row')].find(row => row.dataset.path === path)?.scrollIntoView({ block: 'nearest' });
+    },
+    moveToWindow: id => tabDrag.moveToWindow(id),
+    failed: error => { browser.error = String(error); } });
   autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.contents; }, activeId: () => workspace.activeContent?.id ?? null,
     text: tabs.text, dirty: tabs.dirty, beforeSave: tab => documentSessions.beforeSave(tab, 2), acceptSaved: tabs.acceptSaved,
     saved: document => { tabs.updateChrome(); return projects.documentSaved(document); },
@@ -538,6 +550,14 @@ export function startWorkspace(desktop: DesktopPort) {
   }
   async function closeDocumentTab(id: string) {
     await tabs.close(id);
+  }
+  /** Ctrl/Cmd+W. Like VS Code, it steps over a pinned tab to the next ordinary one instead of closing it. */
+  function closeActiveTab() {
+    const id = workspace.activeId;
+    if (!id) return;
+    if (!workspace.groups.isSticky(id)) { void closeDocumentTab(id); return; }
+    const loose = [workspace.groups.focused, ...workspace.groups.groups].flatMap(group => group.tabs.slice(group.sticky))[0];
+    if (loose) void actions.activateTab(loose);
   }
   function cycleTab(direction: -1 | 1) {
     const ids = workspace.groups.focused.tabs;
@@ -659,7 +679,7 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'save-as' && (!project.gitDiffActive || (!project.gitDiff?.staged && !project.gitDiff?.history))) void saveDocument(true);
       if (command === 'export-pdf' && !project.gitDiffActive) void documents.exportPdf();
       if (command === 'close-tab') {
-        if (project.gitDiffActive) projects.closeGitDiff(); else if (workspace.activeId) void closeDocumentTab(workspace.activeId);
+        if (project.gitDiffActive && !workspace.groups.isSticky(workspace.activeId ?? '')) projects.closeGitDiff(); else closeActiveTab();
       }
       if (command === 'next-tab') cycleTab(1);
       if (command === 'previous-tab') cycleTab(-1);

@@ -361,6 +361,11 @@ export class TabController {
     this.render();
   };
   pin = (tabId: string): void => { if (this.options.workspace.groups.pin(tabId)) this.render(); };
+  /** Pinned ("sticky") tabs lead their strip and survive the bulk close commands. */
+  stick = (tabId: string, sticky: boolean): void => {
+    const { groups } = this.options.workspace;
+    if (sticky ? groups.stick(tabId) : groups.unstick(tabId)) this.render();
+  };
   updateChrome = (): void => {
     const { document: activeDocument } = this.options.session;
     const notice = this.options.workspace.activeContent?.document.path;
@@ -562,6 +567,50 @@ export class TabController {
     surfaces.set('empty');
     this.updateChrome();
     this.render();
+    return true;
+  };
+  /**
+   * Close several tabs under one unsaved-changes decision (Close Others/Saved/All).
+   * Stops at the first tab that stays open, so a canceled prompt keeps the rest.
+   */
+  closeMany = async (tabIds: string[]): Promise<boolean> => {
+    const { workspace, documents } = this.options;
+    const closing = new Set(tabIds);
+    const contentOf = (id: string): DocumentContent | null => {
+      const tab = workspace.find(id);
+      if (!tab) return null;
+      if (isDocumentTab(tab)) return workspace.content(tab);
+      return tab.kind === 'diff' && tab.documentId ? workspace.documentStore.get(tab.documentId) ?? null : null;
+    };
+    // Only content whose every view is closing would lose edits.
+    const unsaved = new Map<string, { content: DocumentContent; revision: number }>();
+    for (const id of tabIds) {
+      const content = contentOf(id);
+      if (!content || !this.dirty(content)) continue;
+      const views = workspace.documentStore.get(documentIdentity(content))?.references ?? [id];
+      if ([...views].every(view => closing.has(view))) unsaved.set(documentIdentity(content), { content, revision: content.revision });
+    }
+    if (unsaved.size) {
+      const decision = await this.options.confirmClose([...unsaved.values()].map(({ content }) => content.document.name));
+      if (decision === 'cancel') return false;
+      for (const { content, revision } of unsaved.values()) {
+        if (decision === 'discard') { if (content.revision !== revision) return false; continue; }
+        await documents.beforeSave(content);
+        if (!workspace.contents.includes(content)) continue;
+        const result = await documents.save(content);
+        if (result.canceled || !result.document) return false;
+        await this.acceptSaved(content, result.document);
+        if (this.dirty(content)) return false;
+      }
+    }
+    // The visible tab goes last: its neighbors are not activated only to be closed.
+    const order = [...tabIds].sort((a, b) => Number(workspace.groups.owner(a)?.activeId === a) - Number(workspace.groups.owner(b)?.activeId === b));
+    for (const id of order) {
+      const content = contentOf(id), decided = content && unsaved.get(documentIdentity(content));
+      // Only the revision that was discarded is approved. A later edit, or a web page, asks for itself.
+      const approved = !!content && !!decided && this.dirty(content) && content.revision === decided.revision;
+      if (!await this.close(id, approved)) return false;
+    }
     return true;
   };
   prepareRemove = async (entryPath: string): Promise<boolean> => {

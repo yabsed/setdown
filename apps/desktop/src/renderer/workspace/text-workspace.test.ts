@@ -944,3 +944,52 @@ test('Save As retargets all ordinary references without changing shared content 
   assert.equal(f.controller.dirty(first), false); assert.equal(f.controller.dirty(second), false);
   assert.equal(f.workspace.contents.length, 1);
 });
+
+test('a bulk close asks once for the documents whose last view is closing, and keeps every tab on Cancel', async () => {
+  const f = fixture();
+  for (const name of ['a', 'b', 'c', 'd']) await f.controller.show(snapshot(`/project/${name}.txt`));
+  const [a, b, c, d] = f.workspace.documents;
+  // `b` keeps a second view in another group: closing one view cannot lose its edits.
+  await f.controller.copyToGroup(b.id, f.workspace.groups.focusedId, 'right');
+  for (const tab of [a, b, c]) f.controller.editorChanged(tab, `${tab.document.name} draft`);
+  await f.controller.activate(c.id);
+  const confirm = vi.spyOn(f.options, 'confirmClose').mockResolvedValue('cancel');
+  assert.equal(await f.controller.closeMany([a.id, b.id, c.id, d.id]), false);
+  assert.deepEqual(confirm.mock.calls, [[['a.txt', 'c.txt']]]);
+  assert.equal(f.workspace.tabs.length, 5);
+  confirm.mockResolvedValue('discard');
+  assert.equal(await f.controller.closeMany([a.id, b.id, c.id, d.id]), true);
+  assert.equal(confirm.mock.calls.length, 2);
+  // Only the other view of `b` remains, with its draft.
+  assert.deepEqual(f.workspace.tabs.map(tab => f.controller.text(tab)), ['b.txt draft']);
+  assert.equal(f.workspace.contents.length, 1);
+});
+
+test('a bulk close saves on request and stops at an edit made while the prompt was open', async () => {
+  const f = fixture();
+  for (const name of ['a', 'b']) await f.controller.show(snapshot(`/project/${name}.txt`));
+  const [a, b] = f.workspace.documents;
+  f.controller.editorChanged(a, 'first draft');
+  const save = vi.spyOn(f.options.desktop, 'saveTabDocument');
+  const confirm = vi.spyOn(f.options, 'confirmClose').mockImplementation(async () => { f.controller.editorChanged(a, 'newer draft'); return 'discard'; });
+  assert.equal(await f.controller.closeMany([a.id, b.id]), false);
+  assert.equal(f.workspace.tabs.length, 2); assert.equal(f.controller.text(a), 'newer draft');
+  confirm.mockResolvedValue('save');
+  assert.equal(await f.controller.closeMany([a.id, b.id]), true);
+  assert.equal(save.mock.calls.length, 1); assert.equal(save.mock.calls[0][1], 'newer draft');
+  assert.equal(f.workspace.tabs.length, 0);
+});
+
+test('pinned tabs lead their strip, keep a preview open and are published to the tab strip', async () => {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/a.txt'));
+  await previewOpen(f.controller, snapshot('/project/b.txt'));
+  const [a, b] = f.workspace.documents;
+  f.controller.stick(b.id, true);
+  assert.deepEqual(view.groups.map(group => [group.tabs, group.sticky, group.previewId]), [[[b.id, a.id], 1, null]]);
+  // The next preview opens beside it instead of replacing it.
+  await previewOpen(f.controller, snapshot('/project/c.txt'));
+  assert.deepEqual(f.workspace.groups.focused.tabs.length, 3);
+  f.controller.stick(b.id, false);
+  assert.deepEqual([view.groups[0].tabs[0], view.groups[0].sticky], [b.id, 0]);
+});

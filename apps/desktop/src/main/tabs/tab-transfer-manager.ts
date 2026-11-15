@@ -30,6 +30,8 @@ const DETACH_CLAIM_GRACE_MS = 120;
 export class TabTransferManager {
   private readonly transfers = new Map<string, Transfer>();
   private readonly watchedSources = new WeakSet<BrowserWindow>();
+  /** Menu moves into a window whose renderer cannot receive them yet, by its webContents id. */
+  private readonly awaitingRenderer = new Map<number, () => void>();
   constructor(private readonly options: Options) {}
   memoryProtectedIds(): string[] { return [...this.transfers.values()].filter(transfer => transfer.expiresAt > Date.now()).map(transfer => transfer.tab.id); }
   private endDrag(transferId: string, transfer: Transfer, commitTarget: number | null = null, copy = false,
@@ -55,7 +57,8 @@ export class TabTransferManager {
     const destination = this.contentSize(destinationId);
     return !!source && !!destination && source.width === destination.width && source.height === destination.height;
   }
-  private register(sourceId: number, transferId: unknown, candidate: unknown) {
+  /** `drag` false registers a menu-driven move: no drop to arbitrate, so no window is told a drag began. */
+  private register(sourceId: number, transferId: unknown, candidate: unknown, drag = true) {
     const incoming = candidate as TransferableTab | null;
     if (typeof transferId !== 'string' || !incoming || typeof incoming.id !== 'string'
       || this.transfers.has(transferId)
@@ -65,7 +68,7 @@ export class TabTransferManager {
     for (const [id, pending] of this.transfers) if (pending.dragActive && pending.claimedByWebContentsId === null)
       this.cancel(pending.sourceWebContentsId, id);
     const source = this.options.stateFor(sourceId)!.window;
-    const allowDetach = !source.isMaximized() && !source.isFullScreen();
+    const allowDetach = !drag || (!source.isMaximized() && !source.isFullScreen());
     if (!this.watchedSources.has(source)) {
       this.watchedSources.add(source);
       // The OS drag loop can consume Escape keydown. Its native keyup still
@@ -89,11 +92,11 @@ export class TabTransferManager {
     const ownedPreview = markdown ? this.options.previews.views.get(tab.id) : undefined;
     const preview = ownedPreview?.ownerWebContentsId === sourceId ? ownedPreview.view.webContents : undefined;
     const transfer: Transfer = {
-      dragParticipants: new Set(), dragActive: true, dragTarget: null, hoverOwner: sourceId,
+      dragParticipants: new Set(), dragActive: drag, dragTarget: null, hoverOwner: sourceId,
       sourceWebContentsId: sourceId, tab, claimedByWebContentsId: null, expiresAt: Date.now() + 60_000,
       detachPosition: null, detachTimer: null, previewAdopted: false,
       allowDetach,
-      preparedWindow: allowDetach ? this.options.createWindow(null, null, false, this.contentSize(sourceId)) : null,
+      preparedWindow: drag && allowDetach ? this.options.createWindow(null, null, false, this.contentSize(sourceId)) : null,
       sourceContentSize: this.contentSize(sourceId),
       previewScrollPosition: preview?.executeJavaScript('({ x: window.scrollX, y: window.scrollY })')
         .catch(() => ({ x: 0, y: 0 })) ?? Promise.resolve({ x: 0, y: 0 }),
@@ -116,7 +119,7 @@ export class TabTransferManager {
     // Native web/Markdown children do not dispatch dragover to another window's
     // shell. Cover them before entry, so the actual OS drop reaches that shell.
     // End is also shared: HTML dragend is delivered only to the source document.
-    for (const { window } of this.options.windows()) {
+    for (const { window } of drag ? this.options.windows() : []) {
       if (window.isDestroyed() || !window.isVisible() || window.isMinimized()) continue;
       transfer.dragParticipants.add(window.webContents.id);
       this.options.browsers?.tabDrag.state(window.webContents.id, transferId);
@@ -303,7 +306,18 @@ export class TabTransferManager {
     transfer.detachTimer = setTimeout(() => this.commitDetach(sourceId, transferId), DETACH_CLAIM_GRACE_MS);
   }
 
-  private commitDetach(sourceId: number, transferId: string) {
+  /** A tab menu's "Move into New Window". Unlike a drag it is an explicit request, so it also leaves a maximized window. */
+  private moveToWindow(sourceId: number, transferId: unknown, candidate: unknown) {
+    if (typeof transferId !== 'string' || this.transfers.has(transferId)) return;
+    this.register(sourceId, transferId, candidate, false);
+    const transfer = this.transfers.get(transferId), source = this.options.stateFor(sourceId)?.window;
+    if (!transfer || !source) return;
+    const [x, y] = source.getPosition();
+    transfer.detachPosition = { x: x + 40, y: y + 40 };
+    this.commitDetach(sourceId, transferId, true);
+  }
+
+  private commitDetach(sourceId: number, transferId: string, requested = false) {
     const transfer = this.transfers.get(transferId);
     if (!transfer || transfer.sourceWebContentsId !== sourceId || transfer.claimedByWebContentsId !== null
       || !transfer.detachPosition) return;
@@ -312,12 +326,14 @@ export class TabTransferManager {
     // Keep local/remote drops eligible through arbitration, but never turn a
     // fullscreen/maximized drag into a new window, even after a native leave.
     // Check again here in case the window changed state during the drag.
-    if (!transfer.allowDetach || !source || source.isDestroyed() || source.isMaximized() || source.isFullScreen()) {
+    const filled = !!source && !source.isDestroyed() && (source.isMaximized() || source.isFullScreen());
+    if (!transfer.allowDetach || !source || source.isDestroyed() || (filled && !requested)) {
       this.cancel(sourceId, transferId); return;
     }
     this.endDrag(transferId, transfer);
+    // A window that fills its display lends no useful size: the new one takes the default.
     const destination = transfer.preparedWindow && !transfer.preparedWindow.isDestroyed()
-      ? transfer.preparedWindow : this.options.createWindow(transfer.detachPosition, null, false, this.contentSize(sourceId));
+      ? transfer.preparedWindow : this.options.createWindow(transfer.detachPosition, null, false, filled ? null : this.contentSize(sourceId));
     transfer.preparedWindow = destination;
     destination.setPosition(transfer.detachPosition.x, transfer.detachPosition.y, false);
     transfer.claimedByWebContentsId = destination.webContents.id;
@@ -329,7 +345,13 @@ export class TabTransferManager {
       destination.webContents.send('tabs:transfer-incoming', { transferId, tab: { ...transfer.tab,
         viewerBand: band, previewGeometryUnchanged: this.keepsGeometry(transfer, destination.webContents.id) } });
     };
-    if (destination.webContents.isLoadingMainFrame()) destination.webContents.once('did-finish-load', () => void sendIncoming());
+    const destinationId = destination.webContents.id;
+    if (requested && !this.options.stateFor(destinationId)?.rendererTabsReady) {
+      // This window was created just now. Its page finishes loading before the shell's lazily
+      // imported workspace subscribes to transfers; the first tab state it publishes proves it has.
+      this.awaitingRenderer.set(destinationId, () => void sendIncoming());
+      destination.once('closed', () => this.awaitingRenderer.delete(destinationId));
+    } else if (destination.webContents.isLoadingMainFrame()) destination.webContents.once('did-finish-load', () => void sendIncoming());
     else void sendIncoming();
   }
   registerIpc() {
@@ -346,5 +368,10 @@ export class TabTransferManager {
     ipcMain.on('tabs:cancel-transfer', (event, id) => this.cancel(event.sender.id, id));
     ipcMain.on('tabs:drag-target', (event, { transferId, accepted, inside, retainGuide }) => this.dragTarget(event.sender.id, transferId, accepted, inside, retainGuide));
     ipcMain.on('tabs:detach-to-window', (event, { transferId, x, y, withinSource, dropEffect, release }) => this.detach(event.sender.id, transferId, x, y, withinSource, dropEffect, release));
+    ipcMain.on('tabs:move-to-window', (event, { transferId, tab }) => this.moveToWindow(event.sender.id, transferId, tab));
+    ipcMain.on('tabs:update-state', event => {
+      const deliver = this.awaitingRenderer.get(event.sender.id);
+      if (this.awaitingRenderer.delete(event.sender.id)) deliver?.();
+    });
   }
 }

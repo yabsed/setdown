@@ -115,8 +115,73 @@ describe('editor groups', () => {
     const id = groups.focusedId;
     const tree = structuredClone(groups.tree);
     expect(groups.add('next', false)).toBe('preview');
-    expect(groups.focused).toEqual({ id, tabs: ['next'], activeId: 'next', previewId: 'next' });
+    expect(groups.focused).toEqual({ id, tabs: ['next'], activeId: 'next', previewId: 'next', sticky: 0 });
     expect(groups.tree).toEqual(tree);
     expect(groups.groups).toHaveLength(2);
+  });
+  it('keeps sticky tabs leading the strip in pin order and releases them in place', () => {
+    const groups = new EditorGroups();
+    for (const id of ['a', 'b', 'c', 'd']) groups.add(id);
+    expect(groups.stick('c')).toBe(true); expect(groups.stick('c')).toBe(false);
+    groups.stick('d');
+    expect(groups.focused).toMatchObject({ tabs: ['c', 'd', 'a', 'b'], sticky: 2 });
+    expect(['a', 'b', 'c', 'd'].map(id => groups.isSticky(id))).toEqual([false, false, true, true]);
+    // New tabs open after the active tab, but never among the sticky ones.
+    groups.activate('c'); groups.add('e'); groups.add('preview', false);
+    expect(groups.focused).toMatchObject({ tabs: ['c', 'd', 'preview', 'e', 'a', 'b'], sticky: 2, previewId: 'preview' });
+    // Pinning a preview keeps it open; the next preview cannot replace it.
+    groups.stick('preview');
+    expect(groups.focused).toMatchObject({ tabs: ['c', 'd', 'preview', 'e', 'a', 'b'], sticky: 3, previewId: null });
+    expect(groups.unstick('c')).toBe(true); expect(groups.unstick('c')).toBe(false);
+    expect(groups.focused).toMatchObject({ tabs: ['d', 'preview', 'c', 'e', 'a', 'b'], sticky: 2 });
+    groups.remove('d');
+    expect(groups.focused).toMatchObject({ tabs: ['preview', 'c', 'e', 'a', 'b'], sticky: 1 });
+    groups.remove('a');
+    expect(groups.focused.sticky).toBe(1);
+  });
+  it('reordering across the sticky boundary pins or releases a tab; an unchanged drop does neither', () => {
+    const groups = new EditorGroups();
+    for (const id of ['a', 'b', 'c', 'd']) groups.add(id);
+    groups.stick('a'); groups.stick('b');
+    for (const index of [1, 2]) { groups.move('b', 'group-0', null, index); expect(groups.focused).toMatchObject({ tabs: ['a', 'b', 'c', 'd'], sticky: 2 }); }
+    for (const index of [2, 3]) { groups.move('c', 'group-0', null, index); expect(groups.focused).toMatchObject({ tabs: ['a', 'b', 'c', 'd'], sticky: 2 }); }
+    groups.move('b', 'group-0', null, 0);
+    expect(groups.focused).toMatchObject({ tabs: ['b', 'a', 'c', 'd'], sticky: 2 });
+    groups.move('d', 'group-0', null, 1);
+    expect(groups.focused).toMatchObject({ tabs: ['b', 'd', 'a', 'c'], sticky: 3 });
+    groups.move('b', 'group-0', null, 4);
+    expect(groups.focused).toMatchObject({ tabs: ['d', 'a', 'c', 'b'], sticky: 2 });
+  });
+  it('a pinned tab stays pinned in another group; ordinary tabs join after its sticky tabs', () => {
+    const groups = new EditorGroups();
+    for (const id of ['a', 'b', 'c', 'd']) groups.add(id);
+    groups.stick('a');
+    groups.move('a', 'group-0', 'right');
+    const right = groups.focusedId;
+    expect(groups.groups.map(group => [group.tabs, group.sticky])).toEqual([[['b', 'c', 'd'], 0], [['a'], 1]]);
+    groups.move('b', right, null, 0);
+    expect(groups.focused).toMatchObject({ tabs: ['b', 'a'], sticky: 2 });
+    groups.move('c', right, null);
+    expect(groups.focused).toMatchObject({ tabs: ['b', 'a', 'c'], sticky: 2 });
+    groups.stick('d'); groups.move('d', right, null, 3);
+    expect(groups.focused).toMatchObject({ tabs: ['b', 'a', 'd', 'c'], sticky: 3 });
+    expect(groups.groups).toHaveLength(1);
+  });
+  it('finds the adjacent group on each side of a nested layout', () => {
+    const groups = new EditorGroups();
+    for (const id of ['a', 'b', 'c']) groups.add(id);
+    groups.move('b', 'group-0', 'right');
+    const right = groups.focusedId;
+    groups.move('c', right, 'down');
+    const below = groups.focusedId;
+    expect(groups.neighbor('group-0', 'right')?.id).toBe(right);
+    expect(groups.neighbor(right, 'left')?.id).toBe('group-0');
+    expect(groups.neighbor(below, 'left')?.id).toBe('group-0');
+    expect(groups.neighbor(right, 'down')?.id).toBe(below);
+    expect(groups.neighbor(below, 'up')?.id).toBe(right);
+    expect(groups.neighbor('group-0', 'left')).toBeNull();
+    expect(groups.neighbor('group-0', 'up')).toBeNull();
+    expect(groups.neighbor(below, 'right')).toBeNull();
+    expect(groups.side('group-0').id).toBe(right);
   });
 });

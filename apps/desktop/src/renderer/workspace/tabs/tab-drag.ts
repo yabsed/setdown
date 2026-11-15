@@ -303,19 +303,29 @@ export function createTabDrag(options: Options) {
     }
   });
 
+  /** Why a tab cannot leave its window right now, or null. */
+  const held = (id: string): string | null => {
+    const image = imageSessions.get(id);
+    if (image && (image.history.dirty || image.busy)) return 'Save your image changes before moving this tab to another group or window.';
+    // Unsaved Word edits live in this window's engine and cannot follow the tab to another one.
+    const word = docxSessions.get(id);
+    return word && (word.edits !== word.savedEdits || word.busy) ? 'Save your document changes before moving this tab to another group or window.' : null;
+  };
   const controller = {
+    /** The tab menu's "Move into New Window": the same transfer as a tear-off, without a drag. */
+    moveToWindow(id: string) {
+      const tab = options.tabs.find(tab => tab.id === id);
+      if (!tab) return;
+      const reason = held(id);
+      if (reason) { window.alert(reason); return; }
+      if (options.groups.pin(id)) options.render();
+      options.desktop.moveTabToWindow(crypto.randomUUID(), options.serialize(tab));
+    },
     start(id: string, event: DragEvent) {
       const tab = options.tabs.find(tab => tab.id === id);
       if (!tab) return;
-      const image = imageSessions.get(id);
-      if (image && (image.history.dirty || image.busy)) {
-        event.preventDefault(); window.alert('Save your image changes before moving this tab to another group or window.'); return;
-      }
-      // Unsaved Word edits live in this window's engine and cannot follow the tab to another one.
-      const word = docxSessions.get(id);
-      if (word && (word.edits !== word.savedEdits || word.busy)) {
-        event.preventDefault(); window.alert('Save your document changes before moving this tab to another group or window.'); return;
-      }
+      const reason = held(id);
+      if (reason) { event.preventDefault(); window.alert(reason); return; }
       if (options.groups.pin(id)) options.render();
       // Do not change selection until the drop succeeds.
       localOnly = tab.kind === 'diff';

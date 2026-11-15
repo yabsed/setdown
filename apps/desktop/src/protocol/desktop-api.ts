@@ -329,6 +329,14 @@ export type MarkTexApi = {
   cancelTabTransfer(transferId: string): void;
   updateTabDragTarget(transferId: string, accepted: boolean, inside?: boolean, retainGuide?: boolean): void;
   detachTabToWindow(transferId: string, x: number, y: number, withinSource?: boolean, dropEffect?: string, release?: { x: number; y: number }): void;
+  /** Move a tab to a new window without a drag; it then follows the ordinary transfer acknowledgment. */
+  moveTabToWindow(transferId: string, tab: TransferableTab): void;
+  /**
+   * Show a tab's context menu at a point in this window (CSS pixels). Resolves with the chosen
+   * command; the copy commands have then already written `copy` to the clipboard.
+   */
+  showTabMenu(context: import('../core/workspace/tab-menu').TabMenuContext, copy: { path: string; relative: string },
+    point: { x: number; y: number }): Promise<import('../core/workspace/tab-menu').TabMenuCommand | null>;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;

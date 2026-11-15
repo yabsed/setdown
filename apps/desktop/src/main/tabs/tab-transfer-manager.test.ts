@@ -51,6 +51,7 @@ function fakeWindow(id: number) {
     destroy: vi.fn(() => { destroyed = true; }),
     getContentSize: () => [900, 700] as [number, number],
     getContentBounds: () => bounds,
+    getPosition: () => [bounds.x, bounds.y] as [number, number],
     isMinimized: () => minimized,
     isMaximized: () => mode === 'maximized',
     isFullScreen: () => mode === 'fullscreen',
@@ -421,4 +422,39 @@ test('pending transfers protect their tab from reclamation until expiry', () => 
   f.register(); expect(f.manager.memoryProtectedIds()).toEqual([tab.id]);
   vi.setSystemTime(Date.now() + 60_001);
   expect(f.manager.memoryProtectedIds()).toEqual([]);
+});
+
+for (const mode of ['normal', 'maximized'] as const) test(`a menu move opens a new window without a drag, also from a ${mode} window`, async () => {
+  const f = fixture(); f.source.setMode(mode);
+  electron.listeners.get('tabs:move-to-window')!({ sender: { id: 1 } }, { transferId: 'menu', tab });
+  // No shell is told a drag began: nothing covers native views or waits for a drop.
+  expect([...f.source.messages, ...f.existing.messages].some(message => message.channel === 'tabs:drag-state')).toBe(false);
+  expect(f.createWindow).toHaveBeenCalledExactlyOnceWith({ x: 1040, y: 140 }, null, false, mode === 'normal' ? { width: 900, height: 700 } : null);
+  expect(f.prepared.window.showInactive).toHaveBeenCalledOnce();
+  // The new shell subscribes to transfers after its page has loaded; its first tab state says it is listening.
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(f.prepared.messages).toEqual([]);
+  electron.listeners.get('tabs:update-state')!({ sender: { id: 2 } }, []);
+  electron.listeners.get('tabs:update-state')!({ sender: { id: 3 } }, []);
+  electron.listeners.get('tabs:update-state')!({ sender: { id: 3 } }, []);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(f.prepared.messages).toEqual([{ channel: 'tabs:transfer-incoming', payload: {
+    transferId: 'menu', tab: expect.objectContaining({ id: tab.id, viewerBand: [] }) } }]);
+  // Only the new window may take it, and the ordinary acknowledgment removes the source tab.
+  expect(await electron.handlers.get('tabs:claim-transfer')!({ sender: { id: 2 } }, 'menu')).toBeNull();
+  expect(await electron.handlers.get('tabs:adopt-transfer')!({ sender: { id: 3 } }, 'menu')).toBe(true);
+  electron.listeners.get('tabs:complete-transfer')!({ sender: { id: 3 } }, 'menu');
+  expect(f.source.messages.at(-1)).toEqual({ channel: 'tabs:transfer-completed', payload: { transferId: 'menu', tabId: tab.id } });
+  electron.listeners.get('tabs:release-source')!({ sender: { id: 1 } }, 'menu');
+  expect(f.prepared.window.focus).toHaveBeenCalled();
+  expect(f.manager.memoryProtectedIds()).toEqual([]);
+});
+
+test('a menu move ignores a tab the window does not own and a reused transfer id', () => {
+  const f = fixture();
+  electron.listeners.get('tabs:move-to-window')!({ sender: { id: 9 } }, { transferId: 'menu', tab });
+  f.register();
+  electron.listeners.get('tabs:move-to-window')!({ sender: { id: 1 } }, { transferId: 'move', tab });
+  expect(f.prepared.window.showInactive).not.toHaveBeenCalled();
+  expect(f.prepared.messages).toEqual([]);
 });

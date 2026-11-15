@@ -32,7 +32,7 @@ export const view = $state({
   recoveryCount: 0,
   reloadPrompt: null as { id: string; name: string; revision: number; path: string } | null,
   recoveryError: '',
-  groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null }] as import('../../core/workspace/editor-groups').Group[],
+  groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null, sticky: 0 }] as import('../../core/workspace/editor-groups').Group[],
   groupTree: { kind: 'group', id: 'group-0' } as import('../../core/workspace/editor-groups').GroupTree,
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],

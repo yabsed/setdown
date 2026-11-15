@@ -21,6 +21,8 @@ import { applicationMenuEntries, executeApplicationMenu } from '../menu/applicat
 import { BrowserFindOverlay } from '../browser/find-overlay';
 import { LocationOverlay } from '../browser/location-overlay';
 import { showReadingMenu } from '../menu/reading-menu';
+import { showTabMenu } from '../menu/tab-menu';
+import { readTabMenuContext } from '../../core/workspace/tab-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
 import type { WindowState } from '../windows/window-state';
 import { windowDirtyFingerprint } from '../windows/window-state';
@@ -105,6 +107,15 @@ export function installIpc(options: Options): void {
     return menuOverlay.open(state, { menuId, x: position?.x, y: position?.y, theme: themes.id });
   });
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
+  channels.handle('tabs:context-menu', (state, input: unknown, copy: { path?: unknown; relative?: unknown } | null, at: { x?: unknown; y?: unknown } | null) => {
+    const context = readTabMenuContext(input);
+    if (!context) return null;
+    const text = (value: unknown) => typeof value === 'string' ? value.slice(0, 16_384) : '';
+    // Renderer CSS pixels to window pixels. Without a point the menu opens at the pointer.
+    const zoom = state.window.webContents.getZoomFactor(), x = Number(at?.x), y = Number(at?.y);
+    return showTabMenu(state, context, { path: text(copy?.path), relative: text(copy?.relative) },
+      Number.isFinite(x) && Number.isFinite(y) ? { x: x * zoom, y: y * zoom } : undefined);
+  });
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);
   channels.handle('settings:get-auto-save', () => autoSave.enabled);
   channels.handle('settings:get-markdown-word-wrap', () => markdownWordWrap.enabled);

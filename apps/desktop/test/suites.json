@@ -21,6 +21,8 @@
       "src/core/preview/preview-install.test.ts",
       "src/core/reading/reading-menu.test.ts",
       "src/core/workspace/editor-groups.test.ts",
+      "src/core/workspace/tab-menu.test.ts",
+      "src/renderer/workspace/tabs/tab-menu.test.ts",
       "src/core/workspace/tab-navigation.test.ts",
       "src/main/browser/browser-auth.test.ts",
       "src/main/browser/browser-pdf.test.ts",
@@ -376,6 +378,9 @@
       "previewContract": false
     },
     "workspace/tab-detach.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/tab-menu.spec.ts": {
       "previewContract": true
     },
     "workspace/text-workspace.spec.ts": {
