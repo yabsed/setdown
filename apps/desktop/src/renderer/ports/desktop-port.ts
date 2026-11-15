@@ -6,5 +6,6 @@ export type DesktopPort = MarkTexApi;
 export type ImagePort = Pick<MarkTexApi, 'readImageBytes' | 'setTabZoom'>;
 export type VideoPort = Pick<MarkTexApi, 'mediaUrl'>;
 export type OfficePort = Pick<MarkTexApi, 'readOfficeBytes' | 'openLink'>;
+export type DocxPort = Pick<MarkTexApi, 'openLink'>;
 export type PdfPort = Pick<MarkTexApi, 'showPdfSelectionMenu' | 'readPdfRange' | 'openLink' | 'setTabZoom'>;
 export type LocationSuggestionsPort = Pick<MarkTexApi, 'locationSuggestions'>;

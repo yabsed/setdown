@@ -1,4 +1,5 @@
 import { imageSessions } from '../../image/image-edit-sessions';
+import { docxSessions } from '../../docx/docx-sessions';
 import { draggedPaths, PROJECT_FILES } from '../../project/explorer/explorer-selection';
 import { fileDrag, FILE_DRAG_END } from '../../files/file-drag';
 import type { ClaimedTabTransfer, TransferableTab } from '../../../protocol/desktop-api';
@@ -309,6 +310,11 @@ export function createTabDrag(options: Options) {
       const image = imageSessions.get(id);
       if (image && (image.history.dirty || image.busy)) {
         event.preventDefault(); window.alert('Save your image changes before moving this tab to another group or window.'); return;
+      }
+      // Unsaved Word edits live in this window's engine and cannot follow the tab to another one.
+      const word = docxSessions.get(id);
+      if (word && (word.edits !== word.savedEdits || word.busy)) {
+        event.preventDefault(); window.alert('Save your document changes before moving this tab to another group or window.'); return;
       }
       if (options.groups.pin(id)) options.render();
       // Do not change selection until the drop succeeds.

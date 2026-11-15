@@ -25,6 +25,7 @@ import type { AppActions } from './ports/ui-actions';
   import type { DesktopPort } from './ports/desktop-port';
   import type { ReadingPosition } from '../core/reading/reading-position';
   import { project } from './project/project-state.svelte';
+  import { isWordEditorDocument } from '../core/document/document-capabilities';
   let { actions, terminalApi, desktop, mediaPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
     mediaPosition(id: string, position: ReadingPosition): void } = $props();
   onMount(() => {
@@ -98,6 +99,11 @@ import type { AppActions } from './ports/ui-actions';
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
           {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
       {:catch error}{#if active}<div role="alert">Could not load the video player: {String(error)}</div>{/if}{/await}
+    {:else if isWordEditorDocument(tab.document)}
+      {#await import('./docx/DocxSurface.svelte') then module}
+        <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}
+          focused={group?.id === view.focusedGroupId} onfocus={() => { if (view.focusedGroupId !== group?.id) actions.activateTab(tab.id); }} {desktop} onposition={(position) => mediaPosition(tab.id, position)} />
+      {:catch error}{#if active}<div role="alert">Could not load the Word editor: {String(error)}</div>{/if}{/await}
     {:else if tab.document.kind === 'office'}
       {#await import('./office/OfficeSurface.svelte') then module}
         <module.default tabId={tab.id} document={tab.document} initialPosition={tab.position} {active}

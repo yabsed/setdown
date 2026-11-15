@@ -1,4 +1,5 @@
 import { imageSessions } from '../image/image-edit-sessions';
+import { docxSessions } from '../docx/docx-sessions';
 import type { DesktopPort } from '../ports/desktop-port';
 import { isDocumentTab, type WorkspaceState } from '../../core/workspace/workspace-state';
 import { documentIdentity } from '../../core/workspace/document-store';
@@ -23,6 +24,7 @@ export class WorkspaceSnapshots {
   private restoring = false;
   private failedFingerprint = '';
   private retryAfter = 0;
+  private deferredSince = 0;
   constructor(private readonly desktop: DesktopPort, private readonly workspace: WorkspaceState, private readonly tabs: TabController,
     private readonly editor: MonacoEditor, private readonly projects: ProjectController) {
     let scheduled: ReturnType<typeof setTimeout> | undefined;
@@ -58,6 +60,10 @@ export class WorkspaceSnapshots {
         const recipe = structuredClone(session.history.current);
         bytes = await this.desktop.imageEdit.backup(session.source.id);
         snapshot.binary = { data: '', extension: content.document.path.split('.').at(-1)!, recipe };
+      } else if (docxSessions.accepts(content)) {
+        // The serialized package is the edited document itself; it restores as a separate file.
+        bytes = await docxSessions.backup(content.id);
+        snapshot.binary = { data: '', extension: 'docx' };
       } else continue;
       remaining -= Math.ceil(bytes.length / 3) * 4;
       if (remaining < 0) throw Error('Recovery content exceeds 24 MiB. Save large documents directly.');
@@ -93,6 +99,14 @@ export class WorkspaceSnapshots {
       || (content.document.isUntitled && this.tabs.text(content) !== ''));
     const fingerprint = dirty.map(content => `${content.id}:${content.document.path}:${content.revision}`).join('|');
     if (fingerprint === this.fingerprint) return;
+    // Serializing a Word document is main-thread work: it waits for a typing pause, but edits are never left
+    // without a recovery copy for more than ten seconds of continuous typing.
+    const now = Date.now();
+    if (dirty.some(content => docxSessions.accepts(content)) && now - docxSessions.lastEditAt < 700
+      && (!this.deferredSince || now - this.deferredSince < 10_000)) {
+      this.deferredSince ||= now; return;
+    }
+    this.deferredSince = 0;
     if (fingerprint === this.failedFingerprint && Date.now() < this.retryAfter) return;
     this.writing = true;
     try {

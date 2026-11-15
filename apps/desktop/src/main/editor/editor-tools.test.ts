@@ -82,6 +82,10 @@ test('session validation enforces content identity, tree ownership and version b
   expect(parseWorkspaceSnapshot(value).contents[0].text).toBe('dirty');
   const binary = { ...value, contents: [{ ...value.contents[0], text: undefined, binary: { extension: 'png', data: 'AAEC' } }] };
   expect(parseWorkspaceSnapshot(binary).contents[0].binary?.data).toBe('AAEC');
+  // An edited Word document is recovered as its serialized package; other binary formats are not accepted.
+  const word = (extension: string) => ({ ...binary, contents: [{ ...binary.contents[0], binary: { extension, data: 'AAEC' } }] });
+  expect(parseWorkspaceSnapshot(word('docx')).contents[0].binary?.extension).toBe('docx');
+  for (const extension of ['doc', 'xlsx', 'exe', '../docx']) expect(() => parseWorkspaceSnapshot(word(extension))).toThrow('binary recovery');
   for (const data of [1234, 'a', 'bad?']) {
     expect(() => parseWorkspaceSnapshot({ ...binary, contents: [{ ...binary.contents[0], binary: { extension: 'png', data } }] })).toThrow('binary recovery');
   }

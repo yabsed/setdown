@@ -336,7 +336,7 @@ export class TabController {
     void tick().then(() => this.options.groupsChanged?.());
     view.mediaTabs = this.media.sync([...workspace.documents, ...workspace.tabs.flatMap(tab => webPdfMedia(tab, webPdfPositions))], workspace.activeId, workspace.groups.groups.flatMap(g => g.activeId ? [g.activeId] : []));
     desktop.updateMemoryContext?.({ visible: workspace.groups.groups.flatMap(group => group.activeId ? [group.activeId] : []),
-      protected: workspace.documents.filter(tab => tab.document.kind === 'image' && this.dirty(tab)).map(tab => tab.id) });
+      protected: workspace.documents.filter(tab => (tab.document.kind === 'image' || tab.document.kind === 'office') && this.dirty(tab)).map(tab => tab.id) });
     view.activeMediaId = workspace.activeDocument?.document.kind ? workspace.activeId : null;
     shell.dataset.tabs = summaries.length > 0 ? 'true' : 'false';
     shell.dataset.dirtyTabs = String(summaries.filter((tab) => tab.dirty).length);

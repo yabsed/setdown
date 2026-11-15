@@ -41,6 +41,8 @@
     "update:zed-language-packages": "node scripts/update-zed-language-packages.mjs --refresh && node scripts/update-language-packages.mjs"
   },
   "dependencies": {
+    "@docx-editor.dev/core": "2.37.0",
+    "@docx-editor.dev/fonts": "2.37.0",
     "@file-viewer/renderer-hangul": "3.3.3",
     "@file-viewer/renderer-presentation": "3.3.3",
     "@file-viewer/renderer-spreadsheet": "3.3.3",

@@ -638,6 +638,11 @@ retired. Opening or saving these files through the text editor is still
 impossible, and `text-files.integration.test.ts` now covers that boundary for
 HWP/HWPX and Microsoft Office files together.
 
+Since 2026-11-15 `.docx` files are edited in their own lazily loaded surface; see
+[Word document editing](contracts/reading-surfaces.md#word-document-editing--2026-11-15).
+That engine never loads at startup or with Markdown, so the preview guarantees in
+this contract are unaffected, and the text save path still refuses these files.
+
 ## Reading surface capabilities
 
 Current guarantees, ownership and required coverage: [Reading surface capabilities](contracts/reading-surfaces.md#reading-surface-capabilities).
