@@ -151,6 +151,26 @@ Queued scroll/image callbacks and post-mount position/focus work must stop when
 the Reader is unmounted; cleanup retains its stable element reference. Switching
 from an image-bearing wiki Reader to a fallback article exercises this boundary.
 
+Returning to a Reader tab restores the place the user last scrolled it to, exactly.
+A reading anchor keeps its golden-line block at a height inside the viewport, so
+it cannot express a view that has moved past a block starting above it: a cover
+image taller than the reading offset, or text far below the last block that
+carries an ordinal (Readability rebuilds paragraphs separated by line breaks as
+new elements). `ReaderPosition.offset` holds that remainder in pixels; the live
+page still receives the plain anchor. Only the user's scrolling publishes a
+position. The scroll event of a restore is measured in whatever layout has loaded
+so far and must not replace the place being restored, so a second visit cannot
+drift, and restoring retries after the theme and late images until the user
+scrolls. A position pending in the current frame is published before unmount.
+
+The Reader owns the keyboard after a tab switch. Detaching the native page that
+holds focus leaves no view with the keyboard, so `BrowserManager` hands focus to
+the shell when a tab switch hides that page, and when a Reader tab is activated;
+the Reader, editor or terminal shown in its place then receives the keys. Pages
+hidden behind a shell overlay are left alone, because they return. `browser/reader.spec.ts`
+returns to both article shapes repeatedly and sends native keys after a pointer
+and a keyboard tab switch.
+
 Web Reader exposes Export to Markdown and Export to PDF through its existing
 native right-click menu. The reading surface has no export toolbar or overflow
 button above or beside the article. The File menu's existing

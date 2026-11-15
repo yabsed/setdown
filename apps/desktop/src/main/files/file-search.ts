@@ -31,6 +31,17 @@ export function collectMatches(root: string, relativeFiles: Iterable<string>, wo
   return results;
 }
 
+/**
+ * Names that start with the query first. ripgrep walks directories in parallel, so matches
+ * arrive in a different order on every run: within a rank, the nearer path and then the path
+ * itself decide, and the same search always returns the same list.
+ */
+export function rankMatches(paths: string[], words: string[]): string[] {
+  const starts = (file: string) => Number(!path.basename(file).toLocaleLowerCase().startsWith(words[0]));
+  const depth = (file: string) => file.split(/[\\/]/).length;
+  return paths.sort((a, b) => starts(a) - starts(b) || depth(a) - depth(b) || (a < b ? -1 : a > b ? 1 : 0));
+}
+
 // Electron runs packaged binaries from an asar path only through execFile; spawn needs the unpacked file.
 const rg = rgPath.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
 
@@ -53,8 +64,7 @@ export class FileSearch {
         done = true; clearTimeout(timer);
         if (this.running.get(owner) === child) this.running.delete(owner);
         child.kill();
-        const starts = (file: string) => Number(!path.basename(file).toLocaleLowerCase().startsWith(words[0]));
-        resolve({ paths: paths.sort((a, b) => starts(a) - starts(b)), limitHit });
+        resolve({ paths: rankMatches(paths, words), limitHit });
       };
       const timer = setTimeout(() => finish(true), 20_000);
       child.stdout!.setEncoding('utf8');

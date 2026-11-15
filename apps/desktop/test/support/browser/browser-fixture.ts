@@ -162,6 +162,27 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
         <footer>Copyright noise that reader mode must drop.</footer>`);
       return;
     }
+    const sentence = 'reading mode should keep the place where the reader stopped, in every tab, every single time.';
+    if (req.url === '/tall.svg') {
+      res.setHeader('content-type', 'image/svg+xml');
+      res.end('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="1600"><rect width="600" height="1600" fill="#b33"/></svg>'); return;
+    }
+    // Ends in a figure taller than the reader, like a magazine cover under an article.
+    if (req.url === '/article-figure') {
+      res.end(`<!doctype html><title>Figure article</title><article><h1>The Figure Article Title</h1>
+        ${Array.from({ length: 12 }, (_, i) => `<p>Figure paragraph ${i}: ${sentence}</p>`).join('\n')}
+        <figure><img src="/tall.svg" width="600" height="1600" alt="Cover"></figure>
+        <h2>From this edition</h2><p>Closing line, ${sentence}</p></article>`);
+      return;
+    }
+    // Paragraphs separated by line breaks: Readability rebuilds them as new elements,
+    // so only the opening paragraph carries a block ordinal.
+    if (req.url === '/article-breaks') {
+      res.end(`<!doctype html><title>Newsletter article</title><article><h1>The Newsletter Title</h1>
+        <p>Opening paragraph: ${sentence} ${sentence}</p>
+        <div>${Array.from({ length: 40 }, (_, i) => `Break paragraph ${i}: ${sentence} ${sentence}`).join('<br><br>')}</div></article>`);
+      return;
+    }
     res.end(`<!doctype html><title>${req.url === '/second' ? 'Second page' : 'Research page'}</title>
       <style>.ad { display:block !important }</style><input id="draft"><a href="/second">Next page</a>
       <div class="ad">Advertisement</div><iframe src="/frame"></iframe>

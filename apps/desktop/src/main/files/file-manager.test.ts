@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { compressFiles, extractArchive, glibFileUri, parseDesktopEntry, parseMimeApplications, parseContentType, parseVolumes, properties,
   setBookmark, thumbnailCandidates } from './desktop-integration';
-import { collectMatches, FileSearch, matchesQuery, queryWords } from './file-search';
+import { collectMatches, FileSearch, matchesQuery, queryWords, rankMatches } from './file-search';
 import { folderRequestFromArgs, requestsFromFileManagerCall } from './file-manager-launch';
 
 const roots: string[] = [];
@@ -101,6 +101,12 @@ describe('name search', () => {
     expect(collectMatches('/r', ['notes/week1/a.md', 'notes/b.md', 'other/notes.txt'], ['notes'], 10))
       .toEqual(['/r/notes', '/r/other/notes.txt']);
     expect(collectMatches('/r', ['a1', 'a2', 'a3'], ['a'], 2)).toHaveLength(2);
+  });
+
+  test('ranks matches the same way whatever order the parallel walk reports them in', () => {
+    const ranked = ['/r/Report 2026.md', '/r/report.txt', '/r/deep/report-archive', '/r/deep/a/reports', '/r/annual report.md', '/r/deep/old report.md'];
+    const arrivals = [[...ranked].reverse(), [ranked[2], ranked[5], ranked[0], ranked[4], ranked[3], ranked[1]], [...ranked]];
+    for (const arrival of arrivals) expect(rankMatches(arrival, ['report'])).toEqual(ranked);
   });
 
   test('searches a real tree with ripgrep, honouring hidden files', async () => {

@@ -60,7 +60,8 @@ export type BrowserApi = {
   close(id: string, remember?: boolean): Promise<boolean>;
   reopen(): Promise<void>;
   authenticate(id: string, token: string, credentials: { username: string; password: string } | null): Promise<void>;
-  layout(entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>): void;
+  /** `covered`: the pages are only hidden behind a shell overlay and come back when it closes. */
+  layout(entries: Array<{ id: string; bounds: PreviewBounds; canGoBack?: boolean; canGoForward?: boolean }>, covered?: boolean): void;
   capture(id: string): Promise<string | null>;
   pdfRange(id: string, token: string, begin: number, end: number): Promise<Uint8Array>;
   pdfMenu(id: string, token: string, selection: string): Promise<void>;

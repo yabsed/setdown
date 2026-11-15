@@ -1,5 +1,11 @@
 import type { BrowserAuthRequest, BrowserDownload, BrowserPermissionRequest, ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
 import type { BrowserPasswordState } from '../../core/browser/passwords';
+/**
+ * Where a reader is scrolled. A `ReaderAnchor` keeps a block at a height inside the viewport,
+ * so it cannot say how far the view has moved past a block that starts above it: a tall image,
+ * or the last marked block of a sparsely marked article. `offset` is that remainder in pixels.
+ */
+export type ReaderPosition = ReaderAnchor & { offset?: number };
 export const browser = $state({ revision: 0, error: '', findId: null as string | null, query: '', active: 0, matches: 0,
   downloads: [] as BrowserDownload[],
   permissions: {} as Record<string, BrowserPermissionRequest[]>,
@@ -15,6 +21,6 @@ export const browser = $state({ revision: 0, error: '', findId: null as string |
   readers: {} as Record<string, ReaderSnapshot>,
   /** Find requests belong to the visible snapshot, independently of native page find. */
   readerFind: {} as Record<string, { query: string; forward: boolean; next: boolean; request: number }>,
-  /** Latest golden-line anchor published while scrolling each reader, so the
-   * address-bar toggle can return to the live page at the current place. */
-  readerPositions: {} as Record<string, ReaderAnchor> });
+  /** Where the user last scrolled each reader. Returning to its tab restores exactly this place,
+   * and the address-bar toggle returns to the live page at its golden-line block. */
+  readerPositions: {} as Record<string, ReaderPosition> });

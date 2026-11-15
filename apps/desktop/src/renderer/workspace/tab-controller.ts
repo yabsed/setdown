@@ -433,7 +433,11 @@ export class TabController {
           // Activating an inactive split starts on pointerdown, before the
           // address input takes focus. Recheck after the async create/layout:
           // a newer address/find edit owns the keyboard, not the page below it.
-          await desktop.browser.command(next.id, this.options.shouldFocusWeb?.() === false ? 'activate' : 'focus');
+          const focus = this.options.shouldFocusWeb?.() !== false;
+          await desktop.browser.command(next.id, focus ? 'focus' : 'activate');
+          // A page in reader mode is a shell surface. One that stayed mounted (the selected tab
+          // of another group) has no mount to take the keyboard on.
+          if (focus && activation === this.activation && workspace.activeId === next.id) window.dispatchEvent(new CustomEvent('setdown:reader-focus', { detail: next.id }));
         }
       } catch (error) { next.page.error = String(error); this.render(); }
       return;

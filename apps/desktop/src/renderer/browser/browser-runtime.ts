@@ -27,7 +27,7 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       canGoBack: tabs.canGoBack(id), canGoForward: tabs.canGoForward(id) }));
     const signature = JSON.stringify(layout);
     if (!force && signature === lastLayout) return;
-    lastLayout = signature; desktop.browser.layout(layout);
+    lastLayout = signature; desktop.browser.layout(layout, frozen);
   }
   async function cover() {
     if (++depth !== 1) return;

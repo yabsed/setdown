@@ -4,7 +4,7 @@
   import type { AppActions } from '../ports/ui-actions';
   import type { ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
   import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
-  import { browser } from './browser-state.svelte';
+  import { browser, type ReaderPosition } from './browser-state.svelte';
   import { createRenderedFind } from './rendered-find';
   import { zoomState } from '../zoom-state.svelte';
   import { DOCUMENT_MEASURE_PX, MARKDOWN_FONT_SIZE, READER_FONT_SIZE } from '../../core/theme/typography';
@@ -63,17 +63,26 @@
   const normalize = (value: string | null) => (value ?? '').replace(/\s+/g, ' ').trim();
   const stamped = () => [...container.querySelectorAll<HTMLElement>('[data-setdown-block]')];
 
-  /** Place the extraction anchor at the same viewport height it occupied on
-   * the live page (the yRatio half of the Markdown ViewportAnchor). */
-  function positionAt(anchor: ReaderAnchor) {
+  /** The scroll offset that shows an anchor's block at its viewport height. An article
+   * without marked blocks has only its start to measure from. */
+  function anchorTop(anchor: ReaderAnchor): number {
     const blocks = stamped();
-    if (!blocks.length) return;
+    if (!blocks.length) return 0;
     const ordinal = (el: HTMLElement) => Number(el.dataset.setdownBlock);
     const el = blocks.find(candidate => ordinal(candidate) === anchor.ordinal)
       ?? [...blocks].reverse().find(candidate => ordinal(candidate) < anchor.ordinal) ?? blocks[0];
     const elTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-    appliedTop = Math.max(0, elTop - anchor.yRatio * container.clientHeight);
-    container.scrollTop = appliedTop;
+    return elTop - anchor.yRatio * container.clientHeight;
+  }
+
+  /** Place the extraction anchor at the same viewport height it occupied on
+   * the live page (the yRatio half of the Markdown ViewportAnchor), or return
+   * to the exact place this reader was last scrolled to. */
+  function positionAt(position: ReaderPosition) {
+    container.scrollTop = Math.max(0, anchorTop(position) + (position.offset ?? 0));
+    // Until images and the theme arrive the article can be shorter than this place. Record what
+    // the browser applied, so its scroll event is not taken for the user's and a later settle retries.
+    appliedTop = container.scrollTop;
   }
 
   onMount(() => {
@@ -116,7 +125,10 @@
     const settle = () => { if (current() && !userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
     element.addEventListener('load', settle, true);
     const timer = setTimeout(settle, 350);
-    return () => { disposed = true; theme.disconnect(); style.remove(); window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); cancelAnimationFrame(publishFrame); };
+    return () => {
+      // A tab switch can follow the last scroll within the same frame. Measure before the theme goes.
+      if (publishFrame) { cancelAnimationFrame(publishFrame); publishPosition(); }
+      disposed = true; theme.disconnect(); style.remove(); window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); };
   });
 
   function anchorFor(el: HTMLElement | undefined): ReaderAnchor {
@@ -142,28 +154,30 @@
 
   /** Continuously publish the block on the golden reading line (as the
    * Markdown viewport-state does), so leaving via the address-bar toggle —
-   * not just a double-click — returns to the current place. */
+   * not just a double-click — returns to the current place, and so does
+   * coming back to this tab. */
   let publishFrame = 0;
-  function publishAnchor() {
-    if (publishFrame) return;
-    publishFrame = requestAnimationFrame(() => {
-      publishFrame = 0;
-      if (!container) return;
-      const golden = container.getBoundingClientRect().top + container.clientHeight * GOLDEN_TOP_RATIO;
-      const blocks = stamped();
-      const el = blocks.find(candidate => {
-        const rect = candidate.getBoundingClientRect();
-        return rect.top <= golden && rect.bottom > golden;
-      }) ?? blocks.find(candidate => candidate.getBoundingClientRect().top > golden) ?? blocks.at(-1);
-      if (el) browser.readerPositions[tabId] = anchorFor(el);
-    });
+  function publishPosition() {
+    publishFrame = 0;
+    if (!container?.isConnected || !container.clientHeight) return;
+    const golden = container.getBoundingClientRect().top + container.clientHeight * GOLDEN_TOP_RATIO;
+    const blocks = stamped();
+    const el = blocks.find(candidate => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.top <= golden && rect.bottom > golden;
+    }) ?? blocks.find(candidate => candidate.getBoundingClientRect().top > golden) ?? blocks.at(-1);
+    const anchor = anchorFor(el);
+    browser.readerPositions[tabId] = { ...anchor, offset: container.scrollTop - anchorTop(anchor) };
   }
 
   function onScroll() {
     // Chromium can deliver a queued scroll after Svelte unbinds this surface.
     if (!container?.isConnected) return;
-    if (appliedTop >= 0 && Math.abs(container.scrollTop - appliedTop) > 2) userScrolled = true;
-    publishAnchor();
+    // Only the user's scrolling is a new place to remember. Until then the echo of positionAt was
+    // measured in whatever layout had loaded so far, and must not replace the place it is restoring.
+    if (!userScrolled && appliedTop >= 0 && Math.abs(container.scrollTop - appliedTop) <= 2) return;
+    userScrolled = true;
+    publishFrame ||= requestAnimationFrame(publishPosition);
   }
 
   function dblclick(event: MouseEvent) {

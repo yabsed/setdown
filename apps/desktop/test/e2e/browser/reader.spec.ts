@@ -527,3 +527,95 @@ test('rendered Markdown keeps a centered 840px reading column while tab zoom cha
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });
+
+test('reader tabs return to the exact place they were left at and keep keyboard scrolling', async () => {
+  test.setTimeout(90_000);
+  const f = await fixture(false);
+  try {
+    const reader = f.page.locator('.web-reader');
+    const tab = (name: string) => f.page.getByRole('tab', { name: new RegExp(name) });
+    const top = () => reader.evaluate(el => el.scrollTop);
+    /** Select a reader tab and wait until it has settled where it was left. */
+    const returnTo = async (name: string, expected: number) => {
+      await tab(name).click();
+      await expect(reader).toHaveAttribute('data-reader-theme', /.+/);
+      await expect(reader).toContainText(name === 'Figure article' ? 'Figure paragraph 0' : 'Break paragraph 0');
+      await expect.poll(async () => Math.abs(await top() - expected), { message: `${name} returns to ${expected}` }).toBeLessThanOrEqual(1);
+      // Late image loads and the settle timer re-apply the position; it must hold.
+      await f.page.waitForTimeout(600);
+      expect(Math.abs(await top() - expected)).toBeLessThanOrEqual(1);
+    };
+    for (const [route, title] of [['/article-breaks', 'Newsletter article'], ['/article-figure', 'Figure article']]) {
+      await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}${route}`);
+      await expect(tab(title)).toHaveAttribute('aria-selected', 'true');
+      await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+      await expect(reader).toHaveAttribute('data-reader-theme', /.+/);
+    }
+    // The fixtures have the two shapes an anchor cannot express: a block taller than the
+    // reading offset, and text far below the last block that carries an ordinal.
+    await expect.poll(() => reader.locator('img').evaluate((img: HTMLImageElement) => img.getBoundingClientRect().height > innerHeight)).toBe(true);
+    await reader.hover(); await f.page.mouse.wheel(0, 100_000);
+    await expect.poll(() => reader.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(2);
+    const figureEnd = await top();
+    expect(await reader.locator('img').evaluate(img => img.getBoundingClientRect().top)).toBeLessThan(0);
+
+    await tab('Newsletter article').click();
+    await expect(reader).toContainText('Break paragraph 39');
+    expect(await reader.locator('[data-setdown-block]').count()).toBeLessThan(5);
+    await reader.hover(); await f.page.mouse.wheel(0, 2400);
+    await expect.poll(top).toBeGreaterThan(2000);
+    const newsletterMiddle = await top();
+
+    await returnTo('Figure article', figureEnd);
+    await returnTo('Newsletter article', newsletterMiddle);
+    // A second visit without scrolling must not drift: the restored place is not re-measured.
+    await returnTo('Figure article', figureEnd);
+    await returnTo('Newsletter article', newsletterMiddle);
+    // Scrolling away and back to the restored place is the user's scrolling too.
+    await reader.evaluate((el, y) => { el.scrollTo(0, y - 400); }, newsletterMiddle);
+    await expect.poll(top).toBe(newsletterMiddle - 400);
+    await f.page.waitForTimeout(100);
+    await reader.evaluate((el, y) => { el.scrollTo(0, y); }, newsletterMiddle);
+    await expect.poll(top).toBe(newsletterMiddle);
+    await returnTo('Figure article', figureEnd);
+    await returnTo('Newsletter article', newsletterMiddle);
+
+    // After a real click on its tab the reader owns the keyboard, without a click in the article.
+    const atEnd = () => reader.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop);
+    const focused = () => f.app.evaluate(({ webContents }) => webContents.getFocusedWebContents()?.getURL() ?? '');
+    const clickTab = async (name: string) => {
+      const box = (await tab(name).boundingBox())!;
+      const origin = await f.app.evaluate(({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows()[0], bounds = window.getContentBounds();
+        return { x: bounds.x, y: bounds.y, zoom: window.webContents.getZoomFactor() };
+      });
+      await nativeInput({ click: { x: origin.x + (box.x + box.width / 2) * origin.zoom, y: origin.y + (box.y + box.height / 2) * origin.zoom } });
+      await expect(tab(name)).toHaveAttribute('aria-selected', 'true');
+      await expect(reader).toHaveAttribute('data-reader-theme', /.+/);
+    };
+    await clickTab('Figure article'); await clickTab('Newsletter article');
+    await expect(reader).toBeFocused();
+    await nativeInput({ keys: ['End'] });
+    await expect.poll(atEnd).toBeLessThan(2);
+    const newsletterEnd = await top();
+    await returnTo('Figure article', figureEnd);
+    await returnTo('Newsletter article', newsletterEnd);
+
+    // A keyboard tab switch hides the live page that holds native focus. The reader it lands on
+    // must receive the keys, not the hidden page.
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(tab('Research page')).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(focused).toBe(`${f.origin}/first`);
+    await f.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('menu-previous-tab')!.click());
+    await expect(tab('Newsletter article')).toHaveAttribute('aria-selected', 'true');
+    await expect(reader).toHaveAttribute('data-reader-theme', /.+/);
+    await expect.poll(async () => Math.abs(await top() - newsletterEnd)).toBeLessThanOrEqual(1);
+    await expect.poll(focused).toBe(f.page.url());
+    await expect(reader).toBeFocused();
+    await nativeInput({ keys: ['Home'] });
+    await expect.poll(top).toBe(0);
+    await returnTo('Figure article', figureEnd);
+    await returnTo('Newsletter article', 0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});

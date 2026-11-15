@@ -66,6 +66,8 @@ export class BrowserManager {
   private ready?: Promise<void>;
   private owners = new Set<number>();
   private readonly layouts = new Map<number, BrowserLayout>();
+  /** Windows whose pages are hidden behind a shell overlay rather than replaced by another tab. */
+  private readonly covered = new Set<number>();
   private readonly fullscreens = new Map<number, { entry: Entry; restoreWindow: boolean }>();
   private restored = false;
   private saved = new Map<string, BrowserPage>();
@@ -392,7 +394,7 @@ export class BrowserManager {
     this.applyLayout(entry.owner);
   }
   private closeOwner(owner: number) {
-    this.fullscreens.delete(owner); this.layouts.delete(owner);
+    this.fullscreens.delete(owner); this.layouts.delete(owner); this.covered.delete(owner);
     this.options.fullscreenChanged?.(owner, false);
     const entries = [...this.views.values()].filter(entry => entry.owner === owner);
     // Retire every page before closing any native contents. Closing can emit
@@ -760,9 +762,10 @@ export class BrowserManager {
     for (const frame of entry.contents.mainFrame.framesInSubtree) this.webThemes.apply(entry, frame);
     return true;
   }
-  layout(owner: number, entries: BrowserLayout) {
+  layout(owner: number, entries: BrowserLayout, covered = false) {
     if (!this.options.stateFor(owner) || !Array.isArray(entries)) return;
     this.layouts.set(owner, entries.slice(0, 32));
+    if (covered) this.covered.add(owner); else this.covered.delete(owner);
     const fullscreen = this.fullscreens.get(owner);
     if (fullscreen && !entries.some(item => item.id === fullscreen.entry.page.id)) {
       this.leaveFullscreen(fullscreen.entry); return;
@@ -791,12 +794,18 @@ export class BrowserManager {
       if (!state.window.contentView.children.includes(entry.view)) state.window.contentView.addChildView(entry.view);
       entry.lastUsed = Date.now(); entry.view.setVisible(true); visible.add(item.id);
     }
+    let hidFocused = false;
     for (const [id, entry] of this.views) if (entry.owner === owner && !visible.has(id)) {
+      hidFocused ||= entry.view.getVisible() && entry.contents.isFocused();
       entry.view.setVisible(false);
       // Detach hidden pages like Min: remove unused native children while
       // retaining their WebContents/form/history and Chromium's throttling.
       if (state.window.contentView.children.includes(entry.view)) state.window.contentView.removeChildView(entry.view);
     }
+    // Detaching the focused page leaves no view with the keyboard. After a tab switch the shell
+    // shows in its place (a reader, editor or terminal) and takes over, as PreviewManager does for
+    // Markdown. A page behind a shell overlay is left alone: it comes back.
+    if (hidFocused && !this.covered.has(owner) && state.window.isFocused() && !state.window.webContents.isDestroyed()) state.window.webContents.focus();
     this.tabDrag.layout(owner, [...this.views.values()].filter(entry => entry.owner === owner && visible.has(entry.page.id) && entry.bounds)
       .map(entry => entry.bounds!));
   }
@@ -939,7 +948,7 @@ export class BrowserManager {
       try { await this.openLink(state.webContentsId, previous.url); }
       catch (error) { stack!.push(previous); throw error; }
     });
-    channels.on('browser:layout', (state, entries: Array<{ id: string; bounds: PreviewBounds }>) => this.layout(state.webContentsId, entries));
+    channels.on('browser:layout', (state, entries: Array<{ id: string; bounds: PreviewBounds }>, covered: unknown) => this.layout(state.webContentsId, entries, covered === true));
     channels.handle('browser:capture', async (state, id: string) => {
       if (this.dormant.get(id) === state.webContentsId) return null;
       const entry = this.owned(state.webContentsId, id);
@@ -1018,6 +1027,8 @@ export class BrowserManager {
         state.currentDocument = null;
         this.extensions?.host?.selectTab(wc);
         if (command === 'focus' && entry.view.getVisible()) wc.focus();
+        // A page in reader mode is drawn by the shell, which owns the keyboard for this tab.
+        else if (command === 'focus' && this.readerReady(state.webContentsId, id) && state.window.isFocused()) state.window.webContents.focus();
       } else if (command === 'mute') { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); }
       else if (command === 'zoom-in' || command === 'zoom-out' || command === 'zoom-reset') {
         this.zoomPage(entry, command === 'zoom-reset' ? 0 : command === 'zoom-in' ? 1 : -1, false);
