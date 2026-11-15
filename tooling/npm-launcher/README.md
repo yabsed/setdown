@@ -5,7 +5,7 @@ your words as a typeset document. This package installs a `setdown` command
 that downloads the desktop app and starts it.
 
 ```bash
-npm install -g setdown
+npm install -g @yabsed/setdown
 setdown notes.md
 ```
 
@@ -30,10 +30,10 @@ Arguments go to the app, so `setdown notes.md` opens a file and
 
 ## Updating and removing
 
-`npm update -g setdown` updates the command. The next run downloads the
+`npm update -g @yabsed/setdown` updates the command. The next run downloads the
 matching app and deletes the previous one.
 
-To remove Setdown, run `npm uninstall -g setdown` and delete the cache
+To remove Setdown, run `npm uninstall -g @yabsed/setdown` and delete the cache
 directory above.
 
 ## Limits

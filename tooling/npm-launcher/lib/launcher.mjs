@@ -172,7 +172,7 @@ function run(executable, args, env) {
 
 function readRelease() {
   try { return JSON.parse(readFileSync(new URL('../release.json', import.meta.url), 'utf8')); }
-  catch { throw Error('this copy has no release information. Install the published package: npm install -g setdown'); }
+  catch { throw Error('this copy has no release information. Install the published package: npm install -g @yabsed/setdown'); }
 }
 
 export async function main(args, { env = process.env, platform = process.platform, arch = process.arch, log = process.stderr } = {}) {
