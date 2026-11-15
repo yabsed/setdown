@@ -24,6 +24,7 @@ import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport,
 import { recognizedLanguage } from '../../core/document/language-policy';
 import { loadMonaco } from '../editor/monaco-runtime';
 import { displayOptions, releaseDisplayOptions } from '../editor/tools/view-display';
+import { onMarkdownWordWrap, sourceWordWrap } from '../editor/markdown-word-wrap';
 
 type Options = {
   releaseDocuments?(): void;
@@ -75,6 +76,12 @@ export class MonacoEditor {
       if (tab && (!id || tab.id === id)) entry.editor.updateOptions(textZoomOptions(tab.id));
     }
   });
+  private readonly unregisterWrap = onMarkdownWordWrap(() => {
+    for (const entry of this.groupEditors.values()) {
+      const tab = this.options.tabs().find(tab => tab.id === entry.tabId);
+      if (tab) entry.editor.updateOptions({ wordWrap: sourceWordWrap(tab.document.path) });
+    }
+  });
   private readonly unregisterModels: () => void;
   constructor(private readonly options: Options) {
     const restart = () => { void this.languageClient?.restart(); };
@@ -110,7 +117,7 @@ export class MonacoEditor {
     this.unregisterLanguage?.(); this.offBuiltin();
     this.languageClient?.dispose();
     this.unregisterModels();
-    this.unregisterZoom();
+    this.unregisterZoom(); this.unregisterWrap();
     for (const id of [...this.models.keys()]) this.disposeDocument(id);
     this.options.releaseDocuments?.();
     for (const entry of this.groupEditors.values()) { entry.editor.dispose(); entry.host.remove(); }
@@ -153,8 +160,8 @@ export class MonacoEditor {
       this.apiValue = api;
       registerMonacoThemes(api);
       applyMonacoTheme(api, this.options.theme());
-      // Keep Markdown's complete editor configuration unchanged. Syntax selection
-      // lives on each model; introducing text tabs cannot leak different wrapping.
+      // Syntax selection lives on each model and wrapping is reapplied per tab on
+      // activation, so a text tab cannot leak its unwrapped layout into Markdown.
       this.selectGroup(this.groupId);
       for (const tab of this.options.tabs()) if (tab.document.kind === undefined && !isNotebookDocument(tab.document.path)) this.ensureModel(tab);
       const active = this.options.active();
@@ -237,7 +244,7 @@ export class MonacoEditor {
       const model = tab?.surface === 'editor' ? this.ensureModel(tab) : null;
       if (entry.editor.getModel() !== model) {
         entry.editor.setModel(model);
-        if (tab) entry.editor.updateOptions({ ...displayOptions(tab.id), ...textZoomOptions(tab.id) });
+        if (tab) entry.editor.updateOptions({ ...displayOptions(tab.id, tab.document.path), ...textZoomOptions(tab.id) });
         const state = tab ? this.views.get(tab.id) : null;
         if (state) entry.editor.restoreViewState(state);
       }
@@ -256,7 +263,7 @@ export class MonacoEditor {
     if (entry.tabId && !sameView) this.views.set(entry.tabId, this.editorValue.saveViewState());
     entry.tabId = tab.id;
     const sameModel = this.editorValue.getModel() === model;
-    this.editorValue.updateOptions({ ...displayOptions(tab.id), ...textZoomOptions(tab.id) });
+    this.editorValue.updateOptions({ ...displayOptions(tab.id, tab.document.path), ...textZoomOptions(tab.id) });
     if (!sameModel) this.editorValue.setModel(model);
     this.owners.get(documentIdentity(tab))?.beginEditing(`document:${tab.id}`);
     this.publishLanguageSupport(tab, model);
@@ -276,6 +283,9 @@ export class MonacoEditor {
     const language = documentLanguage(tab.document.path, api.languages.getLanguages(), model.getLineContent(1));
     if (model.getLanguageId() !== language) api.editor.setModelLanguage(model, language);
     this.modelPaths.set(documentIdentity(tab), tab.document.path);
+    // Save As or a rename can turn a text file into Markdown, or back.
+    for (const entry of this.groupEditors.values()) if (entry.editor.getModel() === model)
+      entry.editor.updateOptions({ wordWrap: sourceWordWrap(tab.document.path) });
     retargetBuiltin(api, model, tab.document.path);
     this.connectLanguage(tab, model, api);
     if (previousPath) liveDocumentModels.publish({ type: 'retargeted', path: previousPath, nextPath: tab.document.path });

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { APP_FONT_FAMILY } from '../../../core/theme/typography';
   import { onTextZoom, textZoomOptions } from "../../editor/text-zoom";
+  import { onMarkdownWordWrap, sourceWordWrap } from '../../editor/markdown-word-wrap';
   import { onDestroy, untrack } from 'svelte';
   import type * as Monaco from 'monaco-editor';
   import { normalizePreviewTheme } from '../../../core/preview/preview-preferences';
@@ -40,19 +41,26 @@
   let loading = $state(true);
   let error = $state('');
   let editor: Monaco.editor.IStandaloneDiffEditor | null = null;
-  function updateZoom(id?: string) {
-    if (id && id !== project.activeGitDiffId) return;
+  function updateDisplay(options: Monaco.editor.IDiffEditorOptions) {
     if (!editor || !api) return;
     const original = editor.getOriginalEditor(), modified = editor.getModifiedEditor();
     const originalLabel = original.getOption(api.editor.EditorOption.ariaLabel);
     const modifiedLabel = modified.getOption(api.editor.EditorOption.ariaLabel);
-    editor.updateOptions(textZoomOptions(project.activeGitDiffId ?? undefined));
+    editor.updateOptions(options);
     // Diff option updates regenerate child accessibility labels. Preserve the
     // active snapshot names established by applySnapshots.
     original.updateOptions({ ariaLabel: originalLabel });
     modified.updateOptions({ ariaLabel: modifiedLabel });
   }
+  function updateZoom(id?: string) {
+    if (id && id !== project.activeGitDiffId) return;
+    updateDisplay(textZoomOptions(project.activeGitDiffId ?? undefined));
+  }
   const unregisterZoom = onTextZoom(updateZoom);
+  const unregisterWrap = onMarkdownWordWrap(() => {
+    const cached = shownId ? models.get(shownId) : null;
+    if (cached) updateDisplay({ diffWordWrap: sourceWordWrap(cached.filePath) });
+  });
   let api: typeof Monaco | null = null;
   let apiPromise: Promise<typeof Monaco> | null = null;
   let request = 0;
@@ -283,6 +291,9 @@
     if (shownId !== activeId || editor.getModel()?.modified !== cached.modified) {
       interruptReveal();
       saveShownView();
+      // Markdown review wraps like its ordinary source. Decide before attaching
+      // the models, so the first layout of a newly opened review is the final one.
+      editor.updateOptions({ diffWordWrap: sourceWordWrap(active.diff.filePath) });
       editor.setModel({ original: cached.original, modified: cached.modified });
       shownId = activeId;
       editor.updateOptions(textZoomOptions(activeId ?? undefined));
@@ -385,6 +396,7 @@
     request += 1;
     unregisterViewport();
     unregisterZoom();
+    unregisterWrap();
     unregisterMarkdown();
     input.dispose();
     for (const listener of inputListeners) listener.dispose();

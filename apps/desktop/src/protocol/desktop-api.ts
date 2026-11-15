@@ -390,6 +390,8 @@ export type MarkTexApi = {
   updateText(text: string, revision: number): void;
   getAutoSave(): Promise<boolean>;
   onAutoSaveChanged(listener: (enabled: boolean) => void): () => void;
+  getMarkdownWordWrap(): Promise<boolean>;
+  onMarkdownWordWrapChanged(listener: (enabled: boolean) => void): () => void;
   saveDocument(text: string, revision: number, auto?: boolean): Promise<SaveResult>;
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
   saveTabDocument(document: DocumentSnapshot, text: string, revision: number, auto?: boolean): Promise<SaveResult>;

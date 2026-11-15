@@ -539,9 +539,14 @@ reload restores the folder and panel geometry.
 Alt+Z uses VS Code's transient model word-wrap override. Different files retain
 independent state across tab/source-reader switches; split views sharing a model
 share the override, and side-by-side diff editors synchronize both models.
-The next toggle clears the override and inherits the underlying configuration;
-ordinary/diff source defaults are unwrapped, matching notebook code. Explicit
-display overrides and Alt+Z still select wrapping; the change is only the default.
+The next toggle clears the override and inherits the underlying configuration:
+Markdown source and Markdown Git review wrap while View > Markdown Word Wrap is
+checked (its default), and code, plain text and their diffs are unwrapped,
+matching notebook code. Main persists that checkbox like Auto Save; a change
+reapplies wrapping to mounted editors without touching text, focus or Undo.
+`renderer/editor/markdown-word-wrap.ts` owns the rule, which replaces stored
+per-view `wordWrap`; Alt+Z still overrides it per model. A newly shown review
+receives its wrapping before its models, so its first layout is the final one.
 An initially unwrapped editor must expose a nonempty native input target. Monaco
 0.56 computes a negative width from its unwrapped `wrappingColumn`; the scoped
 CSS minimum width prevents a zero-width EditContext without replacing it or

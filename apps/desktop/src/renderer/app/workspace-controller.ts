@@ -43,6 +43,7 @@ import { view } from '../workspace/workspace-view.svelte';
 import type { AppActions } from '../ports/ui-actions';
 import { DocumentActions } from '../workspace/document-actions';
 import { AutoSaveController } from '../workspace/auto-save';
+import { setMarkdownWordWrap } from '../editor/markdown-word-wrap';
 import { TabController } from '../workspace/tab-controller';
 import { installWorkspaceTools } from './editor-tools-controller';
 import { openEditorCommands, editorToolsNow, runEditorCommand } from '../editor/tools/tools-runtime';
@@ -514,7 +515,9 @@ export function startWorkspace(desktop: DesktopPort) {
   const removeImagePaste = installEditorImagePaste(editorContext);
   void desktop.getAutoSave().then((enabled) => autoSave.setEnabled(enabled));
   const unsubscribeAutoSave = desktop.onAutoSaveChanged((enabled) => autoSave.setEnabled(enabled));
-  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); unsubscribeAutoSave(); editor.disposeWorkspace(); }, { once: true });
+  void desktop.getMarkdownWordWrap().then(setMarkdownWordWrap);
+  const unsubscribeMarkdownWordWrap = desktop.onMarkdownWordWrapChanged(setMarkdownWordWrap);
+  window.addEventListener('beforeunload', () => { positions.flush(); insertions.dispose(); removeImagePaste(); unsubscribeAutoSave(); unsubscribeMarkdownWordWrap(); editor.disposeWorkspace(); }, { once: true });
   function toggleToc() {
     const tab = workspace.activeDocument;
     if (!tab || !hasMarkdownPreview(tab.document)) return;

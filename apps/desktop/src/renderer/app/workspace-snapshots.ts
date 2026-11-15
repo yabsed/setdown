@@ -79,7 +79,7 @@ export class WorkspaceSnapshots {
       if (!isDocumentTab(tab)) return [];
       editor.saveView(tab);
       return [{ key: tab.id, content: [...contents, ...binaryContents].some(content => content.key === documentIdentity(tab)) ? documentIdentity(tab) : undefined, path: tab.document.path, kind: 'document', surface: tab.surface,
-        editor: editor.exportView(tab.id), anchor: tab.anchor, display: displayOptions(tab.id) } satisfies SnapshotView];
+        editor: editor.exportView(tab.id), anchor: tab.anchor, display: displayOptions(tab.id, tab.document.path) } satisfies SnapshotView];
     });
     const ids = new Set(views.map(view => view.key));
     const groups = workspace.groups.groups.map(group => ({ id: group.id, tabs: group.tabs.filter(id => ids.has(id)), active: group.activeId && ids.has(group.activeId) ? group.activeId : null })).filter(group => group.tabs.length);

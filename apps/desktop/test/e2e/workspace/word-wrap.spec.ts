@@ -100,12 +100,12 @@ test('Markdown and Git review retain wrapping across reader transitions and sync
     await page.reload();
     await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
     const ordinary = page.locator('.editor-surface .monaco-editor:visible');
-    await wrapping(ordinary, false);
-    await ordinary.getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
     await wrapping(ordinary, true);
+    await ordinary.getByRole('textbox', { name: 'Editor content' }).press('Alt+z');
+    await wrapping(ordinary, false);
     await ordinary.getByRole('textbox', { name: 'Editor content' }).press('Escape');
     await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
-    await wrapping(ordinary, true);
+    await wrapping(ordinary, false);
 
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1600, 1000));
     await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
@@ -116,19 +116,21 @@ test('Markdown and Git review retain wrapping across reader transitions and sync
     // source editors explicitly, including after the asynchronous diff arrives.
     const editors = page.locator('.git-diff-editor .monaco-editor:is(.original-in-monaco-diff-editor, .modified-in-monaco-diff-editor):visible');
     await expect(editors).toHaveCount(2);
-    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
-    const modified = page.getByRole('textbox', { name: 'Current document', exact: true });
-    await modified.press('Alt+z');
+    // The review shares the Working Tree model, so it inherits the Alt+Z override.
     await wrapping(editors.first(), false); await wrapping(editors.last(), false);
+    const modified = page.getByRole('textbox', { name: 'Current document', exact: true });
+    // Clearing the override returns both sides to Markdown's wrapped default.
+    await modified.press('Alt+z');
+    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
     // Read-only original editors can toggle wrapping too.
     await editors.first().getByRole('textbox').press('Alt+z');
-    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
+    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
     // Refocusing the other pane must retain the active review's command state:
     // Escape works immediately, without waiting for another tab activation IPC.
     await modified.press('Escape');
     await page.getByRole('button', { name: 'View Source Diff', exact: true }).click();
-    await wrapping(editors.first(), true); await wrapping(editors.last(), true);
-    await page.screenshot({ path: test.info().outputPath('diff-word-wrap-on.png') });
+    await wrapping(editors.first(), false); await wrapping(editors.last(), false);
+    await page.screenshot({ path: test.info().outputPath('diff-word-wrap-off.png') });
   } catch (error) {
     await page.screenshot({ path: test.info().outputPath('word-wrap-failure.png') });
     const layoutPath = test.info().outputPath('editor-layout.json');
@@ -139,6 +141,87 @@ test('Markdown and Git review retain wrapping across reader transitions and sync
     await test.info().attach('editor-layout', { contentType: 'application/json', path: layoutPath });
     await test.info().attach('dom', { body: await page.locator('body').innerText(), contentType: 'text/plain' });
     throw error;
+  } finally {
+    await disposeApplication(app);
+    await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true });
+  }
+});
+
+async function markdownWordWrap(page: Page) {
+  const entries = await page.evaluate(() => window.marktex.getApplicationMenu('application-menu-view'));
+  return { setting: await page.evaluate(() => window.marktex.getMarkdownWordWrap()),
+    checked: entries.find(entry => entry.id === 'menu-markdown-word-wrap')?.checked };
+}
+
+test('View > Markdown Word Wrap wraps only Markdown source, applies live and persists', async () => {
+  test.setTimeout(120_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-word-wrap-markdown-'));
+  const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-word-wrap-markdown-config-'));
+  const notes = path.join(root, 'notes.md'), code = path.join(root, 'code.py');
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root });
+  git('init'); git('config', 'user.email', 'setdown@example.test'); git('config', 'user.name', 'Setdown Test');
+  await writeFile(notes, source); await writeFile(code, source); git('add', '.'); git('commit', '-m', 'base');
+  await writeFile(notes, source.replace('last line', 'changed line'));
+  await writeFile(code, source.replace('last line', 'changed line'));
+  let app = await launch(root, notes, config);
+  try {
+    let page = await app.firstWindow();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.reload();
+    await page.getByRole('button', { name: 'Switch to Editor', exact: true }).click();
+    const editor = page.locator('.editor-surface .monaco-editor:visible');
+    const input = editor.getByRole('textbox', { name: 'Editor content' });
+    expect(await markdownWordWrap(page)).toEqual({ setting: true, checked: true });
+    await wrapping(editor, true);
+
+    // Code in the same editor group keeps its unwrapped default in both directions.
+    await page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), code);
+    await expect(page.getByRole('tab', { name: /code.py/ })).toHaveAttribute('aria-selected', 'true');
+    await wrapping(editor, false);
+    await page.getByRole('tab', { name: /notes.md/ }).click(); await wrapping(editor, true);
+
+    // The checkbox changes the mounted Markdown editor without touching its text, focus or code tabs.
+    await input.focus();
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-markdown-word-wrap'));
+    await wrapping(editor, false);
+    await expect.poll(() => markdownWordWrap(page)).toEqual({ setting: false, checked: false });
+    await expect(input).toBeFocused();
+    await expect(page.locator('.shell')).toHaveAttribute('data-dirty-tabs', '0');
+    // Alt+Z still overrides the setting for this file, and its next press inherits it again.
+    await input.press('Alt+z'); await wrapping(editor, true);
+    await input.press('Alt+z'); await wrapping(editor, false);
+    await page.getByRole('tab', { name: /code.py/ }).click(); await wrapping(editor, false);
+
+    // The choice survives a restart, like Auto Save.
+    await disposeApplication(app);
+    app = await launch(root, notes, config);
+    page = await app.firstWindow();
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.reload();
+    // The relaunched window reopens this document on its last surface, the editor.
+    await expect(page.locator('.shell')).toHaveAttribute('data-surface', 'editor');
+    const restarted = page.locator('.editor-surface .monaco-editor:visible');
+    expect(await markdownWordWrap(page)).toEqual({ setting: false, checked: false });
+    await wrapping(restarted, false);
+
+    // Git review follows the same rule: only the Markdown diff wraps, on both sides.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1600, 1000));
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Source Control', exact: true }).click();
+    const changes = page.locator('.scm-group').filter({ has: page.getByText('CHANGES', { exact: true }) });
+    const sides = page.locator('.git-diff-editor .monaco-editor:is(.original-in-monaco-diff-editor, .modified-in-monaco-diff-editor):visible');
+    await changes.locator('.git-change-open').filter({ hasText: 'notes.md' }).click();
+    await expect(sides).toHaveCount(2);
+    await wrapping(sides.first(), false); await wrapping(sides.last(), false);
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-markdown-word-wrap'));
+    await expect.poll(() => markdownWordWrap(page)).toEqual({ setting: true, checked: true });
+    await wrapping(sides.first(), true); await wrapping(sides.last(), true);
+    await expect(page.getByRole('textbox', { name: 'Current document', exact: true })).toBeVisible();
+    await changes.locator('.git-change-open').filter({ hasText: 'code.py' }).click();
+    await expect(sides.last()).toContainText('changed line');
+    await wrapping(sides.first(), false); await wrapping(sides.last(), false);
+    await changes.locator('.git-change-open').filter({ hasText: 'notes.md' }).click();
+    await wrapping(sides.first(), true); await wrapping(sides.last(), true);
   } finally {
     await disposeApplication(app);
     await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true });

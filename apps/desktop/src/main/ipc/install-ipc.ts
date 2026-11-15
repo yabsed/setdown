@@ -31,6 +31,7 @@ import type { ProjectService } from '../project/project-service';
 import { pathFromResourceUrl } from '../preview/resource-url';
 import type { TabTransferManager } from '../tabs/tab-transfer-manager';
 import type { AutoSaveStore } from '../settings/auto-save-store';
+import type { MarkdownWordWrapStore } from '../settings/markdown-word-wrap-store';
 import type { ThemeManager } from '../theme/theme-manager';
 import type { WindowIpc } from './window-ipc';
 import type { ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
@@ -39,7 +40,7 @@ import { installFilesIpc } from '../files/files-ipc';
 type Options = {
   channels: WindowIpc; documents: DocumentManager; previews: PreviewManager;
   renderer: PreviewRenderer; projects: ProjectService; themes: ThemeManager; transfers: TabTransferManager;
-  autoSave: AutoSaveStore; browsers: BrowserManager; folderRequests: import('../files/file-manager-launch').FolderRequests;
+  autoSave: AutoSaveStore; markdownWordWrap: MarkdownWordWrapStore; browsers: BrowserManager; folderRequests: import('../files/file-manager-launch').FolderRequests;
 };
 function assertMarkdown(filePath: string): void {
   if (!isMarkdownDocument(filePath)) throw new Error('This text document has no Markdown preview.');
@@ -57,7 +58,7 @@ export function installIpc(options: Options): void {
   installNotebookIpc(options.channels, options.browsers);
   installImageEditIpc(options.channels, options.documents);
   installDocxEditIpc(options.channels, options.documents);
-  const { channels, documents, previews, projects, renderer, themes, transfers, autoSave } = options;
+  const { channels, documents, previews, projects, renderer, themes, transfers, autoSave, markdownWordWrap } = options;
   channels.handle('browser:reader-export', (state, id: string, format: unknown) => {
     if (format !== 'markdown' && format !== 'pdf') throw Error('Unsupported reader export format.');
     return options.browsers.exportReader(state.webContentsId, id, format, themes.id);
@@ -106,6 +107,7 @@ export function installIpc(options: Options): void {
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);
   channels.handle('settings:get-auto-save', () => autoSave.enabled);
+  channels.handle('settings:get-markdown-word-wrap', () => markdownWordWrap.enabled);
   channels.handle('preview:theme-assets', (_state, themeId: unknown) => themes.assets(themeId));
   channels.handle('notebook:markdown', (state, file: string, source: string) => {
     if (typeof file !== 'string' || !/\.ipynb$/i.test(file) || typeof source !== 'string' || source.length > 1024 * 1024

@@ -21,6 +21,8 @@ type MenuContext = {
   toggleWebTheme: () => void;
   autoSave: () => boolean;
   toggleAutoSave: () => boolean;
+  markdownWordWrap: () => boolean;
+  toggleMarkdownWordWrap: () => boolean;
   zoom: (steps: number, scope?: 'app' | 'text' | 'terminal') => void;
 };
 
@@ -148,6 +150,8 @@ export function installApplicationMenu(context: MenuContext) {
             checked: context.webTheme(), click: () => context.toggleWebTheme(),
           }],
         },
+        { id: 'menu-markdown-word-wrap', label: 'Markdown Word Wrap', type: 'checkbox', checked: context.markdownWordWrap(),
+          click: (item) => { item.checked = context.toggleMarkdownWordWrap(); } },
         { type: 'separator' },
         { id: 'menu-reload', label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => {
           const current = state();

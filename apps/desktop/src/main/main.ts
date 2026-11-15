@@ -19,6 +19,7 @@ import { installIpc } from './ipc/install-ipc';
 import { windowIpc } from './ipc/window-ipc';
 import { installApplicationMenu } from './menu/application-menu';
 import { AutoSaveStore } from './settings/auto-save-store';
+import { MarkdownWordWrapStore } from './settings/markdown-word-wrap-store';
 import { PreviewManager } from './preview/preview-manager';
 import { PreviewRenderer } from './preview/preview-renderer';
 import { ProjectService } from './project/project-service';
@@ -85,6 +86,7 @@ renderer = new PreviewRenderer({ previews,
   theme: () => themes.id, workerPath: path.join(__dirname, 'render-worker.cjs') });
 const positions = new ReadingPositionStore(path.join(app.getPath('userData'), 'reading-positions.json'));
 const autoSave = new AutoSaveStore(path.join(app.getPath('userData'), 'auto-save.json'));
+const markdownWordWrap = new MarkdownWordWrapStore(path.join(app.getPath('userData'), 'markdown-word-wrap.json'));
 const documents = new DocumentManager(() => renderer.forgetNotebooks(), positions);
 const projectSearchRenderer = new ProjectSearchRenderer(path.join(__dirname, 'render-worker.cjs'), () => themes.id);
 const projects = new ProjectService((documentPath, text, query, limit, root) =>
@@ -220,7 +222,7 @@ else {
     // Owned regenerable disk cache, including residue after a previous crash.
     // Do not use /tmp: on Linux it commonly consumes tmpfs RAM.
     await fs.rm(previewCacheDirectory, { recursive: true, force: true });
-    installProtocols(); themes.load(); autoSave.load();
+    installProtocols(); themes.load(); autoSave.load(); markdownWordWrap.load();
     const languages = new LanguageManager(id => registry.stateForWebContents(id));
     languages.install();
     projects.setLanguageFileOperations((state, operation, phase) => languages.fileOperation(state, operation, phase));
@@ -232,7 +234,7 @@ else {
         state.window.webContents.send('workspace:zoom-changed', previews.zoom.snapshot);
     });
     app.on('will-quit', flushZoom);
-    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, browsers, folderRequests });
+    installIpc({ channels, documents, previews, projects, renderer, themes, transfers, autoSave, markdownWordWrap, browsers, folderRequests });
     installPathPicker(channels, (id) => registry.stateForWebContents(id));
     browsers.registerIpc(channels);
     channels.on('memory:context', (state, context: unknown) => {
@@ -291,6 +293,13 @@ else {
         for (const state of registry.values) if (!state.window.isDestroyed())
           state.window.webContents.send('auto-save:changed', autoSave.enabled);
         return autoSave.enabled;
+      },
+      markdownWordWrap: () => markdownWordWrap.enabled,
+      toggleMarkdownWordWrap: () => {
+        markdownWordWrap.set(!markdownWordWrap.enabled);
+        for (const state of registry.values) if (!state.window.isDestroyed())
+          state.window.webContents.send('markdown-word-wrap:changed', markdownWordWrap.enabled);
+        return markdownWordWrap.enabled;
       } });
     const filePath = documentPathFromArgs(process.argv, app.isPackaged);
     // Keep Markdown's eager worker warmup; a source-only startup needs none.

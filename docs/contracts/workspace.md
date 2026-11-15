@@ -758,17 +758,36 @@ available by pointer or keyboard, including in narrow sidebars.
 
 ## Default source word wrap
 
-Ordinary code/plain-text/Markdown source and Git diff editors default to word
-wrap off. Alt+Z and the existing Wrap command still toggle VS Code's transient
-model state, shared by split views and synchronized across diff sides. Toggling
-must preserve selection, focus, text, Undo and reader transitions; it does not
-persist a new per-file preference after the last model owner closes. Explicit
-restored editor display options continue to override the default. Notebook code
+Markdown source wraps by default in the ordinary editor and on both sides of a
+Git review, because a Markdown paragraph is one long line. Code, plain text and
+their diffs default to word wrap off. "Markdown" is decided by the document
+path, as for the reader preview, so Save As or a rename updates wrapping
+together with the syntax.
+
+View > Markdown Word Wrap (`menu-markdown-word-wrap`) is a checkbox, on until
+the user disables it. Main persists it like Auto Save, in its own
+`markdown-word-wrap.json`, and broadcasts a change to every window. A change
+reapplies wrapping to each mounted Markdown editor and review at once and must
+not alter text, focus, Undo or dirty state. Turned off, Markdown is unwrapped
+like other source.
+
+Alt+Z and the existing Wrap command still toggle VS Code's transient model
+state, shared by split views and synchronized across diff sides. That state
+overrides the setting for its model, and the next toggle inherits the setting
+again. Toggling must preserve selection, focus, text, Undo and reader
+transitions; it does not persist a new per-file preference after the last model
+owner closes. Wrapping is not recorded per view: restored editor display options
+keep line numbers, whitespace, rulers and guides, and a `wordWrap` stored by an
+older snapshot is ignored, so the menu setting always applies. Notebook code
 cells already default to no wrapping and retain their current behavior.
-`workspace/word-wrap.spec.ts` checks the new initial state and both toggle
-directions without dropping the existing independent-file, split, diff,
-read-only-side, notebook, ownership and Undo scenarios. Markdown reader layout,
-preparation and source-position guarantees remain in force.
+
+`workspace/word-wrap.spec.ts` checks the Markdown-only default beside code in
+one editor group, the live menu toggle, its persistence across a restart and
+Markdown/code Git reviews, without dropping the existing independent-file,
+split, diff, read-only-side, notebook, ownership and Undo scenarios.
+`renderer/editor/markdown-word-wrap.test.ts` and
+`main/settings/markdown-word-wrap-store.test.ts` cover the rule and its storage.
+Markdown reader layout, preparation and source-position guarantees remain in force.
 
 ## Browser reliability and compact locations
 

@@ -616,7 +616,7 @@ export class EditorTools {
       if (option === 'Indentation guides') editor.updateOptions({ guides: { indentation: !editor.getOption(E.guides).indentation } });
       const raw = editor.getRawOptions();
       if (context.viewId) setDisplayOptions(context.viewId, { lineNumbers: raw.lineNumbers, renderWhitespace: raw.renderWhitespace,
-        wordWrap: raw.wordWrap, rulers: raw.rulers, guides: raw.guides });
+        rulers: raw.rulers, guides: raw.guides });
     });
   }
 }
