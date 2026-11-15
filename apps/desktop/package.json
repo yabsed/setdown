@@ -30,8 +30,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "npm run build && bash scripts/with-isolated-display.sh playwright test",
     "start": "npm run build && node dist-electron/launcher.cjs .",
-    "package:win": "npm run build && electron-builder --win nsis --x64",
-    "package:linux": "npm run build && electron-builder --linux AppImage deb rpm",
+    "package:win": "npm run build && electron-builder --win nsis zip --x64",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb rpm tar.gz",
     "install:linux": "bash scripts/install-linux.sh",
     "update:language-profiles": "python3 scripts/update-language-profiles.py && node scripts/update-language-packages.mjs",
     "check:language-profiles": "python3 scripts/update-language-profiles.py --check && node scripts/update-language-packages.mjs --check",
@@ -144,7 +144,8 @@
       "target": [
         "AppImage",
         "deb",
-        "rpm"
+        "rpm",
+        "tar.gz"
       ],
       "maintainer": "Setdown Contributors <yabsed@snu.ac.kr>",
       "category": "Office",
@@ -161,7 +162,10 @@
       "packageName": "setdown"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "zip"
+      ],
       "icon": "build/icon.ico"
     },
     "nsis": {

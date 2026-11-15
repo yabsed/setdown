@@ -1,0 +1,44 @@
+{
+  "name": "setdown",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Setdown, a desktop Markdown reader and editor. This package downloads and starts the desktop app.",
+  "keywords": [
+    "markdown",
+    "editor",
+    "viewer",
+    "desktop",
+    "electron"
+  ],
+  "homepage": "https://github.com/yabsed/setdown",
+  "bugs": "https://github.com/yabsed/setdown/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yabsed/setdown.git",
+    "directory": "tooling/npm-launcher"
+  },
+  "license": "GPL-3.0-only",
+  "author": "Setdown Contributors",
+  "type": "module",
+  "bin": {
+    "setdown": "bin/setdown.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "release.json"
+  ],
+  "os": [
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

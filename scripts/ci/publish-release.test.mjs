@@ -130,13 +130,13 @@ function fixture(t, options = {}, releaseVersion = version) {
 const creationCalls = state => state.calls.filter(call => call[0] === 'api' && call.includes('POST'));
 const hasMutation = state => state.calls.some(call => call[0] === 'release' || call.includes('POST') || call.includes('PATCH'));
 
-test('publication verifies both platform artifacts, stages six files, then publishes once', t => {
+test('publication verifies both platform artifacts, stages eight files, then publishes once', t => {
   const f = fixture(t);
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
   const state = f.read();
   assert.equal(state.published, true);
-  assert.equal(state.release.assets.length, 6);
+  assert.equal(state.release.assets.length, 8);
   assert.deepEqual(state.release.assets.map(asset => asset.name).sort(),
     [...installerNames(version, 'win'), ...installerNames(version, 'linux'), 'build-info.json', 'SHA256SUMS'].sort());
   assert.equal(state.calls.at(-1).includes('make_latest=false'), true);
@@ -146,7 +146,7 @@ test('publication verifies both platform artifacts, stages six files, then publi
   assert.equal(state.createBodies[0].target_commitish, commit);
   const info = JSON.parse(readFileSync(path.join(f.root, 'release-assets/build-info.json'), 'utf8'));
   assert.equal(info.commit, commit);
-  assert.equal(readFileSync(path.join(f.root, 'release-assets/SHA256SUMS'), 'utf8').trim().split('\n').length, 5);
+  assert.equal(readFileSync(path.join(f.root, 'release-assets/SHA256SUMS'), 'utf8').trim().split('\n').length, 7);
   const retry = f.run();
   assert.equal(retry.status, 0, retry.stderr);
   assert.equal(f.read().calls.filter(call => call.includes('PATCH')).length, 1);
@@ -295,7 +295,7 @@ test('a failed publication leaves verified assets in a resumable draft', t => {
   const f = fixture(t, { failPublish: true });
   assert.notEqual(f.run().status, 0);
   assert.equal(f.read().release.draft, true);
-  assert.equal(f.read().release.assets.length, 6);
+  assert.equal(f.read().release.assets.length, 8);
   const state = f.read();
   state.failPublish = false;
   writeFileSync(path.join(f.root, 'github.json'), JSON.stringify(state));

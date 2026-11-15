@@ -38,9 +38,11 @@ jobs:
     uses: ./.github/workflows/desktop.yml
     with:
       channel: ${{ needs.plan.outputs.channel }}
-    # Called jobs reduce this to read except for the publish job.
+    # Called jobs reduce this to read except for the publish job. Only the npm
+    # publish job requests the OIDC token that npm trusted publishing verifies.
     permissions:
       contents: write
+      id-token: write
 
   result:
     name: CI result

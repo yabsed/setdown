@@ -94,9 +94,11 @@ jobs:
           name: installers-${{ matrix.platform }}-x64-${{ github.run_attempt }}
           path: |
             apps/desktop/release/*.exe
+            apps/desktop/release/*.zip
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
             apps/desktop/release/*.rpm
+            apps/desktop/release/*.tar.gz
             apps/desktop/release/build-info-*.json
           if-no-files-found: error
           compression-level: 0
@@ -132,3 +134,50 @@ jobs:
           RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
           RELEASE_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
         run: node scripts/ci/publish-release.mjs
+
+  # npm verifies this run's OIDC identity against the package's trusted
+  # publisher (workflow ci.yml), so no token is stored. Set the repository
+  # variable NPM_PUBLISH=true once that trusted publisher exists.
+  npm:
+    name: Publish npm launcher
+    if: inputs.channel == 'tag' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH == 'true'
+    needs: [metadata, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Trusted publishing needs npm 11.5.1 or later, which Node 24 bundles.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      # The launcher pins the checksums of the release that is already public.
+      - name: Read the published checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
+        run: gh release download "$RELEASE_TAG" --pattern SHA256SUMS --dir release-assets
+      - name: Stage the launcher
+        run: node scripts/ci/stage-npm-launcher.mjs release-assets/SHA256SUMS npm-launcher
+      - name: Publish to npm
+        env:
+          RELEASE_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
+        run: |
+          name=$(node -p "require('./npm-launcher/package.json').name")
+          # A failed-job rerun must not fail on a version that is already public.
+          if [ "$(npm view "$name@$RELEASE_VERSION" version 2>/dev/null)" = "$RELEASE_VERSION" ]; then
+            echo "$name@$RELEASE_VERSION is already published." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # A prerelease must not become what a plain npm install selects.
+          npm publish ./npm-launcher --tag "$([ "$RELEASE_PRERELEASE" = true ] && echo next || echo latest)"
+          echo "Published $name@$RELEASE_VERSION to npm." >> "$GITHUB_STEP_SUMMARY"

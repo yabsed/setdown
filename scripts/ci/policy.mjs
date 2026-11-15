@@ -46,9 +46,15 @@ export function releaseMetadata({ channel, version, lockVersion, ref, event, run
 }
 
 export function installerNames(version, platform) {
-  const suffixes = { win: ['x64.exe'], linux: ['x86_64.AppImage', 'amd64.deb', 'x86_64.rpm'] }[platform];
+  const suffixes = { win: ['x64.exe', 'x64.zip'], linux: ['x86_64.AppImage', 'amd64.deb', 'x86_64.rpm', 'x64.tar.gz'] }[platform];
   if (!suffixes) throw Error(`Unsupported platform: ${platform}`);
   return suffixes.map(suffix => `Setdown-${version}-${platform}-${suffix}`);
+}
+
+/** Portable archives downloaded by the npm launcher, keyed by Node's
+ * `${process.platform}-${process.arch}`. Each one is also a release installer. */
+export function launcherArchives(version) {
+  return { 'linux-x64': `Setdown-${version}-linux-x64.tar.gz`, 'win32-x64': `Setdown-${version}-win-x64.zip` };
 }
 
 export function latestArtifact(directories, platform) {

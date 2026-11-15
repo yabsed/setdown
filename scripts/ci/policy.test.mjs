@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { documentationOnly, installerNames, latestArtifact, planChecks, previewStillCurrent, releaseMetadata } from './policy.mjs';
+import { documentationOnly, installerNames, latestArtifact, launcherArchives, planChecks, previewStillCurrent, releaseMetadata } from './policy.mjs';
 import { sandboxPath } from './electron-sandbox.mjs';
 
 test('only known documentation paths may skip desktop checks', () => {
@@ -54,7 +54,10 @@ test('failed-job reruns select the newest successful artifact separately for eac
   assert.equal(latestArtifact(directories, 'win'), 'installers-win-x64-1');
   assert.equal(latestArtifact(directories, 'linux'), 'installers-linux-x64-2');
   assert.throws(() => latestArtifact(['package-failure-win-1'], 'win'));
-  assert.equal(installerNames('1.0.1-dev.1', 'linux').length, 3);
+  assert.equal(installerNames('1.0.1-dev.1', 'linux').length, 4);
+  // The npm launcher may only point at archives that a release verifies and checksums.
+  const released = ['win', 'linux'].flatMap(platform => installerNames('1.0.1-dev.1', platform));
+  for (const archive of Object.values(launcherArchives('1.0.1-dev.1'))) assert.equal(released.includes(archive), true, archive);
   assert.throws(() => installerNames('1.0.0', 'unknown'));
 });
 

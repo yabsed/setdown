@@ -75,3 +75,4 @@ jobs:
       channel: ${{ inputs.channel }}
     permissions:
       contents: write
+      id-token: write

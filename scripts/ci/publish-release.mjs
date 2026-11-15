@@ -122,6 +122,7 @@ const notes = [
   '', `Source: [${commit.slice(0, 12)}](https://github.com/${repo}/commit/${commit})`,
   `Validation and packaging: [workflow run](${runUrl})`, '',
   'Windows x64: `.exe`. Linux x64: `.AppImage`, `.deb`, or `.rpm`.',
+  'The `.zip` and `.tar.gz` archives are portable builds without an installer.',
   'Windows installers are unsigned. Check `SHA256SUMS` to verify your download.',
   '',
 ].join('\n');
