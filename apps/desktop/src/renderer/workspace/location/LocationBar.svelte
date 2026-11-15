@@ -135,6 +135,11 @@ import type { AppActions } from '../../ports/ui-actions';
     if (bar) resize.observe(bar);
     if (controls) resize.observe(controls);
     if (input) resize.observe(input);
+    // A horizontal sash moves this bar without resizing it. Its group does
+    // resize, so an open dropdown follows the bar instead of staying behind.
+    const moved = new ResizeObserver(() => { placement++; });
+    const section = bar?.closest('.editor-group');
+    if (section) moved.observe(section);
     const offChoice = actions.locationSuggestions.onChoice(choice => {
       if (choice.token === popupToken && editing && suggestions.some(row => row.url === choice.url)) void go(choice.url);
     });
@@ -150,7 +155,7 @@ import type { AppActions } from '../../ports/ui-actions';
     const reposition = measure;
     window.addEventListener('resize', reposition);
     window.addEventListener('setdown:focus-location', focus);
-    return () => { resize.disconnect(); offChoice(); offHidden(); offPanel(); window.removeEventListener('pointerdown', outside, true); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); };
+    return () => { resize.disconnect(); moved.disconnect(); offChoice(); offHidden(); offPanel(); window.removeEventListener('pointerdown', outside, true); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); };
   });
 </script>
 

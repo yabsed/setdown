@@ -392,7 +392,10 @@ advancing video frames beside Markdown, web Reader and live web content,
 unchanged native page bounds/identity, Korean composition, native pointer
 selection and keyboard dismissal.
 Hiding an empty suggestion list or repositioning it on window resize is a
-presentation change, not an address-edit cancellation. Renderer-requested hides
+presentation change, not an address-edit cancellation. Dragging a split sash
+keeps the address edit, so the open list follows its address bar, including a
+stacked split whose sash moves the bar without resizing it;
+`browser/layout.spec.ts` drags that sash with the list open. Renderer-requested hides
 must not echo a native cancellation event that resets its draft to the committed
 URL. Mouse-focused typing preserves the draft, caret and IME across matching →
 empty → matching queries; explicit Escape and actual focus/tab changes retain

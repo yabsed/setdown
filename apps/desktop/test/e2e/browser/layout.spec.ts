@@ -304,6 +304,61 @@ t.XTestFakeButtonEvent(d,1,1,0); t.XTestFakeButtonEvent(d,1,0,0); x.XFlush(d); x
   } finally { await f.dispose(); }
 });
 
+test('address suggestions stay attached to their address bar while a stacked split is resized', async () => {
+  const f = await fixture();
+  try {
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1400, 1000));
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(tab).toBeVisible();
+    // Drop the web tab on the lower edge: the document stays above it.
+    const data = await f.page.evaluateHandle(() => new DataTransfer());
+    await tab.dispatchEvent('dragstart', { dataTransfer: data });
+    const body = f.page.locator('.group-body').first(), bounds = (await body.boundingBox())!;
+    const point = { clientX: bounds.x + bounds.width / 2, clientY: bounds.y + bounds.height * .98, dataTransfer: data };
+    await body.dispatchEvent('dragover', point); await body.dispatchEvent('drop', point);
+    await tab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+    const bars = f.page.locator('.location-bar'), sash = f.page.locator('.group-sash:not(.vertical)');
+    await expect(bars).toHaveCount(2);
+    await expect(sash).toHaveCount(1);
+    await f.page.evaluate(url => window.marktex.browser.bookmark(url, 'Chosen destination', true), `${f.origin}/second`);
+    // Moving this sash moves the lower pane's bar without changing its size.
+    const tops = await bars.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().top));
+    const bar = bars.nth(tops.indexOf(Math.max(...tops)));
+    const address = bar.getByRole('textbox', { name: 'Address or file path', exact: true });
+    await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.focus());
+    await address.click(); await address.fill(f.origin);
+    await expect.poll(() => f.app.windows().some(page => page.url().includes('location-overlay=1'))).toBe(true);
+    const popup = f.app.windows().find(page => page.url().includes('location-overlay=1'))!;
+    await expect(popup.getByRole('option', { name: /Chosen destination/ })).toBeVisible();
+    // Native pixels between the bar's lower edge and the dropdown's top: 0 while attached.
+    const gap = async () => {
+      const edge = await bar.evaluate(node => node.getBoundingClientRect().bottom - 1);
+      return f.app.evaluate(({ BrowserWindow }, edge) => {
+        const owner = BrowserWindow.getAllWindows()[0];
+        const view = owner.contentView.children.find(view => 'webContents' in view
+          && (view as Electron.WebContentsView).webContents.getURL().includes('location-overlay=1'));
+        return view?.getVisible() ? view.getBounds().y - Math.round(edge * owner.webContents.getZoomFactor()) : null;
+      }, edge);
+    };
+    await expect.poll(gap).toBe(0);
+    const before = (await bar.boundingBox())!, handle = (await sash.boundingBox())!;
+    const x = handle.x + handle.width / 2, y = handle.y + handle.height / 2;
+    await f.page.mouse.move(x, y); await f.page.mouse.down();
+    await f.page.mouse.move(x, y - 150, { steps: 8 });
+    await expect.poll(async () => (await bar.boundingBox())!.y).toBeLessThan(before.y - 100);
+    expect((await bar.boundingBox())!.width).toBe(before.width);
+    // The edit continues through the drag, so its dropdown must follow the bar
+    // both while the sash is held and after it is released.
+    await expect(address).toBeFocused();
+    await expect.poll(gap).toBe(0);
+    await f.page.mouse.up();
+    await expect(address).toBeFocused();
+    await expect.poll(gap).toBe(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('application menus preserve live video frames, playback and web view visibility', async () => {
   const f = await fixture();
   try {
