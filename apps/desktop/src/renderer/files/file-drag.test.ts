@@ -2,14 +2,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fileDrag, FILE_DRAG_END } from './file-drag';
 
 const events: string[] = [];
-const listeners = new Map<string, () => void>();
+const listeners = new Map<string, (event?: unknown) => void>();
 const dragEvent = (...types: string[]) => ({ dataTransfer: { types } }) as unknown as DragEvent;
 beforeEach(() => {
   vi.useFakeTimers(); events.length = 0; listeners.clear();
   vi.stubGlobal('window', {
     dispatchEvent: (event: Event) => { events.push(event.type); return true; },
-    addEventListener: (type: string, listener: () => void) => { listeners.set(type, listener); },
-    removeEventListener: (type: string, listener: () => void) => { if (listeners.get(type) === listener) listeners.delete(type); },
+    addEventListener: (type: string, listener: (event?: unknown) => void) => { listeners.set(type, listener); },
+    removeEventListener: (type: string, listener: (event?: unknown) => void) => { if (listeners.get(type) === listener) listeners.delete(type); },
   });
 });
 afterEach(() => { vi.runAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -18,11 +18,17 @@ it('records the OS file drag of a folder tab until the drag is over, and proves 
   let finish = () => {};
   const startDrag = vi.fn(() => new Promise<void>(resolve => { finish = resolve; })), cancelDrag = vi.fn();
   const drag = fileDrag.start({ startDrag, cancelDrag }, ['/home/a.md', '/home/data'], ['/home/a.md']);
-  expect(startDrag).toHaveBeenCalledWith(['/home/a.md', '/home/data']);
+  // No document here, so no name tag is drawn; in the window the second argument carries it.
+  expect(startDrag).toHaveBeenCalledWith(['/home/a.md', '/home/data'], undefined);
   // A mouseup can only reach this window before the OS drag holds the pointer: the pending drag is called off.
   expect(cancelDrag).not.toHaveBeenCalled();
   listeners.get('mouseup')!();
   expect(cancelDrag).toHaveBeenCalledOnce();
+  // Escape gives a running drag up where Setdown itself is the drag source; other keys do not.
+  listeners.get('keydown')!({ key: 'a' });
+  expect(cancelDrag).toHaveBeenCalledOnce();
+  listeners.get('keydown')!({ key: 'Escape' });
+  expect(cancelDrag).toHaveBeenLastCalledWith(true);
   expect(events).toEqual([]);
   expect(fileDrag.owns(dragEvent('Files'))).toBe(true);
   // Another payload in the same window (a tab, Explorer entries) is not this drag.
@@ -32,7 +38,7 @@ it('records the OS file drag of a folder tab until the drag is over, and proves 
   expect(fileDrag.dropped(['/home/a.md', '/elsewhere/b.md'])).toBe(false);
   expect(fileDrag.dropped([])).toBe(false);
   finish(); await drag;
-  expect(listeners.has('mouseup')).toBe(false);
+  expect(listeners.has('mouseup')).toBe(false); expect(listeners.has('keydown')).toBe(false);
   expect(events).toEqual([FILE_DRAG_END]);
   // The drop may be delivered just after main reports the end of the drag.
   expect(fileDrag.dropped(['/home/a.md'])).toBe(true);

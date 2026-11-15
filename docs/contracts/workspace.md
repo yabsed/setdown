@@ -237,13 +237,18 @@ occupies 34 CSS pixels below the tab strip; both document preparation and visibl
 readers use the resulting group body. Existing viewport, IME, revision and timing
 guarantees still apply.
 
-Local addresses display encoded `file:///` URLs while document state retains
-filesystem paths. Explicit address navigation can replace a file with a web page
+Local addresses display `file:///` URLs while document state retains filesystem
+paths. The address bar shows a file's name as a file manager does: Hangul and
+other non-ASCII text, spaces and brackets are literal, and only what would read
+back differently keeps its escape (`%`, `#`, `?`, a backslash, invisible
+characters, non-UTF-8 bytes, a final space), so the shown text still opens the
+same file (`readableFileLocation`). Web addresses are shown as the page reports
+them. Explicit address navigation can replace a file with a web page
 or a web page with a file in the same tab and editor group. Failed reads, canceled
 save prompts, and rejected web beforeunload preserve the outgoing resource.
 Superseded reads cannot replace a newer address; native close events emitted
-during replacement cannot remove the retained tab. File URL encoding and the
-same-tab lifecycle are covered by `file-location.test.ts`,
+during replacement cannot remove the retained tab. File URL encoding, its
+readable form and the same-tab lifecycle are covered by `file-location.test.ts`,
 `text-workspace.test.ts`, and `test/e2e/browser/*.spec.ts` in the focused gate.
 
 Back/Forward spans file locations and web segments in each tab. Explorer preview
@@ -944,6 +949,27 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   on one is an ordinary file drop), and an X11 source drops with the answer to its
   previous pointer position, so a release in the same instant the pointer first
   reaches a target is a cancel.
+- **File drags on a Wayland desktop.** There Setdown is an XWayland client, and
+  Chromium's X11 drag source reaches no native Wayland application (Discord,
+  Files, a Wayland browser) through Mutter's XDND bridge: it looks for drop
+  targets only in `_NET_CLIENT_LIST_STACKING`, which never lists the compositor's
+  input-only proxy window, and it sends XDND messages from a window other than
+  the `XdndSelection` owner, which the bridge ignores. So on an X11 window in a
+  Wayland session (`needsX11FileDrag`; `SETDOWN_X11_FILE_DRAG=1|0` forces the
+  choice) `files:start-drag` runs Setdown's own XDND source instead,
+  `main/files/x11-file-drag.py`, like `x11-pinch.py` a Python/Xlib helper. It
+  owns the selection with the window it speaks from, offers `text/uri-list` with
+  copy and link like Chromium's source, targets the compositor's proxy while it
+  is mapped over the pointer and otherwise the X11 window there, serves the
+  selection until `XdndFinished`, and never deletes a source file. It takes no
+  grab: the button is already held in a Setdown window, so it polls the pointer
+  and ends at the release; the window keeps the keyboard, and Escape there
+  abandons the drag (`cancelDrag(true)`). The window draws the name tag that
+  follows the pointer (`dragLabel`). Setdown's own drop targets are unchanged:
+  they still recognize the drag by its dropped paths. If the helper cannot run
+  (no Python or Xlib) Chromium's source is used as before. A plain X11 session
+  keeps Chromium's source. Only one source may take `XdndSelection` per press:
+  Mutter starts a second drag grab over the first when the owner changes mid-drag.
 - **Narrow panes.** Below 560 CSS px the Places sidebar becomes a drawer over the
   list only. The toolbar (and its Places toggle) always spans the pane, columns
   drop from four to two to one, and the file name column is never removed. Places
@@ -982,6 +1008,11 @@ cover drag and drop with real pointer input: moving a file and a document into a
 subfolder, a web page receiving the dragged files' contents, a tab-strip drop,
 a second process's files moving into the folder under the pointer, and an Explorer
 drop that copies a file from outside the workspace but moves one of its own.
+`test/wayland/folder-drag.spec.ts` (`npm run test:xwayland`, private headless
+Mutter) covers the Wayland desktop: an XWayland Setdown moves a file into its own
+subfolder, a native Wayland process sees the dragged file while it hovers, Escape
+abandons the drag, and a drop delivers the file's contents.
+`x11-file-drag.test.ts` covers the choice of source and the name tag's pixels.
 
 ## Browser library: passwords, bookmark export, page developer tools, clearing data
 

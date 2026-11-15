@@ -250,7 +250,8 @@ test('file URLs and web addresses replace the current tab, including PDFs outsid
     const contentsId = await f.app.evaluate(({ webContents }, origin) => webContents.getAllWebContents().find(wc => wc.getURL() === `${origin}/first`)!.id, f.origin);
     await go(pathToFileURL(pdf).href);
     await expect(selected).toContainText(path.basename(pdf));
-    await expect(address).toHaveValue(pathToFileURL(pdf).href);
+    // The address reads like the file name; only `#` and `%` keep their escapes.
+    await expect(address).toHaveValue(`file://${downloads}/'26년 하반기 서울대 JD_게시용 %23 %2520.pdf`);
     const reader = f.page.getByRole('region', { name: 'PDF reader', exact: true });
     await expect(reader).toHaveAttribute('data-pdf-pages', '2');
     await expect(reader.getByRole('combobox', { name: 'PDF zoom' })).toHaveValue('1.2');
@@ -365,3 +366,32 @@ test('Back and Forward traverse file and web boundaries while restoring the nati
   } finally { await f.dispose(); }
 });
 
+
+test('the address bar shows a file name readably and reopens the same file from that text', async () => {
+  const f = await fixture();
+  const file = path.join(f.root, '[붙임1] 컴퓨터공학부 지침 #2 copy (3).txt');
+  await writeFile(file, '한글 이름의 문서\n');
+  try {
+    const selected = f.page.locator('.document-tab[aria-selected="true"]');
+    await expect(selected).toContainText('notes.md');
+    const address = f.page.getByRole('textbox', { name: 'Address or file path' });
+    await address.fill(pathToFileURL(file).href); await address.press('Enter');
+    await expect(selected).toContainText('컴퓨터공학부');
+    // Hangul, spaces and brackets are literal; `#` would start a fragment, so it stays escaped.
+    const shown = `file://${f.root}/[붙임1] 컴퓨터공학부 지침 %232 copy (3).txt`;
+    await expect(address).toHaveValue(shown);
+    await expect(address).toHaveAttribute('title', shown);
+    await address.fill(pathToFileURL(path.join(f.root, 'notes.md')).href); await address.press('Enter');
+    await expect(selected).toContainText('notes.md');
+    // The shown text is a working address, not only a label.
+    await address.fill(shown); await address.press('Enter');
+    await expect(selected).toContainText('컴퓨터공학부');
+    await expect(f.page.locator('.editor-surface .view-line').first()).toContainText('한글 이름의 문서');
+    await expect(address).toHaveValue(shown);
+    await f.page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(selected).toContainText('notes.md');
+    await f.page.getByRole('button', { name: 'Forward', exact: true }).click();
+    await expect(address).toHaveValue(shown);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});

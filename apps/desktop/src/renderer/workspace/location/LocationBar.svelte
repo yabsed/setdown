@@ -11,14 +11,15 @@ import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../../project/project-state.svelte';
   import { browser } from '../../browser/browser-state.svelte';
   import type { BrowserPlace } from '../../../protocol/browser';
-  import { fileLocation, isFileLocation } from '../../../core/document/file-location';
+  import { fileLocation, isFileLocation, readableFileLocation } from '../../../core/document/file-location';
   import { isMarkdownPath } from '../../editor/markdown-editor-port';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
   const tab = $derived(view.tabs.find(t => t.id === group?.activeId));
   const review = $derived(groupId === view.focusedGroupId && project.gitDiffActive ? project.gitDiff : null);
   const web = $derived(!review && tab?.kind === 'web' ? tab.page : undefined);
-  const location = $derived(review ? fileLocation(review.filePath) : tab?.kind === 'web' || tab?.kind === 'terminal' ? tab.path : tab ? fileLocation(tab.path) : '');
+  // Shown and edited as text: a file's name reads as it does in a file manager, not as percent-escapes.
+  const location = $derived(readableFileLocation(review ? fileLocation(review.filePath) : tab?.kind === 'web' || tab?.kind === 'terminal' ? tab.path : tab ? fileLocation(tab.path) : ''));
   let input = $state<HTMLInputElement>();
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;

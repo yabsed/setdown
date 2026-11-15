@@ -447,7 +447,8 @@
       "command": "test:xwayland",
       "environment": "private headless Mutter/XWayland, Python gi, native virtual input; test:wayland additionally diagnoses native transport; no desktop connection",
       "files": [
-        "test/wayland/tab-drag.spec.ts"
+        "test/wayland/tab-drag.spec.ts",
+        "test/wayland/folder-drag.spec.ts"
       ]
     },
     "language-servers": {

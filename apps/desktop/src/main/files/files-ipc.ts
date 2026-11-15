@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { app, nativeImage, shell, type NativeImage } from 'electron';
+import { app, nativeImage, screen, shell, type NativeImage } from 'electron';
 import { lstatSync } from 'node:fs';
 import type { ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
 import type { ProjectEntryKind } from '../../protocol/desktop-api';
@@ -9,6 +9,7 @@ import { canonicalPath } from '../documents/file-system';
 import type { FileBrowserService } from './file-browser-service';
 import { applicationsFor, compressFiles, emptyTrash, extractArchive, mountVolume, openWith, properties, setBookmark, thumbnail, unmountVolume } from './desktop-integration';
 import type { FolderRequests } from './file-manager-launch';
+import { dragPixels, needsX11FileDrag, startX11FileDrag, type X11FileDrag } from './x11-file-drag';
 
 const absolute = (candidate: unknown): string => {
   if (typeof candidate !== 'string' || candidate.includes('\0') || !path.isAbsolute(candidate)) throw new Error('Invalid file path.');
@@ -68,19 +69,45 @@ export function installFilesIpc(channels: WindowIpc, files: FileBrowserService, 
   // files to web pages or other applications. Electron runs the drag inside
   // this call, so the reply reaches the renderer when the drag has ended.
   const dragIcons = new Map<string, NativeImage>(), dragReleased = new Set<number>();
-  channels.on('files:cancel-drag', state => { dragReleased.add(state.webContentsId); });
-  channels.handle('files:start-drag', async (state, paths: unknown) => {
+  // On a Wayland desktop the drag runs in Setdown's own XDND source (x11-file-drag.ts):
+  // Chromium's reaches other X11 windows, but no native Wayland application.
+  const ownSource = () => needsX11FileDrag(process.platform, process.env, app.commandLine.getSwitchValue('ozone-platform'));
+  const ownDrags = new Map<number, X11FileDrag>();
+  channels.on('files:cancel-drag', (state, abandon: unknown) => {
+    dragReleased.add(state.webContentsId);
+    if (abandon === true) ownDrags.get(state.webContentsId)?.cancel();
+  });
+  channels.handle('files:start-drag', async (state, paths: unknown, label: unknown) => {
     dragReleased.delete(state.webContentsId);
     const dragged = list(paths);
     if (!dragged.length) throw new Error('Select files or folders first.');
     const kind = lstatSync(dragged[0]).isDirectory() ? '/' : path.extname(dragged[0]).toLowerCase();
-    let icon = dragIcons.get(kind);
-    if (!icon) {
-      // startDrag silently does nothing without an image.
-      icon = await app.getFileIcon(dragged[0], { size: 'small' }).then(image => image.isEmpty() ? null : image, () => null)
-        ?? nativeImage.createFromBitmap(Buffer.alloc(16 * 16 * 4, 0x80), { width: 16, height: 16 });
-      dragIcons.set(kind, icon);
+    const fileIcon = async (size: 'small' | 'normal') => {
+      const key = `${size}:${kind}`;
+      let icon = dragIcons.get(key);
+      if (!icon) {
+        // startDrag silently does nothing without an image.
+        icon = await app.getFileIcon(dragged[0], { size }).then(image => image.isEmpty() ? null : image, () => null)
+          ?? nativeImage.createFromBitmap(Buffer.alloc(16 * 16 * 4, 0x80), { width: 16, height: 16 });
+        dragIcons.set(key, icon);
+      }
+      return icon;
+    };
+    if (ownSource()) {
+      const pixels = dragPixels(label, label ? null : await fileIcon('normal'), screen.getPrimaryDisplay().scaleFactor);
+      if (dragReleased.delete(state.webContentsId) || state.window.isDestroyed()) return;
+      ownDrags.get(state.webContentsId)?.cancel();
+      const drag = startX11FileDrag(dragged, pixels), cancel = () => drag.cancel();
+      ownDrags.set(state.webContentsId, drag);
+      state.window.once('closed', cancel);
+      try { if (await drag.done) return; }
+      finally {
+        if (ownDrags.get(state.webContentsId) === drag) ownDrags.delete(state.webContentsId);
+        state.window.removeListener('closed', cancel);
+      }
+      // The source could not run (no Python or Xlib). Chromium's still reaches X11 windows.
     }
+    const icon = await fileIcon('small');
     // A drag started after the button went up would stay attached to the pointer
     // and drop on the next click. Cached images keep this path synchronous.
     if (dragReleased.delete(state.webContentsId) || state.window.isDestroyed()) return;

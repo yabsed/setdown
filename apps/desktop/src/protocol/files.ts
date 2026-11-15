@@ -4,6 +4,9 @@ import type { ProjectEntry, ProjectEntryKind, ProjectEntryMove } from './desktop
 export type { FolderEntry, FolderListing, FolderPlace, FolderLocation, PathPickerFilter, PathPickerRequest, FileApplication, FileProperties, FolderOpenRequest } from '../core/files/folder-types';
 import type { FileApplication, FileProperties, FolderEntry, FolderListing, FolderLocation, FolderOpenRequest, FolderPlace, PathPickerRequest } from '../core/files/folder-types';
 
+/** A small picture drawn by the window (straight-alpha RGBA rows) that follows the pointer during a file drag. */
+export type DragLabel = { width: number; height: number; rgba: Uint8Array };
+
 export interface FilesApi {
   home(): Promise<string>;
   list(path: string): Promise<FolderListing>;
@@ -19,9 +22,12 @@ export interface FilesApi {
   restore(path: string): Promise<string>;
   transfer(request: ExplorerTransfer): Promise<ExplorerOperationResult>;
   /** Drag these paths as an OS file drag (to web pages and other applications); resolves when the drag ends. */
-  startDrag(paths: string[]): Promise<void>;
-  /** The button was released before the OS drag began; a pending `startDrag` must not start it. */
-  cancelDrag(): void;
+  startDrag(paths: string[], label?: DragLabel): Promise<void>;
+  /**
+   * The button was released before the OS drag began; a pending `startDrag` must not start it.
+   * `abandon` also gives up a drag that is under way (Escape) where Setdown runs it itself.
+   */
+  cancelDrag(abandon?: boolean): void;
   /** How files dropped from another application enter `target`: moved within a volume, otherwise copied. */
   dropKind(paths: string[], target: string): Promise<'move' | 'import'>;
   /** Stop the running transfer; progress arrives on the shared `explorer.onProgress`. */
