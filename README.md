@@ -66,6 +66,14 @@ panes, resize them, or move them between windows.
 Download the [latest release](https://github.com/yabsed/setdown/releases/latest)
 for **Windows x64** (`.exe`) or **Linux x64** (`.deb`, `.rpm`, `.AppImage`).
 
+With Node.js 20 or later you can install the `setdown` command from npm
+instead. It downloads the app the first time it runs:
+
+```bash
+npm install -g @yabsed/setdown
+setdown notes.md
+```
+
 1. Open a Markdown file, or choose **File → Open Folder…** for Explorer, search, and Git.
 2. Double-click a passage to write. Press `Esc` to read.
 3. Open a reference and drag its tab to an edge to keep it beside your document.
