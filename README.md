@@ -57,8 +57,6 @@ panes, resize them, or move them between windows.
 
 - **References.** Open web pages, PDFs, and images alongside your writing. Switch
   supported articles to Reader mode and export them as Markdown or PDF.
-- **Word documents.** Read `.docx` files as pages, edit them in place, and save them
-  back as Word documents. Other Office and Hangul files open read-only.
 - **Code and notebooks.** Edit source files, run Jupyter cells, and inspect outputs.
   Open a terminal when you need one.
 - **Git.** Stage changes, commit, and browse history in the same workspace.

@@ -256,7 +256,7 @@ export type ApplicationMenuEntry = {
 
 export type CloseDecision = 'cancel' | 'discard' | 'save';
 
-export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo' | 'office:undo' | 'office:redo'
+export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
   | 'reader-select-all'
   | 'new-web-tab'
@@ -297,7 +297,6 @@ export type MarkTexApi = {
   readPdfRange(path: string, begin: number, end: number, version: DiskVersion): Promise<Uint8Array>;
   showPdfSelectionMenu(path: string, selection: string): Promise<void>;
   imageEdit: import('./image-edit').ImageEditApi;
-  docxEdit: import('./docx-edit').DocxEditApi;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   readOfficeBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;

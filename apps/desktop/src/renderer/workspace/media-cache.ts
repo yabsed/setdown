@@ -2,7 +2,6 @@ import type { DocumentSnapshot } from '../../core/document/document';
 import type { ReadingPosition } from '../../core/reading/reading-position';
 import type { WorkspaceTab } from '../../core/workspace/workspace-state';
 import type { PdfReadingPosition } from '../../core/reading/reading-position';
-import { isWordEditorDocument } from '../../core/document/document-capabilities';
 
 export type MediaTab = { id: string; key: string; document: DocumentSnapshot; position?: ReadingPosition; remote?: string };
 type MediaInput = { id: string; document: DocumentSnapshot; readingPosition?: ReadingPosition; remote?: string };
@@ -13,10 +12,8 @@ export function webPdfMedia(tab: WorkspaceTab, positions: Record<string, PdfRead
   return [{ id: tab.id, remote: token, readingPosition: positions[token], document: { kind: 'pdf', path: tab.page.url,
     name: tab.page.title, text: '', savedText: '', revision: 0, savedRevision: 0, isUntitled: false, diskVersion: { size, mtimeMs: 0 } } }];
 }
-/** A Word document's surface shows a workspace-owned editing session, which follows saves and reloads itself;
- * remounting it for a new disk version would drop the caret and repaint every page on each save. */
 export const mediaKey = (tab: Pick<MediaInput, 'id' | 'document' | 'remote'>): string =>
-  JSON.stringify([tab.id, tab.document.kind, tab.document.path, isWordEditorDocument(tab.document) ? 'word' : tab.document.diskVersion, tab.remote]);
+  JSON.stringify([tab.id, tab.document.kind, tab.document.path, tab.document.diskVersion, tab.remote]);
 
 /** Keep only visited, current-version surfaces. Eviction unmounts their resources. */
 export class MediaCache {

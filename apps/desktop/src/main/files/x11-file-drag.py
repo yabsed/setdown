@@ -266,6 +266,8 @@ class Source:
         return candidates[0] if candidates else None
 
     def send(self, message, first=0, second=0, third=0, fourth=0):
+        if self.target is None:
+            return
         destination, named, _ = self.target
         event = Event()
         event.client.type, event.client.window, event.client.format = CLIENT_MESSAGE, named, 32
@@ -275,6 +277,8 @@ class Source:
         self.x.XSendEvent(self.display, destination, 0, 0, C.byref(event))
 
     def send_position(self):
+        if self.position is None:
+            return
         x, y = self.position
         self.send('XdndPosition', 0, (x << 16) | (y & 0xffff), self.now(), self.atom('XdndActionCopy'))
         self.waiting, self.waiting_since, self.pending = True, time.monotonic(), False

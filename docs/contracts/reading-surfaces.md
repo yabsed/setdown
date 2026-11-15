@@ -417,7 +417,7 @@ menu selection, clipboard-visible ranges, sibling terminals and live pages.
 
 ### Office and Hangul documents — 2026-11-14
 
-Word (`docm`, `dotx`, `dotm`, `doc`, `dot`; `docx` see below), Excel (`xlsx`, `xlsm`,
+Word (`docx`, `docm`, `dotx`, `dotm`, `doc`, `dot`), Excel (`xlsx`, `xlsm`,
 `xltx`, `xltm`, `xlsb`, `xls`, `xlt`), PowerPoint (`pptx`, `pptm`, `potx`, `potm`,
 `ppsx`, `ppsm`, `ppt`, `pot`) and Hangul (`hwp`, `hwpx`) files open as read-only
 `office` documents in an ordinary media tab. `core/document/document-profile.ts`
@@ -457,104 +457,3 @@ appearance at the current position.
 bounded version-checked reads, the read-only boundary, zoom, find, every family in
 real Electron, link containment and position restoration.
 `scripts/office-viewer-notices.test.mjs` covers the bundled license notices.
-
-Since 2026-11-15 a `.docx` that really is a Word document is the one exception to
-"read-only": it opens in the Word editor described next. Every other format above,
-including `docm`, `dotx`, `dotm`, `doc` and `dot`, and any file that is only
-*named* `.docx`, keeps this viewer and this section's guarantees unchanged.
-
-### Word document editing — 2026-11-15
-
-A `.docx` file is still an `office` document in an ordinary media tab, with the
-same 128 MiB bound, version-checked read, tab zoom, `Ctrl/Cmd+F`, link containment
-and scroll-ratio reading position as the viewer above. There is still no text
-model: these documents cannot be opened, saved or chosen as a destination through
-the text save path.
-
-**The name is not enough.** A spreadsheet, a legacy binary document or a web page
-can be named `.docx`; the engine would show such a file as an empty page that a
-save would write over the data. When main reads the document's metadata
-(`main/documents/office-file.ts`) it checks the bytes: a ZIP archive whose
-`[Content_Types].xml` declares a Word main document part that is present
-(`wordPackageProblem` in `main/documents/docx-save.ts`). Only then does the
-snapshot carry `officeEditor: 'word'`, and every decision follows that mark
-through `isWordEditorDocument` (`core/document/document-capabilities.ts`): which
-surface `App.svelte` mounts (`renderer/docx/DocxSurface.svelte`, otherwise
-`OfficeSurface.svelte`), the content owner, the media-cache key, Save and Save As
-in the menu, and undo routing. A reload re-reads the verdict, so a file that
-becomes, or stops being, a Word document changes surface in the same tab. The
-bytes handed to the engine (`docx-edit:open`) are checked again, and a save is
-checked a third time before anything is written.
-
-`renderer/docx/docx-runtime.ts` is the only importer of eigenpal/docx-editor
-(`@docx-editor.dev/core` and `@docx-editor.dev/fonts`, both Apache-2.0). It loads
-with the first Word document, never at startup. Fonts come from this
-application's own assets only; nothing is requested from another origin, and a
-missing face falls back to the browser's measurement instead of failing the open.
-The engine's separately licensed Pro packages (tracked changes, comments, charts,
-PDF export, automation, telemetry) are not installed and must not be added: their
-license forbids distribution.
-
-A document opens for **reading** (`mode: 'view'`): input on the pages changes
-nothing. **Edit document**, or a double click on the pages, enters editing; **Done**
-or `Esc` returns to reading, as for Markdown. `Esc` during an IME composition, or
-one the engine consumes itself (leaving a header, a footnote or the format
-painter), does not leave editing. Unsaved edits stay in the tab in either mode.
-
-`renderer/docx/docx-sessions.ts` owns one engine per open Word document, as a
-workspace content owner beside notebooks and images. A surface only mounts and
-unmounts that engine, so edits, undo history and the editing mode survive tab
-switches, media-cache eviction, memory reclamation, saves and Save As. An unedited
-session is freed shortly after its surface is unmounted and read again from disk
-when it is next shown; an edited one is kept until it is saved, discarded or
-closed, and its tab is protected from memory reclamation. The media-cache key of
-an editable Word document deliberately excludes the disk version, so a save does
-not remount the surface or move the caret.
-
-Reading the engine can commit input it was still holding. `DocxSurface.svelte`
-therefore reads engine state only when the engine notifies, never from a template
-expression or a derived value, and a listener that throws never unwinds into the
-engine.
-
-**Saving.** Save, Save As, the close prompt, Save All on window close and the
-toolbar buttons all go through the same content owner. The renderer serializes
-the whole package; `main/documents/docx-edit-ipc.ts` accepts it only for a `.docx`
-that is open in the requesting window, at most 128 MiB, and only if it still is a
-Word document package by the same check. `main/documents/docx-save.ts` writes and
-syncs a sibling temporary file, replaces the document with one rename, keeps its
-mode, and refuses when the destination
-is not the disk version the tab was editing; the writer then reloads or uses
-Save As. A save in place is not reported back as an external change. Save As adds
-`.docx` to a bare name, refuses other extensions and never replaces a file open
-in another tab. Input the engine commits as a save starts counts as saved; edits
-made while the file is written stay unsaved. There is no auto save for Word
-documents.
-
-**Other applications.** A changed file reloads an unedited document. An edited one
-shows the external-change notice instead; Save then fails without touching the
-file, **Reload** asks before dropping the edits, and **Keep My Changes** only
-dismisses the notice (Save As remains the way out).
-
-**Recovery.** Unsaved Word edits are part of the workspace recovery snapshot as a
-serialized package (24 MiB limit shared with other content). Serialization waits
-for a typing pause, at most ten seconds. Restoring writes a separate
-`Recovered-document.docx` and never the original file.
-
-**History and commands.** The engine keeps its own undo history: `Ctrl/Cmd+Z`,
-`Ctrl/Cmd+Y` and the Edit menu (`office:undo`/`office:redo`) reach it; text fields
-keep their own. A tab with unsaved Word edits cannot be dragged to another group
-or window, because the edits live in this window's engine.
-
-**Links.** A click on an external `http(s)` link opens a Setdown browser tab at
-once while reading; while editing, the click places the caret and the link is
-offered in a small panel. Nothing else navigates, as for every Office document.
-
-`docx-save.test.ts`, `docx-sessions.test.ts`, `media-cache.test.ts`,
-`office-file.test.ts`, `editor-tools.test.ts` and `media/docx-editor.spec.ts` cover
-package validation, the content verdict for misnamed files, the atomic
-version-checked write, ownership checks, session lifetime, read-only reading,
-zoom, find, editing with toolbar formatting and undo, Korean composition, Save and
-Save As, the close prompt, eviction with unsaved edits, external changes, position
-restoration, links and crash recovery in real Electron. `scripts/office-viewer-notices.test.mjs` also checks that the engine's
-packages are pinned to one release, that no Pro package is installed, and that
-the engine and font licenses are in `dist-electron/OFFICE-VIEWER-NOTICES.txt`.

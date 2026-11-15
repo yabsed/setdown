@@ -2,7 +2,6 @@ import { app, Menu, webContents } from 'electron';
 import type { BrowserWindow, MenuItem } from 'electron';
 import type { ApplicationMenuEntry, AppCommand } from '../../protocol/desktop-api';
 import { PREVIEW_THEMES, type PreviewThemeId } from '../../core/preview/preview-preferences';
-import { isWordEditorDocument } from '../../core/document/document-capabilities';
 import type { WindowState } from '../windows/window-state';
 
 type MenuContext = {
@@ -84,10 +83,8 @@ export function installApplicationMenu(context: MenuContext) {
   const history = (action: 'undo' | 'redo') => {
     const native = focusedNativeContents();
     if (native) { native[action](); return; }
-    const current = state()?.currentDocument, kind = current?.kind;
+    const kind = state()?.currentDocument?.kind;
     if (kind === 'image') { command(`${kind}:${action}`); return; }
-    // The Word editor keeps its own history; Chromium's would only replay prevented DOM input.
-    if (isWordEditorDocument(current)) { command(`office:${action}`); return; }
     if (!state()?.explorerEditTarget) contents()?.[action]();
   };
   const edit = (name: 'cut' | 'copy' | 'paste' | 'select-all') => {

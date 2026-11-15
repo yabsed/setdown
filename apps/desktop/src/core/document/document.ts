@@ -20,9 +20,6 @@ export type DocumentSnapshot = {
   assetRelocation?: import('../markdown/asset-references').AssetRelocation;
   /** Binary document snapshots carry metadata only; no text model is created. */
   kind?: 'pdf' | 'image' | 'video' | 'office';
-  /** Set by main when an Office document's bytes are a Word document package: the Word editor
-   * opens, edits and saves it. Absent, the read-only Office viewer shows the file whatever it is named. */
-  officeEditor?: 'word';
   readingPosition?: import('../reading/reading-position').ReadingPosition;
   path: string;
   name: string;

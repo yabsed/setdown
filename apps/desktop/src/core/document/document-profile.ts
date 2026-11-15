@@ -31,10 +31,6 @@ export function officeFamily(filePath: string): OfficeFamily | undefined {
   return (Object.keys(OFFICE_FAMILIES) as OfficeFamily[]).find(family => (OFFICE_FAMILIES[family] as readonly string[]).includes(extension));
 }
 export const isOfficeDocument = (filePath: string): boolean => !!officeFamily(filePath);
-/** Names the Word editor may take: `.docx` only. Macro-enabled, template and legacy binary files stay in the read-only viewer.
- * A candidate is edited only when main also verified its content (`isWordEditorDocument`). */
-export const isEditableOfficeDocument = (filePath: string): boolean => /\.docx$/i.test(filePath);
-/** Documents without a text model or text save path. An editable Word document saves through its own content owner. */
 export const isReadOnlyDocument = (filePath: string): boolean =>
   isPdfDocument(filePath) || isImageDocument(filePath) || isVideoDocument(filePath) || isOfficeDocument(filePath);
 const MARKDOWN = /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i;

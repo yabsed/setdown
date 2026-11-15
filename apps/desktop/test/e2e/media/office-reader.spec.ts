@@ -24,11 +24,10 @@ async function workspace(prefix: string) {
 const scrolled = (reader: Locator) => reader.evaluate(surface => Math.max(0,
   ...Array.from(surface.querySelector('.office-host')!.shadowRoot!.querySelectorAll('*'), element => element.scrollTop)));
 
-// .docx opens in the Word editor (media/docx-editor.spec.ts); the legacy binary format stays in this read-only viewer.
-test('opens a legacy Word document read-only with tab zoom and in-document find', async () => {
+test('opens a Word document read-only with tab zoom and in-document find', async () => {
   const root = await workspace('setdown-office-word-');
-  const doc = path.join(root, 'report.doc');
-  const app = await launch(doc, path.join(root, 'config'));
+  const docx = path.join(root, 'report.docx');
+  const app = await launch(docx, path.join(root, 'config'));
   const page = await app.firstWindow();
   try {
     const reader = page.getByRole('region', { name: 'Office document reader', exact: true });
@@ -68,16 +67,16 @@ test('opens a legacy Word document read-only with tab zoom and in-document find'
     await search.fill('quokka'); await search.press('Enter');
     await expect(reader.locator('[part~="toolbar-status"]')).toHaveText('1/1');
 
-    const before = await readFile(doc);
+    const before = await readFile(docx);
     await page.keyboard.press('Control+s');
     await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-save-as'));
     await expect(page.getByRole('tab', { name: /Save/ })).toHaveCount(0);
-    expect(await readFile(doc)).toEqual(before);
+    expect(await readFile(docx)).toEqual(before);
     await expect(reader).toHaveAttribute('data-office-ready', 'true');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('opens Word, Excel, PowerPoint and Hangul documents in tabs', async () => {
+test('opens legacy Word, Excel, PowerPoint and Hangul documents in tabs', async () => {
   test.setTimeout(120_000);
   const root = await workspace('setdown-office-formats-');
   const app = await launch(path.join(root, 'report.doc'), path.join(root, 'config'));
@@ -107,13 +106,6 @@ test('opens Word, Excel, PowerPoint and Hangul documents in tabs', async () => {
     await expect(reader.getByText('LMN', { exact: true })).toBeVisible();
     await open('sample.hwpx', 'hangul');
     await expect(reader.getByText('우리는', { exact: false }).first()).toBeVisible();
-    // A .docx goes to the Word editor's surface, which starts in reading mode.
-    await page.evaluate((file) => window.marktex.openLink(`marktex-resource://file${file}`), path.join(root, 'report.docx'));
-    await expect(tab('report.docx')).toHaveAttribute('aria-selected', 'true');
-    const word = page.getByRole('region', { name: 'Word document', exact: true });
-    await expect(word).toHaveAttribute('data-office-ready', 'true');
-    await expect(word).toHaveAttribute('data-docx-mode', 'view');
-    await expect(word.getByText('Unique marker: quokka-reading-room.')).toBeVisible();
     // Earlier tabs are remounted from disk when revisited, still read-only.
     await tab('report.doc').click();
     await expect(reader).toHaveAttribute('data-office-family', 'word');
@@ -124,9 +116,9 @@ test('opens Word, Excel, PowerPoint and Hangul documents in tabs', async () => {
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('restores the legacy Word reading position after restart', async () => {
+test('restores the Word reading position after restart', async () => {
   const root = await workspace('setdown-office-history-');
-  const file = path.join(root, 'report.doc'), config = path.join(root, 'config');
+  const file = path.join(root, 'report.docx'), config = path.join(root, 'config');
   let app = await launch(file, config), page = await app.firstWindow();
   try {
     const reader = () => page.getByRole('region', { name: 'Office document reader', exact: true });
