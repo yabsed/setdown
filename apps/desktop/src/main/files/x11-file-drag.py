@@ -241,10 +241,12 @@ class Source:
         return (destination, window, min(5, version[0])) if version and version[0] >= 3 else None
 
     def find_target(self, x, y, child):
+        # The compositor shows its proxy exactly while the pointer is over a Wayland window.
+        # Where it shows it says nothing: on a scaled monitor Mutter places it in its own
+        # coordinates, which are smaller than X11's, so the pointer is rarely inside it.
         for proxy in self.proxies:
             attributes = self.attributes(proxy)
-            if (attributes and attributes.map_state == 2 and attributes.x <= x < attributes.x + attributes.width
-                    and attributes.y <= y < attributes.y + attributes.height):
+            if attributes and attributes.map_state == 2:
                 return self.aware(proxy)
         # An X11 application: its client window (WM_STATE) may sit inside a decoration frame.
         candidates, window = [], child

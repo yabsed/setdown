@@ -3,22 +3,27 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, electron, focusApplication, type TestApplication } from '../support/electron/electron-app';
-import { waylandInput } from '../support/electron/wayland-input';
+import { setMonitorScale, waylandInput } from '../support/electron/wayland-input';
 
 /**
  * On a Wayland desktop Setdown is an XWayland client, and most other
  * applications are native Wayland ones. A folder tab's file drag has to reach
  * them through the compositor's XDND bridge, so the receiver here is a native
  * Wayland process that knows nothing about the drag but what the compositor offers.
+ *
+ * On a scaled (HiDPI) monitor X11 coordinates are larger than the compositor's,
+ * and Mutter places the bridge's window over the Wayland application in its
+ * own: seen from X11 that window is not under the pointer. The drag must reach
+ * the application all the same.
  */
 type Fixture = { root: string; home: string; app: TestApplication; page: Page; errors: string[] };
-async function launch(backend: 'x11' | 'wayland', prepare: (home: string) => Promise<void>): Promise<Fixture> {
+async function launch(backend: 'x11' | 'wayland', prepare: (home: string) => Promise<void>, switches: string[] = []): Promise<Fixture> {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-wayland-drag-'));
   const home = path.join(root, 'home');
   await mkdir(home, { recursive: true });
   await prepare(home);
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const app = await electron.launch({ args: [`--ozone-platform=${backend}`, '.'], env: { ...env, HOME: home,
+  const app = await electron.launch({ args: [`--ozone-platform=${backend}`, ...switches, '.'], env: { ...env, HOME: home,
     XDG_CONFIG_HOME: path.join(root, 'config'), XDG_DATA_HOME: path.join(root, 'data'), SETDOWN_NATIVE_DIALOGS: '0' } });
   const page = await app.firstWindow();
   const errors: string[] = [];
@@ -33,25 +38,28 @@ const row = (page: Page, name: string) => list(page).locator('.folder-row').filt
 const labels = (page: Page) => list(page).locator('.folder-row .folder-label').allTextContents();
 const status = (page: Page) => page.locator('.folder-content:not(.inactive) .folder-status');
 
-if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('a folder tab drags files from XWayland into its own folders and into a native Wayland application', async () => {
+if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') for (const scale of [1, 1.25]) test(`a folder tab drags files from XWayland into its own folders and into a native Wayland application at monitor scale ${scale}`, async () => {
   test.setTimeout(120_000);
   const input = await waylandInput();
   const fixtures: Fixture[] = [];
   try {
+    const screenWidth = await setMonitorScale(scale);
     const target = await launch('wayland', async home => { await mkdir(path.join(home, 'inbox')); });
     fixtures.push(target);
     expect(await target.app.evaluate(({ app }) => app.commandLine.getSwitchValue('ozone-platform'))).toBe('wayland');
     // A native Wayland window does not know where it is; tiling puts it at a known place.
     await input.send({ keyDown: ['Super_L'], keys: ['Right'], keyUp: ['Super_L'] });
-    await expect.poll(() => target.page.evaluate(() => innerWidth)).toBe(960);
+    await expect.poll(() => target.page.evaluate(() => innerWidth)).toBe(screenWidth / 2);
     const source = await launch('x11', async home => {
       await mkdir(path.join(home, 'sub'));
       await writeFile(path.join(home, 'keep.bin'), 'keep\n');
       await writeFile(path.join(home, 'photo.bin'), 'photo\n');
-    });
+    // XWayland renders for the next whole scale. A desktop session tells X11 applications so; the bare compositor does not.
+    }, [`--force-device-scale-factor=${Math.ceil(scale)}`]);
     fixtures.push(source);
+    expect(await source.app.evaluate(({ screen }) => screen.getPrimaryDisplay().size.width)).toBe(screenWidth);
     const owner = await source.app.browserWindow(source.page);
-    await owner.evaluate(window => window.setBounds({ x: 0, y: 0, width: 900, height: 700 }));
+    await owner.evaluate((window, width) => window.setBounds({ x: 0, y: 0, width, height: 700 }), screenWidth / 2 - 60);
     await expect.poll(() => owner.evaluate(window => window.getBounds().x)).toBe(0);
     await expect.poll(() => labels(source.page)).toEqual(['sub', 'keep.bin', 'photo.bin']);
     await expect.poll(() => labels(target.page)).toEqual(['inbox']);
@@ -85,11 +93,12 @@ if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('a folder tab drags fi
     await target.page.evaluate(() => {
       addEventListener('mousemove', event => { (globalThis as { lastPointer?: { x: number; y: number } }).lastPointer = { x: event.clientX, y: event.clientY }; }, true);
     });
-    await input.send({ pointer: [{ x: 1400, y: 500 }, { x: 1410, y: 510 }] });
+    const probe = { x: Math.round(screenWidth * .73), y: 510 };
+    await input.send({ pointer: [{ x: probe.x - 10, y: probe.y - 10 }, probe] });
     await expect.poll(() => target.page.evaluate(() => (globalThis as { lastPointer?: unknown }).lastPointer)).toBeTruthy();
     const seen = await target.page.evaluate(() => (globalThis as { lastPointer?: { x: number; y: number } }).lastPointer!);
     const inbox = (await row(target.page, 'inbox').boundingBox())!;
-    const overInbox = { x: 1410 - seen.x + inbox.x + inbox.width / 2, y: 510 - seen.y + inbox.y + inbox.height / 2 };
+    const overInbox = { x: probe.x - seen.x + inbox.x + inbox.width / 2, y: probe.y - seen.y + inbox.y + inbox.height / 2 };
 
     // The Wayland application sees real files while the pointer is over it. Escape gives the drag up.
     await carry('photo.bin', overInbox);
@@ -119,6 +128,7 @@ if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('a folder tab drags fi
       await fixture.page.screenshot({ path: test.info().outputPath(`wayland-file-drag-${index}.png`) }).catch(() => {});
       await disposeApplication(fixture.app); await rm(fixture.root, { recursive: true, force: true });
     }
+    await setMonitorScale(1).catch(() => {});
     await input.close();
   }
 });

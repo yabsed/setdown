@@ -960,7 +960,7 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   `main/files/x11-file-drag.py`, like `x11-pinch.py` a Python/Xlib helper. It
   owns the selection with the window it speaks from, offers `text/uri-list` with
   copy and link like Chromium's source, targets the compositor's proxy while it
-  is mapped over the pointer and otherwise the X11 window there, serves the
+  is mapped and otherwise the X11 window under the pointer, serves the
   selection until `XdndFinished`, and never deletes a source file. It takes no
   grab: the button is already held in a Setdown window, so it polls the pointer
   and ends at the release; the window keeps the keyboard, and Escape there
@@ -970,6 +970,10 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   (no Python or Xlib) Chromium's source is used as before. A plain X11 session
   keeps Chromium's source. Only one source may take `XdndSelection` per press:
   Mutter starts a second drag grab over the first when the owner changes mid-drag.
+  The proxy counts by being mapped, never by its place: Mutter maps it exactly
+  while the pointer is over a Wayland window, but on a scaled monitor (XWayland
+  renders at the next whole scale) it places it in compositor coordinates, which
+  are smaller than X11's, so the pointer is usually outside it.
 - **Narrow panes.** Below 560 CSS px the Places sidebar becomes a drawer over the
   list only. The toolbar (and its Places toggle) always spans the pane, columns
   drop from four to two to one, and the file name column is never removed. Places
@@ -1011,7 +1015,8 @@ drop that copies a file from outside the workspace but moves one of its own.
 `test/wayland/folder-drag.spec.ts` (`npm run test:xwayland`, private headless
 Mutter) covers the Wayland desktop: an XWayland Setdown moves a file into its own
 subfolder, a native Wayland process sees the dragged file while it hovers, Escape
-abandons the drag, and a drop delivers the file's contents.
+abandons the drag, and a drop delivers the file's contents, at monitor scale 1 and
+at a fractional scale.
 `x11-file-drag.test.ts` covers the choice of source and the name tag's pixels.
 
 ## Browser library: passwords, bookmark export, page developer tools, clearing data
