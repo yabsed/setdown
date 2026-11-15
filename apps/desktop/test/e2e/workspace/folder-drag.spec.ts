@@ -198,3 +198,53 @@ test('files dragged in from another application move into the folder under the p
     await rm(source.root, { recursive: true, force: true }); await rm(target.root, { recursive: true, force: true });
   }
 });
+
+test('a folder tab outside the workspace copies its files into the Explorer folder under the pointer; workspace files still move', async () => {
+  test.setTimeout(120_000);
+  const fixture = await launch(async home => {
+    await mkdir(path.join(home, 'Downloads'));
+    await mkdir(path.join(home, 'work', 'inbox'), { recursive: true });
+    await writeFile(path.join(home, 'Downloads', 'report.bin'), 'report\n');
+    await writeFile(path.join(home, 'work', 'inside.bin'), 'inside\n');
+  });
+  const { home, app, page } = fixture;
+  try {
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), path.join(home, 'work'));
+    await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    const inbox = page.getByRole('treeitem', { name: 'inbox', exact: true });
+    await expect(inbox).toBeVisible();
+    await focusApplication(app);
+    const address = page.locator('.location-bar input').first();
+    const browse = async (folder: string) => { await address.click(); await address.fill(folder); await address.press('Enter'); };
+    await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
+    await browse(path.join(home, 'Downloads'));
+    await expect.poll(() => labels(page)).toEqual(['report.bin']);
+
+    // The open folder does not own Downloads: its file is copied in and stays where it was.
+    let over = await carry(fixture, 'report.bin', await screenPoint(fixture, await center(inbox)));
+    await expect(inbox).toHaveClass(/is-drop-target/);
+    await release(over);
+    await expect.poll(() => readdir(path.join(home, 'work', 'inbox'))).toEqual(['report.bin']);
+    expect(await readFile(path.join(home, 'work', 'inbox', 'report.bin'), 'utf8')).toBe('report\n');
+    expect(await readdir(path.join(home, 'Downloads'))).toEqual(['report.bin']);
+    await expect(page.getByRole('treeitem', { name: 'report.bin', exact: true })).toBeVisible();
+    await expect(page.locator('.project-error')).toHaveCount(0);
+
+    // A folder tab showing the workspace drags the Explorer's own entries: they move.
+    await browse(path.join(home, 'work'));
+    await expect.poll(() => labels(page)).toEqual(['inbox', 'inside.bin']);
+    over = await carry(fixture, 'inside.bin', await screenPoint(fixture, await center(inbox)));
+    await expect(inbox).toHaveClass(/is-drop-target/);
+    await release(over);
+    await expect.poll(async () => (await readdir(path.join(home, 'work', 'inbox'))).sort()).toEqual(['inside.bin', 'report.bin']);
+    await expect.poll(() => readdir(path.join(home, 'work'))).toEqual(['inbox']);
+    await expect(page.locator('.project-error')).toHaveCount(0);
+    expect(fixture.errors).toEqual([]);
+  } finally {
+    await nativeInput({ button: 'up' }).catch(() => {});
+    await page.screenshot({ path: test.info().outputPath('folder-drag-explorer.png') }).catch(() => {});
+    await disposeApplication(app); await rm(fixture.root, { recursive: true, force: true });
+  }
+});

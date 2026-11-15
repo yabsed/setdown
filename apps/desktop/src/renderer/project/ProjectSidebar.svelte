@@ -3,6 +3,7 @@
   import type { LanguageApi } from '../../protocol/language';
   import { resizePanelWithKeyboard, startPanelResize } from '../shell/panel-resize';
   import BrowserSidebar from '../browser/BrowserSidebar.svelte';
+  import { downloadBadgeCount, downloadBadgeStatus } from '../browser/browser-state.svelte';
   import FolderPicker from './FolderPicker.svelte';
   import ExplorerView from './explorer/ExplorerView.svelte';
   import { project, type ProjectView } from './project-state.svelte';
@@ -18,6 +19,8 @@
   let gitCount = $derived(project.git?.pendingChanges ?? gitGroups.badge);
   let gitStatus = $derived(!project.git ? 'Repository status not loaded'
     : `${gitCount}${project.git.countIncomplete ? '+' : ''} pending changes${(project.git.roots?.length ?? 0) > 1 ? ` across ${project.git.roots!.length} repositories` : ''}`);
+  let downloadCount = $derived(downloadBadgeCount());
+  let downloadStatus = $derived(downloadBadgeStatus(downloadCount));
   const resize = { property: '--project-sidebar-width' as const, direction: 1 as const,
     min: 220, max: () => innerWidth * .46 };
 
@@ -43,12 +46,16 @@
       aria-expanded={project.open && project.activeView === 'git'}
       title={`Source Control — ${gitStatus}`} onclick={() => select('git')}>
       <svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M8 6.5c4.5 0 2.5 5.5 8 3"/></svg>
-      {#if gitCount > 0 || project.git?.countIncomplete}<span class="scm-activity-badge" aria-hidden="true">{gitCount}{project.git?.countIncomplete ? "+" : ""}</span>{/if}
-      <span id="source-control-status" class="scm-status-description">{gitStatus}</span>
+      {#if gitCount > 0 || project.git?.countIncomplete}<span class="activity-badge scm-activity-badge" aria-hidden="true">{gitCount}{project.git?.countIncomplete ? "+" : ""}</span>{/if}
+      <span id="source-control-status" class="activity-status-description">{gitStatus}</span>
     </button>
-    <button type="button" class:is-active={project.open && project.activeView === 'browser'}
-      aria-label="Browser" aria-expanded={project.open && project.activeView === 'browser'} title="Browser" onclick={() => select('browser')}>
+    <button type="button" class="browser-activity" class:is-active={project.open && project.activeView === 'browser'}
+      aria-label="Browser" aria-describedby={downloadCount ? 'browser-download-status' : undefined}
+      aria-expanded={project.open && project.activeView === 'browser'}
+      title={downloadCount ? `Browser — ${downloadStatus}` : 'Browser'} onclick={() => select('browser')}>
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.5" ry="8.5"/><path d="M3.5 12h17"/></svg>
+      {#if downloadCount}<span class="activity-badge download-activity-badge" aria-hidden="true">{downloadCount > 99 ? '99+' : downloadCount}</span>
+        <span id="browser-download-status" class="activity-status-description">{downloadStatus}</span>{/if}
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'language'}
       aria-label="Language Support" aria-expanded={project.open && project.activeView === 'language'} title="Language Support" onclick={() => select('language')}>
@@ -88,8 +95,8 @@
 
 <style>
   .terminal-activity { flex-shrink: 0; }
-  .scm-activity { position: relative; }
-  .scm-activity-badge {
+  .scm-activity, .browser-activity { position: relative; }
+  .activity-badge {
     position: absolute;
     bottom: 3px;
     right: 3px;
@@ -107,7 +114,7 @@
     font-variant-numeric: tabular-nums;
     pointer-events: none;
   }
-  .scm-status-description {
+  .activity-status-description {
     position: absolute;
     width: 1px;
     height: 1px;

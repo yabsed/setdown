@@ -22,6 +22,18 @@ export function topLevelPaths(paths: string[]): string[] {
     && (path.startsWith(`${parent}/`) || path.startsWith(`${parent}\\`))));
 }
 
+/**
+ * What a drop on the Explorer does with the dropped paths. Only entries of the
+ * open folder can be moved or copied in place. Files from anywhere else are
+ * imported, which copies them in: another application's files, and also this
+ * window's own drag out of a folder tab that shows a folder outside the workspace.
+ */
+export function explorerDropKind(paths: string[], root: string, own: boolean, copy: boolean): 'import' | 'copy' | 'move' {
+  const base = root.replace(/[\\/]+$/, '');
+  const inside = (path: string) => path.startsWith(`${base}/`) || path.startsWith(`${base}\\`);
+  return !own || !paths.every(inside) ? 'import' : copy ? 'copy' : 'move';
+}
+
 export const PROJECT_ENTRIES = 'application/x-setdown-project-entries';
 export const PROJECT_FILES = 'application/x-setdown-project-files';
 export function draggedPaths(transfer: DataTransfer | null, listType: string, legacyType: string): string[] {

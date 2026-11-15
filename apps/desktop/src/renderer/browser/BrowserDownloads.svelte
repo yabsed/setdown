@@ -3,8 +3,11 @@
   import type { BrowserDownload, DownloadCommand } from '../../protocol/browser';
   import { parentFolder } from '../../core/files/folder-presentation';
   import { browser } from './browser-state.svelte';
+  import { project } from '../project/project-state.svelte';
   let { actions, query }: { actions: AppActions; query: string } = $props();
   let error = $state('');
+  // While this list is on screen its rows are no longer news: the activity badge keeps only running transfers.
+  $effect(() => { if (project.visible && project.open && browser.unseenDownloads.length) browser.unseenDownloads = []; });
   const rows = $derived(browser.downloads.filter(item => `${item.name} ${item.url} ${item.path}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())));
   function bytes(value: number) {
     if (value < 1024) return `${value} B`;

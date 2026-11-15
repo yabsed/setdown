@@ -90,9 +90,12 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (!downloadsLoaded) changedDownloads.add(event.download.id);
       const index = browser.downloads.findIndex(item => item.id === event.download.id);
       if (index < 0) browser.downloads.unshift(event.download); else browser.downloads[index] = event.download;
+      // Only live transfers publish events; the stored list loaded below is never news.
+      if (!browser.unseenDownloads.includes(event.download.id)) browser.unseenDownloads.push(event.download.id);
     } else if (event.type === 'download-removed') {
       if (!downloadsLoaded) changedDownloads.add(event.id);
       browser.downloads = browser.downloads.filter(item => item.id !== event.id);
+      browser.unseenDownloads = browser.unseenDownloads.filter(id => id !== event.id);
     }
     else if (event.type === 'permissions') {
       if (event.requests.length) browser.permissions[event.id] = event.requests; else delete browser.permissions[event.id];

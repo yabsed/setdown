@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { selectEntry, topLevelPaths } from './explorer-selection';
+import { explorerDropKind, selectEntry, topLevelPaths } from './explorer-selection';
 
 describe('Explorer selection', () => {
   const visible = ['folder', 'folder/child', 'a', 'b', 'c'];
@@ -25,5 +25,17 @@ describe('Explorer selection', () => {
     expect(topLevelPaths(['/a/child', '/ab', '/a', '/a', '/a/deep/file', '/z']))
       .toEqual(['/ab', '/a', '/z']);
     expect(topLevelPaths(['C:\\a\\child', 'C:\\ab', 'C:\\a'])).toEqual(['C:\\ab', 'C:\\a']);
+  });
+  test('a drop moves entries of the open folder and copies in everything from outside it', () => {
+    // Explorer entries and a folder tab showing the workspace: Setdown's own drag moves, Ctrl copies.
+    expect(explorerDropKind(['/work/a.md', '/work/notes'], '/work', true, false)).toBe('move');
+    expect(explorerDropKind(['/work/a.md'], '/work/', true, true)).toBe('copy');
+    expect(explorerDropKind(['C:\\work\\a.md'], 'C:\\work', true, false)).toBe('move');
+    // A folder tab showing another folder drags files the open folder does not own: they are copied in.
+    expect(explorerDropKind(['/home/me/Downloads/report.pdf'], '/work', true, false)).toBe('import');
+    expect(explorerDropKind(['/work/a.md', '/workshop/b.md'], '/work', true, false)).toBe('import');
+    expect(explorerDropKind(['/work'], '/work', true, false)).toBe('import');
+    // Another application's files are imported even when they already lie in the open folder.
+    expect(explorerDropKind(['/work/a.md'], '/work', false, false)).toBe('import');
   });
 });

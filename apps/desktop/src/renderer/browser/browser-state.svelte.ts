@@ -8,6 +8,8 @@ import type { BrowserPasswordState } from '../../core/browser/passwords';
 export type ReaderPosition = ReaderAnchor & { offset?: number };
 export const browser = $state({ revision: 0, error: '', findId: null as string | null, query: '', active: 0, matches: 0,
   downloads: [] as BrowserDownload[],
+  /** Downloads that started or changed while the Downloads list was not on screen. */
+  unseenDownloads: [] as string[],
   permissions: {} as Record<string, BrowserPermissionRequest[]>,
   auth: {} as Record<string, BrowserAuthRequest>, authId: null as string | null,
   /** Per web tab: a login offered for saving and how many saved logins fit the page. */
@@ -24,3 +26,8 @@ export const browser = $state({ revision: 0, error: '', findId: null as string |
   /** Where the user last scrolled each reader. Returning to its tab restores exactly this place,
    * and the address-bar toggle returns to the live page at its golden-line block. */
   readerPositions: {} as Record<string, ReaderPosition> });
+
+/** The number on the Browser activity icon: downloads still running, plus those with news the user has not looked at. */
+export const downloadBadgeCount = (): number =>
+  browser.downloads.filter(item => item.state === 'progressing' || browser.unseenDownloads.includes(item.id)).length;
+export const downloadBadgeStatus = (count: number): string => `${count} active or new download${count === 1 ? '' : 's'}`;

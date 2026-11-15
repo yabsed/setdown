@@ -63,3 +63,51 @@ test('downloads expose native progress and controls, retain completed files acro
   } finally { f.finishDownloads(); await f.dispose(); }
 });
 
+
+test('the Browser activity icon counts running and unseen downloads until the Downloads list shows them', async () => {
+  test.setTimeout(90_000);
+  const f = await fixture(false);
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    await f.app.evaluate(({ session }, root) => {
+      session.fromPartition('persist:setdown-browser').on('will-download', (_event, item) => item.setSavePath(`${root}/${item.getFilename()}`));
+    }, f.root);
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    const icon = f.page.getByRole('button', { name: 'Browser', exact: true });
+    const badge = icon.locator('.download-activity-badge');
+    await expect(badge).toHaveCount(0);
+    // Another side view is selected: the icon alone reports the transfer, like the Git count.
+    await evaluatePage(f.app, f.origin, 'location.href="/slow-download";true');
+    await expect(badge).toHaveText('1');
+    await expect(icon).toHaveAccessibleDescription('1 active or new download');
+    await evaluatePage(f.app, f.origin, 'location.href="/download";true');
+    await expect(badge).toHaveText('2');
+    await expect(icon).toHaveAccessibleDescription('2 active or new downloads');
+    // The badged icon opens the Downloads list. Seeing it clears the finished file; the running one stays counted.
+    await icon.click();
+    const downloads = f.page.getByRole('button', { name: 'Downloads', exact: true });
+    await expect(downloads).toHaveAttribute('aria-pressed', 'true');
+    await expect(f.page.locator('.download').filter({ hasText: 'report.txt' })).toHaveAttribute('data-state', 'completed');
+    await expect(badge).toHaveText('1');
+    await expect(downloads.locator('.count')).toHaveText('1');
+    f.finishDownloads();
+    await expect(f.page.locator('.download').filter({ hasText: 'slow.txt' })).toHaveAttribute('data-state', 'completed');
+    await expect(badge).toHaveCount(0);
+    // A file that finishes while another section is shown stays counted until its list is opened.
+    await f.page.getByRole('button', { name: 'Bookmarks', exact: true }).click();
+    await evaluatePage(f.app, f.origin, 'location.href="/download";true');
+    await expect(badge).toHaveText('1');
+    await expect(downloads.locator('.count')).toHaveText('1');
+    await downloads.click();
+    await expect(badge).toHaveCount(0);
+    await expect(downloads.locator('.count')).toHaveCount(0);
+    // Stored downloads of an earlier session are not news.
+    await f.restart();
+    await f.page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await expect(f.page.getByRole('button', { name: 'Browser', exact: true })).toBeVisible();
+    await expect.poll(() => f.page.evaluate(async () => (await window.marktex.browser.downloads()).length)).toBeGreaterThan(0);
+    await expect(f.page.locator('.download-activity-badge')).toHaveCount(0);
+    expect(f.errors).toEqual([]);
+  } finally { f.finishDownloads(); await f.dispose(); }
+});

@@ -1,16 +1,17 @@
 <script lang="ts">
   import type { AppActions } from '../ports/ui-actions';
   import type { BrowserPlace } from '../../protocol/browser';
-  import { browser } from './browser-state.svelte';
+  import { browser, downloadBadgeCount, downloadBadgeStatus } from './browser-state.svelte';
   import BrowserBookmarks from './BrowserBookmarks.svelte';
   import BrowserDownloads from './BrowserDownloads.svelte';
   import BrowserExtensions from './BrowserExtensions.svelte';
   import BrowserPasswords from './BrowserPasswords.svelte';
   import BrowserClearData from './BrowserClearData.svelte';
   let { actions }: { actions: AppActions } = $props();
-  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'passwords' | 'extensions'>('bookmarks');
+  // Opened from a badged activity icon, the view starts where the badge points, as a browser's download button does.
+  let query = $state(''), section = $state<'bookmarks' | 'history' | 'downloads' | 'passwords' | 'extensions'>(downloadBadgeCount() ? 'downloads' : 'bookmarks');
   let rows = $state<BrowserPlace[]>([]), error = $state(''), loading = $state(false), confirming = $state(false), deleting = $state(false);
-  const activeDownloads = $derived(browser.downloads.filter(item => item.state === 'progressing').length);
+  const downloadCount = $derived(downloadBadgeCount());
   $effect(() => {
     const text = query, scope = section; void browser.revision;
     if (scope !== 'history') return;
@@ -34,7 +35,8 @@
   <nav aria-label="Browser library">
     <button class:selected={section === 'bookmarks'} aria-pressed={section === 'bookmarks'} onclick={() => select('bookmarks')}>Bookmarks</button>
     <button class:selected={section === 'history'} aria-pressed={section === 'history'} onclick={() => select('history')}>History</button>
-    <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} onclick={() => select('downloads')}>Downloads{#if activeDownloads}<span class="count">{activeDownloads}</span>{/if}</button>
+    <button class:selected={section === 'downloads'} aria-pressed={section === 'downloads'} title={downloadCount ? downloadBadgeStatus(downloadCount) : undefined}
+      onclick={() => select('downloads')}>Downloads{#if downloadCount}<span class="count" aria-hidden="true">{downloadCount > 99 ? '99+' : downloadCount}</span>{/if}</button>
     <button class:selected={section === 'passwords'} aria-pressed={section === 'passwords'} onclick={() => select('passwords')}>Passwords</button>
     <button class:selected={section === 'extensions'} aria-pressed={section === 'extensions'} onclick={() => select('extensions')}>Extensions</button>
   </nav>
@@ -89,7 +91,8 @@
   nav { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 8px 10px; min-width: 0; }
   nav button { flex: 1 1 40%; min-width: 0; padding: 6px; font: inherit; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   nav .selected { background: var(--app-hover); opacity: 1; }
-  .count { margin-left: 4px; font-size: 10px; }
+  .count { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 5px; padding: 0 3px; box-sizing: border-box;
+    border-radius: 9px; background: var(--app-text); color: var(--app-chrome); font: 600 10px/1 var(--app-font-family); font-variant-numeric: tabular-nums; vertical-align: 1px; }
   .clear-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; margin: 0 12px 6px; }
   .clear-history { padding: 5px 7px; font: inherit; color: var(--app-muted-text); }
   .history-confirm { display: flex; flex-direction: column; gap: 7px; margin: 0 12px 10px; padding: 9px; border: 1px solid var(--app-border); border-radius: 5px; }

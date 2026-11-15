@@ -349,7 +349,12 @@ terminal states. Only serializable metadata crosses the desktop bridge. The
 library retains completed records across restart; an unfinished transfer from a
 previous process is shown as interrupted. Removing a download record keeps its
 file. Completed PDFs stay in Downloads until explicitly opened; they cannot
-replace the user's active surface. `test/e2e/browser/*.spec.ts` checks deletion persistence and native download controls;
+replace the user's active surface. The Browser activity icon carries a count
+badge like Source Control's: downloads still running plus those that started or
+changed while the Downloads list was not on screen (`downloadBadgeCount`). The
+Downloads section button shows the same count, a badged icon opens the Browser
+view on Downloads, showing that list clears the unseen part, and records stored
+by an earlier session are never counted. `test/e2e/browser/*.spec.ts` checks deletion persistence, native download controls and the badge;
 `browser-downloads.test.ts` checks interrupted restoration, duplicate file paths
 and progress/completion ordering.
 
@@ -923,7 +928,9 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   desktop. Its payload is just `Files`, so `renderer/files/file-drag.ts` records
   the dragged paths and this window's targets recognize their own drag by the
   dropped paths: onto a folder row, breadcrumb, Place or the list it moves (Ctrl
-  copies), onto the Explorer tree it keeps the Explorer's move/copy, and its
+  copies), onto the Explorer tree it keeps the Explorer's move/copy for entries
+  of the open folder, while files of a folder outside the workspace (Downloads,
+  for instance) are copied in and stay where they were (`explorerDropKind`), and its
   documents take tab-strip and split placements like Explorer files. Over a folder
   tab a file drag is always a transfer into that folder, never a tab placement.
   Files dropped from another application (or another Setdown window) are
@@ -972,8 +979,9 @@ completion, file operations outside a workspace, chooser accept/cancel/save, sea
 grid, properties, the Files side view, narrow panes, launch with a folder).
 `renderer/files/file-drag.test.ts` and `test/e2e/workspace/folder-drag.spec.ts`
 cover drag and drop with real pointer input: moving a file and a document into a
-subfolder, a web page receiving the dragged files' contents, a tab-strip drop, and
-a second process's files moving into the folder under the pointer.
+subfolder, a web page receiving the dragged files' contents, a tab-strip drop,
+a second process's files moving into the folder under the pointer, and an Explorer
+drop that copies a file from outside the workspace but moves one of its own.
 
 ## Browser library: passwords, bookmark export, page developer tools, clearing data
 

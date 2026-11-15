@@ -4,7 +4,7 @@
   import { presentEntries, typeaheadMatch } from './explorer-presentation';
   import { explorerGitDecorations } from './explorer-git-decorations';
   import type { ExplorerClipboard, ExplorerEditCommand, ExplorerTransfer } from '../../../protocol/explorer';
-  import { selectEntry, topLevelPaths, draggedPaths, PROJECT_ENTRIES, PROJECT_FILES } from './explorer-selection';
+  import { selectEntry, topLevelPaths, draggedPaths, explorerDropKind, PROJECT_ENTRIES, PROJECT_FILES } from './explorer-selection';
   import NativeOverlay from '../../shell/NativeOverlay.svelte';
   import type { ProjectEntryKind } from '../../../protocol/desktop-api';
   import type { AppActions } from '../../ports/ui-actions';
@@ -365,11 +365,11 @@
     const files = event.dataTransfer?.types.includes('Files');
     const sources = files ? actions.pathsForDroppedFiles([...event.dataTransfer?.files ?? []])
       : draggedPaths(event.dataTransfer, PROJECT_ENTRIES, 'application/x-setdown-project-entry');
-    const external = files && !fileDrag.dropped(sources);
+    const own = !files || fileDrag.dropped(sources);
     endDrag();
     if (busy || !sources.length) return;
     event.preventDefault(); event.stopPropagation();
-    await transfer({ kind: external ? 'import' : copying(event) ? 'copy' : 'move', paths: sources, target });
+    await transfer({ kind: explorerDropKind(sources, project.folder!.path, own, copying(event)), paths: sources, target });
   }
 
   async function confirmTrash() {
