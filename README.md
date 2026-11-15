@@ -4,62 +4,85 @@
 
 <h1 align="center">Setdown</h1>
 
-<p align="center"><strong>Write plain. Read beautifully.</strong></p>
-
-Setdown is a desktop Markdown reader and editor. Write in plain text, then read
-your words as a beautifully typeset document. Keep your references and tools
-close, with your writing at the center.
-
-> **Security notice:** This software was not written by a professional developer
-> and may not be sufficiently secure.
+<p align="center"><strong>An editor, a browser, and a workbench. One app.</strong></p>
 
 <p align="center">
   <a href="https://github.com/yabsed/setdown/releases/latest">Download for Windows &amp; Linux</a> ·
   <a href="https://github.com/yabsed/setdown/releases">All releases</a>
 </p>
 
+This is a day I’ve been looking forward to for two-and-a-half months.
+
+Every once in a while, a revolutionary tool comes along that changes everything.
+And — well, first of all, one’s very fortunate if you get to work on just one of
+these in your career. The rest of us have been fortunate to build on a few of
+them. 2004, Markdown. It didn’t just change how we take notes. It changed how the
+whole software world writes — every README you’ve ever read. In 2014, Jupyter. And
+it didn’t just change the way we run code, it changed the way science gets
+written down.
+
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets-2/image2.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets-2/image.png">
-    <img src="docs/assets-2/image.png" width="1200" alt="Setdown with rendered Markdown and equations beside a web article, a PDF, a terminal, and a Jupyter notebook">
-  </picture>
+  <img src="apps/what_is_setdown/readme.assets/history.png" width="560" alt="Markdown, 2004. Jupyter, 2014.">
+</p>
+
+Well, today, we’re introducing three revolutionary products of this class. The
+first one is a plain-text editor that reads like a typeset page. The second is a
+revolutionary research browser. And the third is a breakthrough workbench for
+code and notebooks.
+
+So, three things: a plain-text editor that reads like a typeset page; a
+revolutionary research browser; and a breakthrough workbench for code and
+notebooks. An editor, a browser, and a workbench. An editor, a browser … are you
+getting it?
+
+<p align="center">
+  <img src="apps/what_is_setdown/readme.assets/three-products.png" width="760" alt="Editor, Browser, Workbench">
+</p>
+
+These are not three separate apps, this is one app, and we are calling it
+Setdown. Today, Setdown is going to reinvent the notebook, and here it is.
+
+<p align="center">
+  <img src="apps/what_is_setdown/print/hero.png" width="1200" alt="Setdown split diagonally between its light and dark themes, with a news article, a PDF paper, rendered Markdown with equations, a terminal, and a Jupyter notebook side by side">
 </p>
 
 <p align="center">
-  <sub>Your notes and the things that inform them, side by side.</sub><br>
-  <a href="docs/assets-2/image.png">Light</a> ·
-  <a href="docs/assets-2/image2.png">Dark</a> ·
   <a href="docs/assets-2/setdown-demo.gif">Watch the demo</a>
 </p>
 
-## Write plain
+## An editor
 
-Your documents are Markdown files on your computer. Write notes, work through
-an equation, or draft a longer piece in plain text.
+A plain-text editor that reads like a typeset page.
 
-Double-click a passage to edit its source. Press `Esc` to return to reading
-in the same place.
+Your documents are Markdown files on your computer. Write notes, work through an
+equation, or draft a longer piece in plain text. Then read formatted text,
+equations, tables, and images as a page made for reading, in a light or dark
+theme.
 
-## Read beautifully
+Double-click a passage to edit its source. Press `Esc` to return to reading in
+the same place. When you revise, review Markdown changes as rendered documents
+or source diffs.
 
-Give your words room to breathe. Read formatted text, equations, tables, and
-images in a document made for reading. Choose a light or dark theme that feels
-comfortable to you.
+## A browser
 
-When you revise, review Markdown changes as rendered documents or source diffs.
-See how the document reads as well as what changed.
+A research browser, beside your writing.
 
-## Keep the rest close
+Open web pages, PDFs, and images next to your document: a paper beside your
+notes, an article beside your draft. Switch supported articles to Reader mode
+and export them as Markdown or PDF.
 
-A paper beside your notes. An article beside your draft. Arrange tabs into split
+## A workbench
+
+A workbench for code and notebooks.
+
+Edit source files, run Jupyter cells, and inspect outputs. Open a terminal when
+you need one. Stage changes, commit, and browse Git history in the same
+workspace.
+
+## One app
+
+Editor, browser, and workbench share one window. Arrange their tabs into split
 panes, resize them, or move them between windows.
-
-- **References.** Open web pages, PDFs, and images alongside your writing. Switch
-  supported articles to Reader mode and export them as Markdown or PDF.
-- **Code and notebooks.** Edit source files, run Jupyter cells, and inspect outputs.
-  Open a terminal when you need one.
-- **Git.** Stage changes, commit, and browse history in the same workspace.
 
 ## Get started
 
@@ -93,6 +116,12 @@ npm start
 [Development guide](docs/architecture/overview.md) ·
 [Language support](docs/language-support.md) ·
 [Preview performance contract](docs/preview-performance-contract.md)
+
+## Security notice
+
+> This software was not written by a professional developer
+> and may not be sufficiently secure.
+
 
 ## License
 
