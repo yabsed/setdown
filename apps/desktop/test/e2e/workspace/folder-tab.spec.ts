@@ -212,6 +212,75 @@ test('Open Folder and Save As use the in-app chooser instead of the platform dia
   } finally { await disposeApplication(app); server.close(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('a chooser manages files like any folder tab and still answers its request', async () => {
+  const { root, home, app, page } = await launch();
+  try {
+    await app.evaluate(({ shell }) => {
+      const { rm } = process.getBuiltinModule('node:fs/promises') as typeof import('node:fs/promises');
+      shell.trashItem = async file => { await rm(file, { recursive: true }); };
+    });
+    const alpha = path.join(home, 'Projects', 'alpha');
+    await page.locator('.empty-folder').click();
+    const chooser = page.getByRole('tab', { name: /Open Folder/ });
+    await expect(chooser).toHaveAttribute('aria-selected', 'true');
+    const address = page.locator('.editor-group.focused .location-bar input');
+    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
+
+    // The row menu is the folder tab's. A file cannot answer a folder request, so its first command opens it.
+    const menu = page.getByRole('menu');
+    await row(page, 'README.md').click({ button: 'right' });
+    await expect(menu.getByRole('menuitem', { name: 'Open', exact: true })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Choose' })).toHaveCount(0);
+    for (const name of ['Open to the Side', 'Cut', 'Copy Path', 'Compress to .zip', 'Move to Trash', 'Delete Permanently', 'Open in Terminal', 'Properties'])
+      await expect(menu.getByRole('menuitem', { name })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(chooser).toHaveAttribute('aria-selected', 'true');
+    await row(page, 'data.csv').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Rename' }).click();
+    const rename = list(page).getByRole('textbox', { name: 'Rename' });
+    await expect(rename).toBeFocused();
+    await rename.fill('table.csv'); await rename.press('Enter');
+    await expect.poll(() => readdir(alpha)).toContain('table.csv');
+
+    // Keyboard commands reach the chooser too: copy, paste into a subfolder, rename, trash.
+    await row(page, 'table.csv').click();
+    await page.keyboard.press('Control+c');
+    await row(page, 'notes').dblclick();
+    await expect.poll(() => labels(page)).toEqual([]);
+    await list(page).focus();
+    await page.keyboard.press('Control+v');
+    await expect(row(page, 'table.csv')).toHaveAttribute('aria-selected', 'true');
+    expect(await readFile(path.join(alpha, 'notes', 'table.csv'), 'utf8')).toBe('a,b\n');
+    await page.keyboard.press('F2');
+    await rename.fill('sheet.csv'); await rename.press('Enter');
+    await expect.poll(() => readdir(path.join(alpha, 'notes'))).toEqual(['sheet.csv']);
+    await expect(row(page, 'sheet.csv')).toHaveAttribute('aria-selected', 'true');
+    await list(page).focus();
+    await page.keyboard.press('Delete');
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Move to Trash' }).click();
+    await expect.poll(() => readdir(path.join(alpha, 'notes'))).toEqual([]);
+    await expect.poll(() => labels(page)).toEqual([]);
+
+    // So does the folder's own menu.
+    const box = (await list(page).boundingBox())!;
+    await list(page).click({ button: 'right', position: { x: box.width / 2, y: box.height - 60 } });
+    await menu.getByRole('menuitem', { name: 'New File' }).click();
+    const created = list(page).getByRole('textbox', { name: 'New file name' });
+    await created.fill('draft.md'); await created.press('Enter');
+    await expect.poll(() => readdir(path.join(alpha, 'notes'))).toEqual(['draft.md']);
+
+    // None of this answered or cancelled the request.
+    await expect(chooser).toHaveAttribute('aria-selected', 'true');
+    const bar = page.getByRole('form', { name: 'Open Folder' });
+    await expect(bar).toContainText('Choose “notes”');
+    await bar.getByRole('button', { name: 'Select Folder' }).click();
+    await expect(chooser).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Workspace folder', exact: true })).toHaveAttribute('title', path.join(alpha, 'notes'));
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('the file manager searches subfolders, shows a grid, properties and stays usable in a narrow pane', async () => {
   const { root, home, app, page } = await launch();
   try {

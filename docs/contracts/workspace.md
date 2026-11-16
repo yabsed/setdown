@@ -984,7 +984,14 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   modes (`core/files/picker-rules.ts`): the selection when it fits the request,
   otherwise the current folder for folder requests; filters never hide folders; a
   save name is validated live and overwriting asks first. A file that cannot answer
-  a folder request still opens on activation. Its address bar moves within the
+  a folder request still opens on activation. Only what answers the request follows
+  it: the file filter, how many items may be selected, and Open/Enter/double-click
+  on an item that fits (the menu names that command Choose). Everything else is the
+  folder tab's, unlike GNOME Files, which disables file management while choosing:
+  the row and folder menus, Cut/Copy/Paste/Duplicate/Undo and their keys, Rename,
+  New File/Folder, Trash, Delete, Compress/Extract, bookmarks, Open in New Tab or to
+  the Side (an explicit open, never an answer), Open in Terminal, and file drags out
+  of and into it. None of these answers or cancels the request. Its address bar moves within the
   filesystem for a path and, as in every other tab, opens a web address or search
   in a browser tab beside it; neither answers nor cancels the request. Closing the
   tab, Escape, Cancel or closing the window cancels. Main re-validates every reply (kind, count, existing
@@ -1005,12 +1012,13 @@ Checks: `core/files/*.test.ts`, `main/files/*.test.ts`,
 `main/dialogs/path-picker.test.ts`, `main/browser/download-path.test.ts`,
 `renderer/files/file-command-target.test.ts` and
 `test/e2e/workspace/folder-tab.spec.ts` (browse, Back/Forward selection, address
-completion, file operations outside a workspace, chooser accept/cancel/save, search,
-grid, properties, the Files side view, narrow panes, launch with a folder).
+completion, file operations outside a workspace, chooser accept/cancel/save, file
+operations inside a chooser, search, grid, properties, the Files side view, narrow
+panes, launch with a folder).
 `renderer/files/file-drag.test.ts` and `test/e2e/workspace/folder-drag.spec.ts`
 cover drag and drop with real pointer input: moving a file and a document into a
 subfolder, a web page receiving the dragged files' contents, a tab-strip drop,
-a second process's files moving into the folder under the pointer, and an Explorer
+the same move inside a file chooser, a second process's files moving into the folder under the pointer, and an Explorer
 drop that copies a file from outside the workspace but moves one of its own.
 `test/wayland/folder-drag.spec.ts` (`npm run test:xwayland`, private headless
 Mutter) covers the Wayland desktop: an XWayland Setdown moves a file into its own

@@ -152,6 +152,34 @@ test('a folder tab drags files into folders, onto a web page as real files, and 
   }
 });
 
+test('a file chooser drags files into folders like any folder tab and keeps waiting for its answer', async () => {
+  test.setTimeout(120_000);
+  const fixture = await launch(async home => {
+    await mkdir(path.join(home, 'sub'));
+    await writeFile(path.join(home, 'data.bin'), 'binary\n');
+  });
+  const { home, app, page } = fixture;
+  try {
+    await page.evaluate(() => window.marktex.executeApplicationMenuItem('menu-open-folder'));
+    const chooser = page.getByRole('tab', { name: /Open Folder/ });
+    await expect(chooser).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(() => labels(page)).toEqual(['sub', 'data.bin']);
+    const over = await carry(fixture, 'data.bin', await screenPoint(fixture, await center(row(page, 'sub'))));
+    await expect(status(page)).toContainText('Move into “sub”');
+    await expect(row(page, 'sub')).toHaveClass(/drop-target/);
+    await release(over);
+    await expect.poll(() => readdir(path.join(home, 'sub'))).toEqual(['data.bin']);
+    await expect.poll(() => labels(page)).toEqual(['sub']);
+    await expect(chooser).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+    expect(fixture.errors).toEqual([]);
+  } finally {
+    await nativeInput({ button: 'up' }).catch(() => {});
+    await page.screenshot({ path: test.info().outputPath('chooser-drag.png') }).catch(() => {});
+    await disposeApplication(app); await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('files dragged in from another application move into the folder under the pointer instead of opening', async () => {
   test.setTimeout(120_000);
   const source = await launch(async home => {

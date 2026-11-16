@@ -153,7 +153,7 @@ export function createTabDrag(options: Options) {
   // surface owns the drop, so it must keep receiving pointer events. Tabs still split it.
   const overFolder = (event: DragEvent) => !transferId && !sharedDragId
     && !Array.from(event.dataTransfer?.types ?? []).includes(MIME)
-    && [...document.querySelectorAll<HTMLElement>('.folder-content:not(.inactive) .folder-surface:not(.picker)')].some(surface => {
+    && [...document.querySelectorAll<HTMLElement>('.folder-content:not(.inactive) .folder-surface')].some(surface => {
       const box = surface.getBoundingClientRect();
       return event.clientX >= box.left && event.clientX < box.right && event.clientY >= box.top && event.clientY < box.bottom;
     });

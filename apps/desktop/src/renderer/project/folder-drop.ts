@@ -10,10 +10,10 @@ export function installFolderDrop(
   open: (paths: string[]) => void,
 ): () => void {
   const clear = () => shell.classList.remove('is-folder-drop-target');
-  // The tree and folder tabs transfer dropped files into the folder under the
-  // pointer. A folder tab's own drag (file-drag.ts) is never an "open" request.
+  // The tree and folder tabs (file choosers included) transfer dropped files into the folder
+  // under the pointer. A folder tab's own drag (file-drag.ts) is never an "open" request.
   const inExplorer = (event: DragEvent) => fileDrag.owns(event) || (event.target instanceof Element
-    && !!event.target.closest('#project-explorer-tree, .explorer-root, .folder-surface:not(.picker)'));
+    && !!event.target.closest('#project-explorer-tree, .explorer-root, .folder-surface'));
   const over = (event: DragEvent) => {
     if (!hasFiles(event) || inExplorer(event)) { clear(); return; }
     event.preventDefault();
