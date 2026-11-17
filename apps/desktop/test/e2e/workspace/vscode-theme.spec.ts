@@ -48,7 +48,8 @@ test('VS Code Dark 2026 matches workbench and syntax colors, retains edits and p
     await expect(page.locator('.view-lines').first()).toContainText('themeEdit');
     await page.getByRole('button', { name: 'View', exact: true }).click();
     await page.locator('[data-menu-item-id="menu-theme"]').hover();
-    await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(11);
+    // Eight built-in themes plus Night Owl and Dracula (THEME_IDS in theme-catalog.test.ts).
+    await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(10);
     await expect(page.locator('[data-menu-item-id="preview-theme-vscode-dark-2026"]')).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('.application-menu-popup')).toHaveCSS('background-color', 'rgb(32, 33, 34)');
     await page.keyboard.press('Escape');

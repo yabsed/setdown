@@ -61,7 +61,7 @@ test('opening app settings performs no executable discovery or automatic prepara
 });
 
 test('Zed resolves a supported server before global executable candidates and receives the project environment', async () => {
-  const root = path.join(mocks.directory, 'zed-project'); await mkdir(root); await mkdir(path.join(root, '.git'));
+  const root = path.join(mocks.directory, 'zed-project'); await mkdir(path.join(root, '.git'), { recursive: true }); await writeFile(path.join(root, '.git/HEAD'), 'ref: refs/heads/main\n');
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '/global/broken-shims', SETDOWN_LSP_INHERIT_ENV: '1' }));
   const find = vi.spyOn(discovery, 'find');
   const prepare = vi.fn(async () => ({ executable: '/zed/managed/fortls', args: ['--stdio'], settings: {}, initializationOptions: {} }));
@@ -416,7 +416,7 @@ test('project Basic editing does not change the global catalog Enable/Disable co
 
 test('the tool catalog has global defaults even with a folder open; document inspection requests its own project options', async () => {
   const root = path.join(mocks.directory, 'project');
-  await mkdir(path.join(root, '.git'), { recursive: true });
+  await mkdir(path.join(root, '.git'), { recursive: true }); await writeFile(path.join(root, '.git/HEAD'), 'ref: refs/heads/main\n');
   await writeFile(path.join(root, 'pyproject.toml'), '[project]\nname = "fixture"\nversion = "0.0.0"\n');
   const f = fixture(undefined, root), file = f.document('python').path;
   await writeFile(file, 'value = 1\n');

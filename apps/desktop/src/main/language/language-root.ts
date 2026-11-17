@@ -17,6 +17,20 @@ export function projectManifest(file: string): Record<string, any> {
   } catch { return {}; }
 }
 
+/**
+ * Git's own test: a gitfile (submodule/worktree) or a directory holding HEAD.
+ * Sandboxes such as Codex's bubblewrap leave empty `.git` mount targets in
+ * writable roots (`/tmp/.git`); treating those as repositories would make all
+ * of /tmp the analysis root for standalone files.
+ */
+export function hasRepositoryMarker(directory: string): boolean {
+  const marker = path.join(directory, '.git');
+  try {
+    const stat = statSync(marker);
+    return stat.isFile() || stat.isDirectory() && existsSync(path.join(marker, 'HEAD'));
+  } catch { return false; }
+}
+
 export function languageRoot(file: string, definition: Pick<LanguageServerDefinition, 'languages' | 'rootMarkers'>, folder?: string, override?: string): LanguageRoot {
   const directory = path.dirname(file);
   if (override && isInside(override, file)) {
@@ -28,7 +42,7 @@ export function languageRoot(file: string, definition: Pick<LanguageServerDefini
   for (let root = directory; ; root = path.dirname(root)) {
     ancestors.push(root);
     // A submodule/worktree has a .git file. Do not borrow the containing repo's configuration.
-    if (existsSync(path.join(root, '.git'))) { repository = root; break; }
+    if (hasRepositoryMarker(root)) { repository = root; break; }
     if (path.dirname(root) === root) break;
   }
   const found = (root: string, marker: string): LanguageRoot => ({ path: root, reason: `Project marker: ${marker}` });
@@ -66,7 +80,8 @@ export function languageRoot(file: string, definition: Pick<LanguageServerDefini
     if (existsSync(path.join(root, 'package.json'))) return found(root, 'package.json');
   }
   for (const root of ancestors) {
-    const exact = definition.rootMarkers.find(marker => !/[*?]/.test(marker) && existsSync(path.join(root, marker)));
+    const exact = definition.rootMarkers.find(marker => !/[*?]/.test(marker)
+      && (marker === '.git' ? hasRepositoryMarker(root) : existsSync(path.join(root, marker))));
     if (exact) return found(root, exact);
     const patterns = definition.rootMarkers.filter(marker => /[*?]/.test(marker));
     if (patterns.length) try {

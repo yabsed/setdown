@@ -6,10 +6,11 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { markRepositoryRoot } from '../../support/project/repository-marker';
 const require = createRequire(import.meta.url), execute = promisify(execFile);
 async function fixture(prefix: string) {
   const root = await mkdtemp(path.join(os.tmpdir(), prefix)), project = path.join(root, 'project'), config = path.join(root, 'config');
-  await mkdir(path.join(project, '.git'), { recursive: true });
+  await markRepositoryRoot(project);
   return { root, project, config };
 }
 async function launch(file: string, config: string) {

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { markRepositoryRoot } from '../../support/project/repository-marker';
 const require = createRequire(import.meta.url);
 const catalogSize = new Set([
   ...require('../../../src/main/language/catalog/mason.json').packages,
@@ -172,7 +173,7 @@ test('Zed rejects a broken Rust shim and connects its cached server without the 
   const file = path.join(root, 'main.rs'), log = path.join(root, 'server.jsonl'), probe = path.join(root, 'probe');
   const bin = path.join(root, 'bin'), config = path.join(root, 'config');
   const cache = path.join(config, 'Setdown/language-packages/servers/rust-analyzer');
-  await mkdir(path.join(root, '.git')); await mkdir(bin); await mkdir(cache, { recursive: true });
+  await markRepositoryRoot(root); await mkdir(bin); await mkdir(cache, { recursive: true });
   await writeFile(file, 'fn main() {}\n');
   await writeFile(path.join(config, 'Setdown/language-packages/catalog.json'), JSON.stringify({ version: 1, checked: Date.now(), packages: [] }));
   const broken = path.join(bin, 'rust-analyzer'), cached = path.join(cache, 'rust-analyzer-test');

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { THEME_PROFILES } from '../../../src/core/theme/theme-catalog';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { markRepositoryRoot } from '../../support/project/repository-marker';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5N8AAAAASUVORK5CYII=';
 const notebook = () => ({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' }, custom: { keep: 'unchanged' } }, cells: [
@@ -615,7 +616,7 @@ test('notebook project extraPaths resolve imports and hover, reload live, and re
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-paths-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-paths-config-'));
   const file = path.join(root, 'imports.ipynb'), settings = path.join(root, '.vscode', 'settings.json');
-  await mkdir(path.join(root, '.git')); await mkdir(path.dirname(settings));
+  await markRepositoryRoot(root); await mkdir(path.dirname(settings));
   await mkdir(path.join(root, 'src 한글', 'vlmflash_demo'), { recursive: true });
   await writeFile(path.join(root, 'src 한글', 'vlmflash_demo', '__init__.py'), '"""Local VLM module documentation."""\nVALUE = 42\n');
   const source = 'import vlmflash_demo\nimport definitely_missing_setdown_control';
@@ -873,7 +874,8 @@ test('shared notebook analysis keeps 100-cell namespaces separate and survives t
   await write(first, ['from typing import Literal\ndef choose(mode: Literal["safe"]) -> str:\n    return mode', 'choose("turbo")']);
   await write(large, ['choose("safe")', ...Array.from({ length: 99 }, (_, i) => `value${i} = ${i}`)]);
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  // basedpyright localizes diagnostics from LC_ALL/LANG; the text checked below is its English message.
+  const app = await electron.launch({ args: ['.', first], env: { ...env, LC_ALL: 'C.UTF-8', XDG_CONFIG_HOME: path.join(root, 'config') } });
   // Linux execution evidence includes the real child PID/RSS, excluding kernels.
   const processes = async () => {
     if (process.platform !== 'linux') return [];

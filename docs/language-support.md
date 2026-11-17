@@ -533,7 +533,12 @@ the user explicitly associates Markdown with an enabled server.
 An open project folder is the analysis root when it contains the file. Otherwise,
 Setdown searches ancestors for that connection's `rootMarkers` (including filename
 globs such as `*.sln`), falling back to
-the file's parent. `.C` retains C++ matching before case-insensitive extensions;
+the file's parent. The search stops at a repository boundary, which becomes the
+root when no marker is found below it. As in Git, `.git`
+counts (as a boundary or a `.git` root marker) only when it is a gitfile or a
+directory holding `HEAD`. Sandboxes leave empty `.git` mount targets, such as
+`/tmp/.git` created by Codex's bubblewrap; these must not make `/tmp` the
+analysis root (`server-definitions.test.ts`). `.C` retains C++ matching before case-insensitive extensions;
 exact filenames and path globs precede suffix matches, and longer suffixes such as
 `.custom.py` take precedence over `.py`. Imported shebang and syntax-grammar
 metadata are not used for LSP routing.

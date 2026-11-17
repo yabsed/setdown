@@ -32,6 +32,16 @@ test('standalone nested source and header discover the same project boundary', a
   expect(standaloneLanguageRoot(path.join(root, 'include/helper.h'), 'clangd')).toBe(root);
   expect(standaloneLanguageRoot(path.join(root, 'src/main.py'), 'pyright')).toBe(path.join(root, 'src'));
 });
+test('only a gitfile or a .git directory with HEAD is a repository boundary, not an empty sandbox mount target', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-git-')); roots.push(root);
+  const file = path.join(root, 'project/src/main.py');
+  await mkdir(path.join(root, 'project/.git'), { recursive: true }); await mkdir(path.dirname(file));
+  expect(standaloneLanguageRoot(file, 'pyright')).toBe(path.dirname(file));
+  await writeFile(path.join(root, 'project/.git/HEAD'), 'ref: refs/heads/main\n');
+  expect(standaloneLanguageRoot(file, 'pyright')).toBe(path.join(root, 'project'));
+  await rm(path.join(root, 'project/.git'), { recursive: true }); await writeFile(path.join(root, 'project/.git'), 'gitdir: ../.git/modules/project\n');
+  expect(standaloneLanguageRoot(file, 'pyright')).toBe(path.join(root, 'project'));
+});
 test('clangd settings persist the selected absolute executable and handle spaces without a shell', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-clangd-settings-')); roots.push(root);
   const directory = path.join(root, 'config');

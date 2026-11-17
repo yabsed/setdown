@@ -3,13 +3,14 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { markRepositoryRoot } from '../../support/project/repository-marker';
 
 test('global language defaults preserve project choices, unsaved text and Make editing support', async ({}, testInfo) => {
   test.setTimeout(120_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-global-language-')), config = path.join(root, 'config');
   const alpha = path.join(root, 'alpha'), beta = path.join(root, 'beta');
   for (const project of [alpha, beta]) {
-    await mkdir(path.join(project, '.git'), { recursive: true });
+    await markRepositoryRoot(project);
     await writeFile(path.join(project, 'main.py'), 'value = 1\n');
   }
   const make = path.join(beta, 'Makefile'); await writeFile(make, 'all:\n\t@echo hello\n');
@@ -80,7 +81,7 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-analysis-ui-')), config = path.join(root, 'config');
   const projects = [path.join(root, 'alpha'), path.join(root, 'beta')], files = projects.map(p => path.join(p, 'main.py'));
   for (const [index, project] of projects.entries()) {
-    await mkdir(path.join(project, '.git'), { recursive: true });
+    await markRepositoryRoot(project);
     await writeFile(path.join(project, 'pyproject.toml'), `[project]\nname = "fixture${index}"\nversion = "0.0.0"\n`);
     await writeFile(files[index], `value = ${index}\n`);
   }
@@ -165,7 +166,7 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
 test('a missing environment exposes the repair first and retains an issue indicator in a narrow group', async ({}, testInfo) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-analysis-missing-')), config = path.join(root, 'config'), project = path.join(root, 'project');
   const settings = path.join(config, 'Setdown'), file = path.join(project, 'main.py'), missing = path.join(project, '.venv/bin/python');
-  await mkdir(settings, { recursive: true }); await mkdir(path.join(project, '.git'), { recursive: true });
+  await mkdir(settings, { recursive: true }); await markRepositoryRoot(project);
   await writeFile(file, 'value = 1\n');
   await writeFile(path.join(settings, 'project-analysis.json'), JSON.stringify({ version: 1, projects: { [project]: { python: missing } } }));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
@@ -194,7 +195,7 @@ test('a missing environment exposes the repair first and retains an issue indica
 test('closing the last view of a checked document retires its coverage from Problems', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-analysis-lifetime-')), config = path.join(root, 'config');
   const checked = path.join(root, 'checked.json'), plain = path.join(root, 'plain.txt');
-  await mkdir(path.join(root, '.git')); await writeFile(checked, '{"value":1}\n'); await writeFile(plain, 'Plain text\n');
+  await markRepositoryRoot(root); await writeFile(checked, '{"value":1}\n'); await writeFile(plain, 'Plain text\n');
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
   const application = await electron.launch({ args: ['.', checked], env: { ...env, XDG_CONFIG_HOME: config } });
   try {
