@@ -67,8 +67,11 @@ class ImageSessions implements DocumentContentOwner {
   release(id: string) {
     const s = this.entries.get(id); this.entries.delete(id);
     if (s && ![...this.entries.values()].includes(s)) this.api.release(s.source.id);
-    for (const file of this.pending.keys()) if (!this.tabs().some(t => t.id !== id && t.document.path === file)) this.pending.delete(file);
-    this.notify();
+    let pending = false;
+    for (const file of this.pending.keys()) if (!this.tabs().some(t => t.id !== id && t.document.path === file)) pending = this.pending.delete(file) || pending;
+    // Every tab is released here, most of them never an image. Only a change is published:
+    // the workspace may be half way through replacing the tab.
+    if (s || pending) this.notify();
   }
   releaseAll() { for (const s of new Set(this.entries.values())) this.api.release(s.source.id); this.entries.clear(); this.pending.clear(); }
   async save(tab: DocumentTab, saveAs = false): Promise<SaveResult> {

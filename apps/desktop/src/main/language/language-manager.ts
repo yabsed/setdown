@@ -429,8 +429,10 @@ export class LanguageManager {
     return binding;
   }
   private async open(state: WindowState, document: LanguageDocument) {
-    if (document?.notebook === 'python') return this.notebooks.open(state, document);
+    // A window that shows only notebooks must still hear environment and level changes:
+    // the notebook reconnects on the same broadcast as ordinary documents.
     this.subscribe(state);
+    if (document?.notebook === 'python') return this.notebooks.open(state, document);
     await this.updating;
     const routes = this.registry.routes(document?.path);
     const languagePath = document?.path;
@@ -700,6 +702,7 @@ export class LanguageManager {
   }
   private async selectEnvironment(state: WindowState, file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis> {
     if (!selection || !['python', 'typescript', 'compilation', 'server', 'python-checking'].includes(selection.kind) || typeof selection.value !== 'string' || selection.value.length > 128) throw Error('Invalid environment selection.');
+    this.subscribe(state);
     const context = await this.documentEnvironment(state, file, language, true);
     if (selection.root !== undefined && selection.root !== context.root) throw Error('The analysis project changed. Refresh the environment before applying this choice.');
     if (selection.kind === 'python-checking') {

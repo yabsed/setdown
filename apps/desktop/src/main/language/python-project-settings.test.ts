@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { applyPythonProjectSettings, isPythonSettingsFile, pythonProjectSettings, pythonSettingsContext } from './python-project-settings';
+import { applyPythonProjectSettings, isPythonSettingsFile, pythonProjectSettings, pythonSettingsContext, withLibraryStubs } from './python-project-settings';
 import { configurationSection } from './server-session';
 
 const roots: string[] = [];
@@ -18,8 +18,9 @@ test('JSONC compatibility paths preserve order and expand only the owning worksp
   const project = pythonProjectSettings(root);
   expect(project.extraPaths).toEqual([path.join(root, 'src'), path.join(root, 'lib')]);
   const configuration = applyPythonProjectSettings({ basedpyright: { analysis: { typeCheckingMode: 'off' } } }, project, 'basedpyright');
-  expect(configurationSection(configuration, 'basedpyright.analysis')).toEqual({ typeCheckingMode: 'off', extraPaths: project.extraPaths });
-  expect(configurationSection(configuration, 'basedpyright')).toEqual({ analysis: { typeCheckingMode: 'off', extraPaths: project.extraPaths } });
+  expect(configurationSection(configuration, 'basedpyright.analysis.extraPaths')).toEqual(project.extraPaths);
+  expect(configurationSection(configuration, 'basedpyright.analysis.typeCheckingMode')).toBe('off');
+  expect(configurationSection(configuration, 'basedpyright')).toEqual({ analysis: configurationSection(configuration, 'basedpyright.analysis') });
   expect(project.errors).toEqual([]);
 });
 test('basedpyright paths take precedence, including an explicit empty list', () => {
@@ -72,4 +73,30 @@ test('workspace checking overrides product defaults, explicit choices win, and n
   expect(configurationSection(applyPythonProjectSettings(config, project, 'pyright', true), 'python.analysis.typeCheckingMode')).toBe('basic');
   expect(configurationSection(applyPythonProjectSettings(config, project, 'pyright', false, 'off'), 'python.analysis.typeCheckingMode')).toBe('off');
   expect(configurationSection(applyPythonProjectSettings({}, { errors: [] }, 'basedpyright'), 'basedpyright.analysis.typeCheckingMode')).toBe('basic');
+});
+
+test('off keeps the warnings Pyright and Pylance report in off, without replacing explicit severities', () => {
+  const baseline = { reportMissingImports: 'warning', reportMissingModuleSource: 'warning', reportInvalidTypeForm: 'warning', reportUndefinedVariable: 'warning' };
+  const applied = applyPythonProjectSettings({}, { errors: [] }, 'basedpyright', true, 'off');
+  expect(configurationSection(applied, 'basedpyright.analysis.diagnosticSeverityOverrides')).toEqual(baseline);
+  expect(configurationSection(applied, 'basedpyright')).toEqual({ analysis: { typeCheckingMode: 'off', diagnosticSeverityOverrides: baseline } });
+  const explicit = { basedpyright: { analysis: { typeCheckingMode: 'off', diagnosticSeverityOverrides: { reportUndefinedVariable: 'error', reportUnusedImport: 'warning' } } } };
+  expect(configurationSection(applyPythonProjectSettings(explicit, { errors: [] }, 'basedpyright'), 'basedpyright.analysis.diagnosticSeverityOverrides'))
+    .toEqual({ ...baseline, reportUndefinedVariable: 'error', reportUnusedImport: 'warning' });
+  // Pyright's own off preset already reports them, and other levels report them as errors.
+  expect(configurationSection(applyPythonProjectSettings({}, { errors: [] }, 'pyright', true, 'off'), 'python.analysis')).toEqual({ typeCheckingMode: 'off' });
+  expect(configurationSection(applyPythonProjectSettings({}, { errors: [] }, 'basedpyright'), 'basedpyright.analysis')).toEqual({ typeCheckingMode: 'basic' });
+});
+
+test('bundled library stubs follow the analysis paths that the project and the user already chose', () => {
+  const project = applyPythonProjectSettings({}, { extraPaths: ['/project/src'], source: 'settings', errors: [] }, 'basedpyright');
+  const applied = withLibraryStubs(project, 'basedpyright', ['/bundled/pandas', '/project/src']);
+  expect(configurationSection(applied, 'basedpyright.analysis.extraPaths')).toEqual(['/project/src', '/bundled/pandas']);
+  expect(configurationSection(applied, 'basedpyright')).toEqual({ analysis: configurationSection(applied, 'basedpyright.analysis') });
+  expect(configurationSection(applied, 'basedpyright.analysis.typeCheckingMode')).toBe('basic');
+  // A flat connection setting has precedence in workspace/configuration, so it is kept aligned.
+  const flat = withLibraryStubs({ 'python.analysis.extraPaths': ['lib'] }, 'pyright', ['/bundled/pandas']);
+  expect(flat['python.analysis.extraPaths']).toEqual(['lib', '/bundled/pandas']);
+  expect(configurationSection(flat, 'python')).toEqual({ analysis: { extraPaths: ['lib', '/bundled/pandas'] } });
+  expect(withLibraryStubs(project, 'basedpyright', [])).toBe(project);
 });

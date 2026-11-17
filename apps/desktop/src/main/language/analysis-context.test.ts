@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 const state = vi.hoisted(() => ({ directory: '' }));
 vi.mock('electron', () => ({ app: { getPath: () => path.join(state.directory, 'settings') } }));
-vi.mock('../notebook/python-environments', () => ({ notebookPython: { list: async () => ({ selected: process.execPath, candidates: [{ path: process.execPath, source: 'Host', name: 'Host Python' }] }) } }));
+vi.mock('../notebook/python-environments', () => ({ notebookPython: { searchPaths: async () => ({ paths: [] }), list: async () => ({ selected: process.execPath, candidates: [{ path: process.execPath, source: 'Host', name: 'Host Python' }] }) } }));
 import { AnalysisContextService } from './analysis-context';
 import { analysisPreferences } from './analysis-preferences';
 import { builtinLanguageServers } from './catalog/profiles';

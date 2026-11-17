@@ -64,3 +64,20 @@ test('an inner Git repository never inherits an outer local environment', async 
   expect((await service.list(path.join(inner, 'notes.ipynb'))).selected).toBe(path.join(state.root, 'system-python'));
   service.dispose();
 });
+
+test.skipIf(process.platform === 'win32')('the selected interpreter reports its version and existing search paths once, and a failing one reports none', async () => {
+  const { chmod } = await import('node:fs/promises');
+  const site = path.join(state.root, 'site-packages'), calls = path.join(state.root, 'calls'), python = path.join(state.root, 'python');
+  await mkdir(site);
+  // Stands in for an interpreter: answers the query and records that it was asked.
+  await writeFile(python, `#!/bin/sh\necho x >> '${calls}'\nprintf '%s' '${JSON.stringify({ version: '3.13', paths: [site, 'relative', 7] })}'\n`);
+  await chmod(python, 0o755);
+  const service = new PythonEnvironments();
+  expect(await service.searchPaths(python)).toEqual({ version: '3.13', paths: [site] });
+  expect(await service.searchPaths(python)).toEqual({ version: '3.13', paths: [site] });
+  expect((await (await import('node:fs/promises')).readFile(calls, 'utf8')).trim().split('\n')).toHaveLength(1);
+  expect(await service.searchPaths(path.join(state.root, 'missing-python'))).toEqual({ paths: [] });
+  const broken = path.join(state.root, 'broken'); await writeFile(broken, '#!/bin/sh\necho not json\n'); await chmod(broken, 0o755);
+  expect(await service.searchPaths(broken)).toEqual({ paths: [] });
+  service.dispose();
+});

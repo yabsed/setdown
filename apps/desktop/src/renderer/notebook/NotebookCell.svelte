@@ -76,6 +76,10 @@
         scrollBeyondLastLine: false, wordWrap: wordWrap ? 'on' : 'off', lineNumbers: syntax === 'code' && lineNumbers ? 'on' : 'off',
         folding: true, showFoldingControls: 'mouseover', stickyScroll: { enabled: false }, glyphMargin: false, lineDecorationsWidth: 12,
         lineNumbersMinChars: 3, padding: { top: 12, bottom: 4 }, fixedOverflowWidgets: true,
+        // Each cell editor is its own stacking context (sticky viewport), so popups kept
+        // inside it are painted over by other cells' frames and toolbars. As VS Code's
+        // notebook does for nested editors, they go to one container above the cell list.
+        overflowWidgetsDomNode: container.closest('.notebook-surface')?.querySelector<HTMLElement>(':scope > .notebook-overflow-widgets') ?? undefined,
         ariaLabel: `${syntax === 'code' ? 'Code' : syntax === 'markdown' ? 'Markdown' : 'Raw'} cell editor`,
         scrollbar: { vertical: 'hidden', horizontal: 'auto', handleMouseWheel: false,
           alwaysConsumeMouseWheel: false, useShadows: false }, overviewRulerLanes: 0 });

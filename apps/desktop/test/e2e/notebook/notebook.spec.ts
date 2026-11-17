@@ -441,6 +441,9 @@ test('native notebook analysis checks types with IPython and isolated cell range
   for (const name of ['.venv', 'env-b']) execFileSync(process.env.SETDOWN_TEST_NOTEBOOK_PYTHON ?? 'python3', ['-m', 'venv', '--without-pip', '--system-site-packages', path.join(root, name)]);
   const packages = execFileSync(pythonA, ['-c', 'import sysconfig; print(sysconfig.get_path("purelib"))'], { encoding: 'utf8' }).trim();
   await mkdir(packages, { recursive: true }); await writeFile(path.join(packages, 'only_a.py'), 'VALUE = 42\n');
+  // Type errors are a project's choice, written the way VS Code reads it. Without it a notebook is checked at Off.
+  await markRepositoryRoot(root); await mkdir(path.join(root, '.vscode'));
+  await writeFile(path.join(root, '.vscode', 'settings.json'), '{"python.analysis.typeCheckingMode": "basic"}\n');
   await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } }, cells: sources.map((source, i) => ({ id: `cell${i}`, cell_type: 'code', metadata: {}, source, execution_count: null, outputs: [] })) }));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
   const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
@@ -627,9 +630,11 @@ test('notebook project extraPaths resolve imports and hover, reload live, and re
     const page = await application.firstWindow(); await focusApplication(application);
     const cell = page.locator('[data-cell-id="imports"]');
     await expect(page.locator('.notebook-surface')).toHaveAttribute('data-notebook-language', 'ready', { timeout: 30000 });
-    await expect(cell.locator('.squiggly-error')).toHaveCount(2, { timeout: 30000 });
+    // The notebook default reports an import that does not resolve, as a warning.
+    await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
+    await expect(cell.locator('.squiggly-error')).toHaveCount(0);
     await writeFile(settings, '{\n// Workspace-relative path, including Unicode\n"python.analysis.extraPaths": ["${workspaceFolder}/src 한글"],\n}\n');
-    await expect(cell.locator('.squiggly-error')).toHaveCount(1, { timeout: 30000 });
+    await expect(cell.locator('.squiggly-warning')).toHaveCount(1, { timeout: 30000 });
     const info = await page.evaluate(async ({ file, source }) => {
       const api = (window as any).marktex.language;
       const connection = await api.open({ id: 'paths-probe', generation: 'paths', path: file, notebook: 'python', text: '', version: 1, cells: [{ id: 'imports', version: 1, text: source }] });
@@ -639,7 +644,7 @@ test('notebook project extraPaths resolve imports and hover, reload live, and re
     expect(JSON.stringify(info.connection.context)).toContain('.vscode'); expect(JSON.stringify(info.connection.context)).toContain('src 한글');
     expect(JSON.stringify(info.hover)).toContain('Local VLM module documentation');
     await writeFile(settings, '{"python.analysis.extraPaths": []}\n');
-    await expect(cell.locator('.squiggly-error')).toHaveCount(2, { timeout: 30000 });
+    await expect(cell.locator('.squiggly-warning')).toHaveCount(2, { timeout: 30000 });
     expect(await readFile(file, 'utf8')).toContain('definitely_missing_setdown_control');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
@@ -801,11 +806,12 @@ test('notebook cells indent with four spaces per Tab', async () => {
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
-test('default notebook Literal errors share Problems, survive tab switches, and stay independent from execution', async () => {
+test('notebook Literal errors under a project’s own configuration share Problems, survive tab switches, and stay independent from execution', async () => {
   test.setTimeout(90_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-types-')), file = path.join(root, 'literal.ipynb');
   const python = path.join(root, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
   execFileSync(process.env.SETDOWN_TEST_NOTEBOOK_PYTHON ?? 'python3', ['-m', 'venv', '--without-pip', '--system-site-packages', path.join(root, '.venv')]);
+  // The project's own configuration file decides the level: the analyzer then ignores the client's.
   await writeFile(path.join(root, 'pyrightconfig.json'), '{}');
   const cells = [
     { id: 'define', source: 'from typing import Literal\ndef choose(mode: Literal["fast", "safe"]) -> str:\n    return mode' },
@@ -843,18 +849,50 @@ test('default notebook Literal errors share Problems, survive tab switches, and 
     await problems.locator('.result .location').click();
     await expect(page.locator('.notebook-surface')).toBeVisible();
     await expect(error).toHaveCount(1);
-    await page.getByRole('button', { name: /Python analysis ·/ }).click();
-    const checking = page.getByRole('combobox', { name: 'Python type checking', exact: true });
-    await checking.selectOption('off'); await expect(error).toHaveCount(0, { timeout: 30_000 });
-    await expect(page.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel idle');
-    await checking.selectOption('basic'); await expect(error).toHaveCount(1, { timeout: 30_000 });
+    // The explanation of a problem is readable in full: no cell frame, toolbar or
+    // output paints over it, however far it extends beyond its own cell.
+    // In a narrow window the popup above the first line reaches the cell's own toolbar.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 700));
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBeLessThan(800);
+    // The pointer rests on the marked text; the mark itself is painted beneath that text.
+    const marked = (await error.boundingBox())!;
+    await page.mouse.move(marked.x + marked.width / 2, marked.y + marked.height / 2 - 3);
+    await page.mouse.move(marked.x + marked.width / 2, marked.y + marked.height / 2);
+    const hover = page.locator('.monaco-hover:not(.hidden)');
+    await expect(hover).toContainText('turbo', { timeout: 10_000 });
+    expect(await hover.evaluate(popup => {
+      const box = popup.getBoundingClientRect(), covered: string[] = [];
+      for (let x = box.left + 2; x < box.right - 2; x += 12) for (let y = box.top + 2; y < box.bottom - 2; y += 6) {
+        const top = document.elementFromPoint(x, y);
+        if (!top || !popup.contains(top)) covered.push(`${Math.round(x)},${Math.round(y)}: ${top?.className}`);
+      }
+      return covered;
+    })).toEqual([]);
+    const toolbar = await page.locator('[data-cell-id="invalid"] .cell-toolbar').boundingBox(), popup = await hover.boundingBox();
+    expect(toolbar!.x < popup!.x + popup!.width && popup!.y < toolbar!.y + toolbar!.height && toolbar!.y < popup!.y + popup!.height).toBe(true);
+    await page.screenshot({ path: test.info().outputPath('notebook-problem-hover.png') });
+    await page.keyboard.press('Escape'); await page.mouse.move(5, 400);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1080, 820));
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBeGreaterThan(1000);
+    // The location bar holds the notebook's language status, as it does for other documents.
+    const status = page.getByRole('button', { name: /^Language status: Python/ });
+    const panel = page.getByRole('region', { name: 'Notebook Python analysis' });
+    await status.click();
+    const checking = page.getByRole('group', { name: 'Python type checking', exact: true });
+    // Every level says what it reports. Here none can be chosen, and the panel says why.
+    await expect(checking.getByRole('radio')).toHaveCount(5);
+    for (const radio of await checking.getByRole('radio').all()) await expect(radio).toBeDisabled();
+    await expect(checking.getByRole('note')).toContainText(path.join(root, 'pyrightconfig.json'));
+    await expect(checking.getByRole('radio', { name: /^Project settings \/ default.*Decided by the project’s own configuration/ })).toBeChecked();
     await page.screenshot({ path: test.info().outputPath('notebook-analysis-settings.png') });
-    await page.getByRole('region', { name: 'Notebook Python analysis' }).getByRole('button', { name: 'Close', exact: true }).click();
+    await panel.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(panel).toHaveCount(0);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 700));
     await page.getByRole('button', { name: 'Commands…', exact: true }).click();
     await page.getByRole('button', { name: 'Python analysis settings', exact: true }).click();
     await expect(checking).toBeVisible();
-    await page.getByRole('region', { name: 'Notebook Python analysis' }).getByRole('button', { name: 'Close', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1080, 820));
     const editor = page.locator('[data-cell-id="invalid"]').getByRole('textbox', { name: /Code cell editor/ });
     await editor.press('Control+a'); await page.keyboard.insertText('print(choose("safe"))');
@@ -910,7 +948,7 @@ test('shared notebook analysis keeps 100-cell namespaces separate and survives t
     const after = await processes();
     expect(after.map(record => record.pid)).toEqual(initial.map(record => record.pid));
     const timings: number[] = [];
-    await visible.getByRole('button', { name: /Python analysis ·/ }).click();
+    await page.getByRole('button', { name: /^Language status: Python/ }).click();
     const details = visible.getByRole('region', { name: 'Notebook Python analysis' });
     const editor = visible.locator('[data-cell-id="cell0"]').getByRole('textbox', { name: /Code cell editor/ });
     for (let i = 0; i < 6; i++) {
@@ -927,4 +965,126 @@ test('shared notebook analysis keeps 100-cell namespaces separate and survives t
     await test.info().attach('notebook-analysis-measurements', { path: measurements, contentType: 'application/json' });
     await expect(visible.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel stopped');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a notebook is checked at Off by default; another level applies by itself, and the panel closes on Escape or a click elsewhere', async () => {
+  test.setTimeout(150_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-level-')), file = path.join(root, 'level.ipynb');
+  execFileSync(process.env.SETDOWN_TEST_NOTEBOOK_PYTHON ?? 'python3', ['-m', 'venv', '--without-pip', '--system-site-packages', path.join(root, '.venv')]);
+  // A project file that says nothing about the analyzer leaves the level to Setdown.
+  await markRepositoryRoot(root); await writeFile(path.join(root, 'pyproject.toml'), '[project]\nname = "level"\nversion = "1"\n');
+  const cells = [
+    { id: 'define', source: 'from typing import Literal\ndef choose(mode: Literal["fast", "safe"]) -> str:\n    return mode' },
+    { id: 'types', source: 'print(choose("turbo"))' }, { id: 'name', source: 'print(never_defined)' },
+  ];
+  await writeFile(file, JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: { language_info: { name: 'python' } },
+    cells: cells.map(cell => ({ ...cell, cell_type: 'code', metadata: {}, execution_count: null, outputs: [] })) }));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  // Only the notebook is open: no other document keeps this window listening for the change.
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    const types = page.locator('[data-cell-id="types"]'), name = page.locator('[data-cell-id="name"]');
+    const status = page.getByRole('button', { name: /^Language status: Python/ });
+    const panel = page.getByRole('region', { name: 'Notebook Python analysis' });
+    const checking = page.getByRole('group', { name: 'Python type checking', exact: true });
+    // Each state is told apart by a mark that is present, never by an absence alone:
+    // an undefined name is a warning at Off and an error from Basic up.
+    const off = async () => {
+      await expect(name.locator('.squiggly-warning')).toHaveCount(1, { timeout: 60_000 });
+      await expect(name.locator('.squiggly-error')).toHaveCount(0); await expect(types.locator('.squiggly-error')).toHaveCount(0);
+    };
+    const basic = async () => {
+      await expect(types.locator('.squiggly-error')).toHaveCount(1, { timeout: 60_000 });
+      await expect(name.locator('.squiggly-error')).toHaveCount(1); await expect(name.locator('.squiggly-warning')).toHaveCount(0);
+    };
+    await expect(page.locator('.notebook-surface')).toHaveAttribute('data-notebook-language', 'ready', { timeout: 30_000 });
+    await off();
+    await status.click();
+    await expect(checking.getByRole('radio', { name: /^Project settings \/ default.*Currently Off · Setdown default/ })).toBeChecked();
+    for (const radio of await checking.getByRole('radio').all()) await expect(radio).toBeEnabled();
+    // Choosing is all it takes: no restart button, and the panel says when it is done.
+    await checking.getByRole('radio', { name: /^Basic/ }).check();
+    await basic();
+    await expect(panel.getByRole('status')).toContainText('Current diagnostics received for 3 code cells.', { timeout: 30_000 });
+    await expect(page.locator('.kernel-state')).toHaveAttribute('aria-label', 'Kernel stopped');
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await basic();
+    // The choice is the project's: it is still there when the panel returns.
+    await status.click();
+    await expect(checking.getByRole('radio', { name: /^Basic/ })).toBeChecked();
+    await checking.getByRole('radio', { name: /^Off/ }).check();
+    await off();
+    await expect(panel.getByRole('status')).toContainText('Current diagnostics received for 3 code cells.', { timeout: 30_000 });
+    await page.screenshot({ path: test.info().outputPath('notebook-level-off.png') });
+    await page.locator('[data-cell-id="define"]').click({ position: { x: 4, y: 4 } });
+    await expect(panel).toHaveCount(0);
+    await off();
+    await status.click();
+    await expect(checking.getByRole('radio', { name: /^Off/ })).toBeChecked();
+    await checking.getByRole('radio', { name: /^Project settings/ }).check();
+    await expect(checking.getByRole('radio', { name: /^Project settings \/ default.*Currently Off · Setdown default/ })).toBeChecked({ timeout: 30_000 });
+    await off();
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('the explorer preview tab shows each notebook it opens, and a second pane shows its own', async () => {
+  test.setTimeout(150_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-preview-'));
+  for (const name of ['first', 'second', 'third']) {
+    const value = notebook(); value.cells[0].source = [`# ${name} notebook`]; value.cells[1].source = [`${name}_value = 1\n`];
+    await writeFile(path.join(root, `${name}.ipynb`), JSON.stringify(value));
+  }
+  await writeFile(path.join(root, 'readme.md'), '# Readme\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', path.join(root, 'readme.md')], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const problems: string[] = [];
+  try {
+    const page = await application.firstWindow();
+    page.on('pageerror', error => problems.push(String(error.stack ?? error)));
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), root);
+    await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    await focusApplication(application);
+    const file = (name: string) => page.getByRole('treeitem', { name: `${name}.ipynb`, exact: true });
+    const visible = page.locator('.notebook-content:not(.inactive)');
+    const status = page.getByRole('button', { name: /^Language status: Python/ });
+    // One preview slot, reused under one tab: each notebook replaces the last one's content.
+    for (const name of ['first', 'second', 'first', 'third', 'second']) {
+      await file(name).click();
+      await expect(page.getByRole('tab', { name: new RegExp(`${name}\\.ipynb`) })).toBeVisible();
+      await expect(visible.locator('.notebook-scroll:not(.preparing) h1'), `content after opening ${name}`).toHaveText(`${name} notebook`);
+      await expect(visible.locator('[data-cell-id="define"] .view-lines')).toContainText(`${name}_value = 1`);
+      await expect(status, `Python status after opening ${name}`).toBeVisible();
+      // A session left over from the notebook before it made the tab unsaved, and so kept open.
+      await expect(page.locator('.tab-dirty')).toHaveCount(0);
+      await expect(page.getByRole('tab', { name: /\.ipynb/ })).toHaveCount(1);
+    }
+    // The status belongs to the tab for as long as it is open: connected analysis shows
+    // the bare language, and republishing the tabs (here, by switching) leaves it there.
+    await expect(status).toHaveAccessibleName('Language status: Python', { timeout: 60_000 });
+    for (let round = 0; round < 3; round++) {
+      await page.getByRole('tab', { name: /readme\.md/ }).click();
+      await expect(status).toHaveCount(0);
+      await page.getByRole('tab', { name: /second\.ipynb/ }).click();
+      await expect(visible.locator('.notebook-scroll:not(.preparing) h1')).toHaveText('second notebook');
+    }
+    // The button used to vanish a moment after a switch, on a later republish of the tabs:
+    // an immediate look would pass before it did.
+    await page.waitForTimeout(500);
+    await expect(status).toHaveAccessibleName('Language status: Python');
+    // Kept open and next to another notebook, each pane has its own document.
+    await file('second').dblclick();
+    await file('first').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Open to the Side' }).click();
+    await expect(page.getByRole('tab', { name: /\.ipynb/ })).toHaveCount(2);
+    await expect(page.locator('.notebook-content:not(.inactive) .notebook-scroll:not(.preparing) h1')).toHaveText(['second notebook', 'first notebook']);
+    await expect(status, 'one status in each pane’s location bar').toHaveCount(2);
+    expect(problems).toEqual([]);
+  } finally {
+    await writeFile(test.info().outputPath('renderer-problems.txt'), problems.join('\n\n'));
+    await disposeApplication(application); await rm(root, { recursive: true, force: true });
+  }
 });

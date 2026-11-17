@@ -77,7 +77,7 @@ import type { AppActions } from './ports/ui-actions';
     <div class="group-content notebook-content" class:inactive={!active} inert={!active} style={geometry(box)} data-notebook-tab={tab.id} data-zoom-tab={tab.id}>
       {#key tab.entry}
         {#await import('./notebook/NotebookSurface.svelte') then module}
-          <module.default entry={tab.entry} path={tab.path} {active} {desktop} openFile={actions.openLanguageLocation} onfocus={() => { if (view.focusedGroupId !== group?.id) actions.activateTab(tab.id); }} />
+          <module.default entry={tab.entry} path={tab.path} tabId={tab.id} {active} {desktop} openFile={actions.openLanguageLocation} onfocus={() => { if (view.focusedGroupId !== group?.id) actions.activateTab(tab.id); }} />
         {:catch error}<div role="alert">Could not load the notebook: {String(error)}</div>{/await}
       {/key}
     </div>

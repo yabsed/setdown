@@ -8,6 +8,7 @@ import { canonicalPath } from '../documents/file-system';
 import { ServerSession } from './server-session';
 import { LanguageSessionPool } from './language-session-pool';
 import { notebookPythonAnalysis } from './python-analysis';
+import { notebookAnalysisSource, notebookPrelude } from './notebook-ipython-syntax';
 import { notebookPython } from '../notebook/python-environments';
 import { notebookClientCapabilities, notebookLanguageMethods } from '../../protocol/language-features';
 import { ServerItems } from './server-items';
@@ -65,7 +66,8 @@ export class NotebookLanguageHost {
       state: 'failed', message, recovery: { retrying: !!retry, attempt: retry?.attempt } });
   }
   private cells(uri: string, cells: LanguageCell[], epoch: string): Cell[] {
-    return [{ id: '', version: 1, text: 'from IPython import get_ipython as get_ipython' }, ...cells].map(cell => ({ ...cell, uri: uri.replace(/^file:/, 'vscode-notebook-cell:') + '#' + cell.id + '.' + epoch }));
+    return [{ id: '', version: 1, text: notebookPrelude }, ...cells].map(cell => ({ ...cell, text: notebookAnalysisSource(cell.text),
+      uri: uri.replace(/^file:/, 'vscode-notebook-cell:') + '#' + cell.id + '.' + epoch }));
   }
   async open(state: WindowState, document: LanguageDocument): Promise<LanguageConnection> {
     if (!document || typeof document.id !== 'string' || document.id.length > 128 || typeof document.generation !== 'string'
@@ -96,7 +98,8 @@ export class NotebookLanguageHost {
       const session = { state, document: { ...document }, cells: this.cells(uri, document.cells, epoch), uri, phase: 'starting', epoch,
         items: new ServerItems(), root: root.path, rootReason: root.reason, requests: new Map(), ready: false, opened: false } as Session;
       // Notebook mode supplies display(); the hidden first cell binds IPython's
-      // runtime get_ipython() with its installed types. Neither source is rewritten.
+      // runtime get_ipython() with its installed types. Cell sources are sent as
+      // written, except for the same-length IPython rules of notebookAnalysisSource.
       const analysis = notebookPythonAnalysis;
       const base = builtinLanguageServers.find(profile => profile.id === 'pyright')!;
       const plan = await this.contexts.resolve(root.path, root.reason, { ...base, id: 'basedpyright', name: 'Notebook Python',

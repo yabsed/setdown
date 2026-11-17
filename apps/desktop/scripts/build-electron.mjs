@@ -41,6 +41,7 @@ await copyFile('src/main/files/x11-file-drag.py', 'dist-electron/x11-file-drag.p
 await copyFile('src/main/notebook/notebook-inspect.py', 'dist-electron/notebook-inspect.py');
 
 await import('./build-browser.mjs');
+await (await import('./build-python-stubs.mjs')).buildPythonStubs();
 
 await copyFile('src/main/language/catalog/MASON-LICENSE', 'dist-electron/MASON-LICENSE');
 await copyFile('scripts/language-profiles/upstream/HELIX-LICENSE', 'dist-electron/HELIX-LICENSE');

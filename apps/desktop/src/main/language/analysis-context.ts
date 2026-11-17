@@ -9,7 +9,8 @@ import { analysisPreferences } from './analysis-preferences';
 import type { Options } from './server-registry';
 import type { ServerLaunch } from './server-session';
 import { serverProfile, type ServerProfile } from './server-definitions';
-import { applyPythonProjectSettings, pythonProjectSettings, pythonSettingsContext } from './python-project-settings';
+import { applyPythonProjectSettings, nativePythonConfiguration, pythonProjectSettings, pythonSettingsContext, withLibraryStubs } from './python-project-settings';
+import { libraryStubs } from './python-library-stubs';
 
 function json(file: string): Record<string, any> | undefined {
   try { if (statSync(file).size <= 1024 * 1024) return parse(readFileSync(file, 'utf8')); } catch { /* Optional metadata. */ }
@@ -58,12 +59,13 @@ export class AnalysisContextService {
     if (definition.languages.some(l => l.languageId === 'python')) {
       context.kind = 'python'; context.label = 'Python environment';
       const project = pythonProjectSettings(root), server = /basedpyright/.test(definition.id) ? 'basedpyright' : 'pyright';
+      const native = nativePythonConfiguration(root, server);
       const explicitChecking = section(options.settings ?? {}, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) !== undefined;
       profile.configuration = applyPythonProjectSettings(profile.configuration, project, server, explicitChecking, preferences['python-checking']);
       context.checking = { mode: section(profile.configuration, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) as PythonChecking,
         override: preferences['python-checking'], source: preferences['python-checking'] ? 'Project selection' : explicitChecking ? 'Connection settings' : project.checkingSource ?? 'Setdown default',
-        projectConfiguration: project.projectConfiguration };
-      for (const [key, value] of pythonSettingsContext(project, profile.configuration, server)) context.evidence.push(`${key}: ${value}`);
+        projectConfiguration: native };
+      for (const [key, value] of pythonSettingsContext(project, profile.configuration, server, native)) context.evidence.push(`${key}: ${value}`);
       for (const name of ['pyrightconfig.json', 'pyproject.toml', '.vscode/settings.json', '.venv', 'venv']) inputs.add(path.join(root, name));
       const environments = await notebookPython.list(path.join(root, '__setdown_analysis__.py'), root, !!preferences.python);
       for (const candidate of environments.candidates) choice(candidate.path, candidate.source, candidate.name, true);
@@ -79,8 +81,13 @@ export class AnalysisContextService {
         // Retain even a missing explicit choice; never silently substitute a different interpreter.
         profile.configuration = setPython(profile.configuration, selected);
       } else issue('python-unknown', 'Choose a Python environment so imports can use the project dependencies.', true);
+      // Decided per environment: each interpreter has its own libraries and its own stubs.
+      const stubs = selected ? libraryStubs(root, await notebookPython.searchPaths(selected)) : { paths: [], evidence: [] };
+      context.evidence.push(...stubs.evidence);
+      profile.configuration = withLibraryStubs(profile.configuration, server, stubs.paths);
+      inputs.add(path.join(root, 'typings'));
       configuration = settings => {
-        const scoped = applyPythonProjectSettings(settings, project, server, explicitChecking, preferences['python-checking']);
+        const scoped = withLibraryStubs(applyPythonProjectSettings(settings, project, server, explicitChecking, preferences['python-checking']), server, stubs.paths);
         return selected && (notebookPythonOverride || preferences.python || section(scoped, 'python.pythonPath') === undefined) ? setPython(scoped, selected) : scoped;
       };
       if (!notebookPythonOverride && !preferences.python && !configured && environments.selectionNeeded)

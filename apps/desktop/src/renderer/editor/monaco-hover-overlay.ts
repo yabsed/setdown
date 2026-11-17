@@ -25,7 +25,11 @@ export function installMonacoHovers(api: typeof Monaco): void {
     }
     function bind() {
       observer.disconnect();
-      widgets = view.getDomNode()?.querySelector('.overflowingContentWidgets') ?? null;
+      const node = view.getDomNode();
+      // Notebook cells share one overflow container. This runs as the view is
+      // created, so this editor's widgets are the ones Monaco appended last.
+      widgets = node?.querySelector('.overflowingContentWidgets')
+        ?? [...node?.closest('.notebook-surface')?.querySelectorAll(':scope > .notebook-overflow-widgets > .overflowingContentWidgets') ?? []].at(-1) ?? null;
       if (widgets) observer.observe(widgets, { childList: true, subtree: true,
         attributes: true, attributeFilter: ['style', 'class'] });
       sync();

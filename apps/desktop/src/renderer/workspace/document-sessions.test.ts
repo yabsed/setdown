@@ -1,10 +1,11 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { createWorkspaceTab, WorkspaceState } from '../../core/workspace/workspace-state';
 import type { DocumentTab } from '../../core/workspace/workspace-state';
+import { imageSessions } from '../image/image-edit-sessions';
 import { notebookContent, notebookViews } from '../notebook/document-content';
 import { DocumentSessions } from './document-sessions';
 
-afterEach(() => notebookContent.releaseAll());
+afterEach(() => { notebookContent.releaseAll(); imageSessions.releaseAll(); });
 function fixture() {
   const text = JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
     { id: 'cell', cell_type: 'code', source: ['original = 1\n'], metadata: {}, execution_count: null, outputs: [] },
@@ -63,4 +64,32 @@ test('reload replaces notebook content while preserving the session until the ta
   sessions.release(tab.id); sessions.releaseAll();
   expect(releaseCurrent).toHaveBeenCalledTimes(1);
   expect(editor.dispose).toHaveBeenCalledWith(tab.id);
+});
+
+test('a tab that takes over a released notebook tab’s ID gets its own session', () => {
+  const { tab, workspace, editor, entry } = fixture();
+  const next = createWorkspaceTab('notebook', { ...tab.document, path: '/project/next.ipynb', name: 'next.ipynb',
+    text: tab.text.replace('original', 'next'), savedText: tab.text.replace('original', 'next') },
+  'notebook', { sourceLine: 1, yRatio: .4, reason: 'empty-document', confidence: 'fallback' });
+  // The workspace's wiring: every owner hears every release, and an image session
+  // change republishes the chrome, which asks each listed tab whether it is dirty.
+  const sessions: DocumentSessions = new DocumentSessions(editor, [notebookContent, imageSessions]);
+  const chrome = vi.fn(() => { for (const listed of workspace.documents) sessions.dirty(listed); });
+  imageSessions.configure({ open: vi.fn(), render: vi.fn(), release: vi.fn(), save: vi.fn() }, () => workspace.documents, chrome);
+  const dispose = vi.spyOn(entry, 'dispose');
+  expect(sessions.dirty(next)).toBe(false);
+  // Explorer preview: the new document takes the slot and the ID of the one it replaces,
+  // whose tab is still listed while its content is released.
+  next.id = tab.id;
+  sessions.release(tab.id);
+  expect(chrome).not.toHaveBeenCalled();
+  expect(sessions.dirty(tab)).toBe(false);
+  expect(sessions.text(tab)).toContain('original = 1');
+  workspace.tabs[workspace.tabs.indexOf(tab)] = next;
+  const current = notebookViews(workspace, () => {})[0].entry;
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(current).not.toBe(entry);
+  expect(current.document.cells.map(cell => cell.source)).toEqual(['next = 1\n']);
+  expect(sessions.text(next)).toContain('next = 1');
+  expect(sessions.dirty(next)).toBe(false);
 });

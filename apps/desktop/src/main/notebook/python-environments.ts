@@ -2,6 +2,7 @@ import { app } from 'electron';
 import path from 'node:path';
 import os from 'node:os';
 import { promises as fs } from 'node:fs';
+import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { executableFile, ServerDiscovery } from '../language/server-discovery';
 import type { NotebookEnvironments } from '../../protocol/notebook';
@@ -90,6 +91,29 @@ export class PythonEnvironments {
     if (!explicit && list.selectionNeeded) throw Error('Multiple project Python environments are available. Choose one for this notebook.');
     if (python && !await executableFile(python)) throw Error('The selected Python environment is missing. Choose another environment.');
     return { python, env: this.discovery!.environment.peek().env };
+  }
+  private readonly searched = new Map<string, { expires: number; search: Promise<{ version?: string; paths: string[] }> }>();
+  /** Version and `sys.path` of the interpreter selected for analysis, as the language
+   * server itself asks on startup. Candidate discovery above still runs no
+   * interpreter; a failure only means no directories are reported. */
+  searchPaths(python: string): Promise<{ version?: string; paths: string[] }> {
+    const cached = this.searched.get(python);
+    if (cached && cached.expires > Date.now()) return cached.search;
+    const script = 'import json, os, sys; print(json.dumps({"version": "%d.%d" % sys.version_info[:2], "paths": [p for p in sys.path if p and os.path.isdir(p)]}))';
+    const search = new Promise<{ version?: string; paths: string[] }>(resolve => {
+      execFile(python, ['-c', script],
+        { env: this.discovery?.environment.peek().env ?? process.env, cwd: os.tmpdir(), timeout: 5000, windowsHide: true, maxBuffer: 1024 * 1024 },
+        (error, stdout) => {
+          try {
+            const value = error ? {} : JSON.parse(stdout) as { version?: unknown; paths?: unknown };
+            resolve({ version: typeof value.version === 'string' ? value.version : undefined, paths: Array.isArray(value.paths)
+              ? value.paths.filter((item): item is string => typeof item === 'string' && path.isAbsolute(item)).slice(0, 256) : [] });
+          } catch { resolve({ paths: [] }); }
+        });
+    });
+    if (this.searched.size >= 32) this.searched.delete(this.searched.keys().next().value!);
+    this.searched.set(python, { expires: Date.now() + 60_000, search });
+    return search;
   }
   dispose(): void { this.discovery?.dispose(); this.discovery = undefined; }
 }

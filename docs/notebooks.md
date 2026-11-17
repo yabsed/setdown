@@ -22,7 +22,7 @@ installed Python kernel.
   contents, but does not transfer the editor's Undo stacks.
 - Python cells use native notebook language-server documents in notebook order. Completion,
   hover, signature help, diagnostics and definitions use the bundled notebook
-  analyzer. The notebook’s **Python analysis** button shows its environment, checking policy, result freshness and restart action. **Problems** lists diagnostics across open files and notebooks and opens the affected cell. Analysis follows document order, not prior execution
+  analyzer. The **Python** status button at the right of the location bar, where every language shows its status, opens **Python analysis**: the environment, the checking level, result freshness and a restart action. **Problems** lists diagnostics across open files and notebooks and opens the affected cell. Analysis follows document order, not prior execution
   order. Normal Python files retain their full existing LSP features.
 
 Code cells and their outputs expand vertically; the notebook owns vertical scrolling.
@@ -99,18 +99,51 @@ Text output display is limited to 200,000 characters, HTML/Markdown rendering to
 The bundled **basedpyright 1.40.2** analyzer receives separate Python cell documents
 through LSP notebook synchronization. It supports notebook `await`, magic/shell
 syntax and notebook-order dependencies. `display` and `get_ipython` have notebook
-context. Python files and notebooks share a **basic** checking default: invalid
-`Literal` arguments and incompatible assignments are errors, while unannotated
-functions do not require strict-mode annotations. The notebook **Python analysis**
-control and ordinary file **Project environment** control offer Basic, Standard,
-Strict, Off, or the project/default policy. These choices affect the shared analysis
-root and do not execute cells or reset a running kernel.
+context. Two IPython forms that the analyzer does not read are rewritten for
+analysis only, by the rules of JupyterLab's LSP integration: a `%%time` or
+`%%capture` cell is analyzed as Python, so names defined there are known in later
+cells, and help lines (`name?`, `??name`) are not syntax errors. Each rule replaces
+one character with one character, so every position in a cell stays valid.
+
+A notebook starts at the **Off** checking level, as it does in VS Code: syntax
+errors are errors, unresolved imports and undefined names are warnings, and types
+still power completion, hover and signature help. Type checking is one choice away.
+Python files keep their **Basic** default, where invalid `Literal` arguments and
+incompatible assignments are errors and unannotated functions need no strict-mode
+annotations. Notebook code is mostly calls into libraries, and the type reports on
+those calls are rarely about the notebook; `reports/notebook-lsp-corpus-2026-11-18`
+has the measurement on public notebooks behind this default.
+
+**Python analysis** and the ordinary file **Project environment** control list the
+levels of Pyright and VS Code — Off, Basic, Standard, Strict — with what each one
+reports, next to the project/default choice and what it currently resolves to. A
+new choice applies at once, without a restart; the panel closes with Escape or a
+click elsewhere. These choices affect the shared analysis root and do not execute
+cells or reset a running kernel.
+
+Libraries that publish no type information are otherwise analyzed from their
+internal annotations, which reports correct code: pandas declares `Series.unique()`
+as possibly returning an extension array, and SciPy result objects lose their
+fields. As VS Code's Python analysis does, Setdown ships stub packages for such
+libraries — **pandas-stubs**, **scipy-stubs** (with `optype` and
+`numpy-typing-compat`), **django-stubs** and the **scikit-learn** stubs of
+Microsoft's `python-type-stubs`, pinned as submodules under `vendor/` — and decides
+per selected interpreter whether each applies. Types published by the
+installed library (`py.typed`), a stub package installed in the environment and the
+project's `typings` folder take precedence, in that order. SciPy's stubs need
+Python 3.12 or newer and NumPy 2.0–2.5. **Analysis environment and settings** lists
+the decision for each library as `Library types (…)`. A library joins the bundle
+only after a measurement on real notebooks: `apps/notebook-benchmark` repeats it,
+and `reports/notebook-lsp-corpus-2026-11-18` records the first run.
 
 A saved Setdown project choice takes precedence over connection settings, then
 `.vscode/settings.json` (`basedpyright.analysis.typeCheckingMode` or
-`python.analysis.typeCheckingMode`), then the bundled default. Native
-`pyrightconfig.json`/`pyproject.toml` remains authoritative inside the server;
-the panel identifies the client policy and detected native configuration separately.
+`python.analysis.typeCheckingMode`), then the default: Off for notebooks, Basic for
+Python files. Once the analysis root has a `pyrightconfig.json`, or a
+`pyproject.toml` with a `[tool.basedpyright]` or `[tool.pyright]` section, the
+analyzer takes the level and every rule from that file and ignores the client's
+level, even when the file names none. The chooser is then disabled and names the
+file.
 Runtime success does not remove a static type error. Runtime execution order does
 not rewrite static document-order analysis. Non-Python
 notebooks can be edited and retain their metadata; notebook LSP mapping currently
@@ -146,8 +179,9 @@ IPython package; it is never saved or executed. Cell diagnostics carry both the
 notebook revision and cell source revision. Source changes advance dependency
 versions, while structural changes reopen cell documents on the same server with
 new URI epochs, rejecting late results for reordered or removed cells. No virtual
-Python file is written, and there is no regex-based magic stripping or joined-file
-syntax contamination. Analysis remains active while a notebook tab is open, including
+Python file is written and cells are not joined into one file. The only source
+rewriting is the two length-preserving IPython rules above, in
+`notebook-ipython-syntax.ts`. Analysis remains active while a notebook tab is open, including
 inactive tabs and cells without mounted editors. URI-owned diagnostics feed both
 cell markers and Problems. Closing a notebook removes its diagnostics and releases
 its server lease; up to four idle processes are retained for at most 30 seconds.
@@ -262,6 +296,11 @@ extensions inside Setdown or turn the native notebook pane into JupyterLab.
 images and search in the full isolated Electron regression suite. The standalone
 kernel suite is `python3 apps/desktop/test/notebook/kernel-bridge.test.py` with
 ipykernel, pandas and NumPy installed in the test Python.
+
+`npm run bench:notebooks` measures what each checking level reports on a pinned set
+of public notebooks and compares it with a saved baseline. Run it when the analyzer,
+the bundled stubs, the IPython rules or the notebook default changes;
+`apps/notebook-benchmark/README.md` describes it.
 
 For external tools, provision a separate venv with the package ranges listed in
 `src/main/notebook/notebook-tools.ts`. Set `SETDOWN_NOTEBOOK_TOOLS_PYTHON` to its absolute

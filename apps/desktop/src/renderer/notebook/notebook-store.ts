@@ -53,6 +53,11 @@ export class NotebookEntry {
 }
 class NotebookStore {
   private entries = new Map<string, NotebookEntry>();
+  /** The tab's session, if it has one. A question about a tab never opens a session:
+   * a tab that is being replaced keeps its ID, and a session opened for it there
+   * would be handed to the document that takes its place. */
+  find(id: string): NotebookEntry | undefined { return this.entries.get(id); }
+  /** Opens the session of a tab the workspace lists. */
   get(tab: DocumentTab): NotebookEntry {
     let entry = this.entries.get(tab.id);
     if (!entry) { entry = new NotebookEntry(tab.id, tab.text, tab.document.savedText); this.entries.set(tab.id, entry); }

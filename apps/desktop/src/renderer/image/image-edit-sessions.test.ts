@@ -35,3 +35,12 @@ test('failed/canceled saves retain edits and reload releases the immutable sourc
   expect(s.history.dirty).toBe(true); expect(s.busy).toBe(false);
   imageSessions.replace(f.tab); expect(imageSessions.get(f.tab.id)).toBeUndefined(); expect(f.api.release).toHaveBeenCalledWith('source');
 });
+test('releasing a tab publishes only when an image session or a pending open ends', async () => {
+  const f = fixture(), changed = vi.fn();
+  imageSessions.configure(f.api, () => f.tabs, changed);
+  imageSessions.release('a-tab-that-never-held-an-image');
+  expect(changed).not.toHaveBeenCalled();
+  await imageSessions.open(f.tab.id); changed.mockClear();
+  f.tabs.pop(); imageSessions.release(f.tab.id);
+  expect(changed).toHaveBeenCalledOnce(); expect(f.api.release).toHaveBeenCalledWith('source');
+});

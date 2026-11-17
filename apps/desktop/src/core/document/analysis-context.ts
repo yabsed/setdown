@@ -11,6 +11,7 @@ export type AnalysisContext = {
   /** Effective choice after removing only the project override. */
   inherited?: AnalysisChoice;
   issues: { code: string; message: string }[];
+  /** `projectConfiguration` is the project file that decides the level instead of `mode`: the analyzer then ignores the client's choice. */
   checking?: { mode: PythonChecking; override?: PythonChecking; source: string; projectConfiguration?: string };
   preparation?: 'cmake' | 'meson';
 };

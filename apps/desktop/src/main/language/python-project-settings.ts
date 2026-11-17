@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parse, type ParseError } from 'jsonc-parser';
-import { notebookPythonAnalysis } from './python-analysis';
+import { pythonAnalysis, offBaselineSeverities } from './python-analysis';
 
 export type PythonProjectSettings = {
   extraPaths?: string[];
@@ -56,6 +56,20 @@ export function pythonProjectSettings(root: string): PythonProjectSettings {
   return result;
 }
 
+/** The project file that takes over the checking level and every rule severity. Pyright
+ * and basedpyright ignore the client's level once a pyrightconfig.json or a pyproject.toml
+ * section of their own exists, even when that file names no level: Pyright then uses
+ * `standard` and basedpyright `recommended`. */
+export function nativePythonConfiguration(root: string, server: 'pyright' | 'basedpyright'): string | undefined {
+  const config = path.join(root, 'pyrightconfig.json'), project = path.join(root, 'pyproject.toml');
+  if (existsSync(config)) return config;
+  try {
+    if (statSync(project).size > 1024 * 1024) return undefined;
+    const sections = server === 'basedpyright' ? '(?:based)?pyright' : 'pyright';
+    return new RegExp(`^[ \\t]*\\[tool\\.${sections}[\\].]`, 'm').test(readFileSync(project, 'utf8')) ? project : undefined;
+  } catch { return undefined; }
+}
+
 /** Explicit connection settings win. Native pyrightconfig/pyproject precedence
  * is left to the language server; these are client defaults, not merged configs. */
 const appliedSources = new WeakMap<object, string>();
@@ -73,7 +87,12 @@ export function applyPythonProjectSettings(configuration: Record<string, unknown
   const modeKey = `${name}.analysis.typeCheckingMode`;
   const configured = section(configuration, modeKey);
   next.typeCheckingMode = checkingOverride ?? (project.checking && (!explicitChecking || configured === undefined)
-    ? project.checking : configured ?? notebookPythonAnalysis.typeCheckingMode);
+    ? project.checking : configured ?? pythonAnalysis.typeCheckingMode);
+  // Explicit overrides win over the restored baseline. Other levels already report these rules.
+  if (server === 'basedpyright' && next.typeCheckingMode === 'off') {
+    const overrides = next.diagnosticSeverityOverrides;
+    next.diagnosticSeverityOverrides = { ...offBaselineSeverities, ...(overrides && typeof overrides === 'object' ? overrides : {}) };
+  }
   // Flat sections have precedence in workspace/configuration. Keep them aligned.
   value[`${name}.analysis`] = next;
   if (Object.hasOwn(value, modeKey)) value[modeKey] = next.typeCheckingMode;
@@ -82,11 +101,27 @@ export function applyPythonProjectSettings(configuration: Record<string, unknown
   return value;
 }
 
-export function pythonSettingsContext(project: PythonProjectSettings, configuration: Record<string, unknown>, server: 'pyright' | 'basedpyright'): [string, string][] {
+/** Bundled library stubs follow the project's and the user's own analysis paths,
+ * which keep precedence. A native configuration that sets extraPaths replaces all of them. */
+export function withLibraryStubs(configuration: Record<string, unknown>, server: 'pyright' | 'basedpyright', paths: string[]): Record<string, unknown> {
+  if (!paths.length) return configuration;
+  const name = server === 'basedpyright' ? 'basedpyright' : 'python', key = `${name}.analysis.extraPaths`;
+  const value = structuredClone(configuration);
+  const analysis = section(value, `${name}.analysis`), current = section(value, key);
+  const next = { ...(analysis && typeof analysis === 'object' ? analysis : {}), extraPaths: [...new Set([...(Array.isArray(current) ? current as string[] : []), ...paths])] };
+  value[`${name}.analysis`] = next;
+  if (Object.hasOwn(value, key)) value[key] = next.extraPaths;
+  const outer = value[name];
+  value[name] = { ...(outer && typeof outer === 'object' ? outer : {}), analysis: next };
+  return value;
+}
+
+export function pythonSettingsContext(project: PythonProjectSettings, configuration: Record<string, unknown>, server: 'pyright' | 'basedpyright', native?: string): [string, string][] {
   const key = `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.extraPaths`;
   const configured = section(configuration, key);
   return [
-    ['Type checking', `${section(configuration, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) ?? 'basic'} (client policy; native project configuration may override)`],
+    ['Type checking', native ? `decided by ${native}; the analyzer ignores the level chosen in Setdown`
+      : `${section(configuration, `${server === 'basedpyright' ? 'basedpyright' : 'python'}.analysis.typeCheckingMode`) ?? pythonAnalysis.typeCheckingMode} (client policy)`],
     ...(project.checkingSource ? [['Workspace type checking setting', project.checkingSource] as [string, string]] : []),
     ['Analysis paths', `${JSON.stringify(configured ?? [])} (client configuration; project configuration may override)`],
     ['Analysis path source', appliedSources.get(configuration) ?? (configured !== undefined ? 'Language connection settings' : 'Server defaults')],

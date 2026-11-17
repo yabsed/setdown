@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...ar
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
-vi.mock('../notebook/python-environments', () => ({ notebookPython: { list: async () => ({ candidates: [], selected: '/usr/bin/python3' }), resolve: async (_file: string, python?: string) => ({ python: python ?? '/usr/bin/python3', env: {} }) } }));
+vi.mock('../notebook/python-environments', () => ({ notebookPython: { searchPaths: async () => ({ paths: [] }), list: async () => ({ candidates: [], selected: '/usr/bin/python3' }), resolve: async (_file: string, python?: string) => ({ python: python ?? '/usr/bin/python3', env: {} }) } }));
 vi.mock('./server-session', () => ({ ServerSession: class {
   readonly ready = Promise.resolve({ notebookDocumentSync: { notebookSelector: [{ notebook: 'jupyter-notebook' }] }, textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } });
   readonly capabilities = { forDocument: () => ({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } }) };

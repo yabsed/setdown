@@ -8,6 +8,8 @@ import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { FullDocumentDiagnosticReport, Hover, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import { serverProfiles } from './server-definitions';
 import { notebookPythonAnalysis } from './python-analysis';
+import { applyPythonProjectSettings } from './python-project-settings';
+import { notebookAnalysisSource } from './notebook-ipython-syntax';
 import { notebookClientCapabilities } from '../../protocol/language-features';
 import { ServerSession } from './server-session';
 
@@ -15,6 +17,9 @@ const require = createRequire(import.meta.url);
 const pullProfile = { ...serverProfiles.pyright, configuration: { python: { analysis: { typeCheckingMode: 'basic' } } }, renameAfterDiagnostics: false, initializationOptions: { ...serverProfiles.pyright.initializationOptions, disablePullDiagnostics: false } };
 const sessions: ServerSession[] = [];
 const roots: string[] = [];
+/** What a notebook's analyzer is sent: Off unless a level is chosen. */
+const notebookConfiguration = (level?: 'basic') => applyPythonProjectSettings(
+  { basedpyright: { analysis: notebookPythonAnalysis } }, { errors: [] }, 'basedpyright', true, level);
 afterEach(async () => {
   await Promise.all(sessions.splice(0).map(session => session.stop()));
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })));
@@ -148,12 +153,14 @@ test('workspace rename includes unopened Python files immediately after initiali
   expect(JSON.stringify(result)).toContain(pathToFileURL(main).href);
 });
 
-test.each(['pyright', 'basedpyright'])('%s basic preset reports real type errors without requiring strict annotations', async module => {
+test.each(['pyright', 'basedpyright'] as const)('%s basic preset reports real type errors without requiring strict annotations', async module => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-basic-diagnostics-')); roots.push(root);
   const uri = pathToFileURL(path.join(root, 'main.py')).href;
   const analysis = module === 'basedpyright' ? notebookPythonAnalysis
     : (serverProfiles.pyright.configuration.python as { analysis: Record<string, unknown> }).analysis;
-  const profile = { ...serverProfiles.pyright, renameAfterDiagnostics: false, configuration: { python: { analysis }, basedpyright: { analysis } } };
+  // Notebooks start at Off: this is what the app sends once Basic is chosen.
+  const configuration = applyPythonProjectSettings({ python: { analysis }, basedpyright: { analysis } }, { errors: [] }, module, true, 'basic');
+  const profile = { ...serverProfiles.pyright, renameAfterDiagnostics: false, configuration };
   const published: PublishDiagnosticsParams[] = [], failures: string[] = [];
   const server = new ServerSession({ executable: process.execPath, args: [require.resolve(`${module}/langserver.index.js`), '--stdio'] },
     root, params => published.push(params), message => failures.push(message), profile);
@@ -169,6 +176,24 @@ test.each(['pyright', 'basedpyright'])('%s basic preset reports real type errors
   await server.notify('textDocument/didChange', { textDocument: { uri, version: 2 }, contentChanges: [{ text: fixed }] });
   await expect.poll(() => published.at(-1)?.version, { timeout: 15_000 }).toBe(2);
   expect(published.at(-1)?.diagnostics).toEqual([]); expect(failures).toEqual([]);
+}, 30_000);
+
+test.each(['pyright', 'basedpyright'] as const)('%s Off reports unresolved imports and undefined names as warnings and no type errors', async module => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-default-diagnostics-')); roots.push(root);
+  const uri = pathToFileURL(path.join(root, 'main.py')).href;
+  const configuration = applyPythonProjectSettings({ python: { analysis: notebookPythonAnalysis }, basedpyright: { analysis: notebookPythonAnalysis } }, { errors: [] }, module, true, 'off');
+  const published: PublishDiagnosticsParams[] = [], failures: string[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [require.resolve(`${module}/langserver.index.js`), '--stdio'] },
+    root, params => published.push(params), message => failures.push(message), { ...serverProfiles.pyright, renameAfterDiagnostics: false, configuration });
+  sessions.push(server); await server.ready;
+  // Each line fails when run; only the first two are certain without library type information.
+  const text = 'import setdown_missing_module\nprint(setdown_undefined_name)\n'
+    + 'from typing import Literal\ndef choose(mode: Literal["fast", "safe"]) -> str:\n    return mode\n'
+    + 'choose("turbo")\ncount: int = "wrong"\n';
+  await server.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'python', version: 1, text } });
+  await expect.poll(() => published.at(-1)?.diagnostics.filter(d => d.severity === 1 || d.severity === 2).map(d => [d.code, d.severity]).sort(), { timeout: 15_000 })
+    .toEqual([['reportMissingImports', 2], ['reportUndefinedVariable', 2]]);
+  expect(failures).toEqual([]);
 }, 30_000);
 
 test.each(['pyright', 'basedpyright'])('%s honors native off and strict policies over the bundled basic default', async module => {
@@ -194,7 +219,7 @@ test('one real basedpyright process keeps native notebook namespaces and depende
   const published: PublishDiagnosticsParams[] = [];
   const server = new ServerSession({ executable: process.execPath, args: [require.resolve('basedpyright/langserver.index.js'), '--stdio'] }, root,
     params => published.push(params), () => {}, { name: 'Notebook Python', watches: () => false, capabilities: notebookClientCapabilities(),
-      initializationOptions: { disablePullDiagnostics: true }, configuration: { basedpyright: { analysis: notebookPythonAnalysis } } });
+      initializationOptions: { disablePullDiagnostics: true }, configuration: notebookConfiguration('basic') });
   sessions.push(server); await server.ready;
   const open = async (name: string, sources: string[]) => {
     const uri = pathToFileURL(path.join(root, name + '.ipynb')).href;
@@ -270,3 +295,31 @@ test('a server that registers configuration or unknown capabilities stays connec
   expect(server.logs.join('\n')).not.toContain('workspace/didChangeConfiguration');
   expect(failures).toEqual([]);
 });
+
+test('real basedpyright reads %%time bodies and IPython help only through the notebook rules', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-notebook-ipython-')); roots.push(root);
+  const published: PublishDiagnosticsParams[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [require.resolve('basedpyright/langserver.index.js'), '--stdio'] }, root,
+    params => published.push(params), () => {}, { name: 'Notebook Python', watches: () => false, capabilities: notebookClientCapabilities(),
+      initializationOptions: { disablePullDiagnostics: true }, configuration: notebookConfiguration() });
+  sessions.push(server); await server.ready;
+  const sources = ['%%time\ntotal = sum(range(3))', 'print(total)\ntotal?', '??print', '%%bash\necho "$total" ?', 'print(total, missing_name)'];
+  const open = async (name: string, texts: string[]) => {
+    const uri = pathToFileURL(path.join(root, name + '.ipynb')).href;
+    const cells = texts.map((text, i) => ({ uri: uri.replace(/^file:/, 'vscode-notebook-cell:') + '#' + i, languageId: 'python', version: 1, text }));
+    await server.notify('notebookDocument/didOpen', { notebookDocument: { uri, notebookType: 'jupyter-notebook', version: 1,
+      cells: cells.map(cell => ({ kind: 2, document: cell.uri })) }, cellTextDocuments: cells });
+    return cells;
+  };
+  // At the notebook default an undefined name is a warning and a syntax error an error.
+  const reports = (cells: { uri: string }[]) => cells.map(cell => published.filter(batch => batch.uri === cell.uri).at(-1)?.diagnostics
+    .filter(d => d.severity === 1 || d.severity === 2).map(d => d.code ?? 'syntax').sort().filter((code, i, all) => all.indexOf(code) === i));
+  const written = await open('written', sources), analyzed = await open('analyzed', sources.map(notebookAnalysisSource));
+  // As written, the analyzer loses the name defined under %%time and cannot parse help.
+  // If this expectation fails, upstream reads them and notebookAnalysisSource can go.
+  await expect.poll(() => reports(written), { timeout: 20_000 }).toEqual([[], ['reportUndefinedVariable', 'syntax'], ['syntax'], [], ['reportUndefinedVariable']]);
+  // The real report stays; positions are unchanged because every rule keeps the length.
+  await expect.poll(() => reports(analyzed), { timeout: 20_000 }).toEqual([[], [], [], [], ['reportUndefinedVariable']]);
+  const real = published.filter(batch => batch.uri === analyzed[4].uri).at(-1)!.diagnostics.filter(d => d.code === 'reportUndefinedVariable');
+  expect(real.map(d => [d.severity, d.range.start.character, d.range.end.character])).toEqual([[2, 13, 25]]);
+}, 60_000);

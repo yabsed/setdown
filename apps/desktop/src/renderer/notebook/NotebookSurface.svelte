@@ -8,7 +8,9 @@
   import { textZoomFactor, onTextZoom } from '../editor/text-zoom';
   import { loadMonaco } from '../editor/monaco-runtime';
   import { NotebookLanguage } from './notebook-language';
-  import type { AnalysisContext } from '../../core/document/analysis-context';
+  import { notebookAnalysisStatus, type NotebookAnalysisStatus } from './notebook-analysis-status.svelte';
+  import type { AnalysisContext, PythonChecking } from '../../core/document/analysis-context';
+  import { checkingLevels } from '../language/python-checking';
   import type { NotebookEnvironments } from '../../protocol/notebook';
   import { NotebookExecution } from './notebook-execution';
   import { notebookHeadings, markdownText, offsetRange, type TraceTarget } from '../../core/notebook/notebook-tools';
@@ -19,9 +21,10 @@
   import NotebookVariables from './NotebookVariables.svelte';
   import NotebookIcon from './NotebookIcon.svelte';
   import NotebookCell from './NotebookCell.svelte';
+  import PythonCheckingLevel from '../language/PythonCheckingLevel.svelte';
   import { anchorNotebookScroll } from './notebook-scroll-anchor';
   import './notebook-typography.css';
-  let { entry, path, active, desktop, onfocus, openFile }: { entry: NotebookEntry; path: string; active: boolean; desktop: DesktopPort; openFile(path: string, selection?: M.IRange | M.IPosition): Promise<void>; onfocus(): void } = $props();
+  let { entry, path, tabId, active, desktop, onfocus, openFile }: { entry: NotebookEntry; path: string; tabId: string; active: boolean; desktop: DesktopPort; openFile(path: string, selection?: M.IRange | M.IPosition): Promise<void>; onfocus(): void } = $props();
   let presented = $state(false);
   let pendingCells = $state(new Set(untrack(() => entry.document.cells.map(cell => cell.id))));
   function cellReady(id: string, ready: boolean) {
@@ -41,10 +44,23 @@
   let analysisContext = $state<AnalysisContext>();
   let analysisObservation = $state('Waiting for current diagnostics.');
   let analysisDetails = $state<string[]>([]);
+  // Analysis reconnects by itself for a new level. Until its context returns, the panel
+  // keeps the last one with the new choice selected, and says what is happening.
+  let checking = $state<NonNullable<AnalysisContext['checking']>>(), applying = $state('');
+  $effect(() => { if (analysisContext?.checking) checking = analysisContext.checking; });
+  let restarted = false;
+  $effect(() => {
+    if (!applying) { restarted = false; return; }
+    if (language === 'failed') applying = '';
+    else if (language !== 'ready' || !analysisContext) restarted = true;
+    else if (restarted && /^Current diagnostics/.test(analysisObservation)) applying = '';
+  });
   async function setChecking(value: string) {
-    analysisBusy = true;
+    const level = value === 'automatic' ? undefined : value as PythonChecking, before = checking;
+    analysisBusy = true; applying = value === 'automatic' ? 'the project’s setting' : checkingLevels.find(item => item.value === value)?.name ?? value;
+    if (checking) checking = { ...checking, override: level };
     try { await desktop.language.selectEnvironment(path, 'python', { kind: 'python-checking', value, root: analysisContext?.root }); }
-    catch (error) { actionError = String(error); } finally { analysisBusy = false; }
+    catch (error) { actionError = String(error); applying = ''; checking = analysisContext?.checking ?? before; } finally { analysisBusy = false; }
   }
   let controllerRevision = $state(0), scroll = $state<HTMLDivElement>();
   let environments = $state<NotebookEnvironments>({ candidates: [] }), environmentReady = $state(false), actionError = $state('');
@@ -318,6 +334,27 @@
     else return;
     event.preventDefault(); event.stopPropagation();
   }
+  // The location bar shows this where other documents show their language status.
+  // Like a document's Code support, the panel leaves on a click elsewhere or on Escape.
+  $effect(() => {
+    if (!analysisOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Element && !event.target.closest('.analysis-popover, .support-button')) analysisOpen = false;
+    };
+    // Escape keeps its meaning for whatever has focus; the panel only goes with it.
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') analysisOpen = false; };
+    window.addEventListener('pointerdown', outside, true); window.addEventListener('keydown', escape, true);
+    return () => { window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', escape, true); };
+  });
+  // Published and withdrawn by one run of one effect: the run that withdraws a status
+  // is the one that put it there, however often the tab list is republished, and a
+  // surface that replaces this one for the same tab keeps what it published itself.
+  $effect(() => {
+    if (entry.document.language !== 'python') return;
+    const tab = tabId, status: NotebookAnalysisStatus = { state: language, open: analysisOpen, toggle: () => { analysisOpen = !analysisOpen; } };
+    notebookAnalysisStatus.set(tab, status);
+    return () => { if (notebookAnalysisStatus.get(tab) === status) notebookAnalysisStatus.delete(tab); };
+  });
   onMount(() => {
     let disposed = false;
     const stopAnchor = scroll ? anchorNotebookScroll(scroll) : () => {};
@@ -375,7 +412,6 @@
     <button class="secondary-tool" onclick={() => variables = !variables} aria-pressed={variables}>Variables</button>
     <button class="commands-button" onclick={() => commandOpen = !commandOpen} aria-expanded={commandOpen} aria-label="Commands…" title="Notebook commands"><NotebookIcon name="more" /></button>
     {#if toolBusy}<span role="status">Notebook tool running…</span><button onclick={() => desktop.notebook.cancelTools(path)}>Cancel tool</button>{/if}
-    {#if entry.document.language === 'python'}<button class="secondary-tool" aria-expanded={analysisOpen} onclick={() => analysisOpen = !analysisOpen}>Python analysis · {language || 'starting'}</button>{/if}
     <span class="summary">{cells.length} cells · {entry.document.language}</span>
     {#if entry.document.language === 'python' && !entry.document.error}
       <button aria-label="Run all cells" onclick={() => execution?.run()} title="Run all cells"><NotebookIcon name="runAll" /><span class="tool-label">Run All</span></button>
@@ -393,21 +429,20 @@
       <span class="kernel-state" role="status" aria-label={`Kernel ${kernelState}`} title={`Kernel ${kernelState}`}>{#if busy}<NotebookIcon name="sync" spinning />{:else if kernelState === 'idle'}<NotebookIcon name="check" />{/if}<span class="kernel-state-text">{kernelState}</span></span>
     {/if}
   </div>
-  {#if analysisOpen}<div class="notebook-search" role="region" aria-label="Notebook Python analysis">
-    <div>
-      {#if analysisContext?.checking}
-        <label>Python type checking <select aria-label="Python type checking" disabled={analysisBusy} value={analysisContext.checking.override ?? 'automatic'} onchange={event => void setChecking(event.currentTarget.value)}>
-          <option value="automatic">Project settings / default</option><option value="basic">Basic</option><option value="standard">Standard</option><option value="strict">Strict</option><option value="off">Off</option>
-        </select></label>
-        <p>Client policy: {analysisContext.checking.mode} · {analysisContext.checking.source}. Checks open files and notebooks.</p>
-        {#if analysisContext.checking.projectConfiguration}<p>Project configuration may override this policy: {analysisContext.checking.projectConfiguration}</p>{/if}
-      {/if}
-      {#if analysisMessage}<p role="status">{analysisMessage}</p>{/if}
-      <p>{analysisObservation}</p>
-      <details><summary>Analysis environment and settings</summary>{#each analysisDetails as item}<p>{item}</p>{/each}</details>
+  <!-- Monaco styles its popups under .monaco-editor; see NotebookCell's overflowWidgetsDomNode. -->
+  <div class="notebook-overflow-widgets monaco-editor"></div>
+  {#if analysisOpen}<div class="analysis-popover" role="region" aria-label="Notebook Python analysis">
+    <header><h3>Python analysis</h3><button aria-label="Close" onclick={() => analysisOpen = false}>×</button></header>
+    <p class="analysis-status" role="status">{applying ? `Applying ${applying}: analysis is restarting…` : `${language || 'starting'} · ${analysisObservation}`}</p>
+    {#if analysisMessage}<p role="status">{analysisMessage}</p>{/if}
+    {#if checking}
+      <PythonCheckingLevel {checking} busy={analysisBusy} select={value => void setChecking(value)} />
+    {/if}
+    <details><summary>Analysis environment and settings</summary>{#each analysisDetails as item}<p>{item}</p>{/each}</details>
+    <footer>
+      <button onclick={() => { if (surface) void client?.showProblems(surface, () => { if (active) surface?.focus(); }); }}>Problems</button>
       <button onclick={() => void client?.restart().catch(error => actionError = String(error))}>Restart analysis</button>
-      <button onclick={() => analysisOpen = false}>Close</button>
-    </div>
+    </footer>
   </div>{/if}
   {#if commandOpen}<div class="command-panel" role="region" aria-label="Notebook commands">
     <input aria-label="Filter notebook commands" placeholder="Filter commands…" bind:value={commandFilter} onkeydown={event => { if (event.key === 'Escape') commandOpen = false; }} />
@@ -468,6 +503,17 @@
 <style>
   .command-panel { position: absolute; right: 14px; top: 44px; z-index: 30; width: min(440px, 90%); max-height: 65%; overflow: auto; display: flex; flex-direction: column; background: var(--app-surface); border: 1px solid var(--app-border); padding: 8px; box-shadow: 0 8px 30px #0003; }
   .command-panel button { text-align: left; }
+  .notebook-overflow-widgets { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 20; }
+  /* Same card as a document's Code support, under the language status of the location bar. */
+  .analysis-popover { position: absolute; right: 8px; top: 6px; z-index: 30; width: min(420px, calc(100% - 28px)); max-height: 75%; overflow: auto; padding: 14px; background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 8px; box-shadow: 0 8px 28px rgb(0 0 0 / .28); font-size: 12px; line-height: 1.5; }
+  .analysis-popover header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .analysis-popover h3 { flex: 1; margin: 0; font-size: 13px; }
+  .analysis-popover header button { border: 0; font-size: 18px; padding: 0 5px; }
+  .analysis-popover p { margin: 6px 0; overflow-wrap: anywhere; }
+  .analysis-popover .analysis-status, .analysis-popover details p { color: var(--app-muted-text); font-size: 11px; }
+  .analysis-popover details { margin: 10px 0; } .analysis-popover summary { cursor: pointer; }
+  .analysis-popover footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-top: 10px; }
+  .analysis-popover footer button { border: 1px solid var(--app-border); border-radius: 4px; padding: 5px 8px; }
   .notebook-outline { display: flex; flex-direction: column; max-height: 180px; overflow: auto; padding: 6px 16px; border-bottom: 1px solid var(--app-border); font-size: 12px; }
   .notebook-sticky, .notebook-notice, .search-snippet { padding: 5px 16px; background: var(--app-surface); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .notebook-sticky { border-bottom: 1px solid var(--app-border); }

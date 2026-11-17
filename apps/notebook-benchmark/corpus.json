@@ -1,0 +1,476 @@
+{
+  "sample": 10,
+  "repositories": [
+    {
+      "repo": "jakevdp/PythonDataScienceHandbook",
+      "sha": "d66231454ef753818dc9213c9b5942e067266966",
+      "date": "2023-05-05",
+      "notebooksInRepository": 136,
+      "notebooks": [
+        "notebooks/00.00-Preface.ipynb",
+        "notebooks/02.03-Computation-on-arrays-ufuncs.ipynb",
+        "notebooks/03.07-Merge-and-Join.ipynb",
+        "notebooks/04.06-Customizing-Legends.ipynb",
+        "notebooks/05.05-Naive-Bayes.ipynb",
+        "notebooks_v1/01.00-IPython-Beyond-Normal-Python.ipynb",
+        "notebooks_v1/02.04-Computation-on-arrays-aggregates.ipynb",
+        "notebooks_v1/03.08-Aggregation-and-Grouping.ipynb",
+        "notebooks_v1/04.07-Customizing-Colorbars.ipynb",
+        "notebooks_v1/05.05-Naive-Bayes.ipynb"
+      ]
+    },
+    {
+      "repo": "wesm/pydata-book",
+      "sha": "a892791ce5a3831134cfa2989033ecbb9289f1ea",
+      "date": "2025-10-17",
+      "notebooksInRepository": 14,
+      "notebooks": [
+        "appa.ipynb",
+        "appb.ipynb",
+        "ch02.ipynb",
+        "ch04.ipynb",
+        "ch05.ipynb",
+        "ch07.ipynb",
+        "ch08.ipynb",
+        "ch09.ipynb",
+        "ch11.ipynb",
+        "ch12.ipynb"
+      ]
+    },
+    {
+      "repo": "mwaskom/seaborn",
+      "sha": "c1cb287835852406691aed60ea0c62710f2c6b18",
+      "date": "2026-10-07",
+      "notebooksInRepository": 90,
+      "notebooks": [
+        "doc/_docstrings/FacetGrid.ipynb",
+        "doc/_docstrings/clustermap.ipynb",
+        "doc/_docstrings/histplot.ipynb",
+        "doc/_docstrings/mpl_palette.ipynb",
+        "doc/_docstrings/objects.Dot.ipynb",
+        "doc/_docstrings/objects.Path.ipynb",
+        "doc/_docstrings/objects.Plot.on.ipynb",
+        "doc/_docstrings/pairplot.ipynb",
+        "doc/_docstrings/set_style.ipynb",
+        "doc/_tutorial/data_structure.ipynb"
+      ]
+    },
+    {
+      "repo": "statsmodels/statsmodels",
+      "sha": "0dfcd9966ea9ee0f2214176e23ddd91fdaf6ff0a",
+      "date": "2026-11-17",
+      "notebooksInRepository": 83,
+      "notebooks": [
+        "examples/notebooks/arima_alternative_estimators_seasonal_differencing.ipynb",
+        "examples/notebooks/count_hurdle.ipynb",
+        "examples/notebooks/gee_nested_simulation.ipynb",
+        "examples/notebooks/interactions_anova.ipynb",
+        "examples/notebooks/mixed_lm_example.ipynb",
+        "examples/notebooks/plots_boxplots.ipynb",
+        "examples/notebooks/robust_models_0.ipynb",
+        "examples/notebooks/statespace_fixed_params.ipynb",
+        "examples/notebooks/statespace_seasonal.ipynb",
+        "examples/notebooks/stl_seasonal_diagnostic_plot.ipynb"
+      ]
+    },
+    {
+      "repo": "jrjohansson/scientific-python-lectures",
+      "sha": "cbbf81112a88a635a680a5319a1116b4f04c9f94",
+      "date": "2026-06-03",
+      "notebooksInRepository": 9,
+      "notebooks": [
+        "Lecture-0-Scientific-Computing-with-Python.ipynb",
+        "Lecture-1-Introduction-to-Python-Programming.ipynb",
+        "Lecture-2-Numpy.ipynb",
+        "Lecture-3-Scipy.ipynb",
+        "Lecture-4-Matplotlib.ipynb",
+        "Lecture-5-Sympy.ipynb",
+        "Lecture-6A-Fortran-and-C.ipynb",
+        "Lecture-6B-HPC.ipynb",
+        "Lecture-7-Revision-Control-Software.ipynb"
+      ]
+    },
+    {
+      "repo": "ageron/handson-ml3",
+      "sha": "ef1c9f5ab11083584635b9b3a7846f49c58a6084",
+      "date": "2026-10-06",
+      "notebooksInRepository": 28,
+      "notebooks": [
+        "01_the_machine_learning_landscape.ipynb",
+        "03_classification.ipynb",
+        "06_decision_trees.ipynb",
+        "09_unsupervised_learning.ipynb",
+        "12_custom_models_and_training_with_tensorflow.ipynb",
+        "15_processing_sequences_using_rnns_and_cnns.ipynb",
+        "17_autoencoders_gans_and_diffusion_models.ipynb",
+        "extra_ann_architectures.ipynb",
+        "index.ipynb",
+        "tools_matplotlib.ipynb"
+      ]
+    },
+    {
+      "repo": "rasbt/machine-learning-book",
+      "sha": "63bee951ca45420ac33ccf803ceb337afc3c0a91",
+      "date": "2026-06-15",
+      "notebooksInRepository": 34,
+      "notebooks": [
+        "ch01/ch01.ipynb",
+        "ch03/ch03.ipynb",
+        "ch06/ch06.ipynb",
+        "ch08/logistic-regression-bag-of-words/log-reg.ipynb",
+        "ch11/ch11.ipynb",
+        "ch13/ch13_part2.ipynb",
+        "ch14/ch14_part1.ipynb",
+        "ch15/ch15_part2.ipynb",
+        "ch16/ch16-part2-gpt2.ipynb",
+        "ch17/ch17_part2.ipynb"
+      ]
+    },
+    {
+      "repo": "rasbt/LLMs-from-scratch",
+      "sha": "0311973e2c974b9e0223933103dc400c7a536179",
+      "date": "2026-11-09",
+      "notebooksInRepository": 68,
+      "notebooks": [
+        "appendix-A/01_main-chapter-code/code-part1.ipynb",
+        "ch02/01_main-chapter-code/dataloader.ipynb",
+        "ch02/06_bonus_simple-tokenizer-v3/simple-tokenizer-v3.ipynb",
+        "ch04/01_main-chapter-code/exercise-solutions.ipynb",
+        "ch05/07_gpt_to_llama/converting-gpt-to-llama2.ipynb",
+        "ch05/11_qwen3/standalone-qwen3-plus-kvcache.ipynb",
+        "ch05/13_olmo3/standalone-olmo3.ipynb",
+        "ch05/17_gemma4/standalone-gemma4-plus-kvcache.ipynb",
+        "ch06/01_main-chapter-code/load-finetuned-model.ipynb",
+        "ch07/03_model-evaluation/llm-instruction-eval-openai.ipynb"
+      ]
+    },
+    {
+      "repo": "amueller/introduction_to_ml_with_python",
+      "sha": "ea60cf6cf791553b6cca7cf31802c68cb3798ebb",
+      "date": "2024-03-13",
+      "notebooksInRepository": 8,
+      "notebooks": [
+        "01-introduction.ipynb",
+        "02-supervised-learning.ipynb",
+        "03-unsupervised-learning.ipynb",
+        "04-representing-data-feature-engineering.ipynb",
+        "05-model-evaluation-and-improvement.ipynb",
+        "06-algorithm-chains-and-pipelines.ipynb",
+        "07-working-with-text-data.ipynb",
+        "08-conclusion.ipynb"
+      ]
+    },
+    {
+      "repo": "fastai/fastbook",
+      "sha": "971f0289c3d0bda81868d3c028a832c6ee380b58",
+      "date": "2026-10-13",
+      "notebooksInRepository": 44,
+      "notebooks": [
+        "01_intro.ipynb",
+        "05_pet_breeds.ipynb",
+        "09_tabular.ipynb",
+        "14_resnet.ipynb",
+        "18_CAM.ipynb",
+        "clean/01_intro.ipynb",
+        "clean/05_pet_breeds.ipynb",
+        "clean/09_tabular.ipynb",
+        "clean/14_resnet.ipynb",
+        "clean/18_CAM.ipynb"
+      ]
+    },
+    {
+      "repo": "huggingface/notebooks",
+      "sha": "92617c75848e76166050be9760f62733d87696d8",
+      "date": "2026-11-17",
+      "notebooksInRepository": 1525,
+      "notebooks": [
+        "course/de/chapter1/section10.ipynb",
+        "course/fr/chapter7/section3_tf.ipynb",
+        "course/ru/chapter5/section4.ipynb",
+        "course/videos/token_pipeline_pt.ipynb",
+        "diffusers_doc/en/inference_with_lcm.ipynb",
+        "diffusers_doc/ko/tensorflow/quicktour.ipynb",
+        "smolagents_doc/en/inspect_runs.ipynb",
+        "transformers_doc/ar/tensorflow/summarization.ipynb",
+        "transformers_doc/en/zero_shot_image_classification.ipynb",
+        "transformers_doc/ko/multiple_choice.ipynb"
+      ]
+    },
+    {
+      "repo": "openai/openai-cookbook",
+      "sha": "dfd760b4de0bd175b51ad05b9b5260c36dfea09c",
+      "date": "2026-11-16",
+      "notebooksInRepository": 277,
+      "notebooks": [
+        "articles/gpt-oss/build-your-own-fact-checker-cerebras.ipynb",
+        "examples/Function_calling_finding_nearby_places.ipynb",
+        "examples/RAG_with_graph_db.ipynb",
+        "examples/agent_optimization/optimizing_agents_for_cost_and_quality.ipynb",
+        "examples/batch_processing.ipynb",
+        "examples/codex/Autofix-github-actions.ipynb",
+        "examples/evaluation/use-cases/web-search-evaluation.ipynb",
+        "examples/multimodal/image_understanding_with_rag.ipynb",
+        "examples/third_party/GPT_finetuning_with_wandb.ipynb",
+        "examples/vector_databases/neon/neon-postgres-vector-search-pgvector.ipynb"
+      ]
+    },
+    {
+      "repo": "anthropics/claude-cookbooks",
+      "sha": "ce8b2629efe8b24048b127b4c79af1e9cbab93d4",
+      "date": "2026-11-04",
+      "notebooksInRepository": 104,
+      "notebooks": [
+        "capabilities/classification/guide.ipynb",
+        "claude_agent_sdk/03_The_site_reliability_agent.ipynb",
+        "extended_thinking/extended_thinking.ipynb",
+        "managed_agents/CMA_gate_human_in_the_loop.ipynb",
+        "managed_agents/CMA_watch_subagents_live.ipynb",
+        "misc/how_to_make_sql_queries.ipynb",
+        "multimodal/crop_tool.ipynb",
+        "patterns/agents/latency_multi_agent.ipynb",
+        "third_party/LlamaIndex/Router_Query_Engine.ipynb",
+        "tool_use/customer_service_agent.ipynb"
+      ]
+    },
+    {
+      "repo": "karpathy/nn-zero-to-hero",
+      "sha": "73c3fcc741f0ec104ca850b1fb0df90e7e8d4cde",
+      "date": "2024-02-20",
+      "notebooksInRepository": 7,
+      "notebooks": [
+        "lectures/makemore/makemore_part1_bigrams.ipynb",
+        "lectures/makemore/makemore_part2_mlp.ipynb",
+        "lectures/makemore/makemore_part3_bn.ipynb",
+        "lectures/makemore/makemore_part4_backprop.ipynb",
+        "lectures/makemore/makemore_part5_cnn1.ipynb",
+        "lectures/micrograd/micrograd_lecture_first_half_roughly.ipynb",
+        "lectures/micrograd/micrograd_lecture_second_half_roughly.ipynb"
+      ]
+    },
+    {
+      "repo": "tensorflow/docs",
+      "sha": "82158b810d30edc737411744e27a0801fdad4554",
+      "date": "2026-11-04",
+      "notebooksInRepository": 188,
+      "notebooks": [
+        "site/en/guide/advanced_autodiff.ipynb",
+        "site/en/guide/function.ipynb",
+        "site/en/guide/migrate/multi_worker_cpu_gpu_training.ipynb",
+        "site/en/guide/tpu.ipynb",
+        "site/en/hub/tutorials/movinet.ipynb",
+        "site/en/hub/tutorials/tweening_conv3d.ipynb",
+        "site/en/r1/tutorials/eager/eager_basics.ipynb",
+        "site/en/tutorials/customization/custom_training_walkthrough.ipynb",
+        "site/en/tutorials/generative/dcgan.ipynb",
+        "site/en/tutorials/load_data/images.ipynb"
+      ]
+    },
+    {
+      "repo": "keras-team/keras-io",
+      "sha": "f5891b3cd4df69f6bd5a3c26ea92310f3a973626",
+      "date": "2026-11-09",
+      "notebooksInRepository": 265,
+      "notebooks": [
+        "examples/audio/ipynb/ctc_asr.ipynb",
+        "examples/generative/ipynb/random_walks_with_stable_diffusion_3.ipynb",
+        "examples/keras_recipes/ipynb/sklearn_metric_callbacks.ipynb",
+        "examples/nlp/ipynb/lstm_seq2seq.ipynb",
+        "examples/structured_data/ipynb/deep_neural_decision_forests.ipynb",
+        "examples/vision/ipynb/cct.ipynb",
+        "examples/vision/ipynb/masked_image_modeling.ipynb",
+        "examples/vision/ipynb/siamese_network.ipynb",
+        "guides/ipynb/distribution.ipynb",
+        "guides/ipynb/keras_nnx_guide.ipynb"
+      ]
+    },
+    {
+      "repo": "jupyterlab/jupyterlab-demo",
+      "sha": "fe0c447c1af3faa361075c2a79f1d9dfb9613ffd",
+      "date": "2025-08-27",
+      "notebooksInRepository": 6,
+      "notebooks": [
+        "notebooks/Cpp.ipynb",
+        "notebooks/Data.ipynb",
+        "notebooks/Fasta.ipynb",
+        "notebooks/Julia.ipynb",
+        "notebooks/Lorenz.ipynb",
+        "notebooks/R.ipynb"
+      ]
+    },
+    {
+      "repo": "pydata/xarray",
+      "sha": "6f4a21cfc73c0a95a5e77c1d1b61a0ed495ef65a",
+      "date": "2026-11-15",
+      "notebooksInRepository": 8,
+      "notebooks": [
+        "doc/examples/ERA5-GRIB-example.ipynb",
+        "doc/examples/ROMS_ocean_model.ipynb",
+        "doc/examples/area_weighted_temperature.ipynb",
+        "doc/examples/blank_template.ipynb",
+        "doc/examples/monthly-means.ipynb",
+        "doc/examples/multidimensional-coords.ipynb",
+        "doc/examples/visualization_gallery.ipynb",
+        "doc/examples/weather-data.ipynb"
+      ]
+    },
+    {
+      "repo": "geopandas/geopandas",
+      "sha": "f596bc16071809a3e86c550fb3a9158c9bae5292",
+      "date": "2026-11-14",
+      "notebooksInRepository": 18,
+      "notebooks": [
+        "doc/source/docs/user_guide/interactive_mapping.ipynb",
+        "doc/source/docs/user_guide/sampling.ipynb",
+        "doc/source/gallery/cartopy_convert.ipynb",
+        "doc/source/gallery/choropleths.ipynb",
+        "doc/source/gallery/geopandas_rasterio_sample.ipynb",
+        "doc/source/gallery/matplotlib_scalebar.ipynb",
+        "doc/source/gallery/overlays.ipynb",
+        "doc/source/gallery/plot_clip.ipynb",
+        "doc/source/gallery/plotting_with_folium.ipynb",
+        "doc/source/gallery/spatial_joins.ipynb"
+      ]
+    },
+    {
+      "repo": "microsoft/ML-For-Beginners",
+      "sha": "8e5c0dfffdb56181450363f9ccd880bc69737ae8",
+      "date": "2026-11-06",
+      "notebooksInRepository": 51,
+      "notebooks": [
+        "2-Regression/1-Tools/notebook.ipynb",
+        "2-Regression/2-Data/solution/notebook.ipynb",
+        "2-Regression/4-Logistic/solution/R/lesson_4-R.ipynb",
+        "4-Classification/1-Introduction/solution/R/lesson_10-R.ipynb",
+        "4-Classification/3-Classifiers-2/notebook.ipynb",
+        "5-Clustering/1-Visualize/notebook.ipynb",
+        "5-Clustering/2-K-Means/solution/notebook.ipynb",
+        "6-NLP/5-Hotel-Reviews-2/notebook.ipynb",
+        "7-TimeSeries/1-Introduction/working/notebook.ipynb",
+        "8-Reinforcement/1-QLearning/notebook.ipynb"
+      ]
+    },
+    {
+      "repo": "ultralytics/ultralytics",
+      "sha": "4978bf4e5a4db82b4f5a73cc64589e8c3b0c1571",
+      "date": "2026-11-17",
+      "notebooksInRepository": 4,
+      "notebooks": [
+        "examples/heatmaps.ipynb",
+        "examples/object_counting.ipynb",
+        "examples/object_tracking.ipynb",
+        "examples/tutorial.ipynb"
+      ]
+    },
+    {
+      "repo": "norvig/pytudes",
+      "sha": "fabf9d3cec64880d6f21459c819dfb20b3797e26",
+      "date": "2026-11-06",
+      "notebooksInRepository": 115,
+      "notebooks": [
+        "ipynb/Advent-2016.ipynb",
+        "ipynb/AlphaCode.ipynb",
+        "ipynb/ClimbingWall.ipynb",
+        "ipynb/Electoral Votes.ipynb",
+        "ipynb/Goldberg.ipynb",
+        "ipynb/NightKing.ipynb",
+        "ipynb/ProbabilitySimulation.ipynb",
+        "ipynb/Sierpinski.ipynb",
+        "ipynb/TSP.ipynb",
+        "ipynb/flipping.ipynb"
+      ]
+    },
+    {
+      "repo": "scikit-image/skimage-tutorials",
+      "sha": "26e2d4d27113a86b9dd99dc7e559ab25aa782436",
+      "date": "2025-12-02",
+      "notebooksInRepository": 50,
+      "notebooks": [
+        "lectures/00_images_are_arrays.ipynb",
+        "lectures/6_watershed_tricks.ipynb",
+        "lectures/not_yet_booked/6_sand_grain_counting.ipynb",
+        "lectures/not_yet_booked/adv4_warping.ipynb",
+        "lectures/not_yet_booked/other_libraries.ipynb",
+        "lectures/solutions/012_solutions.ipynb",
+        "lectures/solutions/adv0_chromosomes.ipynb",
+        "lectures/solutions/stackoverflow_challenges.ipynb",
+        "workshops/2015-scipy/index.ipynb",
+        "workshops/2018-scipy/index.ipynb"
+      ]
+    },
+    {
+      "repo": "Pierian-Data/Complete-Python-3-Bootcamp",
+      "sha": "ed69ec6b229de6b96a325f17be839a7eadeec60a",
+      "date": "2025-06-24",
+      "notebooksInRepository": 106,
+      "notebooks": [
+        "00-Python Object and Data Structure Basics/01-Numbers.ipynb",
+        "00-Python Object and Data Structure Basics/10-Objects and Data Structures Assessment Test-Solution.ipynb",
+        "02-Python Statements/09-Guessing Game Challenge.ipynb",
+        "03-Methods and Functions/09-Functions and Methods Homework - Solutions.ipynb",
+        "07-Errors and Exception Handling/01-Errors and Exceptions Handling.ipynb",
+        "09-Empty-Section-Skip/04-Zip.ipynb",
+        "11-Python Generators/03-Iterators and Generators Homework - Solution.ipynb",
+        "13-Web-Scraping/00-Guide-to-Web-Scraping.ipynb",
+        "16-Emailing-with-Python/00-Overview-of-Sending-Emails.ipynb",
+        "18-Milestone Project - 3/01-Final Capstone Project.ipynb"
+      ]
+    },
+    {
+      "repo": "jerry-git/learn-python3",
+      "sha": "85e30d370ec20618ac27b802c4d35876d7031b67",
+      "date": "2023-04-25",
+      "notebooksInRepository": 42,
+      "notebooks": [
+        "notebooks/beginner/exercises/01_strings_exercise.ipynb",
+        "notebooks/beginner/exercises/05_dictionaries_exercise.ipynb",
+        "notebooks/beginner/exercises/09_recap1_exercise.ipynb",
+        "notebooks/beginner/exercises/14_debugging_exercise.ipynb",
+        "notebooks/beginner/notebooks/01_strings.ipynb",
+        "notebooks/beginner/notebooks/06_for_loops.ipynb",
+        "notebooks/beginner/notebooks/11_classes.ipynb",
+        "notebooks/beginner/notebooks/15_std_lib.ipynb",
+        "notebooks/intermediate/exercises/01_std_lib2_exercise.ipynb",
+        "notebooks/intermediate/notebooks/01_pytest_fixtures.ipynb"
+      ]
+    },
+    {
+      "repo": "matplotlib/AnatomyOfMatplotlib",
+      "sha": "e51eb6363371f1b271b235a63f859dbd984ff756",
+      "date": "2021-08-13",
+      "notebooksInRepository": 8,
+      "notebooks": [
+        "AnatomyOfMatplotlib-Part0-Intro2NumPy.ipynb",
+        "AnatomyOfMatplotlib-Part1-Figures_Subplots_and_layouts.ipynb",
+        "AnatomyOfMatplotlib-Part2-Plotting_Methods_Overview.ipynb",
+        "AnatomyOfMatplotlib-Part3-HowToSpeakMPL.ipynb",
+        "AnatomyOfMatplotlib-Part4-Limits_Legends_and_Layouts.ipynb",
+        "AnatomyOfMatplotlib-Part5-Artists.ipynb",
+        "AnatomyOfMatplotlib-Part6-mpl_toolkits.ipynb",
+        "Test Install.ipynb"
+      ]
+    },
+    {
+      "repo": "pandas-dev/pandas",
+      "sha": "d91dc497e35e1576c51d3ccf4d6c8c6824701485",
+      "date": "2026-11-17",
+      "notebooksInRepository": 1,
+      "notebooks": [
+        "doc/source/user_guide/style.ipynb"
+      ]
+    },
+    {
+      "repo": "dask/dask-tutorial",
+      "sha": "419c087cad53b749cc9f6ad63b42b4da41c0a69e",
+      "date": "2025-11-04",
+      "notebooksInRepository": 6,
+      "notebooks": [
+        "00_overview.ipynb",
+        "01_dataframe.ipynb",
+        "02_array.ipynb",
+        "03_dask.delayed.ipynb",
+        "04_distributed.ipynb",
+        "05_futures.ipynb"
+      ]
+    }
+  ]
+}

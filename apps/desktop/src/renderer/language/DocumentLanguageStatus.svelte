@@ -3,6 +3,7 @@
   import { documentSupport, openLanguageCatalog, type DocumentSupportTarget, type AnalysisPage } from './document-support';
   import { presentSupport } from './document-presentation';
   import DocumentAnalysisPanel from './DocumentAnalysisPanel.svelte';
+  import LanguageStatusButton from './LanguageStatusButton.svelte';
   let { tabId }: { tabId: string } = $props();
   let revision = $state(0), target = $state<DocumentSupportTarget>(), narrow = $state(false);
   let initialPage = $state<AnalysisPage>('summary'), expanded = $state(false), availableHeight = $state(540);
@@ -40,11 +41,7 @@
 </script>
 
 {#if support}
-  <button bind:this={button} class="support-button" class:issue={status.tone === 'warning'} title={`${support.name}${status.label ? ` · ${status.label}` : ''}`}
-    aria-label={`Language status: ${support.name}${status.label ? `, ${status.label}` : ''}`} aria-expanded={!!target} aria-haspopup="dialog" onclick={toggle}>
-    {#if status.tone !== 'neutral'}<span class="indicator" aria-hidden="true">{status.tone === 'warning' ? '!' : '◌'}</span>{/if}
-    <span class="language-name">{support.name}</span>{#if status.label && !narrow}<span class="support-label"> · {status.label}</span>{/if}<span aria-hidden="true">⌄</span>
-  </button>
+  <LanguageStatusButton bind:element={button} name={support.name} label={status.label} tone={status.tone} expanded={!!target} {narrow} onclick={toggle} />
   {#if target}
     <div bind:this={panel} class="document-language-status" class:expanded style:max-height={`${availableHeight}px`} role="dialog" aria-label="Current file language support" tabindex="-1">
       {#key target.resource}
@@ -55,12 +52,6 @@
 {/if}
 
 <style>
-  .support-button { display: flex; align-items: center; gap: 5px; flex: 0 1 auto; min-width: 48px; max-width: 250px; white-space: nowrap; height: 26px; border: 0; border-radius: 5px; padding: 0 7px; background: transparent; color: var(--app-muted-text); font: 11px var(--app-font-family); cursor: pointer; }
-  .language-name, .support-label { overflow: hidden; text-overflow: ellipsis; }
-  .indicator { flex: none; font-weight: 600; }
-  .issue { color: var(--app-warning-text); }
-  button:hover { background: var(--app-hover); }
-  button:focus-visible { outline: 1px solid var(--app-focus-ring); }
   .document-language-status { position: absolute; top: 34px; right: 8px; width: min(370px, calc(100% - 16px)); overflow: auto; padding: 14px; box-sizing: border-box; color: var(--app-text); background: var(--app-raised-surface); border: 1px solid var(--app-border); border-radius: 6px; box-shadow: 0 6px 22px var(--app-shadow); }
   .document-language-status.expanded { width: min(480px, calc(100% - 16px)); }
 </style>

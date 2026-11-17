@@ -3,6 +3,7 @@
   import BrowserFind from '../../browser/BrowserFind.svelte';
   import ExtensionActions from '../../browser/ExtensionActions.svelte';
   import DocumentLanguageStatus from '../../language/DocumentLanguageStatus.svelte';
+  import NotebookLanguageStatus from '../../notebook/NotebookLanguageStatus.svelte';
   import { isNotebookDocument } from '../../../core/document/document-profile';
   import ZoomControls from '../../ZoomControls.svelte';
   import { zoomState } from '../../zoom-state.svelte';
@@ -237,6 +238,9 @@ import type { AppActions } from '../../ports/ui-actions';
   {/if}
   {#if tab && !web && tab.kind !== 'terminal' && !folder && !markdown && !review && !media && !isNotebookDocument(tab.path)}
     <DocumentLanguageStatus tabId={tab.id} />
+  {/if}
+  {#if tab && !web && !review && isNotebookDocument(tab.path)}
+    <NotebookLanguageStatus tabId={tab.id} />
   {/if}
   {#if focusedGroup}
     <div class="location-actions">
