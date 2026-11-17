@@ -256,7 +256,7 @@ ordinary/Git editors, terminals, Web Reader, and Markdown body, heading, and cod
 styles in every theme. `APP_FONT_FAMILY` and `--app-font-family` declare that one
 stack and no other source file names a family; `typography.test.ts` checks both.
 A Monoplex KR Hangul syllable is 1.056em, exactly two Latin cells, so the 840px
-measure holds about 40 syllables of the 20px Reader body and 57 of Markdown's
+measure holds about 44 syllables of the 18px Reader body and 57 of Markdown's
 14px. Math and diagram renderers retain
 their specialized fonts. Notebooks intentionally use a separate content/UI font
 stack for prose and HTML tables; their code and plain-text outputs use Monaco's

@@ -69,9 +69,10 @@ They join the existing `media/image-reader.spec.ts` and full preview contract ga
 ### Document and web readers
 
 Rendered Markdown keeps its 14px screen body (`MARKDOWN_FONT_SIZE`). Web Reader
-uses a 20px body (`READER_FONT_SIZE`, the size of long-form news text; it shared
-Markdown's 14px until 2026-11-12). Reader is the selected Markdown theme scaled by
-20/14: its `--reader-scale` carries that ratio and the tab zoom, so every theme
+uses an 18px body (`READER_FONT_SIZE`, the size of long-form news text; it shared
+Markdown's 14px until 2026-11-12 and was 20px until 2026-11-17, when 90% of that
+proved the better default). Reader is the selected Markdown theme scaled by
+18/14: its `--reader-scale` carries that ratio and the tab zoom, so every theme
 length keeps its proportion to the text. Both use the app font and 2em page
 padding. Lines stop at an 840px measure (`DOCUMENT_MEASURE_PX`): a wider pane centers the text column while the surface still paints its
 full width, and a narrower pane uses all of its width. Tab zoom changes the text

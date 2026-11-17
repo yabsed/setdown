@@ -16,11 +16,11 @@ export const MARKDOWN_FONT_SIZE = 14;
  * Reader is the Markdown theme scaled by READER_FONT_SIZE / MARKDOWN_FONT_SIZE,
  * so every theme length keeps its proportion to the text.
  */
-export const READER_FONT_SIZE = 20;
+export const READER_FONT_SIZE = 18;
 
 /**
- * Widest reading column in CSS px at 100% content zoom (about 40 Hangul
- * characters of the Reader's 20px monospace body, 57 of Markdown's 14px: a
+ * Widest reading column in CSS px at 100% content zoom (about 44 Hangul
+ * characters of the Reader's 18px monospace body, 57 of Markdown's 14px: a
  * Monoplex KR syllable is 1.056em wide). A wider pane centers the column
  * instead of stretching lines across the window. Content zoom changes only the
  * text: the column keeps this width on screen at every tab zoom.

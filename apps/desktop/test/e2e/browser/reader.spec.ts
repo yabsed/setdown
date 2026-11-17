@@ -195,7 +195,7 @@ test('Esc opens reader mode at the same block and double-click returns to the li
       return { font: style.fontFamily, size: style.fontSize };
     });
     expect(look.font.split(',')[0].replaceAll('"', '').trim()).toBe('Monoplex KR');
-    expect(look.size).toBe('20px');
+    expect(look.size).toBe('18px');
     await expect.poll(() => reader.evaluate(el => {
       const rect = el.getBoundingClientRect();
       const golden = rect.top + el.clientHeight * 0.372;
@@ -295,7 +295,7 @@ test('reader toolbar and wheel share the live website tab zoom while other Markd
     await expect(textReset).toHaveText('120%');
     await f.page.getByRole('button', { name: 'Zoom text in', exact: true }).click();
     await expect(textReset).toHaveText('130%');
-    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(26, 2);
+    await expect.poll(() => reader.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(23.4, 2);
     await reader.hover();
     await f.page.keyboard.down('Control'); await f.page.mouse.wheel(0, -80); await f.page.keyboard.up('Control');
     await expect(textReset).toHaveText('140%');
@@ -432,11 +432,11 @@ test('web articles share native Markdown typography and theme styles without aff
     await evaluatePage(f.app, f.origin, `document.querySelector('article').innerHTML = ${JSON.stringify('<h1>Long article</h1>' + body + paragraphs)}; true`);
     await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
     const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
-    // Reader is the Markdown theme scaled to its larger body (20px against 14px), so
+    // Reader is the Markdown theme scaled to its larger body (18px against 14px), so
     // lengths are compared in em of each surface's body size.
     const measure = (root: Element) => {
       const base = parseFloat(getComputedStyle(root).fontSize);
-      const em = (value: string) => value.replace(/(-?\d*\.?\d+)px/g, (_, px) => `${Math.round(Number(px) / base * 100) / 100}em`);
+      const em = (value: string) => value.replace(/(-?\d*\.?\d+)px/g, (_, px) => `${Math.round(Number(px) / base * 1e4) / 1e4}em`);
       const properties = ['font-family', 'font-size', 'font-weight', 'font-style', 'font-synthesis', 'text-rendering', 'letter-spacing', 'line-height', 'color', 'background-color',
         'margin-top', 'margin-bottom', 'padding-left', 'padding-right', 'padding-top', 'padding-bottom',
         'border-left-width', 'border-left-color', 'list-style-type', 'border-collapse'];
@@ -462,6 +462,15 @@ test('web articles share native Markdown typography and theme styles without aff
     }));
     const shellBefore = await shell();
     const differences: { theme: string; selector: string; property: string; expected: string; actual: string }[] = [];
+    // Lengths match within half of 0.01em. Comparing strings rounded to 0.01em splits equal
+    // values that sit on a rounding boundary: h2's 0.525em bottom padding is 7.35px of 14px
+    // and 9.45px of 18px, which round to 0.53em and 0.52em.
+    const lengths = /-?\d*\.?\d+em/g;
+    const sameLengths = (actual: string | undefined, expected: string, tolerance: number) => {
+      const a = actual?.match(lengths) ?? [], b = expected.match(lengths) ?? [];
+      return a.length > 0 && a.length === b.length && actual!.replace(lengths, '#') === expected.replace(lengths, '#')
+        && a.every((value, index) => Math.abs(parseFloat(value) - parseFloat(b[index])) <= tolerance + 1e-9);
+    };
     for (const theme of THEME_IDS) {
       await f.page.getByRole('tab', { name: /notes.md/ }).click();
       await f.page.evaluate(theme => window.marktex.executeApplicationMenuItem(`preview-theme-${theme}`), theme);
@@ -477,7 +486,7 @@ test('web articles share native Markdown typography and theme styles without aff
       for (const [selector, style] of Object.entries(markdown!)) for (const [property, expected] of Object.entries(style)) {
         const actual = article[selector]?.[property];
         // Borders snap to whole device pixels, so a scaled hairline may differ by one pixel.
-        const close = property === 'border-left-width' && Math.abs(parseFloat(actual) - parseFloat(expected)) <= 0.08;
+        const close = sameLengths(actual, expected, property === 'border-left-width' ? 0.08 : 0.005);
         if (actual !== expected && !close) differences.push({ theme, selector, property, expected, actual });
       }
       expect(await shell()).toEqual(shellBefore);

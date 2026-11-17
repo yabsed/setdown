@@ -46,7 +46,7 @@ export function readerThemeCss(themeId: string): Promise<string> {
                 .replace(/\.markdown-preview/g, '.web-reader-content');
               // Native tab zoom scales fixed lengths too; rem is rooted at
               // Markdown's 14px document, rather than the shell's root size.
-              // --reader-scale also carries Reader's larger body (20/14).
+              // --reader-scale also carries Reader's larger body (18/14).
               for (const property of [...rule.style]) {
                 const value = rule.style.getPropertyValue(property).replace(/(-?\d*\.?\d+)(px|rem)\b/g,
                   (_, number, unit) => `calc(var(--reader-scale) * ${Number(number) * (unit === 'rem' ? MARKDOWN_FONT_SIZE : 1)}px)`);
