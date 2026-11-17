@@ -383,7 +383,10 @@ palette, a web tab its site's icon, a spinner while it loads (`aria-busy`; the
 title carries no loading marker) and a plain globe when the site declares none.
 HTTP(S) addresses among launch
 arguments open as web tabs, also beside a document named by the same request and
-through the single-instance handoff. File ▸ Set as Default Browser… registers the
+through the single-instance handoff. A second launch that names nothing to open
+creates another window, which is what a desktop's New Window does for a running
+application (GNOME starts the entry again; so does Shift+click on a taskbar); one
+that names a document, folder or address uses the focused window. File ▸ Set as Default Browser… registers the
 two web schemes only after the user confirms, never at install or launch; on
 Linux it requires an installed desktop entry that declares them. On Linux,
 location comes from the desktop portal (`LocationProviderManager`), not from a
@@ -969,7 +972,11 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
 - **DOM surface.** `renderer/folder/FolderSurface.svelte` is a shell layer like the
   terminal: it adds no `WebContentsView`, native bounds or preview preparation. It
   consumes the tab's content zoom for row height and font size. Rows are virtualized
-  with `virtua`; a grid layout shows thumbnails only for mounted cells.
+  with `virtua`; a grid layout shows thumbnails only for mounted cells. A
+  thumbnail is scaled as a whole into its cell's picture area whatever its shape
+  (`FolderThumb.svelte`: one track of the box's own size, since an auto track
+  grows to a tall image and `max-height: 100%` then limits nothing); it never
+  covers the name below it or the next row.
 - **Same file engine.** Copy/cut/paste/duplicate, conflicts, Undo, Trash, rename and
   create run through `ExplorerService` with a filesystem-wide path policy
   (`main/files/file-system-paths.ts`). The sidebar Explorer and folder tabs share

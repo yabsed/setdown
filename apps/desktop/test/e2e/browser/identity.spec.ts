@@ -86,6 +86,27 @@ test('a web address on the command line opens as a web tab, and a second launch 
   } finally { await f.dispose(); }
 });
 
+test('starting the application again with nothing to open opens another window', async () => {
+  const f = await fixture();
+  try {
+    const visible = () => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(window => window.isVisible()).length);
+    const shells = () => f.app.windows().filter(page => /\/dist\/index\.html$/.test(page.url()));
+    expect(await visible()).toBe(1);
+    // What a desktop's "New Window" does for an application that is already running.
+    await f.launchAgain();
+    await expect.poll(visible).toBe(2);
+    await expect.poll(() => shells().length).toBe(2);
+    const added = shells().find(page => page !== f.page)!;
+    await expect(added.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
+    await expect(f.page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
+    // A launch that names something still uses the focused window instead of opening a third.
+    await f.launchAgain(`${f.origin}/second`);
+    await expect.poll(async () => (await Promise.all(shells().map(page => page.getByRole('tab', { name: /Second page/ }).count()))).reduce((sum, count) => sum + count, 0)).toBe(1);
+    expect(await visible()).toBe(2);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('a web tab shows its site’s icon, and never another site’s', async () => {
   const f = await fixture();
   try {

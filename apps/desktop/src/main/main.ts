@@ -236,7 +236,10 @@ else {
     const urls = webURLsFromArgs(argv);
     if (urls.length) showWebAddresses(urls);
     if (folder || urls.length) return;
-    state?.window.show(); state?.window.focus();
+    if (filePath) { state?.window.show(); state?.window.focus(); return; }
+    // Started again with nothing to open: another window, as for a browser or an editor.
+    // A desktop's "New Window" (GNOME's dock menu, Shift+click on a taskbar) is exactly this launch.
+    windows.create();
   });
   app.whenReady().then(async () => {
     if (process.platform === 'linux' && process.env.DISPLAY && hasGlobalWindowPositions(process.platform, process.env, backend)) installX11Pinch();

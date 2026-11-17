@@ -4,23 +4,11 @@ import { createServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { crc32, deflateSync } from 'node:zlib';
 import { disposeApplication, electron, focusApplication } from '../../support/electron/electron-app';
 import { launchPlain } from '../../support/electron/plain-app';
+import { pngFixture } from '../../support/media/png-fixture';
 
-/** A square of one colour, as the two bitmap formats sites serve for their icon. */
-function png(size: number, [red, green, blue]: number[]): Buffer {
-  const chunk = (type: string, data: Buffer) => {
-    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]), out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0); body.copy(out, 4); out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(size, 0); header.writeUInt32BE(size, 4); header[8] = 8; header[9] = 2;
-  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(size * 3, Buffer.from([red, green, blue]))]);
-  return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), chunk('IHDR', header),
-    chunk('IDAT', deflateSync(Buffer.concat(Array.from({ length: size }, () => row)))), chunk('IEND', Buffer.alloc(0))]);
-}
+/** A square of one colour in the classic icon format; sites serve it or a PNG. */
 function ico(size: number, [red, green, blue]: number[]): Buffer {
   const pixels = Buffer.alloc(size * size * 4, Buffer.from([blue, green, red, 255])), mask = Buffer.alloc(size * Math.ceil(size / 32) * 4);
   const bitmap = Buffer.alloc(40);
@@ -31,7 +19,7 @@ function ico(size: number, [red, green, blue]: number[]): Buffer {
   directory.writeUInt16LE(1, 10); directory.writeUInt16LE(32, 12); directory.writeUInt32LE(40 + pixels.length + mask.length, 14); directory.writeUInt32LE(22, 18);
   return Buffer.concat([directory, bitmap, pixels, mask]);
 }
-const ICONS = { ico: { type: 'image/x-icon', colour: [39, 174, 96], bytes: ico(16, [39, 174, 96]) }, png: { type: 'image/png', colour: [41, 128, 185], bytes: png(48, [41, 128, 185]) } };
+const ICONS = { ico: { type: 'image/x-icon', colour: [39, 174, 96], bytes: ico(16, [39, 174, 96]) }, png: { type: 'image/png', colour: [41, 128, 185], bytes: pngFixture(48, 48, [41, 128, 185]) } };
 
 async function site() {
   const held: ServerResponse[] = [];

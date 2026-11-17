@@ -34,7 +34,10 @@
 </span>
 
 <style>
-  .folder-thumb { display: grid; place-items: center; width: 100%; height: 100%; min-height: 0; }
+  /* One track of the box's own size: an auto track would grow to a tall image, and its
+     `max-height: 100%` would then limit nothing, letting a portrait page run over the name
+     and the row below. */
+  .folder-thumb { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; }
   .folder-thumb svg { width: 72%; height: 72%; fill: color-mix(in srgb, var(--app-accent) 26%, transparent); stroke: var(--app-muted-text); stroke-width: 1.2; stroke-linejoin: round; }
   .folder-thumb img { max-width: 100%; max-height: 100%; border-radius: 4px; object-fit: contain; box-shadow: 0 0 0 1px var(--app-border); }
   .folder-thumb-icon { font-size: 2.6em; line-height: 1; }

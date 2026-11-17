@@ -7,6 +7,7 @@ import path from 'node:path';
 import type { WebContentsView } from 'electron';
 import { disposeApplication, electron, focusApplication, type TestApplication } from '../../support/electron/electron-app';
 import { chooseNativeMenu } from '../../support/browser/browser-fixture';
+import { pngFixture } from '../../support/media/png-fixture';
 
 /** Folder tabs and the in-app chooser run with a temporary HOME and the platform dialog disabled. */
 async function launch(): Promise<{ root: string; home: string; app: TestApplication; page: Page }> {
@@ -435,6 +436,42 @@ test('the file manager searches subfolders, shows a grid, properties and stays u
     await expect(surface.locator('.folder-places')).toHaveCount(0);
     await expect.poll(() => labels(page)).toEqual(['Documents', 'Projects']);
     void home;
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('grid view keeps every thumbnail inside its cell and above the name, whatever its shape', async () => {
+  const { root, home, app, page } = await launch();
+  try {
+    const pictures = path.join(home, 'Pictures');
+    await mkdir(pictures);
+    // A page-shaped image is taller than a cell's picture area even after the thumbnailer scales it.
+    await writeFile(path.join(pictures, 'tall.png'), pngFixture(60, 480, [41, 128, 185]));
+    await writeFile(path.join(pictures, 'wide.png'), pngFixture(480, 60, [39, 174, 96]));
+    await writeFile(path.join(pictures, 'small.png'), pngFixture(24, 24, [192, 57, 43]));
+    await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
+    const address = page.locator('.editor-group.focused .location-bar input');
+    await address.click(); await address.fill(pictures); await address.press('Enter');
+    await expect.poll(() => labels(page)).toEqual(['small.png', 'tall.png', 'wide.png']);
+    await list(page).focus();
+    await page.keyboard.press('Control+2');
+    const cells = list(page).locator('.folder-cell');
+    await expect(cells).toHaveCount(3);
+    const measure = () => cells.evaluateAll(cells => cells.map(cell => {
+      const image = cell.querySelector<HTMLImageElement>('.folder-thumb img');
+      if (!image?.complete || !image.naturalWidth) return null;
+      const box = image.getBoundingClientRect(), area = cell.querySelector('.folder-thumb')!.getBoundingClientRect();
+      const name = cell.querySelector('.folder-cell-name')!.getBoundingClientRect(), outer = cell.getBoundingClientRect();
+      return { name: cell.querySelector('.folder-label')!.textContent,
+        inside: box.top >= area.top - .5 && box.bottom <= area.bottom + .5 && box.left >= area.left - .5 && box.right <= area.right + .5,
+        aboveName: box.bottom <= name.top + .5, cellHoldsName: name.bottom <= outer.bottom + .5,
+        // Scaled as a whole: the picture keeps its shape, and a small one is not blown up.
+        shape: Math.abs(box.width / box.height - image.naturalWidth / image.naturalHeight) < .05, enlarged: box.width > image.naturalWidth + .5 };
+    }));
+    await expect.poll(measure).toEqual(['small.png', 'tall.png', 'wide.png'].map(name => ({ name, inside: true, aboveName: true, cellHoldsName: true, shape: true, enlarged: false })));
+    // Rows do not run into each other: each cell is as tall as its line.
+    const heights = await cells.evaluateAll(cells => cells.map(cell => [cell.getBoundingClientRect().height, cell.scrollHeight, cell.clientHeight]));
+    for (const [, scroll, client] of heights) expect(scroll).toBeLessThanOrEqual(client);
+    await page.screenshot({ path: test.info().outputPath('grid-thumbnails.png') });
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
