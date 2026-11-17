@@ -129,7 +129,7 @@ import type { AppActions } from './ports/ui-actions';
     <div class="group-content terminal-content" class:inactive={!active} inert={!active}
       style={geometry(box)} data-terminal-tab={tab?.id} data-zoom-tab={tab?.id}>
       {#await import('./terminal/TerminalSurface.svelte') then module}
-        <module.default api={terminalApi} id={session.id} tabId={tab?.id} {active} focused={active && group?.id === view.focusedGroupId}
+        <module.default api={terminalApi} id={session.id} tabId={tab?.id} cwd={session.cwd} {active} focused={active && group?.id === view.focusedGroupId}
           changed={info => actions.terminalChanged(session.id, info)} />
       {:catch error}<div role="alert">Could not load the terminal: {String(error)}</div>{/await}
     </div>

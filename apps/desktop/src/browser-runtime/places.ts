@@ -25,9 +25,10 @@ async function favicon(bytes: Uint8Array, type: string): Promise<string | null> 
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], type ? { type } : {}));
   try {
     const image = new Image();
-    image.src = url;
-    await image.decode();
-    const size = 32, canvas = new OffscreenCanvas(size, size), context = canvas.getContext('2d')!;
+    // This page is never shown, so its compositor never runs: `image.decode()` of a bitmap
+    // would wait on it forever. Loading and a software canvas need no frame.
+    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Not an image.')); image.src = url; });
+    const size = 32, canvas = new OffscreenCanvas(size, size), context = canvas.getContext('2d', { willReadFrequently: true })!;
     // An SVG without intrinsic dimensions fills the square.
     const width = image.naturalWidth || size, height = image.naturalHeight || size, scale = Math.min(size / width, size / height);
     context.imageSmoothingQuality = 'high';

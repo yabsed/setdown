@@ -2,6 +2,7 @@
   import { tabScroll } from './tab-scroll';
   import { tick } from 'svelte';
   import { view } from '../workspace-view.svelte';
+  import FileIcon from '../../project/FileIcon.svelte';
 import type { AppActions } from '../../ports/ui-actions';
   let { actions, groupId = 'group-0' }: { actions: AppActions; groupId?: string } = $props();
   let list: HTMLDivElement;
@@ -33,13 +34,25 @@ import type { AppActions } from '../../ports/ui-actions';
         type="button" role="tab" aria-selected={tab.id === selected}
         title={tab.preview ? `${tab.path}\nDouble-click to keep open` : tab.path}
         draggable="true" data-sleeping={tab.page?.sleeping || undefined} data-tab-id={tab.id} data-preview={tab.preview}
+        aria-busy={tab.page?.loading && !tab.page.sleeping || undefined}
         data-pinned={pinned.has(tab.id) || undefined}
         onclick={() => actions.activateTab(tab.id)}
         oncontextmenu={(event) => { event.preventDefault(); actions.showTabMenu(tab.id, { x: event.clientX, y: event.clientY }); }}
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
-        {#if tab.kind === 'web' && tab.page?.favicon}<img class="tab-favicon" src={tab.page.favicon} alt="" draggable="false" />{/if}
-        <span class="tab-name">{tab.page?.sleeping ? '☾ ' : tab.page?.loading ? '◌ ' : ''}{tab.name}</span>
+        <!-- Every tab leads with what it shows: the site's icon, the file type as in the Explorer and folder tabs, or its kind. -->
+        {#if tab.kind === 'web'}
+          <!-- While a page loads, a spinner takes its icon's place, as in a browser's tab. -->
+          {#if tab.page?.loading && !tab.page.sleeping}<svg class="tab-glyph" data-tab-icon="loading" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/></svg>
+          {:else if tab.page?.favicon}<img class="tab-favicon" src={tab.page.favicon} alt="" draggable="false" />
+          {:else}<svg class="tab-glyph" data-tab-icon="web" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 8 1.8ZM1.8 8h12.4M8 1.8c-2.3 2.2-2.3 10.2 0 12.4M8 1.8c2.3 2.2 2.3 10.2 0 12.4"/></svg>{/if}
+        {:else if tab.kind === 'terminal'}
+          <!-- Solid shapes in the file icons' palette: outlines read as buttons beside site and file icons. -->
+          <svg class="tab-glyph" data-tab-icon="terminal" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v8a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 12V4A1.5 1.5 0 0 1 3 2.5Zm.6 3.4 2.1 2.1-2.1 2.1.9.9 3-3-3-3Zm4 4.2v1.2h3.6v-1.2Z"/></svg>
+        {:else if tab.kind === 'folder'}
+          <svg class="tab-glyph" data-tab-icon="folder" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.6c0-.6.5-1.1 1.1-1.1h3.3c.3 0 .6.1.8.4l1 1.3h5.7c.6 0 1.1.5 1.1 1.1v7.1c0 .6-.5 1.1-1.1 1.1H2.6c-.6 0-1.1-.5-1.1-1.1Z"/></svg>
+        {:else}<FileIcon path={tab.path} />{/if}
+        <span class="tab-name">{tab.page?.sleeping ? '☾ ' : ''}{tab.name}</span>
         {#if tab.kind === 'web' && (tab.page?.audible || tab.page?.muted)}
           <span class="tab-audio" role="button" tabindex="0" aria-label={tab.page.muted ? 'Unmute tab' : 'Mute tab'}
             title={tab.page.muted ? 'Unmute tab' : 'Mute tab'} aria-pressed={tab.page.muted}
@@ -91,6 +104,19 @@ import type { AppActions } from '../../ports/ui-actions';
   .document-tab[data-preview="true"] .tab-name { font-style: italic; }
   .tab-favicon { flex: 0 0 16px; width: 16px; height: 16px; margin-right: 6px; border-radius: 3px; object-fit: contain; }
   .document-tab[data-sleeping] .tab-favicon { opacity: .55; }
+  /* Seti's grey for the terminal and the plain globe, a folder tan beside it; the light values follow Seti's light set. */
+  .tab-glyph { flex: 0 0 16px; width: 16px; height: 16px; margin-right: 6px; --tab-glyph: #6d8086; fill: var(--tab-glyph); }
+  .tab-glyph[data-tab-icon="folder"] { --tab-glyph: #d9b46c; }
+  .tab-glyph[data-tab-icon="web"] { fill: none; stroke: var(--tab-glyph); stroke-width: 1.3; stroke-linecap: round; }
+  .tab-glyph[data-tab-icon="loading"] { fill: none; stroke: var(--app-accent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 21 34.6;
+    animation: tab-loading .9s linear infinite; }
+  @keyframes tab-loading { to { transform: rotate(360deg); } }
+  /* Without motion the arc still says "loading"; it just does not turn. */
+  @media (prefers-reduced-motion: reduce) { .tab-glyph[data-tab-icon="loading"] { animation: none; } }
+  :global([data-appearance='light']) .tab-glyph { --tab-glyph: #627379; }
+  :global([data-appearance='light']) .tab-glyph[data-tab-icon="folder"] { --tab-glyph: #b7955a; }
+  .document-tab[data-sleeping] .tab-glyph { opacity: .55; }
+  .document-tab :global(.file-type-icon) { margin-right: 6px; }
   .tab-audio { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; }
   .tab-audio:hover { background: var(--app-hover); }
   .tab-audio svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }

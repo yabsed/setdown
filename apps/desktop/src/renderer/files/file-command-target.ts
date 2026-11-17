@@ -7,7 +7,7 @@ import type { ExplorerApi } from '../../protocol/explorer';
  * `setdown:explorer-command` event and act only when they are the owner.
  */
 export const fileCommandTarget = { owner: '' };
-const MENUS = '.application-menu, .application-menu-popup, .application-submenu-popup, .project-context-menu, .folder-context-menu';
+const MENUS = '.application-menu, .application-menu-popup, .application-submenu-popup, .project-context-menu';
 const EDITABLE = 'input, textarea, select, [contenteditable="true"]';
 
 export function ownerFor(target: Element, explorerVisible: boolean): string {

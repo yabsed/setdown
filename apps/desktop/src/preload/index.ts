@@ -176,7 +176,7 @@ const api: MarkTexApi = {
   readOfficeBytes: (path, version) => ipcRenderer.invoke('office:read', path, version),
   mediaUrl: (path) => resourceUrl(path),
   terminal: {
-    create: (id, size) => ipcRenderer.invoke('terminal:create', id, size),
+    create: (id, size, cwd) => ipcRenderer.invoke('terminal:create', id, size, cwd),
     write: (id, data) => ipcRenderer.send('terminal:write', id, data),
     resize: (id, size) => ipcRenderer.send('terminal:resize', id, size),
     acknowledge: (id, length) => ipcRenderer.send('terminal:ack', id, length),
@@ -215,6 +215,7 @@ const api: MarkTexApi = {
   detachTabToWindow: (transferId, x, y, withinSource, dropEffect, release) => ipcRenderer.send('tabs:detach-to-window', { transferId, x, y, withinSource, dropEffect, release }),
   moveTabToWindow: (transferId, tab) => ipcRenderer.send('tabs:move-to-window', { transferId, tab }),
   showTabMenu: (context, copy, point) => ipcRenderer.invoke('tabs:context-menu', context, copy, point),
+  showFolderMenu: (context, copy, point) => ipcRenderer.invoke('folder:context-menu', context, copy, point),
   adoptTabTransfer: (transferId) => ipcRenderer.invoke('tabs:adopt-transfer', transferId),
   releaseTabTransferSource: (transferId) => ipcRenderer.send('tabs:release-source', transferId),
   createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),

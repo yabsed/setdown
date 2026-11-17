@@ -20,6 +20,8 @@ import { BrowserFindOverlay } from '../browser/find-overlay';
 import { LocationOverlay } from '../browser/location-overlay';
 import { showReadingMenu } from '../menu/reading-menu';
 import { showTabMenu } from '../menu/tab-menu';
+import { showFolderMenu } from '../menu/folder-menu';
+import { readFolderMenuContext } from '../../core/files/folder-menu';
 import { readTabMenuContext } from '../../core/workspace/tab-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
 import type { WindowState } from '../windows/window-state';
@@ -111,6 +113,15 @@ export function installIpc(options: Options): void {
     // Renderer CSS pixels to window pixels. Without a point the menu opens at the pointer.
     const zoom = state.window.webContents.getZoomFactor(), x = Number(at?.x), y = Number(at?.y);
     return showTabMenu(state, context, { path: text(copy?.path), relative: text(copy?.relative) },
+      Number.isFinite(x) && Number.isFinite(y) ? { x: x * zoom, y: y * zoom } : undefined);
+  });
+  channels.handle('folder:context-menu', (state, input: unknown, copy: { paths?: unknown; folder?: unknown } | null, at: { x?: unknown; y?: unknown } | null) => {
+    const context = readFolderMenuContext(input);
+    if (!context) return null;
+    // A selection can be large; its paths are still text the user asked to copy.
+    const text = (value: unknown) => typeof value === 'string' ? value.slice(0, 1_048_576) : '';
+    const zoom = state.window.webContents.getZoomFactor(), x = Number(at?.x), y = Number(at?.y);
+    return showFolderMenu(state, context, { paths: text(copy?.paths), folder: text(copy?.folder) },
       Number.isFinite(x) && Number.isFinite(y) ? { x: x * zoom, y: y * zoom } : undefined);
   });
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);

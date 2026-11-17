@@ -1,10 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import type { WebContentsView } from 'electron';
 import { disposeApplication, electron, focusApplication, type TestApplication } from '../../support/electron/electron-app';
+import { chooseNativeMenu } from '../../support/browser/browser-fixture';
 
 /** Folder tabs and the in-app chooser run with a temporary HOME and the platform dialog disabled. */
 async function launch(): Promise<{ root: string; home: string; app: TestApplication; page: Page }> {
@@ -17,7 +19,7 @@ async function launch(): Promise<{ root: string; home: string; app: TestApplicat
   await writeFile(path.join(home, 'Projects', 'alpha', '.hidden-note'), 'secret\n');
   await writeFile(path.join(home, 'Projects', 'beta.txt'), 'beta\n');
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
-  const app = await electron.launch({ args: ['.'], env: { ...env, HOME: home, XDG_CONFIG_HOME: path.join(root, 'config'),
+  const app = await electron.launch({ args: ['.'], env: { ...env, HOME: home, SHELL: '/bin/bash', XDG_CONFIG_HOME: path.join(root, 'config'),
     XDG_DATA_HOME: path.join(root, 'data'), SETDOWN_NATIVE_DIALOGS: '0' } });
   const page = await app.firstWindow();
   await focusApplication(app);
@@ -26,6 +28,22 @@ async function launch(): Promise<{ root: string; home: string; app: TestApplicat
 const list = (page: Page) => page.locator('.folder-content:not(.inactive) [data-folder-list]');
 const row = (page: Page, name: string) => list(page).getByRole('option', { name, exact: false }).filter({ has: page.locator('.folder-label', { hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }) });
 const labels = (page: Page) => list(page).locator('.folder-row .folder-label').allTextContents();
+/** The folder tab's menus open in the native menu layer, above every other view of the window. */
+const menuViews = (app: TestApplication) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children
+  .filter(view => view.getVisible() && (view as WebContentsView).webContents.getURL().includes('menu-overlay=1')).length);
+async function openMenu(app: TestApplication, target: Locator, position?: { x: number; y: number }): Promise<Page> {
+  await target.click({ button: 'right', position });
+  await expect.poll(() => menuViews(app)).toBe(1);
+  return app.windows().find(page => page.url().includes('menu-overlay=1'))!;
+}
+/** A row by its label alone: its accessible name also carries the shortcut. */
+const item = (menu: Page, label: string) => menu.locator('[role^="menuitem"]')
+  .filter({ has: menu.locator('.product-menu-label', { hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }) });
+async function choose(app: TestApplication, target: Locator, label: string, position?: { x: number; y: number }) {
+  const menu = await openMenu(app, target, position);
+  await item(menu, label).click();
+  await expect.poll(() => menuViews(app)).toBe(0);
+}
 
 test('a folder tab browses from the new-tab button, keeps selection through Back, and opens documents in tabs', async () => {
   const { root, home, app, page } = await launch();
@@ -93,21 +111,16 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
     await rename.fill('table.csv'); await rename.press('Enter');
     await expect.poll(() => readdir(alpha)).toContain('table.csv');
     // The context menu reaches the same commands with the pointer as the keyboard shortcuts do.
-    const menu = page.getByRole('menu');
-    await row(page, 'table.csv').click({ button: 'right' });
-    await menu.getByRole('menuitem', { name: 'Rename' }).click();
-    await expect(menu).toHaveCount(0);
+    await choose(app, row(page, 'table.csv'), 'Rename');
     await expect(rename).toBeFocused();
     await rename.fill('sheet.csv'); await rename.press('Enter');
     await expect.poll(() => readdir(alpha)).toContain('sheet.csv');
-    await row(page, 'sheet.csv').click({ button: 'right' });
-    await menu.getByRole('menuitem', { name: 'Properties' }).click();
+    await choose(app, row(page, 'sheet.csv'), 'Properties');
     const properties = page.getByRole('dialog', { name: 'Properties' });
     await expect(properties).toContainText('sheet.csv');
     await properties.getByRole('button', { name: 'Close' }).click();
     await expect(properties).toHaveCount(0);
-    await row(page, 'sheet.csv').click({ button: 'right' });
-    await menu.getByRole('menuitem', { name: 'Rename' }).click();
+    await choose(app, row(page, 'sheet.csv'), 'Rename');
     await rename.fill('table.csv'); await rename.press('Enter');
     await expect.poll(() => readdir(alpha)).toContain('table.csv');
     await row(page, 'table.csv').click();
@@ -148,6 +161,75 @@ test('two folder tabs of one directory stay two tabs when one is dragged along t
     await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
     await expect(row(page, 'Projects')).toHaveAttribute('aria-selected', 'true');
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a folder tab’s menu leaves a website in another group running, and Open in Terminal starts in that folder', async () => {
+  test.skip(process.platform === 'win32', 'Commands use a POSIX shell.');
+  test.setTimeout(120_000);
+  const { root, home, app, page } = await launch();
+  // The page counts the frames it draws: a hidden or detached view draws none.
+  const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html');
+    response.end('<!doctype html><title>Live page</title><p>Playing.</p><script>window.drawn = 0; (function draw() { window.drawn++; requestAnimationFrame(draw); })();</script>'); });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const site = () => app.evaluate(async ({ BrowserWindow }, origin) => {
+    const view = BrowserWindow.getAllWindows()[0].contentView.children.find(view => (view as WebContentsView).webContents?.getURL().startsWith(origin)) as WebContentsView | undefined;
+    return { shown: !!view?.getVisible(), drawn: view ? await view.webContents.executeJavaScript('window.drawn') as number : -1 };
+  }, origin);
+  const advancing = async () => { const before = (await site()).drawn; await expect.poll(async () => (await site()).drawn).toBeGreaterThan(before + 5); };
+  const terminal = page.locator('.terminal-content:not(.inactive) .xterm-helper-textarea');
+  const where = async (name: string) => {
+    await expect(terminal).toBeFocused();
+    await terminal.pressSequentially(`pwd > "$HOME/${name}"`); await terminal.press('Enter');
+    await expect.poll(() => readFile(path.join(home, name), 'utf8').catch(() => '')).not.toBe('');
+    return (await readFile(path.join(home, name), 'utf8')).trim();
+  };
+  try {
+    const alpha = await realpath(path.join(home, 'Projects', 'alpha'));
+    await page.evaluate(url => window.marktex.openLink(url), `${origin}/`);
+    await expect(page.getByRole('tab', { name: /Live page/ })).toBeVisible();
+    // The folder tab moves to a group of its own, beside the website.
+    await page.getByRole('button', { name: 'New folder tab', exact: true }).click();
+    const folder = page.locator('.document-tab[aria-selected="true"]').filter({ hasText: 'home' });
+    await expect(folder).toBeVisible();
+    await folder.click({ button: 'right' }); await chooseNativeMenu(app, ['Split & Move', 'Move Right']);
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const address = page.locator('.editor-group.focused .location-bar input');
+    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
+    await expect.poll(async () => (await site()).shown).toBe(true);
+    await advancing();
+
+    // With the menu open the website is still on screen and still drawing.
+    const menu = await openMenu(app, row(page, 'notes'));
+    await expect(item(menu, 'Open in Terminal')).toBeVisible();
+    expect((await site()).shown).toBe(true);
+    await advancing();
+    await menu.screenshot({ path: test.info().outputPath('folder-menu.png') });
+
+    // A folder row: the shell starts inside it, not in the workspace or home folder.
+    await item(menu, 'Open in Terminal').click();
+    await expect.poll(() => menuViews(app)).toBe(0);
+    await expect(page.getByRole('tab', { name: /^Terminal 1/ })).toHaveAttribute('aria-selected', 'true');
+    expect(await where('folder-row.txt')).toBe(path.join(alpha, 'notes'));
+    // A file row: the folder that holds it.
+    await page.locator('.editor-group.focused .document-tab').filter({ hasText: 'alpha' }).click();
+    await choose(app, row(page, 'README.md'), 'Open in Terminal');
+    await expect(page.getByRole('tab', { name: /^Terminal 2/ })).toHaveAttribute('aria-selected', 'true');
+    expect(await where('file-row.txt')).toBe(alpha);
+    // The folder's own menu, on empty space: the folder shown.
+    await page.locator('.editor-group.focused .document-tab').filter({ hasText: 'alpha' }).click();
+    await row(page, 'notes').dblclick();
+    await expect.poll(() => labels(page)).toEqual([]);
+    const box = (await list(page).boundingBox())!;
+    await choose(app, list(page), 'Open in Terminal', { x: box.width / 2, y: box.height - 60 });
+    await expect(page.getByRole('tab', { name: /^Terminal 3/ })).toHaveAttribute('aria-selected', 'true');
+    expect(await where('folder-space.txt')).toBe(path.join(alpha, 'notes'));
+    expect((await site()).shown).toBe(true);
+  } finally {
+    await page.screenshot({ path: test.info().outputPath('folder-terminal.png') }).catch(() => {});
+    await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('Open Folder and Save As use the in-app chooser instead of the platform dialog', async () => {
@@ -228,17 +310,17 @@ test('a chooser manages files like any folder tab and still answers its request'
     await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
 
     // The row menu is the folder tab's. A file cannot answer a folder request, so its first command opens it.
-    const menu = page.getByRole('menu');
-    await row(page, 'README.md').click({ button: 'right' });
-    await expect(menu.getByRole('menuitem', { name: 'Open', exact: true })).toBeVisible();
-    await expect(menu.getByRole('menuitem', { name: 'Choose' })).toHaveCount(0);
+    const menu = await openMenu(app, row(page, 'README.md'));
+    await expect(item(menu, 'Open')).toBeVisible();
+    await expect(item(menu, 'Choose')).toHaveCount(0);
     for (const name of ['Open to the Side', 'Cut', 'Copy Path', 'Compress to .zip', 'Move to Trash', 'Delete Permanently', 'Open in Terminal', 'Properties'])
-      await expect(menu.getByRole('menuitem', { name })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(menu).toHaveCount(0);
+      await expect(item(menu, name)).toBeVisible();
+    // Escape closes the menu and hands the keyboard back to the list.
+    await menu.keyboard.press('Escape');
+    await expect.poll(() => menuViews(app)).toBe(0);
+    await expect(list(page)).toBeFocused();
     await expect(chooser).toHaveAttribute('aria-selected', 'true');
-    await row(page, 'data.csv').click({ button: 'right' });
-    await menu.getByRole('menuitem', { name: 'Rename' }).click();
+    await choose(app, row(page, 'data.csv'), 'Rename');
     const rename = list(page).getByRole('textbox', { name: 'Rename' });
     await expect(rename).toBeFocused();
     await rename.fill('table.csv'); await rename.press('Enter');
@@ -265,8 +347,7 @@ test('a chooser manages files like any folder tab and still answers its request'
 
     // So does the folder's own menu.
     const box = (await list(page).boundingBox())!;
-    await list(page).click({ button: 'right', position: { x: box.width / 2, y: box.height - 60 } });
-    await menu.getByRole('menuitem', { name: 'New File' }).click();
+    await choose(app, list(page), 'New File', { x: box.width / 2, y: box.height - 60 });
     const created = list(page).getByRole('textbox', { name: 'New file name' });
     await created.fill('draft.md'); await created.press('Enter');
     await expect.poll(() => readdir(path.join(alpha, 'notes'))).toEqual(['draft.md']);

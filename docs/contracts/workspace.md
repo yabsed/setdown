@@ -370,15 +370,26 @@ built-in extension with no code (`site-compat.ts`), because a session
 extension is not listed with the user's extensions. A web tab shows its site's
 icon: candidates from `page-favicon-updated` are fetched through the browser
 session, decoded and re-encoded to a 32 px PNG in the sandboxed Places host, and
-cleared when the tab moves to another origin. HTTP(S) addresses among launch
+cleared when the tab moves to another origin. That host is never shown, so its
+compositor never runs: it waits for the image's `load` event and draws on a
+software canvas, never for `image.decode()`, which stays pending for a bitmap
+(ICO, PNG) and settles only for SVG. A test driver attached to the host keeps it
+rendering and hides this, so `browser/tab-icons.spec.ts` starts the application
+without one (`test/support/electron/plain-app.ts`) and asks only the shell.
+Every tab leads with one 16 px icon left of its title, without changing the
+strip's height: a document or diff the Seti file-type icon of the Explorer and
+folder tabs (`FileIcon`), a terminal and a folder tab a solid glyph in Seti's
+palette, a web tab its site's icon, a spinner while it loads (`aria-busy`; the
+title carries no loading marker) and a plain globe when the site declares none.
+HTTP(S) addresses among launch
 arguments open as web tabs, also beside a document named by the same request and
 through the single-instance handoff. File ▸ Set as Default Browser… registers the
 two web schemes only after the user confirms, never at install or launch; on
 Linux it requires an installed desktop entry that declares them. On Linux,
 location comes from the desktop portal (`LocationProviderManager`), not from a
 network service. `user-agent.test.ts`, `web-launch.test.ts`, `favicon.test.ts`,
-`browser-favicons.test.ts`, `default-browser.test.ts` and
-`browser/identity.spec.ts` cover these rules.
+`browser-favicons.test.ts`, `default-browser.test.ts`,
+`browser/identity.spec.ts` and `browser/tab-icons.spec.ts` cover these rules.
 
 Native menus retain the source frame and
 navigation generation, and pass Chromium hit-test coordinates unchanged.
@@ -969,6 +980,20 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
 - **Edit commands.** `renderer/files/file-command-target.ts` decides whether the
   Explorer or one folder tab owns Ctrl+C/X/V/A/Z and the Edit menu. Inputs, Monaco
   and the terminal keep their own text commands.
+- **Menus above live views.** The row and folder menus open in the native menu
+  layer (`main/menu/folder-menu.ts`; rows from `core/files/folder-menu.ts`), not
+  in the shell's DOM: a website or reader in another group stays visible and
+  running behind them. Main resolves the chosen command and the folder tab
+  carries it out, except copying a path, which main writes because the shell
+  document does not hold focus while the layer is open. A result for a menu
+  that navigation, deactivation or unmounting has made stale is ignored. The
+  folder tab's dialogs (Trash and Delete confirmation, conflicts, Properties,
+  Open With) are still shell overlays and cover native views while open.
+- **Open in Terminal.** The new shell starts in that folder, or in the folder
+  holding a selected file, wherever it is on the filesystem
+  (`terminal:create` takes the folder; `requestedDirectory` accepts only an
+  absolute path). A folder that no longer exists falls back to the project
+  folder, as a terminal opened without one does.
 - **Drag and drop.** Dragging rows starts an OS file drag
   (`webContents.startDrag`, `files:start-drag`), not an HTML drag: only that hands
   real files to a web page in a web tab, to another application or to the

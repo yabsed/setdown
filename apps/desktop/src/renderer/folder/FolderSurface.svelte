@@ -6,6 +6,7 @@
   import type { FileApplication, FileProperties, FolderEntry, FolderListing, FolderPlace, PathPickerRequest } from '../../protocol/files';
   import type { ExplorerClipboard, ExplorerEditCommand, ExplorerTransfer } from '../../protocol/explorer';
   import type { FolderView } from '../../core/workspace/workspace-state';
+  import type { FolderMenuCommand, FolderMenuContext } from '../../core/files/folder-menu';
   import { folderCrumbs, formatModified, formatSize, kindLabel, parentFolder, presentFolder, type FolderSort } from '../../core/files/folder-presentation';
   import { acceptedPaths, activationAccepts, canAccept, canAcceptSelection, checkName, nameSelection, visibleInPicker, withFilterExtension } from '../../core/files/picker-rules';
   import { draggedPaths, PROJECT_ENTRIES, selectEntry, topLevelPaths, type ExplorerSelection } from '../project/explorer/explorer-selection';
@@ -54,13 +55,14 @@
   let deleteTarget = $state<string[] | null>(null), emptyingTrash = $state(false);
   let busy = $state(false), progress = $state<{ completed: number; total: number; path: string } | null>(null);
   let clipboard = $state<ExplorerClipboard | null>(null);
-  let menu = $state<{ x: number; y: number; entry: FolderEntry | null } | null>(null);
+  // The context menu is shown by main in the native menu layer; a newer request or a navigation retires an open one.
+  let menuRequest = 0, menuOpen = false;
   let renaming = $state(''), creating = $state<'directory' | 'file' | null>(null);
   let trashTarget = $state<string[] | null>(null);
   let conflict = $state<{ request: TransferRequest } | null>(null);
   let replaceTarget = $state('');
   let dropTarget = $state(''), dropHint = $state('');
-  let listElement = $state<HTMLDivElement>(), popup = $state<HTMLDivElement>(), nameInput = $state<HTMLInputElement>();
+  let listElement = $state<HTMLDivElement>(), nameInput = $state<HTMLInputElement>();
   let list = $state<VListHandle>();
   let generation = 0, appliedPath = '', appliedRevision = -1, typeahead = '', typedAt = 0;
 
@@ -149,7 +151,7 @@
       if (path === appliedPath && revision === appliedRevision) return;
       const moved = path !== appliedPath;
       appliedPath = path; appliedRevision = revision;
-      if (moved) { filter = ''; filterOpen = false; searchResults = null; renaming = ''; creating = null; menu = null; placesOpen = false; }
+      if (moved) { filter = ''; filterOpen = false; searchResults = null; renaming = ''; creating = null; closeMenu(); placesOpen = false; }
       void load('navigate');
     });
   });
@@ -163,13 +165,6 @@
     return () => desktop.files.watch(token, null);
   });
   $effect(() => { const paths = selection.paths; untrack(() => actions.folderSelected(tab.id, [...paths])); });
-  $effect(() => {
-    if (!menu || !popup) return;
-    const bounds = popup.getBoundingClientRect();
-    popup.style.left = `${Math.max(6, Math.min(menu.x, innerWidth - bounds.width - 6))}px`;
-    popup.style.top = `${Math.max(6, Math.min(menu.y, innerHeight - bounds.height - 6))}px`;
-    popup.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-  });
   $effect(() => { if (picker?.kind === 'save') untrack(() => { if (!saveName) saveName = picker.name ?? ''; }); });
 
   async function refreshClipboard() { try { clipboard = await ops.clipboard(); } catch { clipboard = null; } }
@@ -204,6 +199,7 @@
     window.addEventListener('focus', windowFocus);
     window.addEventListener(FILE_DRAG_END, clearDrop);
     return () => {
+      closeMenu();
       window.removeEventListener(FILE_DRAG_END, clearDrop);
       stopChanges(); stopProgress(); desktop.files.watch(token, null); resize.disconnect();
       window.removeEventListener('setdown:folder-properties', propertiesRequest);
@@ -303,7 +299,6 @@
     if (busy || renaming || creating) return;
     if (command === 'select-all') { if (multiple) selection = { paths: [...paths], anchor: focusedPath }; return; }
     const sources = topLevelPaths(selection.paths);
-    menu = null;
     if (command === 'cut' || command === 'copy') {
       if (!sources.length) return;
       await run(async () => { clipboard = await ops.setClipboard(sources, command === 'cut'); });
@@ -339,7 +334,6 @@
     for (const path of topLevelPaths(selection.paths)) if (!await run(() => ops.restore(path))) break;
     await load('refresh');
   }
-  function copyText(value: string) { void navigator.clipboard.writeText(value).catch(() => { error = 'Could not copy the path to the clipboard.'; }); }
 
   function key(event: KeyboardEvent) {
     if (event.target !== listElement || event.isComposing || event.keyCode === 229) return;
@@ -399,25 +393,68 @@
     }
   }
 
-  function openMenu(event: MouseEvent, entry: FolderEntry | null) {
+  /** Retire an open menu: its answer no longer applies here. */
+  function closeMenu() {
+    menuRequest++;
+    if (menuOpen) { menuOpen = false; desktop.menuOverlay.close(); }
+  }
+  async function openMenu(event: MouseEvent, entry: FolderEntry | null) {
     event.preventDefault(); event.stopPropagation();
     if (busy) return;
     if (entry && !selected.has(entry.path)) select(entry.path);
     if (!entry) selection = { paths: [], anchor: '' };
-    void refreshClipboard();
-    menu = { x: event.clientX, y: event.clientY, entry };
+    const request = ++menuRequest, folder = tab.path, point = { x: event.clientX, y: event.clientY };
+    // Paste is offered for what the clipboard holds now.
+    await refreshClipboard();
+    if (request !== menuRequest || tab.path !== folder || !active) return;
+    const single = selectedEntries.length === 1;
+    const context: FolderMenuContext = {
+      target: entry ? 'entry' : 'folder', trash: inTrash, kind: entry?.kind ?? 'directory', single, chooses,
+      bookmarked: places.some(place => place.kind === 'bookmark' && place.path === (entry?.path ?? folder)),
+      files: selectedEntries.some(item => item.kind !== 'directory'), search: !!searchResults, archive: !!entry && single && isArchive(entry.name),
+      writable: !!listing?.writable, clipboard: !!clipboard, multiple, empty: !listing?.entries.length,
+      layout: grid ? 'grid' : 'list', showHidden: tab.view.showHidden, sort: tab.view.sort, descending: tab.view.descending,
+    };
+    let command: FolderMenuCommand | null;
+    menuOpen = true;
+    try { command = await desktop.showFolderMenu(context, { paths: selection.paths.join('\n'), folder }, point); }
+    catch (failure) { if (request === menuRequest) { menuOpen = false; error = message(failure); } return; }
+    if (request !== menuRequest) return;
+    menuOpen = false;
+    if (tab.path !== folder || !active) return;
+    if (!command) { focusList(); return; }
+    // The listing can change behind the menu; a command for a row that has gone does nothing.
+    if (entry && !rows.some(row => row.path === entry.path)) return;
+    runMenu(command, entry);
   }
-  function menuKey(event: KeyboardEvent) {
-    if (event.key === 'Escape') { event.stopPropagation(); menu = null; focusList(); return; }
-    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault();
-    const buttons = [...popup?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []];
-    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
-    buttons[next]?.focus();
+  function runMenu(command: FolderMenuCommand, entry: FolderEntry | null) {
+    const target = entry?.path ?? tab.path;
+    if (command === 'open') openSelection();
+    else if (command === 'open-tab') void actions.openFolder(target, { newTab: true });
+    else if (command === 'open-side') { if (entry?.kind === 'directory') void actions.openFolder(target, { side: true, newTab: true }); else openSelection({ side: true }); }
+    else if (command === 'open-external') openSelection({ external: true });
+    else if (command === 'open-with') chooseApplication();
+    else if (command === 'open-location') { closeSearch(); navigate(parentFolder(target), [target]); }
+    else if (command === 'cut' || command === 'copy' || command === 'duplicate' || command === 'paste' || command === 'undo' || command === 'select-all') void fileCommand(command);
+    else if (command === 'rename') renaming = target;
+    else if (command === 'extract' || command === 'compress') void archive(command);
+    else if (command === 'restore') void restore();
+    else if (command === 'trash') trashTarget = [...selection.paths];
+    else if (command === 'delete') deleteTarget = [...selection.paths];
+    else if (command === 'bookmark') void (entry ? toggleBookmark(target, !places.some(place => place.kind === 'bookmark' && place.path === target)) : toggleBookmark());
+    else if (command === 'open-workspace') void actions.folderOpenWorkspace(target);
+    else if (command === 'open-terminal') actions.folderOpenTerminal(entry && entry.kind !== 'directory' ? parentFolder(target) : target);
+    else if (command === 'properties') showProperties(target);
+    else if (command === 'new-folder') creating = 'directory';
+    else if (command === 'new-file') creating = 'file';
+    else if (command === 'view-list' || command === 'view-grid') setView({ layout: command === 'view-grid' ? 'grid' : 'list' });
+    else if (command === 'show-hidden') setView({ showHidden: !tab.view.showHidden });
+    else if (command === 'reverse') setView({ descending: !tab.view.descending });
+    else if (command === 'refresh') { void load('refresh'); void refreshPlaces(); }
+    else if (command === 'empty-trash') emptyingTrash = true;
+    else if (command.startsWith('sort-')) setView({ sort: command.slice(5) as FolderSort });
+    // Copy Path and Copy Folder Path were written by main, which holds the clipboard while the menu layer has focus.
   }
-  // The action runs before the menu closes: template values such as `entry` derive from `menu` and cannot be read once it is null.
-  const menuRun = (action: () => void) => () => { try { action(); } finally { menu = null; } };
 
   const copying = (event: DragEvent) => /Mac/i.test(navigator.platform) ? event.altKey : event.ctrlKey;
   const clearDrop = () => { dropTarget = ''; dropHint = ''; };
@@ -555,8 +592,7 @@
   const directoryIcon = 'M1.5 4.5h5l1.5 2h6.5v7h-13v-9Z';
 </script>
 
-{#if (menu || trashTarget || conflict || replaceTarget || deleteTarget || emptyingTrash || propertiesOf || openWith) && active}<NativeOverlay />{/if}
-<svelte:window onclick={() => { if (menu) menu = null; }} />
+{#if (trashTarget || conflict || replaceTarget || deleteTarget || emptyingTrash || propertiesOf || openWith) && active}<NativeOverlay />{/if}
 
 {#snippet nameCell(row: FolderEntry)}
   {#if renaming === row.path}
@@ -717,82 +753,6 @@
     {/if}
 </section>
 
-{#if menu}
-  <div class="project-context-menu folder-context-menu" role="menu" tabindex="-1" bind:this={popup} onkeydown={menuKey} style:left={`${menu.x}px`} style:top={`${menu.y}px`}>
-    {#if menu.entry}
-      {@const entry = menu.entry}
-      {@const single = selectedEntries.length === 1}
-      <button type="button" role="menuitem" onclick={menuRun(() => openSelection())}>{chooses ? 'Choose' : 'Open'}</button>
-      {#if single && entry.kind === 'directory'}
-        <button type="button" role="menuitem" onclick={menuRun(() => void actions.openFolder(entry.path, { newTab: true }))}>Open in New Tab</button>
-        <button type="button" role="menuitem" onclick={menuRun(() => void actions.openFolder(entry.path, { side: true, newTab: true }))}>Open to the Side</button>
-      {:else if single && entry.kind === 'document'}
-        <button type="button" role="menuitem" onclick={menuRun(() => openSelection({ side: true }))}>Open to the Side</button>
-      {/if}
-      {#if selectedEntries.some(item => item.kind !== 'directory')}
-        <button type="button" role="menuitem" onclick={menuRun(() => openSelection({ external: true }))}>Open with Default Application</button>
-        <button type="button" role="menuitem" onclick={menuRun(chooseApplication)}>Open With…</button>
-      {/if}
-      {#if searchResults && single}
-        <button type="button" role="menuitem" onclick={menuRun(() => { const target = entry.path; closeSearch(); navigate(parentFolder(target), [target]); })}>Open Item Location</button>
-      {/if}
-      <span class="menu-separator"></span>
-      <button type="button" role="menuitem" onclick={() => void fileCommand('cut')}>Cut <kbd>Ctrl+X</kbd></button>
-      <button type="button" role="menuitem" onclick={() => void fileCommand('copy')}>Copy <kbd>Ctrl+C</kbd></button>
-      <button type="button" role="menuitem" onclick={() => void fileCommand('duplicate')}>Duplicate <kbd>Ctrl+D</kbd></button>
-      <button type="button" role="menuitem" onclick={menuRun(() => copyText(selection.paths.join('\n')))}>Copy Path</button>
-      <span class="menu-separator"></span>
-      {#if single}<button type="button" role="menuitem" onclick={menuRun(() => { renaming = entry.path; })}>Rename <kbd>F2</kbd></button>{/if}
-      {#if single && entry.kind !== 'directory' && isArchive(entry.name)}
-        <button type="button" role="menuitem" onclick={menuRun(() => void archive('extract'))}>Extract Here</button>
-      {/if}
-      <button type="button" role="menuitem" onclick={menuRun(() => void archive('compress'))}>Compress to .zip</button>
-      {#if inTrash}
-        <button type="button" role="menuitem" onclick={menuRun(() => void restore())}>Restore</button>
-      {:else}
-        <button type="button" role="menuitem" onclick={menuRun(() => { trashTarget = [...selection.paths]; })}>Move to Trash <kbd>Del</kbd></button>
-      {/if}
-      <button type="button" role="menuitem" onclick={menuRun(() => { deleteTarget = [...selection.paths]; })}>Delete Permanently <kbd>Shift+Del</kbd></button>
-      <span class="menu-separator"></span>
-      {#if single && entry.kind === 'directory'}
-        <button type="button" role="menuitem" onclick={menuRun(() => void toggleBookmark(entry.path, !places.some(place => place.kind === 'bookmark' && place.path === entry.path)))}>{places.some(place => place.kind === 'bookmark' && place.path === entry.path) ? 'Remove Bookmark' : 'Add to Bookmarks'}</button>
-        <button type="button" role="menuitem" onclick={menuRun(() => void actions.folderOpenWorkspace(entry.path))}>Open as Workspace Folder</button>
-      {/if}
-      <button type="button" role="menuitem" onclick={menuRun(() => actions.folderOpenTerminal(entry.kind === 'directory' ? entry.path : parentFolder(entry.path)))}>Open in Terminal</button>
-      {#if single}
-        <span class="menu-separator"></span>
-        <button type="button" role="menuitem" onclick={menuRun(() => showProperties(entry.path))}>Properties <kbd>Alt+Enter</kbd></button>
-      {/if}
-    {:else}
-      <button type="button" role="menuitem" disabled={!listing?.writable || inTrash} onclick={menuRun(() => { creating = 'directory'; })}>New Folder <kbd>Ctrl+Shift+N</kbd></button>
-      <button type="button" role="menuitem" disabled={!listing?.writable || inTrash} onclick={menuRun(() => { creating = 'file'; })}>New File</button>
-      <button type="button" role="menuitem" disabled={!clipboard || !listing?.writable} onclick={() => void fileCommand('paste')}>Paste <kbd>Ctrl+V</kbd></button>
-      <button type="button" role="menuitem" onclick={() => void fileCommand('undo')}>Undo File Operation <kbd>Ctrl+Z</kbd></button>
-      <button type="button" role="menuitem" disabled={!multiple} onclick={() => void fileCommand('select-all')}>Select All <kbd>Ctrl+A</kbd></button>
-      <span class="menu-separator"></span>
-      <button type="button" role="menuitemradio" aria-checked={!grid} onclick={menuRun(() => setView({ layout: 'list' }))}>List View <kbd>Ctrl+1</kbd></button>
-      <button type="button" role="menuitemradio" aria-checked={grid} onclick={menuRun(() => setView({ layout: 'grid' }))}>Grid View <kbd>Ctrl+2</kbd></button>
-      <button type="button" role="menuitemcheckbox" aria-checked={tab.view.showHidden} onclick={menuRun(() => setView({ showHidden: !tab.view.showHidden }))}>Show Hidden Files <kbd>Ctrl+H</kbd></button>
-      {#each [['name', 'Name'], ['modified', 'Modified'], ['size', 'Size'], ['type', 'Kind']] as [key, label] (key)}
-        <button type="button" role="menuitemradio" aria-checked={tab.view.sort === key} onclick={menuRun(() => setView({ sort: key as FolderSort }))}>Sort by {label}</button>
-      {/each}
-      <button type="button" role="menuitemcheckbox" aria-checked={tab.view.descending} onclick={menuRun(() => setView({ descending: !tab.view.descending }))}>Reverse Order</button>
-      <button type="button" role="menuitem" onclick={menuRun(() => { void load('refresh'); void refreshPlaces(); })}>Refresh <kbd>F5</kbd></button>
-      <span class="menu-separator"></span>
-      {#if inTrash}
-        <button type="button" role="menuitem" disabled={!listing?.entries.length} onclick={menuRun(() => { emptyingTrash = true; })}>Empty Trash</button>
-      {:else}
-        <button type="button" role="menuitem" onclick={menuRun(() => void toggleBookmark())}>{bookmarked ? 'Remove Bookmark' : 'Bookmark This Folder'}</button>
-        <button type="button" role="menuitem" onclick={menuRun(() => void actions.folderOpenWorkspace(tab.path))}>Open as Workspace Folder</button>
-      {/if}
-      <button type="button" role="menuitem" onclick={menuRun(() => actions.folderOpenTerminal(tab.path))}>Open in Terminal</button>
-      <button type="button" role="menuitem" onclick={menuRun(() => copyText(tab.path))}>Copy Folder Path</button>
-      <span class="menu-separator"></span>
-      <button type="button" role="menuitem" onclick={menuRun(() => showProperties(tab.path))}>Properties</button>
-    {/if}
-  </div>
-{/if}
-
 {#if trashTarget}
   <div class="project-confirm" role="alertdialog" aria-modal="true" aria-labelledby={`folder-trash-${tab.id}`} use:confirmationFocus={() => { trashTarget = null; }}>
     <strong id={`folder-trash-${tab.id}`}>Move {trashTarget.length === 1 ? `“${trashTarget[0].split(/[\\/]/).at(-1)}”` : `${topLevelPaths(trashTarget).length} items`} to Trash?</strong>
@@ -914,5 +874,4 @@
   .folder-picker-bar button { flex: 0 0 auto; height: 30px; padding: 0 14px; border: 1px solid var(--app-border); border-radius: 6px; background: var(--app-canvas); color: inherit; font: inherit; cursor: pointer; }
   .folder-picker-bar button.primary { border-color: transparent; background: var(--app-accent); color: var(--app-accent-text, #fff); }
   .folder-picker-bar button:disabled { opacity: .45; cursor: default; }
-  .folder-context-menu { max-height: calc(100vh - 12px); overflow-y: auto; min-width: 230px; }
 </style>

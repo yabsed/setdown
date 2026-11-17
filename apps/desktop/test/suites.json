@@ -146,6 +146,7 @@
       "src/renderer/language/tree-sitter-runtime.test.ts",
       "src/core/files/picker-rules.test.ts",
       "src/core/files/folder-presentation.test.ts",
+      "src/core/files/folder-menu.test.ts",
       "src/main/files/file-browser-service.test.ts",
       "src/main/dialogs/path-picker.test.ts",
       "src/main/files/file-manager.test.ts",
@@ -443,6 +444,9 @@
       "previewContract": true
     },
     "browser/identity.spec.ts": {
+      "previewContract": true
+    },
+    "browser/tab-icons.spec.ts": {
       "previewContract": true
     },
     "browser/permissions.spec.ts": {

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { IPty } from 'node-pty';
-import { launchDirectory, TerminalManager } from './terminal-manager';
+import { launchDirectory, requestedDirectory, TerminalManager } from './terminal-manager';
 
 const managers: TerminalManager[] = [];
 afterEach(() => { for (const manager of managers.splice(0)) manager.dispose(); });
@@ -36,6 +36,16 @@ describe('launch directory', () => {
       expect(launchDirectory(null, existing, '/definitely/missing')).toBe(existing);
       expect(launchDirectory('/definitely/missing', null)).toBe(homedir());
     } finally { rmSync(existing, { recursive: true, force: true }); }
+  });
+  it('starts in the folder a terminal was opened for, ahead of the project folder', () => {
+    const requested = mkdtempSync(join(tmpdir(), 'terminal-requested-')), project = mkdtempSync(join(tmpdir(), 'terminal-project-'));
+    try {
+      expect(launchDirectory(requestedDirectory(requested), project)).toBe(requested);
+      // A folder that has gone, a relative path or anything that is not a path leaves the project folder.
+      expect(launchDirectory(requestedDirectory(join(requested, 'missing')), project)).toBe(project);
+      for (const value of ['', 'relative/folder', '.', `${requested}\0`, 7, null, undefined, { path: requested }, 'x'.repeat(5000)])
+        expect(launchDirectory(requestedDirectory(value), project)).toBe(project);
+    } finally { for (const root of [requested, project]) rmSync(root, { recursive: true, force: true }); }
   });
 });
 

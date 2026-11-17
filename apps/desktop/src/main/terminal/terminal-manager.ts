@@ -1,6 +1,6 @@
 import { TerminalScreen } from './terminal-screen';
 import { TerminalResize } from './terminal-resize';
-import { basename } from 'node:path';
+import { basename, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { statSync } from 'node:fs';
 import type { IPty, IPtyForkOptions } from 'node-pty';
@@ -15,6 +15,11 @@ function isDirectory(candidate: string | null): candidate is string {
 export function launchDirectory(...candidates: (string | null)[]): string {
   for (const candidate of candidates) if (isDirectory(candidate)) return candidate;
   return homedir();
+}
+
+/** A folder named by the window for a new shell (Open in Terminal). Anything but an absolute path is ignored. */
+export function requestedDirectory(value: unknown): string | null {
+  return typeof value === 'string' && value.length <= 4096 && !value.includes('\0') && isAbsolute(value) ? value : null;
 }
 
 type Spawn = (shell: string, args: string[], options: IPtyForkOptions) => IPty;

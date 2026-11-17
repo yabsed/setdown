@@ -336,6 +336,12 @@ export type MarkTexApi = {
    */
   showTabMenu(context: import('../core/workspace/tab-menu').TabMenuContext, copy: { path: string; relative: string },
     point: { x: number; y: number }): Promise<import('../core/workspace/tab-menu').TabMenuCommand | null>;
+  /**
+   * Show a folder tab's context menu at a point in this window (CSS pixels), above live web pages.
+   * Resolves with the chosen command; Copy Path and Copy Folder Path have then already written `copy`.
+   */
+  showFolderMenu(context: import('../core/files/folder-menu').FolderMenuContext, copy: { paths: string; folder: string },
+    point: { x: number; y: number }): Promise<import('../core/files/folder-menu').FolderMenuCommand | null>;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;

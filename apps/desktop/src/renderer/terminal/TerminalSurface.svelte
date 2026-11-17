@@ -11,7 +11,7 @@
   import { registerTerminalOutput } from './terminal-output';
   import { installTerminalWheel } from './terminal-wheel';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
-  let { api, id, tabId, active, focused, changed }: { api: TerminalApi; id: string; tabId?: string; active: boolean; focused: boolean;
+  let { api, id, tabId, cwd = '', active, focused, changed }: { api: TerminalApi; id: string; tabId?: string; cwd?: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
   let container: HTMLDivElement;
   let error = $state('');
@@ -121,7 +121,8 @@
     const find = () => { if (active && focused) void finder?.open(); };
     window.addEventListener('setdown:terminal-find', find);
     fit.fit();
-    void api.create(id, { cols: term.cols, rows: term.rows }).then(async info => {
+    // A new shell starts in the folder it was opened for; attaching to a running one ignores it.
+    void api.create(id, { cols: term.cols, rows: term.rows }, cwd || undefined).then(async info => {
       if (!alive || !term) return;
       changed({ title: info.title, cwd: info.cwd, exited: info.exitCode !== undefined });
       directory = info.cwd;

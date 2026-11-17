@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import type { WindowIpc } from '../ipc/window-ipc';
 import type { TerminalSize } from '../../protocol/terminal';
-import { launchDirectory, TerminalManager } from './terminal-manager';
+import { launchDirectory, requestedDirectory, TerminalManager } from './terminal-manager';
 
 function documentsDirectory(): string | null {
   try { return app.getPath('documents'); } catch { return null; }
@@ -9,7 +9,7 @@ function documentsDirectory(): string | null {
 
 export function installTerminalIpc(channels: WindowIpc, terminals = new TerminalManager()): TerminalManager {
   const owners = new Set<number>();
-  channels.handle('terminal:create', (state, id: string, size: TerminalSize) => {
+  channels.handle('terminal:create', (state, id: string, size: TerminalSize, cwd: unknown) => {
     const owner = state.webContentsId;
     const contents = state.window.webContents;
     if (!owners.has(owner)) {
@@ -20,7 +20,7 @@ export function installTerminalIpc(channels: WindowIpc, terminals = new Terminal
       contents.once('destroyed', () => { terminals.closeOwner(owner); owners.delete(owner); });
     }
     return terminals.create(owner, id, size,
-      launchDirectory(state.projectRoot, state.activeRoot, documentsDirectory()), (event) => {
+      launchDirectory(requestedDirectory(cwd), state.projectRoot, state.activeRoot, documentsDirectory()), (event) => {
       if (!contents.isDestroyed()) contents.send('terminal:event', event);
     });
   });
