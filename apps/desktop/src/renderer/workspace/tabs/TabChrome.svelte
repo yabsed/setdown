@@ -38,6 +38,7 @@ import type { AppActions } from '../../ports/ui-actions';
         oncontextmenu={(event) => { event.preventDefault(); actions.showTabMenu(tab.id, { x: event.clientX, y: event.clientY }); }}
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>
+        {#if tab.kind === 'web' && tab.page?.favicon}<img class="tab-favicon" src={tab.page.favicon} alt="" draggable="false" />{/if}
         <span class="tab-name">{tab.page?.sleeping ? '☾ ' : tab.page?.loading ? '◌ ' : ''}{tab.name}</span>
         {#if tab.kind === 'web' && (tab.page?.audible || tab.page?.muted)}
           <span class="tab-audio" role="button" tabindex="0" aria-label={tab.page.muted ? 'Unmute tab' : 'Mute tab'}
@@ -88,6 +89,8 @@ import type { AppActions } from '../../ports/ui-actions';
 
 <style>
   .document-tab[data-preview="true"] .tab-name { font-style: italic; }
+  .tab-favicon { flex: 0 0 16px; width: 16px; height: 16px; margin-right: 6px; border-radius: 3px; object-fit: contain; }
+  .document-tab[data-sleeping] .tab-favicon { opacity: .55; }
   .tab-audio { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: 0 0 20px; border-radius: 4px; }
   .tab-audio:hover { background: var(--app-hover); }
   .tab-audio svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }

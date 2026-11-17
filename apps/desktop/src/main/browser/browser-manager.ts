@@ -1,10 +1,12 @@
 import { nativeDialogsRequested, pathDialog } from '../dialogs/path-picker';
 import { releaseDownloadReservation, reserveDownloadPath } from './download-path';
-import { app, dialog, ipcMain, Menu, session, shell, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
+import { app, desktopCapturer, dialog, ipcMain, Menu, session, shell, webContents, webFrameMain, WebContentsView, type Session, type WebContents, type Rectangle, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { promises as fs, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { browserURL, isWebURL } from '../../core/browser/browser-url';
+import { browserUserAgent } from '../../core/browser/user-agent';
+import { SiteCompatibility } from './site-compat';
 import { browserFailure, browserFailureMessage } from '../../core/browser/browser-failure';
 import { permissionSummaryLines } from './extension-package';
 import { appZoomStep } from '../../core/zoom';
@@ -18,11 +20,13 @@ import { BrowserExtensions } from './browser-extensions';
 import { parseBookmarks } from './bookmark-import';
 import { serializeBookmarks } from '../../core/browser/bookmarks';
 import { BrowserPlaces } from './browser-places';
+import { BrowserFavicons } from './browser-favicons';
 import { BrowserDownloads } from './browser-downloads';
 import { BrowserPdf } from './browser-pdf';
 import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
 import { readReaderAnchor, type ReaderAnchor } from '../../core/browser/reader-article';
-import { BrowserPermissions } from './browser-permissions';
+import { asksEachTime, BrowserPermissions } from './browser-permissions';
+import { SitePermissions } from './site-permissions';
 import { BrowserPasswords } from './browser-passwords';
 import { PasswordStore } from './password-store';
 import { parsePasswordCsv, serializePasswordCsv } from '../../core/browser/password-csv';
@@ -43,7 +47,9 @@ type SleepingPage = { history: WebHistory; scroll: { x: number; y: number }; pag
 type Entry = { lastUsed: number; edited?: boolean; popup?: boolean; sleeping?: SleepingPage; sleepTask?: Promise<boolean>; owner: number; view: WebContentsView; contents: WebContents; page: BrowserPage; navigation: number; bounds?: Rectangle;
   document: number; pdf?: BrowserPdf; reader?: { snapshot: ReaderSnapshot; document: number }; menuGeneration: number; find?: { request: number; query: string };
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
-  historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void };
+  historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void;
+  /** The origin whose document supplied `page.favicon`. */
+  faviconOrigin?: string };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   globalTabDragPointer?: boolean;
   memoryProtected?(id: string): boolean;
@@ -60,6 +66,7 @@ const blankPage = (id: string, url: string): BrowserPage => ({ id, url, title: u
 export class BrowserManager {
   readonly views = new Map<string, Entry>();
   private readonly places = new BrowserPlaces();
+  private readonly favicons = new BrowserFavicons((url, init) => this.session.fetch(url, init), (bytes, type) => this.places.favicon(bytes, type));
   private readonly downloads = new BrowserDownloads(event => { this.extensions?.downloads?.publish(event); this.broadcast(event); });
   private profile?: Session;
   private extensions?: BrowserExtensions;
@@ -78,12 +85,17 @@ export class BrowserManager {
   private saving = Promise.resolve();
   private extensionInstallBusy = false;
   private readonly rendererWaiters = new Map<number, () => void>();
+  /** Windows whose shell has restored its tabs and can show a new one. */
+  private readonly readyShells = new Set<number>();
+  private readonly requested = new Map<number, string[]>();
   private readonly closedTabs = new Map<number, Array<{ url: string; title: string }>>();
+  private readonly compatibility = new SiteCompatibility(path.join(app.getPath('userData'), 'browser-site-compat'));
   private readonly auth = new BrowserAuth((owner, id, request) => this.send(owner, { type: 'auth', id, request }));
+  private readonly sitePermissions = new SitePermissions(path.join(app.getPath('userData'), 'browser-site-permissions.json'));
   private readonly permissions = new BrowserPermissions(contents => {
     const entry = this.forContents(contents);
     return entry ? { id: entry.page.id, owner: entry.owner, contents: entry.contents, visible: entry.view.getVisible() } : undefined;
-  }, (owner, id, requests) => this.send(owner, { type: 'permissions', id, requests }));
+  }, (owner, id, requests) => this.send(owner, { type: 'permissions', id, requests }), this.sitePermissions);
   private readonly passwords = new BrowserPasswords(new PasswordStore(path.join(app.getPath('userData'), 'browser-passwords.bin')),
     (owner, id, state) => this.send(owner, { type: 'passwords', id, state }), () => this.broadcast({ type: 'password-store' }));
   readonly webThemes = new BrowserThemes(() => this.views.values(), () => this.options.theme?.() ?? DEFAULT_PREVIEW_THEME, settings => {
@@ -144,11 +156,14 @@ export class BrowserManager {
   private get session() {
     if (!this.profile) {
       this.profile = session.fromPartition('persist:setdown-browser');
+      // Websites see Chromium, as from Chrome: no application or Electron token.
+      this.profile.setUserAgent(browserUserAgent(app.userAgentFallback));
       // Session frame preloads follow committed subframe documents, including
       // frames created/navigated after the owning WebContents was initialized.
       this.profile.registerPreloadScript({ id: 'setdown-page-preload', type: 'frame',
         filePath: path.join(__dirname, 'page-preload.cjs') });
       this.permissions.install(this.profile);
+      this.profile.setDisplayMediaRequestHandler((request, callback) => { void this.shareScreen(request, callback); });
       this.profile.on('will-download', (_event, item, contents) => {
         if (this.extensions?.downloads?.claim(item, contents)) return;
         const entry = this.forContents(contents);
@@ -232,7 +247,11 @@ export class BrowserManager {
   }
   private ensureReady(): Promise<void> {
     const extensions = this.ensureExtensions();
-    this.ready ??= extensions.start().catch(error => { this.ready = undefined; throw error; });
+    // Sign-in compatibility must be in place before a first navigation, but a
+    // failure there only loses that one accommodation; browsing still starts.
+    this.ready ??= Promise.all([extensions.start(),
+      this.compatibility.start(this.session).catch(error => console.warn('Site compatibility rules are unavailable:', error))])
+      .then(() => undefined, error => { this.ready = undefined; throw error; });
     return this.ready;
   }
   private extensionURL(url: string): string {
@@ -497,6 +516,9 @@ export class BrowserManager {
       entry.historyIndex = index;
       entry.historyUrls = Array.from({ length: history.length() }, (_, i) => history.getEntryAtIndex(i).url);
       entry.page.url = next; entry.page.error = null;
+      // Another site's icon never labels this page; the same site's stays until the page declares its own.
+      const origin = isWebURL(next) ? new URL(next).origin : undefined;
+      if (entry.faviconOrigin !== origin) { entry.faviconOrigin = origin; delete entry.page.favicon; }
       if (next !== 'about:blank') entry.page.startPage = false;
       this.saved.set(id, entry.page); this.persist(); this.publish(entry);
     };
@@ -505,6 +527,15 @@ export class BrowserManager {
       if (main) navigation(event, url);
       const frame = webFrameMain.fromId(processId, routingId);
       if (frame && !frame.isDestroyed()) this.webThemes.apply(entry, frame);
+    });
+    wc.on('page-favicon-updated', (_event, urls) => {
+      const document = entry.document, origin = isWebURL(wc.getURL()) ? new URL(wc.getURL()).origin : undefined;
+      if (!this.live(entry) || !origin) return;
+      void this.favicons.resolve(urls).then(icon => {
+        if (!this.live(entry) || entry.document !== document || entry.faviconOrigin !== origin || entry.page.favicon === (icon ?? undefined)) return;
+        if (icon) entry.page.favicon = icon; else delete entry.page.favicon;
+        this.saved.set(id, entry.page); this.publish(entry);
+      });
     });
     wc.on('page-title-updated', (_event, title) => { if (!this.live(entry)) return; entry.page.title = title; this.publish(entry); this.saved.set(id, entry.page); this.persist(); });
     // A session webRequest listener disables Chromium extension request rules.
@@ -682,6 +713,7 @@ export class BrowserManager {
     if (sleeping) {
       this.sleeping.delete(id);
       entry.page = { ...sleeping.page, sleeping: false, loading: true };
+      if (entry.page.favicon && isWebURL(entry.page.url)) entry.faviconOrigin = new URL(entry.page.url).origin;
       entry.contents.setAudioMuted(sleeping.page.muted);
     }
     if (history) { entry.historyUrls = history.entries.map(e => e.url); entry.historyIndex = history.index; }
@@ -710,6 +742,29 @@ export class BrowserManager {
       if (navigation === entry.navigation && !entry.contents.isDestroyed()
         && (error as { code?: string }).code !== 'ERR_ABORTED' && !entry.page.failure) this.error(entry, error);
     }
+  }
+  /**
+   * Addresses handed over from outside: `setdown <url>`, or any application's
+   * link once Setdown is the default browser. A starting window opens them
+   * after its shell has restored its own tabs.
+   */
+  openRequested(state: WindowState, urls: string[]): void {
+    const owner = state.webContentsId;
+    if (!urls.length || state.window.isDestroyed()) return;
+    if (!this.readyShells.has(owner)) {
+      this.warmup();
+      const waiting = this.requested.get(owner);
+      if (waiting) { waiting.push(...urls); return; }
+      this.requested.set(owner, [...urls]);
+      state.window.once('closed', () => this.requested.delete(owner));
+      return;
+    }
+    // The last address is shown; earlier ones of the same request wait behind it.
+    for (const [index, url] of urls.entries()) {
+      void this.openLink(owner, url, index < urls.length - 1).catch(error => console.error('Could not open the requested address:', error));
+    }
+    if (state.window.isMinimized()) state.window.restore();
+    state.window.show(); state.window.focus();
   }
   async openLink(owner: number, url: string, background = false) {
     const page = await this.create(owner, randomUUID(), url);
@@ -829,12 +884,58 @@ export class BrowserManager {
   private permissionMenu(entry: Entry) {
     const owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
     if (!state) return;
-    void showContextMenu(state, this.permissions.requests(entry.page.id).map(request => ({ label: `${request.label} · ${request.origin}`, submenu: [
-      { label: 'Allow for This Page', click: () => {
-        if (entry.owner === owner && entry.document === generation && !entry.contents.isDestroyed()) this.permissions.respond(owner, entry.page.id, request.token, true);
-      } },
-      { label: 'Deny', click: () => this.permissions.respond(owner, entry.page.id, request.token, false) },
-    ] })), { source: entry.contents });
+    const allow = (token: string, remember: boolean) => () => {
+      if (entry.owner === owner && entry.document === generation && !entry.contents.isDestroyed()) this.permissions.respond(owner, entry.page.id, token, true, remember);
+    };
+    // An embedded site is named with the page embedding it; its remembered answer holds only there.
+    void showContextMenu(state, this.permissions.requests(entry.page.id).map(request => ({
+      label: `${request.label} · ${request.origin}${request.embedder ? ` in ${request.embedder}` : ''}`, submenu: [
+        // Screen sharing is allowed one request at a time; the list of screens and windows follows.
+        ...(asksEachTime(request.permissions) ? [{ label: 'Allow Once', click: allow(request.token, false) }] : [
+          { label: 'Allow for This Page', click: allow(request.token, false) },
+          { label: 'Always Allow on This Site', click: allow(request.token, true) }]),
+        { type: 'separator' as const },
+        { label: 'Deny', click: () => this.permissions.respond(owner, entry.page.id, request.token, false) },
+        { label: 'Always Block on This Site', click: () => this.permissions.respond(owner, entry.page.id, request.token, false, true) },
+      ] })), { source: entry.contents });
+  }
+  /**
+   * getDisplayMedia: the user picks the one screen or window to share, and
+   * closing the list shares nothing. System audio is never included.
+   */
+  private async shareScreen(request: Electron.DisplayMediaRequestHandlerHandlerRequest, respond: (streams: Electron.Streams | null) => void) {
+    let settled = false;
+    const finish = (source?: Electron.DesktopCapturerSource) => {
+      if (settled) return;
+      settled = true;
+      try { respond(source ? { video: source } : null); } catch (error) { console.error('Could not answer the screen sharing request:', error); }
+    };
+    try {
+      const entry = request.frame && !request.frame.isDestroyed() ? this.forContents(webContents.fromFrame(request.frame)) : undefined;
+      const state = entry && this.options.stateFor(entry.owner);
+      if (!entry || !state || !request.videoRequested || !this.live(entry) || !entry.view.getVisible()) { finish(); return; }
+      const owner = entry.owner, generation = entry.document;
+      const valid = () => this.live(entry) && entry.owner === owner && entry.document === generation && entry.view.getVisible();
+      const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
+      if (!sources.length || !valid()) { finish(); return; }
+      // In a Wayland session WebRTC captures through the desktop portal, under XWayland too (it tests these two
+      // variables). The portal shows its own picker inside getSources and returns the user's one choice.
+      const portal = process.platform === 'linux' && !!process.env.XDG_SESSION_TYPE?.startsWith('wayland') && !!process.env.WAYLAND_DISPLAY;
+      if (sources.length === 1 && portal) { finish(sources[0]); return; }
+      let chosen: Electron.DesktopCapturerSource | undefined;
+      const item = (source: Electron.DesktopCapturerSource) => ({
+        label: source.name.replace(/\s+/g, ' ').trim().slice(0, 80) || 'Untitled window', click: () => { if (valid()) chosen = source; } });
+      const screens = sources.filter(source => source.id.startsWith('screen:')).slice(0, 16);
+      const windows = sources.filter(source => !source.id.startsWith('screen:')).slice(0, 40);
+      const origin = isWebURL(request.frame!.url) ? new URL(request.frame!.url).origin : 'this page';
+      await showContextMenu(state, [
+        { label: `Share with ${origin}`, enabled: false },
+        ...screens.map(item), ...(screens.length && windows.length ? [{ type: 'separator' as const }] : []), ...windows.map(item),
+        { type: 'separator' }, { label: 'Don’t Share' },
+      ], { source: entry.contents, closed: () => finish(chosen) });
+    } catch (error) {
+      console.error('Screen sharing is unavailable:', error); finish();
+    }
   }
   private siteMenu(entry: Entry) {
     const wc = entry.contents, owner = entry.owner, generation = entry.document, state = this.options.stateFor(owner);
@@ -851,7 +952,8 @@ export class BrowserManager {
       { label: entry.page.muted ? 'Unmute Tab' : 'Mute Tab', click: () => { if (valid()) { wc.setAudioMuted(!wc.isAudioMuted()); this.publish(entry); } } },
       { label: 'Developer Tools', type: 'checkbox', checked: wc.isDevToolsOpened(), accelerator: 'F12', registerAccelerator: false,
         click: () => { if (valid()) this.toggleInspector(entry); } },
-      { label: 'Reset Page Permissions', click: () => { if (valid()) { this.permissions.clear(owner, entry.page.id); wc.reload(); } } },
+      // Forgets this document's answers and what was remembered for the site and the sites it embeds.
+      { label: 'Reset Site Permissions', click: () => { if (valid()) { this.sitePermissions.clearSite(origin); this.permissions.clear(owner, entry.page.id); wc.reload(); } } },
       { label: 'Clear This Site’s Data…', click: () => { void (async () => {
         if (!valid()) return;
         const choice = await dialog.showMessageBox(state.window, { message: 'Clear this site’s data?',
@@ -897,6 +999,7 @@ export class BrowserManager {
       downloads: () => this.downloads.clearFinished(),
       'site-settings': async () => {
         await this.webThemes.clearSites();
+        this.sitePermissions.clear();
         for (const entry of this.views.values()) this.permissions.clear(entry.owner, entry.page.id);
       },
       passwords: async () => { await this.passwords.store.clear(); this.passwords.reset(); this.broadcast({ type: 'password-store' }); },
@@ -1172,7 +1275,13 @@ export class BrowserManager {
         return { path: picked.filePath, passwords: rows.length };
       } finally { transferring = false; }
     });
-    channels.on('browser:ready', state => { this.rendererWaiters.get(state.webContentsId)?.(); });
+    channels.on('browser:ready', state => {
+      const owner = state.webContentsId;
+      this.rendererWaiters.get(owner)?.();
+      if (!this.readyShells.has(owner)) { this.readyShells.add(owner); state.window.once('closed', () => this.readyShells.delete(owner)); }
+      const urls = this.requested.get(owner);
+      if (urls) { this.requested.delete(owner); this.openRequested(state, urls); }
+    });
     channels.handle('browser:extensions', async (): Promise<BrowserExtensionInfo[]> => {
       await this.ensureReady();
       return this.extensions!.list();

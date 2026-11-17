@@ -1,18 +1,59 @@
 import { electron } from '../electron/electron-app';
 import { expect } from '@playwright/test';
-import { createServer, type ServerResponse } from 'node:http';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { createServer, type IncomingHttpHeaders, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer as createSecureServer } from 'node:https';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { promisify } from 'node:util';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from '../electron/electron-app';
 import { pdfFixture } from '../media/pdf-fixture';
 
-export async function fixture(document = true, markdown = '# Notes\n\nKeep the reader intact.\n') {
+type FixtureOptions = {
+  /** Extra launch arguments, such as an address to open; they follow the app path. */
+  args?: (origin: string) => string[];
+  /** Extra environment for the application, such as private XDG directories under the fixture root. */
+  env?: (root: string) => Record<string, string>;
+  /** Files the application must find at launch. */
+  prepare?: (root: string) => Promise<void>;
+  /**
+   * HTTPS hosts answered by this fixture instead of the network: the application resolves them to a local TLS
+   * server with a throwaway certificate. A session protocol handler cannot stand in for them, because Electron
+   * skips its interception while an extension (the built-in uBlock) observes requests.
+   */
+  secureHosts?: string[];
+};
+export async function fixture(document = true, markdown = '# Notes\n\nKeep the reader intact.\n', options: FixtureOptions = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-browser-'));
   const requests: string[] = [];
+  const headers = new Map<string, IncomingHttpHeaders>();
   const slowDownloads = new Set<ServerResponse>();
-  const server = createServer((req, res) => {
-    requests.push(req.url!);
+  const respond = (req: IncomingMessage, res: ServerResponse) => {
+    requests.push(req.url!); headers.set(req.url!, req.headers);
+    if (req.url === '/favicon.ico') { res.writeHead(404); res.end(); return; }
+    if (req.url === '/signin') {
+      res.setHeader('content-type', 'text/html');
+      res.end('<!doctype html><title>Sign in</title><input id="draft"><script src="/signin.js"></script>'); return;
+    }
+    if (req.url === '/signin.js') { res.setHeader('content-type', 'text/javascript'); res.end('window.signInScript = true'); return; }
+    if (req.url === '/site-icon.svg') {
+      res.setHeader('content-type', 'image/svg+xml');
+      res.end('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#c0392b"/></svg>'); return;
+    }
+    if (req.url === '/icon-page') {
+      res.setHeader('content-type', 'text/html');
+      res.end('<!doctype html><title>Icon page</title><link rel="icon" href="/site-icon.svg"><input id="draft"><a href="/first">Plain page</a>'); return;
+    }
+    if (req.url === '/embed') {
+      // 127.0.0.1 and localhost are different sites: the frame is a third party that the page delegates capabilities to.
+      const port = (server.address() as { port: number }).port;
+      res.setHeader('content-type', 'text/html');
+      res.end(`<!doctype html><title>Embedding page</title><input id="draft">
+        <iframe id="widget" src="http://localhost:${port}/embedded" allow="camera; microphone; geolocation; clipboard-read; display-capture"></iframe>`); return;
+    }
+    if (req.url === '/embedded') { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>Embedded widget</title><p>Widget</p>'); return; }
     if (req.url === '/theme.css' || req.url === '/route.css') {
       res.setHeader('content-type', 'text/css');
       res.end(`${req.url === '/route.css' ? '#route-external' : '#external'} { background-color: white; color: black }`); return;
@@ -187,30 +228,46 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
       <style>.ad { display:block !important }</style><input id="draft"><a href="/second">Next page</a>
       <div class="ad">Advertisement</div><iframe src="/frame"></iframe>
       <script>window.probeFlag=false</script><script src="/blocked.js"></script><script src="/allowed.js"></script>`);
-  });
+  };
+  const server = createServer(respond);
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address() as { port: number };
   const origin = `http://127.0.0.1:${address.port}`;
+  let secure: ReturnType<typeof createSecureServer> | undefined;
+  const secureSwitches: string[] = [];
+  if (options.secureHosts?.length) {
+    const key = path.join(root, 'fixture-key.pem'), certificate = path.join(root, 'fixture-certificate.pem');
+    await promisify(execFile)('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes', '-days', '2',
+      '-keyout', key, '-out', certificate, '-subj', '/CN=Setdown test fixture', '-addext', `subjectAltName=${options.secureHosts.map(host => `DNS:${host}`).join(',')}`]);
+    secure = createSecureServer({ key: await readFile(key), cert: await readFile(certificate) }, respond);
+    await new Promise<void>(resolve => secure!.listen(0, '127.0.0.1', resolve));
+    const port = (secure.address() as { port: number }).port;
+    // Only this application instance trusts the throwaway certificate, and only these hosts are redirected.
+    secureSwitches.push(`--host-resolver-rules=${options.secureHosts.map(host => `MAP ${host} 127.0.0.1:${port}`).join(', ')}`, '--ignore-certificate-errors');
+  }
   const file = path.join(root, 'notes.md'); await writeFile(file, markdown);
   const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
   const headless = process.env.SETDOWN_E2E_HEADLESS ? ['--ozone-platform=headless', '--disable-gpu']
     : process.env.SETDOWN_TEST_DISPLAY === 'wayland' ? ['--ozone-platform=wayland']
     : process.env.SETDOWN_TEST_DISPLAY === 'xwayland' ? ['--ozone-platform=x11'] : [];
-  const launchOptions = { args: [...headless, '.', ...(document ? [file] : [])], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config'),
-    ...(process.env.SETDOWN_WAYLAND_TRACE ? { WAYLAND_DEBUG: 'client' } : {}) } };
+  await options.prepare?.(root);
+  const launchOptions = { args: [...headless, ...secureSwitches, '.', ...(document ? [file] : []), ...(options.args?.(origin) ?? [])], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config'),
+    ...(process.env.SETDOWN_WAYLAND_TRACE ? { WAYLAND_DEBUG: 'client' } : {}), ...options.env?.(root) } };
   let app = await electron.launch(launchOptions);
   let page = await app.firstWindow();
   await focusApplication(app);
   if (document) await expect(page.getByRole('tab', { name: /notes.md/ })).toBeVisible();
-  else await expect(page.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
+  else if (!options.args) await expect(page.getByRole('button', { name: 'Open Web Page', exact: true })).toBeVisible();
   // Keep Google navigation assertions off the real network. Use the session
   // protocol: global CDP routing can strand a paused script request when Back
   // replaces a WebContents and the user navigates again during history restore.
   await app.evaluate(({ session, net }) => {
-    session.fromPartition('persist:setdown-browser').protocol.handle('https', request =>
-      new URL(request.url).hostname === 'www.google.com'
+    session.fromPartition('persist:setdown-browser').protocol.handle('https', request => {
+      const host = new URL(request.url).hostname;
+      return host === 'www.google.com'
         ? new Response('<!doctype html><title>Google</title><input aria-label="Search">', { headers: { 'content-type': 'text/html' } })
-        : net.fetch(request, { bypassCustomProtocolHandlers: true }));
+        : net.fetch(request, { bypassCustomProtocolHandlers: true });
+    });
   });
   // A fresh profile compiles uBlock's filter lists for several seconds and
   // first navigation waits for it; that cold start is part of fixture setup
@@ -218,7 +275,13 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
   await page.evaluate(() => window.marktex.browser.extensions());
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.stack ?? String(error)));
-  return { get app() { return app; }, get page() { return page; }, root, origin, requests, errors,
+  return { get app() { return app; }, get page() { return page; }, root, origin, requests, headers, errors,
+    /** Start the application again, as the desktop does for a link; that process hands its arguments to this one and exits. */
+    launchAgain(...args: string[]) {
+      return new Promise<void>((resolve, reject) => execFile(createRequire(import.meta.url)('electron') as string,
+        [...headless, ...secureSwitches, '.', ...args], { env: { ...launchOptions.env, SETDOWN_NATIVE_DIALOGS: '1' } as NodeJS.ProcessEnv, timeout: 30_000 },
+        error => error ? reject(error) : resolve()));
+    },
     finishDownloads() { for (const res of slowDownloads) res.end(Buffer.alloc(131072, 'b')); },
     async restart() {
       await app.close();
@@ -228,7 +291,9 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
       await page.evaluate(() => window.marktex.browser.extensions());
       page.on('pageerror', error => errors.push(error.stack ?? String(error)));
     }, async dispose() {
-    await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true });
+    await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve()));
+    if (secure) { secure.closeAllConnections(); await new Promise<void>(resolve => secure!.close(() => resolve())); }
+    await rm(root, { recursive: true, force: true });
   } };
 }
 export async function evaluatePage<T>(app: TestApplication, origin: string, script: string): Promise<T> {

@@ -12,6 +12,9 @@
       "src/core/browser/reader-article.test.ts",
       "src/core/browser/reader-export.test.ts",
       "src/core/browser/web-store.test.ts",
+      "src/core/browser/user-agent.test.ts",
+      "src/core/browser/web-launch.test.ts",
+      "src/core/browser/favicon.test.ts",
       "src/core/document/file-location.test.ts",
       "src/core/markdown/asset-references.test.ts",
       "src/core/notebook/notebook-document.test.ts",
@@ -30,6 +33,9 @@
       "src/main/browser/browser-downloads.test.ts",
       "src/main/browser/browser-extensions.test.ts",
       "src/main/browser/browser-permissions.test.ts",
+      "src/main/browser/site-permissions.test.ts",
+      "src/main/browser/browser-favicons.test.ts",
+      "src/main/browser/default-browser.test.ts",
       "src/main/browser/extension-package.test.ts",
       "src/main/browser/extensions/extension-policy.test.ts",
       "src/main/documents/document-save.test.ts",
@@ -434,6 +440,12 @@
       "previewContract": true
     },
     "browser/passwords.spec.ts": {
+      "previewContract": true
+    },
+    "browser/identity.spec.ts": {
+      "previewContract": true
+    },
+    "browser/permissions.spec.ts": {
       "previewContract": true
     }
   },

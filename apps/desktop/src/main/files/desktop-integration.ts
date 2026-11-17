@@ -49,7 +49,7 @@ function applicationDirectories(home = os.homedir()): string[] {
   return [...new Set([dataHome(home), ...data, path.join(home, '.local/share/flatpak/exports/share'), '/var/lib/flatpak/exports/share'])]
     .map(directory => path.join(directory, 'applications'));
 }
-async function desktopFile(id: string): Promise<string | null> {
+export async function desktopFile(id: string): Promise<string | null> {
   if (!/^[\w.-]+\.desktop$/.test(id)) return null;
   for (const directory of applicationDirectories()) {
     const candidate = path.join(directory, id);

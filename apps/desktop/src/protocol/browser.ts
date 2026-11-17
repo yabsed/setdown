@@ -22,7 +22,8 @@ export type BrowserExtensionInfo = {
 export type BrowserExtensionAction = { id: string; title: string; badge: string; color: string; icon: string | null; enabled: boolean };
 export type ExtensionInstallKind = 'folder' | 'archive' | 'web-store';
 export type ExtensionPage = 'popup' | 'options';
-export type BrowserPermissionRequest = { token: string; origin: string; permissions: string[]; label: string };
+/** `embedder` is set when a site embedded in another site's page asks: the page's origin. */
+export type BrowserPermissionRequest = { token: string; origin: string; embedder?: string; permissions: string[]; label: string };
 export type BrowserAuthRequest = { token: string; origin: string; realm: string };
 /** What "Clear browsing data" can remove. Bookmarks are never part of it. */
 export const BROWSER_DATA_CATEGORIES = ['history', 'cookies', 'cache', 'downloads', 'site-settings', 'passwords'] as const;

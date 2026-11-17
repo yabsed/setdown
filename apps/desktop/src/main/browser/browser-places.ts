@@ -64,5 +64,10 @@ export class BrowserPlaces {
   update(url: string, title: string, options: { visit?: boolean; bookmarked?: boolean } = {}): Promise<void> {
     return this.request('update', { url, title: title.slice(0, 1000), ...options });
   }
+  /** Decode a website's icon in the sandboxed host; null when it is not an image. */
+  favicon(bytes: Uint8Array, type: string): Promise<string | null> {
+    return this.request<unknown>('favicon', { bytes, type }).then(icon =>
+      typeof icon === 'string' && icon.startsWith('data:image/png;base64,') && icon.length < 65536 ? icon : null);
+  }
   dispose() { const contents = this.contents; if (this.view && contents && !contents.isDestroyed()) contents.close(); }
 }

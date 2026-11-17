@@ -3,6 +3,8 @@ export type BrowserPage = {
   id: string;
   url: string;
   title: string;
+  /** The site's icon as a small PNG data URL, decoded outside the trusted processes. */
+  favicon?: string;
   startPage: boolean;
   sleeping?: boolean;
   keepAwake?: boolean;

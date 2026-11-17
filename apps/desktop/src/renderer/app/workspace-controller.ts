@@ -744,9 +744,12 @@ export function startWorkspace(desktop: DesktopPort) {
         && (event.ctrlKey || event.metaKey) && !event.altKey) { event.preventDefault(); reader.openFind(); }
     },
   });
+  // Ask for the window's document before a command can replace it. A window is interactive while the
+  // theme loads; New Document handled then would come back here as the launch document and open twice.
+  const launchDocument = desktop.getDocument();
   void desktop.getTheme().then(async (snapshot) => {
     await reader.applyTheme(snapshot, true);
-    const documentSnapshot = await desktop.getDocument();
+    const documentSnapshot = await launchDocument;
     if (documentSnapshot) await tabs.show(documentSnapshot);
     else if (workspace.tabs.length === 0) { surfaces.set('empty'); tabs.render(); }
     const pages = await desktop.browser.restore();

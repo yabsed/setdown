@@ -13,6 +13,8 @@ import { pathToFileURL } from 'node:url';
 import type { AppCommand, DocumentSnapshot } from '../protocol/desktop-api';
 import { isMarkdownDocument, isVideoDocument, videoMimeType } from '../core/document/document-profile';
 import { documentPathFromArgs } from './documents/document-args';
+import { webURLsFromArgs } from '../core/browser/web-launch';
+import { chooseDefaultBrowser } from './browser/default-browser';
 import { canonicalPath, isInside } from './documents/file-system';
 import { DocumentManager } from './documents/document-manager';
 import { installIpc } from './ipc/install-ipc';
@@ -65,6 +67,15 @@ if (backend === 'x11' && app.commandLine.getSwitchValue('ozone-platform') !== 'x
   app.exit(0);
 }
 app.setName('Setdown');
+if (process.platform === 'linux') {
+  // Chromium's default location source on Linux is Google's network service,
+  // which needs an API key Setdown does not ship. Ask the desktop instead
+  // (xdg-desktop-portal, backed by GeoClue); with GOOGLE_API_KEY set, the
+  // network service remains the fallback. Windows and macOS already use the OS.
+  const mode = process.env.GOOGLE_API_KEY ? 'HybridPlatform2' : 'PlatformOnly';
+  app.commandLine.appendSwitch('enable-features', [app.commandLine.getSwitchValue('enable-features'),
+    `LocationProviderManager:LocationProviderManagerMode/${mode}`].filter(Boolean).join(','));
+}
 protocol.registerSchemesAsPrivileged([
   { scheme: 'marktex-resource', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
   { scheme: 'marktex-preview', privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -133,6 +144,12 @@ function showFolder(request: import('../core/files/folder-types').FolderOpenRequ
   if (!registry.focused()) windows.create();
   const state = registry.focused();
   if (state) folderRequests.deliver(state, request);
+}
+/** Open web addresses given to Setdown (as the default browser, or `setdown <url>`) in the focused window. */
+function showWebAddresses(urls: string[]): void {
+  if (!registry.focused()) windows.create();
+  const state = registry.focused();
+  if (state) browsers.openRequested(state, urls);
 }
 function openError(error: unknown): void {
   dialog.showErrorBox('Could not open the file', error instanceof Error ? error.message : String(error));
@@ -214,7 +231,11 @@ else {
     if (filePath && state) void documents.open(state, filePath).catch(openError);
     // `setdown <folder>` (the inode/directory handler) and `setdown --files` open a folder tab.
     const folder = filePath ? null : folderRequestFromArgs(argv, app.isPackaged);
-    if (folder) { showFolder(folder); return; }
+    if (folder) showFolder(folder);
+    // Addresses open beside a document or folder named by the same request.
+    const urls = webURLsFromArgs(argv);
+    if (urls.length) showWebAddresses(urls);
+    if (folder || urls.length) return;
     state?.window.show(); state?.window.focus();
   });
   app.whenReady().then(async () => {
@@ -283,6 +304,7 @@ else {
         if (!id || !browsers.readerReady(state.webContentsId, id) || browsers.views.get(id)?.view.getVisible()) return false;
         state.window.webContents.send('app:command', 'reader-select-all'); return true;
       },
+      chooseDefaultBrowser: state => { void chooseDefaultBrowser(state.window).catch(console.error); },
       sendCommand, setTheme: (theme) => themes.set(theme), theme: () => themes.id,
       webTheme: () => browsers.webThemes.snapshot().mode === 'app',
       toggleWebTheme: () => { void browsers.webThemes.update({ mode: browsers.webThemes.snapshot().mode === 'app' ? 'original' : 'app' })
@@ -312,6 +334,8 @@ else {
     const state = registry.focused();
     const launchFolder = filePath ? null : folderRequestFromArgs(process.argv, app.isPackaged);
     if (launchFolder && state) folderRequests.deliver(state, launchFolder);
+    const launchURLs = webURLsFromArgs(process.argv);
+    if (launchURLs.length && state) browsers.openRequested(state, launchURLs);
     // "Show in folder" from other applications (org.freedesktop.FileManager1). Started
     // after launch so the helper never competes with the first window.
     const dbusTimer = setTimeout(() => {

@@ -100,7 +100,7 @@
     "@types/turndown": "^5.0.6",
     "concurrently": "^9.0.0",
     "cross-env": "^10.0.0",
-    "electron": "44.7.2",
+    "electron": "45.3.3",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.25.0",
     "svelte": "^5.57.0",
@@ -150,7 +150,9 @@
       "maintainer": "Setdown Contributors <yabsed@snu.ac.kr>",
       "category": "Office",
       "mimeTypes": [
-        "inode/directory"
+        "inode/directory",
+        "x-scheme-handler/http",
+        "x-scheme-handler/https"
       ],
       "executableName": "setdown",
       "icon": "build/icon.png"

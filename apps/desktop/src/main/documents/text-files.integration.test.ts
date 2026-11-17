@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { test } from 'vitest';
 import { decodeTextBytes, encodedText, MAX_TEXT_FILE_BYTES } from '../../core/document/text-codec';
 import { documentLanguage, documentProfile, documentSurface, isOpenableDocument } from '../../core/document/document-profile';
@@ -140,6 +141,9 @@ test('CLI skips executable and dev entry and supports text after --', () => {
   assert.equal(documentPathFromArgs(['/bin/electron', '.'], false, yes), undefined);
   assert.equal(documentPathFromArgs(['/bin/setdown', '--trace-warnings', '/tmp/note.txt'], true, yes), '/tmp/note.txt');
   assert.equal(documentPathFromArgs(['/bin/setdown', '--', '-note.txt'], true, yes), path.resolve('-note.txt'));
+  // The desktop passes file: URLs to an entry that also accepts web addresses.
+  assert.equal(documentPathFromArgs(['/bin/setdown', pathToFileURL(path.resolve('/tmp/my notes.md')).href], true, yes), path.resolve('/tmp/my notes.md'));
+  assert.equal(documentPathFromArgs(['/bin/setdown', 'https://example.com/readme.md'], true, yes), undefined);
 });
 
 test('literal source search uses Monaco UTF16 columns and respects limits', () => {

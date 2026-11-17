@@ -12,6 +12,10 @@ and no tabs. Explicit file launch arguments open only the requested document;
 its directory does not implicitly become the project folder. Legacy
 `browser-tabs.json` records do not reopen pages. Reload reconnects to the same
 window's current folder and live web pages, preserving page identity and forms.
+The renderer asks for the window's launch document before anything else: a window
+is interactive while its theme loads, and a New Document handled in that interval
+must not come back as the launch document and open a second tab for it. The native
+tab-drag specs issue that command immediately after launch.
 
 `main/project/recent-folders.ts` stores at most five distinct canonical folder
 paths in visit order, shared across windows and app restarts. History never
@@ -338,7 +342,45 @@ checks both interactions while video frames continue advancing.
 
 Website permissions are page/owner/origin scoped and announced through a quiet
 address-bar control. Navigation, transfer, destruction and expiry settle pending
-callbacks, without focusing a window. Native menus retain the source frame and
+callbacks, without focusing a window. An answer lasts for the page's document
+unless the user chooses Always Allow/Always Block on This Site; those choices are
+kept per origin in `browser-site-permissions.json` (owner-only, bounded) and
+answer later documents, other tabs and restarts without a request. Reset Site
+Permissions and Clear Browsing Data's site settings forget them. Notifications,
+camera, microphone, location and clipboard reading can be asked for. A site
+embedded in another site's page asks under both names (`widget in page`), only
+after Chromium's Permissions Policy delegated the capability, is remembered only
+inside that page, and can never ask for notifications. Screen sharing is asked
+every time (`Allow Once`), an allowance is never kept, and Setdown's list of
+screens and windows follows; the page receives only the chosen source and never
+system audio. It is not an automatic grant because Electron reports
+`getDisplayMedia` and the legacy whole-screen `getUserMedia` constraint under the
+same `display-capture` name, and the latter has no list. In a Wayland session the
+desktop portal's own picker replaces Setdown's list. Service-worker requests have
+no page to ask on and are refused, so there is no web push.
+`browser-permissions.test.ts`, `site-permissions.test.ts` and
+`browser/permissions.spec.ts` cover these rules.
+
+Websites see Chrome's user agent without the application or Electron tokens,
+applied to the browser session only; the shell keeps Electron's. The sign-in host
+that refuses embedded Chromium (`accounts.google.com`) receives a Firefox user
+agent and no client hints through a declarativeNetRequest session rule of a
+built-in extension with no code (`site-compat.ts`), because a session
+`webRequest` listener would switch off every extension's request rules. That
+extension is not listed with the user's extensions. A web tab shows its site's
+icon: candidates from `page-favicon-updated` are fetched through the browser
+session, decoded and re-encoded to a 32 px PNG in the sandboxed Places host, and
+cleared when the tab moves to another origin. HTTP(S) addresses among launch
+arguments open as web tabs, also beside a document named by the same request and
+through the single-instance handoff. File ▸ Set as Default Browser… registers the
+two web schemes only after the user confirms, never at install or launch; on
+Linux it requires an installed desktop entry that declares them. On Linux,
+location comes from the desktop portal (`LocationProviderManager`), not from a
+network service. `user-agent.test.ts`, `web-launch.test.ts`, `favicon.test.ts`,
+`browser-favicons.test.ts`, `default-browser.test.ts` and
+`browser/identity.spec.ts` cover these rules.
+
+Native menus retain the source frame and
 navigation generation, and pass Chromium hit-test coordinates unchanged.
 Find results match both the native request ID and current query. Composition and
 page-owned Escape handlers precede Reader entry. HTTP authentication carries

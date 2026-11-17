@@ -23,6 +23,7 @@ type MenuContext = {
   markdownWordWrap: () => boolean;
   toggleMarkdownWordWrap: () => boolean;
   zoom: (steps: number, scope?: 'app' | 'text' | 'terminal') => void;
+  chooseDefaultBrowser: (state: WindowState) => void;
 };
 
 const TOP_LEVEL_IDS = new Set([
@@ -108,6 +109,7 @@ export function installApplicationMenu(context: MenuContext) {
         { id: 'menu-new-folder-tab', label: 'New Folder Tab', accelerator: 'CmdOrCtrl+Shift+E', click: () => command('new-folder-tab') },
         { id: 'menu-reopen-web', label: 'Reopen Closed Web Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => command('reopen-web-tab') },
         { id: 'menu-clear-browsing-data', label: 'Clear Browsing Data…', accelerator: 'CmdOrCtrl+Shift+Delete', click: () => command('clear-browsing-data') },
+        { id: 'menu-default-browser', label: 'Set as Default Browser…', click: () => { const current = state(); if (current) context.chooseDefaultBrowser(current); } },
         { id: 'menu-location', label: 'Open Location…', click: () => command('focus-location') },
         { id: 'menu-new-document', label: 'New', accelerator: 'CmdOrCtrl+N', click: () => command('new-document') },
         { id: 'menu-open-document', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => {

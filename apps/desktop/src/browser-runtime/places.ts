@@ -17,6 +17,28 @@ const loaded = places.toArray().then(rows => { cache = rows; });
 let mutations = Promise.resolve();
 const expose = (p: PlaceRecord): BrowserPlace => ({ url: p.url, title: p.title, bookmarked: p.isBookmarked, lastVisit: p.lastVisit, visits: p.visitCount });
 
+/**
+ * Website icons are decoded here, in the sandbox, and leave as a small PNG:
+ * the trusted processes never parse an image a website supplied.
+ */
+async function favicon(bytes: Uint8Array, type: string): Promise<string | null> {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], type ? { type } : {}));
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const size = 32, canvas = new OffscreenCanvas(size, size), context = canvas.getContext('2d')!;
+    // An SVG without intrinsic dimensions fills the square.
+    const width = image.naturalWidth || size, height = image.naturalHeight || size, scale = Math.min(size / width, size / height);
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, (size - width * scale) / 2, (size - height * scale) / 2, width * scale, height * scale);
+    const data = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
+    let binary = '';
+    for (let index = 0; index < data.length; index += 0x8000) binary += String.fromCharCode(...data.subarray(index, index + 0x8000));
+    return `data:image/png;base64,${btoa(binary)}`;
+  } catch { return null; } finally { URL.revokeObjectURL(url); }
+}
+
 window.addEventListener('message', function connected(event) {
   if (event.source !== window || event.data !== 'setdown:places-port' || !event.ports[0]) return;
   window.removeEventListener('message', connected);
@@ -24,6 +46,7 @@ window.addEventListener('message', function connected(event) {
   port.onmessage = async ({ data }) => {
     const { id, action, input } = data;
     try {
+      if (action === 'favicon') { port.postMessage({ id, result: await favicon(input.bytes, String(input.type)) }); return; }
       await loaded;
       if (action === 'bookmark-list') {
         await mutations;

@@ -5,6 +5,17 @@ preview sessions do not share its proxy, cookies, downloads or extension preload
 Electron and electron-chrome-extensions remain pinned; native Chromium APIs such
 as content scripts, messaging, storage, scripting and DNR remain native.
 
+Setdown loads one extension of its own into this session, `Setdown site
+compatibility` (`main/browser/site-compat.ts`). It has no code and one
+declarativeNetRequest session rule that sends a Firefox user agent to the sign-in
+host. It carries no user data, is not shown in the Extensions list or toolbar, and
+exists because a session `webRequest` listener would disable every extension's
+request rules. Electron 45 applies dynamic and session DNR rules but not static
+rule files, so the rule is installed from a hidden extension page at each launch.
+For the same reason a session `protocol.handle` interception of `https` is skipped
+for page requests while an extension observes them; tests answer HTTPS hosts from
+a local TLS fixture instead.
+
 ## Ownership and UI
 
 - The location bar has one outlined puzzle Extensions button immediately after the

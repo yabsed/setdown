@@ -48,7 +48,7 @@ await Promise.all([
   build({ entryPoints: ['src/browser-runtime/places.ts'], outfile: 'dist-electron/places.js', bundle: true, platform: 'browser', format: 'iife', target: 'chrome140' }),
 ]);
 await fs.copyFile('src/browser-runtime/extension-panel.html', path.join(output, 'extension-panel.html'));
-await fs.writeFile(path.join(output, 'places.html'), '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'"><script src="places.js"></script>');
+await fs.writeFile(path.join(output, 'places.html'), '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'; img-src blob:"><script src="places.js"></script>');
 // Firefox Reader View's extraction library (Apache-2.0), run inside the page
 // on Esc. Keep the pinned submodule file verbatim; only copy it into place.
 const readability = path.join(root, 'vendor/readability/Readability.js');
