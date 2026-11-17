@@ -9,7 +9,7 @@ import { readTextFile } from '../documents/text-file';
 import { ProjectPaths } from './project-paths';
 import type { ExplorerOperationItem, ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
 import type { LanguageFileOperation } from '../language/file-operations';
-import { copyExclusive, copyName, ensureMissing, exists, moveExclusive, treeVersion } from './file-transfer';
+import { copyExclusive, copyName, ensureMissing, exists, moveExclusive, sequenceName, treeVersion, writeExclusive } from './file-transfer';
 const HIDDEN_DIRECTORIES = new Set(['.git', '.hg', '.svn']);
 
 export class ExplorerService {
@@ -86,6 +86,9 @@ export class ExplorerService {
     try { return await this.remember(state, await this.transferEntries(state, request, controller.signal)); }
     finally { this.active.delete(state.webContentsId); }
   });
+  /** Data with no source file (a pasted clipboard image). A free name is allocated; Undo trashes the new file. */
+  createFile = (state: WindowState, directory: string, name: string, bytes: Uint8Array) =>
+    this.scoped(state, async state => this.remember(state, await this.writeFile(state, directory, name, bytes)));
   constructor(private readonly paths: ProjectPaths,
     private readonly trash: (filePath: string) => Promise<void> = (filePath) => shell.trashItem(filePath),
     private readonly beforeMutation: (state: WindowState, paths: string[]) => void = () => {}) {}
@@ -241,6 +244,24 @@ export class ExplorerService {
       }
     }
     return { kind: request.kind, items, undoable: false };
+  }
+  private async writeFile(state: WindowState, candidate: string, name: string, bytes: Uint8Array): Promise<ExplorerOperationResult> {
+    const directory = this.paths.inside(state, candidate);
+    if (!(await fs.stat(directory)).isDirectory()) throw new Error('The target is not a folder.');
+    for (let index = 1; ; index++) {
+      const target = this.paths.child(state, directory, sequenceName(name, index));
+      if (await exists(target)) continue;
+      const operation: LanguageFileOperation = { kind: 'create', files: [{ path: target, directory: false }] };
+      await this.languageOperation?.(state, operation, 'will');
+      try { await writeExclusive(target, bytes); }
+      catch (error) {
+        // Another writer took the name after the check; it keeps its file and we take the next name.
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') continue;
+        throw error;
+      }
+      await this.did(state, operation);
+      return { kind: 'import', items: [{ from: target, to: target, status: 'completed' }], undoable: false };
+    }
   }
   private mutableEntry(state: WindowState, candidate: string): string {
     const entryPath = this.paths.entry(state, candidate);

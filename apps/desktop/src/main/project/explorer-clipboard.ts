@@ -1,16 +1,54 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { clipboard, ClipboardItem } from 'electron';
-import type { ExplorerClipboard, ExplorerOperationResult } from '../../protocol/explorer';
+import type { ExplorerClipboard, ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
+import type { WindowState } from '../windows/window-state';
+import { imageCandidates, pastedImageName, type ClipboardImage } from './clipboard-image';
+import type { ExplorerService } from './explorer-service';
 
 // Store only a nonce on the OS clipboard. Paths are a main-process capability,
 // never a renderer-supplied file URI interpreted as permission to delete files.
 const FORMAT = 'web application/x-setdown-file-selection';
 export class ExplorerClipboardStore {
   private value: (ExplorerClipboard & { token: string }) | null = null;
+  /** What Paste would use now. Image data is reported by its formats only; nothing is decoded here. */
   async read(): Promise<ExplorerClipboard | null> {
     const value = await this.snapshot();
-    return value ? { paths: [...value.paths], cut: value.cut } : null;
+    if (value) return { paths: [...value.paths], cut: value.cut };
+    const image = (await clipboard.read()).some(item => imageCandidates(item.types).length > 0);
+    return image ? { paths: [], cut: false, image: true } : null;
+  }
+  /**
+   * Copied files win: they keep their names and formats. Otherwise image data
+   * (browser “Copy image”, a screenshot, an image viewer) becomes a new file.
+   */
+  async paste(explorer: Pick<ExplorerService, 'transfer' | 'createFile'>, state: WindowState, target: string,
+    conflict?: ExplorerTransfer['conflict']): Promise<ExplorerOperationResult> {
+    const selection = await this.snapshot();
+    if (selection) {
+      const result = await explorer.transfer(state, { kind: selection.external ? 'import' : selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
+      await this.consume(selection, result);
+      return result;
+    }
+    const image = await this.image();
+    if (!image) throw new Error('Nothing to paste. Copy files or an image first.');
+    return explorer.createFile(state, target, image.name, image.bytes);
+  }
+  async image(): Promise<ClipboardImage | null> {
+    for (const item of await clipboard.read()) for (const candidate of imageCandidates(item.types)) {
+      try {
+        const data = await item.getType(candidate.type);
+        if (!('arrayBuffer' in data)) continue;
+        const bytes = new Uint8Array(await data.arrayBuffer());
+        if (!candidate.format.valid(bytes)) continue;
+        return { name: pastedImageName(candidate.format.extension, await this.html(item)), bytes };
+      } catch { /* A platform may advertise a format it cannot convert. */ }
+    }
+    return null;
+  }
+  private async html(item: ClipboardItem): Promise<string> {
+    if (!item.types.includes('text/html')) return '';
+    try { const data = await item.getType('text/html'); return 'text' in data ? await data.text() : ''; } catch { return ''; }
   }
   async snapshot(): Promise<(ExplorerClipboard & { token: string }) | null> {
     const value = this.value;

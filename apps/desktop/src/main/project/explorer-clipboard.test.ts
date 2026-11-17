@@ -67,3 +67,52 @@ test('clearing waits for clipboard verification without deleting a newer Setdown
   await store.clear();
   expect(await store.read()).toEqual({ paths: ['/new'], cut: false });
 });
+
+const PNG = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3);
+const item = (entries: Record<string, Blob | string>) => ({ types: Object.keys(entries),
+  getType: async (type: string) => { const value = entries[type]; return typeof value === 'string' ? new Blob([value]) : value; } });
+const explorer = () => ({ transfer: vi.fn(async (_state: unknown, request: { kind: string }) => ({ kind: request.kind, items: [], undoable: false })),
+  createFile: vi.fn(async (_state: unknown, target: string, name: string) => ({ kind: 'import', undoable: true,
+    items: [{ from: `${target}/${name}`, to: `${target}/${name}`, status: 'completed' }] })) });
+
+test('image data copied from a browser pastes as a new file named after its source', async () => {
+  const store = new ExplorerClipboardStore(), target = explorer();
+  memory.items = [item({ 'text/html': '<img src="https://example.com/cat.jpg">', 'image/png': new Blob([PNG]) })];
+  expect(await store.read()).toEqual({ paths: [], cut: false, image: true });
+  const result = await store.paste(target as never, {} as never, '/folder');
+  expect(target.transfer).not.toHaveBeenCalled();
+  expect(target.createFile).toHaveBeenCalledWith({}, '/folder', 'cat.png', PNG);
+  expect(result.items[0].to).toBe('/folder/cat.png');
+});
+
+test('a format that is advertised but not delivered falls through to the next one', async () => {
+  const store = new ExplorerClipboardStore();
+  const jpeg = Uint8Array.of(0xff, 0xd8, 0xff, 0xe0, 9);
+  memory.items = [{ types: ['image/png', 'electron application/osclipboard;format="image/jpeg"'],
+    getType: async (type: string) => { if (type === 'image/png') throw Error('conversion failed'); return new Blob([jpeg]); } }];
+  expect(await store.image()).toEqual({ name: 'Pasted image.jpg', bytes: jpeg });
+  memory.items = [item({ 'image/png': '<html>an error page, not pixels</html>' })];
+  expect(await store.image()).toBeNull();
+});
+
+test('copied files win over image data, and a clipboard with neither says what to copy', async () => {
+  const store = new ExplorerClipboardStore(), target = explorer();
+  // An image viewer can offer the file and its pixels together; the file keeps its name and format.
+  memory.items = [item({ 'text/uri-list': 'file:///photos/a%20b.jpg\r\n', 'image/png': new Blob([PNG]) })];
+  expect(await store.read()).toEqual({ paths: ['/photos/a b.jpg'], cut: false });
+  await store.paste(target as never, {} as never, '/folder', 'keep-both');
+  expect(target.transfer).toHaveBeenCalledWith({}, { kind: 'import', paths: ['/photos/a b.jpg'], target: '/folder', conflict: 'keep-both' });
+  expect(target.createFile).not.toHaveBeenCalled();
+  memory.items = [item({ 'text/plain': 'ordinary text' })];
+  expect(await store.read()).toBeNull();
+  await expect(store.paste(target as never, {} as never, '/folder')).rejects.toThrow('Copy files or an image first');
+});
+
+test('a pending Setdown selection is replaced by a newer image copy', async () => {
+  const store = new ExplorerClipboardStore(), target = explorer(); await store.write(['/a'], true);
+  memory.items = [item({ 'image/png': new Blob([PNG]) })];
+  expect(await store.read()).toEqual({ paths: [], cut: false, image: true });
+  await store.paste(target as never, {} as never, '/folder');
+  expect(target.transfer).not.toHaveBeenCalled();
+  expect(target.createFile).toHaveBeenCalledWith({}, '/folder', 'Pasted image.png', PNG);
+});

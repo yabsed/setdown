@@ -28,3 +28,8 @@ export function typeaheadMatch(names: { path: string; name: string }[], current:
   const ordered = [...names.slice(start + 1), ...names.slice(0, start + 1)];
   return ordered.find(entry => entry.name.toLocaleLowerCase().startsWith(text.toLocaleLowerCase()))?.path;
 }
+
+/** The sidebar shows what went wrong, not the IPC channel that carried it. */
+export function errorMessage(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
+}

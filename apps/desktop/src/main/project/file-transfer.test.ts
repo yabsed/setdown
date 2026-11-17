@@ -4,7 +4,7 @@ import os from 'node:os';
 import { afterEach, expect, test, vi } from 'vitest';
 import { ExplorerService } from './explorer-service';
 import { ProjectPaths } from './project-paths';
-import { copyExclusive, copyName, moveExclusive } from './file-transfer';
+import { copyExclusive, copyName, moveExclusive, sequenceName, writeExclusive } from './file-transfer';
 import type { WindowState } from '../windows/window-state';
 
 const roots: string[] = [];
@@ -150,4 +150,22 @@ test('move keeps source on publication failure and manipulates symbolic links th
   expect(await fs.readlink(path.join(target, 'link'))).toBe('/outside');
   await expect(fs.lstat(from)).rejects.toMatchObject({ code: 'ENOENT' });
   expect((await service.transfer(state, { kind: 'move', paths: [path.join(target, 'link')], target })).items[0].status).toBe('skipped');
+});
+
+test('new bytes publish under a free name only; a taken name or a failed write leaves the folder as it was', async () => {
+  const { root } = await fixture(), target = path.join(root, 'image.png');
+  await writeExclusive(target, Uint8Array.of(1, 2, 3));
+  expect(await fs.readFile(target)).toEqual(Buffer.from([1, 2, 3]));
+  await expect(writeExclusive(target, Uint8Array.of(9))).rejects.toMatchObject({ code: 'EEXIST' });
+  expect(await fs.readFile(target)).toEqual(Buffer.from([1, 2, 3]));
+  // A dangling link is someone's entry too.
+  await fs.symlink('missing', path.join(root, 'link.png'));
+  await expect(writeExclusive(path.join(root, 'link.png'), Uint8Array.of(9))).rejects.toMatchObject({ code: 'EEXIST' });
+  vi.spyOn(fs, 'writeFile').mockRejectedValueOnce(Object.assign(Error('disk full'), { code: 'ENOSPC' }));
+  await expect(writeExclusive(path.join(root, 'full.png'), Uint8Array.of(9))).rejects.toThrow('disk full');
+  expect((await fs.readdir(root)).sort()).toEqual(['image.png', 'link.png', 'target']);
+  expect(sequenceName('Pasted image.png', 1)).toBe('Pasted image.png');
+  expect(sequenceName('Pasted image.png', 2)).toBe('Pasted image 2.png');
+  expect(sequenceName('archive.tar.gz', 3)).toBe('archive.tar 3.gz');
+  expect(sequenceName('README', 2)).toBe('README 2');
 });

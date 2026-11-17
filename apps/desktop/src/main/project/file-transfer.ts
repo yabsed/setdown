@@ -20,6 +20,13 @@ export function copyName(name: string, directory: boolean, index: number): strin
   return `${stem} copy${index === 1 ? '' : ` ${index}`}${suffix}`;
 }
 
+/** “Pasted image.png”, “Pasted image 2.png”, …: names for a new file that is not a copy of another. */
+export function sequenceName(name: string, index: number): string {
+  if (index <= 1) return name;
+  const suffix = path.extname(name), stem = suffix ? name.slice(0, -suffix.length) : name;
+  return `${stem} ${index}${suffix}`;
+}
+
 /** Reserve destinations atomically: never rename over someone else's file.
  * Directories reserve an empty directory; rename fails if it becomes nonempty.
  * Cross-volume moves publish a verified copy before removing the source.
@@ -120,6 +127,24 @@ export async function copyExclusive(from: string, to: string, signal?: AbortSign
     if (stat.isDirectory()) await fs.chmod(staged, stat.mode | 0o700);
     await moveExclusive(staged, to);
     if (stat.isDirectory()) await fs.chmod(to, stat.mode);
+  } catch (error) { failed = true; throw error; }
+  finally {
+    try { await removeStaging(staging); }
+    catch (error) { if (!failed) throw error; }
+  }
+}
+
+/**
+ * New bytes are staged the same way: a failed write leaves nothing, and a name
+ * someone else holds is never replaced (rejects with code EEXIST).
+ */
+export async function writeExclusive(to: string, bytes: Uint8Array): Promise<void> {
+  const staging = await fs.mkdtemp(path.join(path.dirname(to), '.setdown-copy-'));
+  let failed = false;
+  try {
+    const staged = path.join(staging, 'entry');
+    await fs.writeFile(staged, bytes, { flag: 'wx' });
+    await moveExclusive(staged, to);
   } catch (error) { failed = true; throw error; }
   finally {
     try { await removeStaging(staging); }

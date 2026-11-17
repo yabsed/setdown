@@ -234,13 +234,7 @@ export class FileBrowserService {
     }
     return this.options.clipboard.write(entries, cut === true);
   }
-  async paste(state: WindowState, target: string, conflict?: ExplorerTransfer['conflict']) {
-    const selection = await this.options.clipboard.snapshot();
-    if (!selection) throw new Error('Copy files in a file manager or Setdown first.');
-    const result = await this.transfer(state, { kind: selection.external ? 'import' : selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
-    await this.options.clipboard.consume(selection, result);
-    return result;
-  }
+  paste = (state: WindowState, target: string, conflict?: ExplorerTransfer['conflict']) => this.options.clipboard.paste(this.operations, state, target, conflict);
 
   /** Restore a top-level Trash item using its `.trashinfo`, never overwriting an existing file. */
   async restore(state: WindowState, candidate: string): Promise<string> {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { tree, rememberTree, under } from './explorer-tree-state.svelte';
-  import { presentEntries, typeaheadMatch } from './explorer-presentation';
+  import { errorMessage, presentEntries, typeaheadMatch } from './explorer-presentation';
   import { explorerGitDecorations } from './explorer-git-decorations';
   import type { ExplorerClipboard, ExplorerEditCommand, ExplorerTransfer } from '../../../protocol/explorer';
   import { selectEntry, topLevelPaths, draggedPaths, explorerDropKind, PROJECT_ENTRIES, PROJECT_FILES } from './explorer-selection';
@@ -85,7 +85,7 @@
     popup.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
   });
 
-  const fail = (error: unknown) => { project.error = error instanceof Error ? error.message : String(error); };
+  const fail = (error: unknown) => { project.error = errorMessage(error); };
   async function refreshClipboard() { try { clipboard = await actions.explorer.clipboard(); } catch (error) { fail(error); } }
   async function fileCommand(command: ExplorerEditCommand | 'duplicate', conflict?: 'keep-both' | 'skip', targetOverride?: string) {
     if (busy || editing) return;

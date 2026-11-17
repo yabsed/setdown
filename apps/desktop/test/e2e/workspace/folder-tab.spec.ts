@@ -140,6 +140,44 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
+test('an image copied from another application pastes into a folder tab as a new file', async () => {
+  const { root, home, app, page } = await launch();
+  try {
+    const documents = path.join(home, 'Documents');
+    await writeFile(path.join(documents, 'Pasted image.png'), 'KEEP');
+    await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
+    await row(page, 'Documents').dblclick();
+    await expect.poll(() => labels(page)).toEqual(['Pasted image.png']);
+    // A screenshot or a browser's “Copy image”: pixels on the clipboard, no file behind them.
+    const png = pngFixture(7, 5, [39, 174, 96]);
+    await app.evaluate(async ({ clipboard, ClipboardItem }, bytes) => {
+      await clipboard.write([new ClipboardItem({ 'image/png': new Blob([Buffer.from(bytes, 'base64')], { type: 'image/png' }) })]);
+    }, png.toString('base64'));
+    await list(page).focus();
+    await page.keyboard.press('Control+v');
+    await expect(row(page, 'Pasted image 2.png')).toHaveAttribute('aria-selected', 'true');
+    const pasted = await readFile(path.join(documents, 'Pasted image 2.png'));
+    expect([pasted.subarray(1, 4).toString('latin1'), pasted.readUInt32BE(16), pasted.readUInt32BE(20)]).toEqual(['PNG', 7, 5]);
+    expect(await readFile(path.join(documents, 'Pasted image.png'), 'utf8')).toBe('KEEP');
+    await expect(page.locator('.folder-content:not(.inactive) .folder-error')).toHaveCount(0);
+    // The folder's own menu offers Paste for image data too.
+    const menu = await openMenu(app, list(page), { x: 400, y: 300 });
+    await expect(item(menu, 'Paste')).toBeEnabled();
+    await item(menu, 'Paste').click();
+    await expect.poll(() => menuViews(app)).toBe(0);
+    await expect(row(page, 'Pasted image 3.png')).toHaveAttribute('aria-selected', 'true');
+    expect((await readdir(documents)).sort()).toEqual(['Pasted image 2.png', 'Pasted image 3.png', 'Pasted image.png']);
+    // Undo removes only the file the last paste created.
+    await app.evaluate(({ shell }) => {
+      const { rm } = process.getBuiltinModule('node:fs/promises') as typeof import('node:fs/promises');
+      shell.trashItem = async file => { await rm(file, { recursive: true }); };
+    });
+    await list(page).focus();
+    await page.keyboard.press('Control+z');
+    await expect.poll(async () => (await readdir(documents)).sort()).toEqual(['Pasted image 2.png', 'Pasted image.png']);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('two folder tabs of one directory stay two tabs when one is dragged along the tab strip', async () => {
   const { root, app, page } = await launch();
   try {

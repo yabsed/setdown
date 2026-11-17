@@ -64,7 +64,16 @@ receipt identifies completed, skipped, failed and unstarted entries. Cut is
 consumed only for completed moves. A main-owned nonce on the system clipboard
 invalidates file selection when another copy replaces it. Native file-URL/URI-list
 clipboard data can be imported as copies; an external Cut never authorizes
-Setdown to remove its source. Explorer native file drops import every selected
+Setdown to remove its source. Image data with no file behind it (a browser's
+Copy Image, a screenshot, an image viewer) pastes as a new image file in the
+Explorer and in folder tabs. Copied files take precedence over pixels offered
+beside them. `clipboard-image.ts` prefers PNG, accepts another encoding when it
+is the only one offered, and checks every candidate against its signature. The
+name is the copied `<img src>` file name when that is a safe image file name,
+otherwise `Pasted image`, always with the extension of the pasted bytes.
+`ExplorerService.createFile` allocates a free name (`Pasted image 2.png`)
+instead of raising a conflict, stages the bytes like a copy, and records the
+file for Undo. Explorer native file drops import every selected
 file into the target folder (or a file row's parent). Editor drops open separate
 pinned tabs. Drop, paste and internal drag share collision handling. Shell and
 native-reader feedback must not cover the document or persist after cancellation.
@@ -92,9 +101,13 @@ successful OS trash completion closes approved revisions. New edits during the
 job remain in their buffer, and autosave must not recreate a missing file.
 Tests cover filesystem collision/failure receipts, clipboard invalidation,
 stale reads, autosave draining and deletion lifecycle. `explorer-selection.spec.ts`
-executes keyboard, context-menu and main-menu copy/paste, duplicate, conflict
-choices, basename/IME handling, selection persistence and failed trash in real
-Electron. Existing native web/Markdown overlay identity and focus tests remain
+executes keyboard, context-menu and main-menu copy/paste, image-data paste,
+duplicate, conflict choices, basename/IME handling, selection persistence and
+failed trash in real Electron. `test/wayland/clipboard-paste.spec.ts` copies
+image data and image files in a native Wayland process and pastes them into an
+XWayland folder tab through the compositor's selection bridge, which is how a
+Wayland desktop delivers them. Existing native web/Markdown overlay identity
+and focus tests remain
 required. These guarantees do not imply large-tree virtualization, cross-window
 file Undo, or verification of the macOS Finder compositor on a Linux runner.
 

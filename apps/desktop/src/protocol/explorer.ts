@@ -20,7 +20,8 @@ export type ExplorerOperationResult = {
   warning?: string;
 };
 
-export type ExplorerClipboard = { external?: boolean; paths: string[]; cut: boolean };
+/** `image`: the clipboard holds image data rather than files; Paste writes it as a new file. */
+export type ExplorerClipboard = { external?: boolean; image?: boolean; paths: string[]; cut: boolean };
 export type ExplorerEditCommand = 'cut' | 'copy' | 'paste' | 'select-all' | 'undo';
 
 export interface ExplorerApi {

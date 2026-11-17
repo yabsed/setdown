@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile, readFile, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, writeFile, readFile, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -104,4 +104,33 @@ test('language will/did operations bracket the actual mutation, and rejected edi
   service.languageOperation = async () => { throw Error('Document changed during import edits.'); };
   await expect(service.trashEntry(state, to)).rejects.toThrow(/Document changed/);
   expect(await readFile(to, 'utf8')).toBe('value = 1\n');
+});
+
+test('new file data takes a free name, never replaces a file, stays inside the folder, and Undo trashes it', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-explorer-data-')); temporaryDirectories.push(root);
+  const trashed: string[] = [];
+  const service = new ExplorerService(new ProjectPaths(), async file => { trashed.push(file); await rm(file); });
+  const state = { projectRoot: root, webContentsId: 1 } as WindowState;
+  const events: string[] = [];
+  service.languageOperation = async (_state, operation, phase) => { events.push(`${phase}:${operation.kind}:${path.basename(operation.files[0].path)}`); };
+  const bytes = Uint8Array.of(1, 2, 3);
+  await writeFile(path.join(root, 'Pasted image 2.png'), 'KEEP');
+
+  const first = await service.createFile(state, root, 'Pasted image.png', bytes);
+  expect(first).toEqual({ kind: 'import', undoable: true, items: [{ from: path.join(root, 'Pasted image.png'), to: path.join(root, 'Pasted image.png'), status: 'completed' }] });
+  const second = await service.createFile(state, root, 'Pasted image.png', Uint8Array.of(4));
+  expect(second.items[0].to).toBe(path.join(root, 'Pasted image 3.png'));
+  expect(await readFile(path.join(root, 'Pasted image.png'))).toEqual(Buffer.from(bytes));
+  expect(await readFile(path.join(root, 'Pasted image 2.png'), 'utf8')).toBe('KEEP');
+  expect(events).toEqual(['will:create:Pasted image.png', 'did:create:Pasted image.png', 'will:create:Pasted image 3.png', 'did:create:Pasted image 3.png']);
+  // No staging directory or partial file is left beside the result.
+  expect((await readdir(root)).sort()).toEqual(['Pasted image 2.png', 'Pasted image 3.png', 'Pasted image.png']);
+
+  await expect(service.createFile(state, root, '../escape.png', bytes)).rejects.toThrow('valid file or folder name');
+  await expect(service.createFile(state, os.tmpdir(), 'outside.png', bytes)).rejects.toThrow('outside');
+  await expect(service.createFile(state, path.join(root, 'Pasted image.png'), 'inside-a-file.png', bytes)).rejects.toThrow('not a folder');
+
+  expect((await service.transfer(state, { kind: 'undo', paths: [] })).items[0]).toMatchObject({ from: path.join(root, 'Pasted image 3.png'), status: 'completed' });
+  expect(trashed).toEqual([path.join(root, 'Pasted image 3.png')]);
+  expect(await readFile(path.join(root, 'Pasted image.png'))).toEqual(Buffer.from(bytes));
 });

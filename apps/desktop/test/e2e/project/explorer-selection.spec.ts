@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { disposeApplication, focusApplication, type TestApplication } from '../../support/electron/electron-app';
+import { pngFixture } from '../../support/media/png-fixture';
 
 const entry = (page: Page, name: string) => page.getByRole('treeitem', { name, exact: true });
 const selected = (page: Page) => page.locator('.explorer-row[aria-selected="true"]');
@@ -109,6 +110,59 @@ test('Explorer clipboard shortcuts, Edit menu, duplicate and cut use real files 
     await expect.poll(() => readdir(path.join(root, 'destination'))).toContain('b.txt');
     expect(await readdir(root)).not.toContain('b.txt');
     await expect.poll(() => page.evaluate(() => window.marktex.explorer.clipboard())).toBeNull();
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+/** What “Copy image” in a browser leaves on the clipboard: pixels, optionally the tag they came from, and no file. */
+const copyImage = (app: TestApplication, png: Buffer, html?: string) => app.evaluate(async ({ clipboard, ClipboardItem }, { bytes, html }) => {
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([Buffer.from(bytes, 'base64')], { type: 'image/png' }), ...(html ? { 'text/html': html } : {}) })]);
+}, { bytes: png.toString('base64'), html });
+const pngSize = (bytes: Buffer) => bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')) ? [bytes.readUInt32BE(16), bytes.readUInt32BE(20)] : null;
+
+test('an image copied from a web page pastes into the Explorer as a new file, never over another, and Undo removes it', async () => {
+  const { root, app, page } = await launch();
+  const destination = path.join(root, 'destination');
+  try {
+    await app.evaluate(({ shell }) => {
+      const { rm } = process.getBuiltinModule('node:fs/promises') as typeof import('node:fs/promises');
+      shell.trashItem = async file => { await rm(file, { recursive: true }); };
+    });
+    await copyImage(app, pngFixture(6, 4, [200, 40, 40]), '<meta charset="utf-8"><img src="https://example.com/media/cat%20photo.jpg?w=640" alt="A cat">');
+    await expect.poll(() => page.evaluate(() => window.marktex.explorer.clipboard())).toEqual({ paths: [], cut: false, image: true });
+    // The menu offers Paste for image data as it does for copied files.
+    await entry(page, 'destination').click({ button: 'right' });
+    await expect(page.getByRole('menuitem', { name: /^Paste\b/ })).toBeEnabled();
+    await page.getByRole('menuitem', { name: /^Paste\b/ }).click();
+    await expect.poll(() => readdir(destination)).toEqual(['cat photo.png']);
+    expect(pngSize(await readFile(path.join(destination, 'cat photo.png')))).toEqual([6, 4]);
+    await expect(selected(page)).toHaveAttribute('data-path', path.join(destination, 'cat photo.png'));
+    await expect(page.locator('.project-error')).toHaveCount(0);
+
+    // The same image again takes the next name; the first file is untouched.
+    await writeFile(path.join(destination, 'cat photo.png'), 'KEEP');
+    await entry(page, 'destination').click();
+    await entry(page, 'destination').press('Control+v');
+    await expect.poll(() => readdir(destination)).toEqual(['cat photo 2.png', 'cat photo.png']);
+    expect(await readFile(path.join(destination, 'cat photo.png'), 'utf8')).toBe('KEEP');
+
+    // A screenshot has no source name. Pasting onto a file targets that file's folder.
+    await copyImage(app, pngFixture(3, 5, [40, 40, 200]));
+    await entry(page, 'cat photo.png').click();
+    await entry(page, 'cat photo.png').press('Control+v');
+    await expect.poll(() => readdir(destination)).toEqual(['Pasted image.png', 'cat photo 2.png', 'cat photo.png']);
+    expect(pngSize(await readFile(path.join(destination, 'Pasted image.png')))).toEqual([3, 5]);
+    await expect(selected(page)).toHaveAttribute('data-path', path.join(destination, 'Pasted image.png'));
+
+    await page.locator('.project-sidebar').getByRole('button', { name: 'More Actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Undo File Operation', exact: true }).click();
+    await expect.poll(() => readdir(destination)).toEqual(['cat photo 2.png', 'cat photo.png']);
+
+    // Text is neither files nor an image: the sidebar says what Paste needs, without IPC plumbing.
+    await app.evaluate(async ({ clipboard }) => { await clipboard.writeText('ordinary text'); });
+    await entry(page, 'destination').click();
+    await entry(page, 'destination').press('Control+v');
+    await expect(page.locator('.project-error')).toHaveText('Nothing to paste. Copy files or an image first.');
+    expect(await readdir(destination)).toEqual(['cat photo 2.png', 'cat photo.png']);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 

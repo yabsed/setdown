@@ -7,6 +7,7 @@ import type { DesktopPort } from '../../ports/desktop-port';
 import type { EditorOpenOptions } from '../../../core/workspace/editor-groups';
 import { project, rememberProjectState, type VisibleProjectEntry } from '../project-state.svelte';
 import { tree, selectPaths, remapTree } from './explorer-tree-state.svelte';
+import { errorMessage } from './explorer-presentation';
 import type { ExplorerOperationResult, ExplorerTransfer } from '../../../protocol/explorer';
 
 type Options = {
@@ -253,7 +254,5 @@ export class ExplorerController {
     rememberProjectState();
   }
 
-  private fail(error: unknown): void {
-    project.error = error instanceof Error ? error.message : String(error);
-  }
+  private fail(error: unknown): void { project.error = errorMessage(error); }
 }

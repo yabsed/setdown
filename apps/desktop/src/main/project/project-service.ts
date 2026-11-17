@@ -33,13 +33,7 @@ export class ProjectService {
     }
     return this.clipboard.write(paths, cut === true);
   }
-  async paste(state: WindowState, target: string, conflict?: ExplorerTransfer['conflict']) {
-    const selection = await this.clipboard.snapshot();
-    if (!selection) throw new Error('Copy files in a file manager or Setdown first.');
-    const result = await this.transfer(state, { kind: selection.external ? 'import' : selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
-    await this.clipboard.consume(selection, result);
-    return result;
-  }
+  paste = (state: WindowState, target: string, conflict?: ExplorerTransfer['conflict']) => this.clipboard.paste(this.explorer, state, target, conflict);
   private readonly paths = new ProjectPaths();
   setLanguageFileOperations(handler: NonNullable<ExplorerService['languageOperation']>): void {
     this.explorer.languageOperation = handler; this.files.setLanguageFileOperations(handler);
