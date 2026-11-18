@@ -33,13 +33,15 @@ test('without servers, language modes and real local errors survive; project gue
   try {
     const page = await application.firstWindow(); await focusApplication(application);
     page.on('pageerror', error => errors.push(error.message));
-    await expect(page.getByRole('button', { name: /Language status: C\+\+, Basic editing/ })).toBeVisible();
+    // Nothing is wrong, so the status is the language's name and nothing else.
+    await expect(page.getByRole('button', { name: 'Language status: C++', exact: true })).toBeVisible();
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
     await openFile(application, tsx);
     const status = page.getByRole('button', { name: /Language status:/ });
     await status.click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(panel).toContainText('Syntax only');
+    await expect(panel).toContainText('Only local checks are active.');
+    await panel.getByRole('button', { name: 'More…', exact: true }).click(); await expect(panel).toContainText('Syntax only');
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
     await page.getByRole('button', { name: 'Close language status' }).click();
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
@@ -48,7 +50,7 @@ test('without servers, language modes and real local errors survive; project gue
     await openFile(application, json);
     await expect(page.locator('.squiggly-error')).toHaveCount(1);
     await status.click(); await expect(panel).toContainText('Unable to load schema');
-    await panel.getByRole('button', { name: 'Problems', exact: true }).click();
+    await panel.getByRole('button', { name: 'More…', exact: true }).click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
     const problems = page.getByRole('dialog', { name: 'Problems · Open Files' });
     await expect(problems).toContainText('Value expected');
     await expect(problems).not.toContainText('Unable to load schema');
@@ -60,16 +62,16 @@ test('without servers, language modes and real local errors survive; project gue
     await editor.press('Control+End'); await editor.pressSequentially('{"c":}');
     await expect(page.locator('.squiggly-error')).toHaveCount(1);
     await openFile(application, html);
-    await status.click(); await panel.getByRole('button', { name: 'Details…', exact: true }).click();
+    await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click();
     const details = panel;
     await details.getByRole('button', { name: /^HTML/ }).click();
     await details.getByText('Supported features and service context', { exact: true }).click();
     await expect(details).toContainText('Checks: Not provided');
     await expect(details).toContainText('Completion');
     await details.getByRole('button', { name: 'Close language status', exact: true }).click();
-    await status.click(); await panel.getByRole('button', { name: /^Document language/ }).click();
+    await status.click(); await panel.getByRole('button', { name: /^Language/ }).click();
     await panel.getByRole('combobox', { name: 'Language mode' }).selectOption('plaintext');
-    await expect(status).toHaveAccessibleName(/Plain Text, Basic editing/);
+    await expect(status).toHaveAccessibleName('Language status: Plain Text');
     await expect(status).toBeFocused();
     expect(errors).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('without-analysis-server.png') });
@@ -111,13 +113,13 @@ test('project analysis, a supplementary formatter and local validation share one
     await expect.poll(async () => new Set((await messages()).filter(m => m.method === 'document').map(m => m.name)).size).toBe(2);
     const status = page.getByRole('button', { name: /Language status:/ }); await status.click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(panel).toContainText('analysis');
-    await panel.getByRole('button', { name: 'Details…', exact: true }).click();
+    await expect(panel).toContainText('Working');
+    await panel.getByRole('button', { name: 'More…', exact: true }).click();
     const details = panel;
-    await expect(details).toContainText('companion');
+    await expect(details).toContainText('analysis'); await expect(details).toContainText('companion');
     await details.getByRole('button', { name: 'Close language status', exact: true }).click();
     await status.click();
-    await panel.getByRole('button', { name: 'Problems', exact: true }).click();
+    await panel.getByRole('button', { name: 'More…', exact: true }).click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
     const problems = page.getByRole('dialog', { name: 'Problems · Open Files' });
     await expect(problems).toContainText('analysis diagnostic'); await expect(problems).toContainText('companion diagnostic');
     await expect(problems).toContainText('Value expected');
@@ -127,7 +129,7 @@ test('project analysis, a supplementary formatter and local validation share one
     await page.locator('.quick-input-box input').press('Enter');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'format').map(m => m.name)).toEqual(['companion']);
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
-    await status.click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
+    await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
     await expect(problems).toContainText('analysis diagnostic'); await expect(problems).toContainText('companion diagnostic');
     await expect(problems).not.toContainText('Value expected');
     await page.screenshot({ path: testInfo.outputPath('multiple-providers.png') });
@@ -169,14 +171,15 @@ test('the bundled project service resolves installed and sibling imports while p
     const page = await application.firstWindow(); await focusApplication(application);
     const status = page.getByRole('button', { name: /Language status:/ }); await status.click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(panel).toContainText('Results received for this open file', { timeout: 25_000 });
-    await panel.getByRole('button', { name: 'Details…', exact: true }).click();
+    await expect(panel).toContainText('Working', { timeout: 25_000 });
+    await panel.getByRole('button', { name: 'More…', exact: true }).click();
     const details = panel;
+    await expect(details).toContainText('Results received for this open file', { timeout: 25_000 });
     await details.getByRole('button', { name: /^TypeScript and JavaScript/ }).click();
     await details.getByText('Supported features and service context', { exact: true }).click();
     await expect(details).toContainText('Server diagnostics');
     await details.getByRole('button', { name: 'Close language status', exact: true }).click();
-    await status.click();
+    await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click();
     await expect(panel).toContainText('TypeScript and JavaScript');
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('project-language-support.png') });
@@ -187,7 +190,7 @@ test('the bundled project service resolves installed and sibling imports while p
     // use a named import to require resolution without changing project settings.
     await editor.press('Control+End'); await editor.pressSequentially('\nimport { missing } from "./missing-module";');
     await expect(page.locator('.squiggly-error')).toHaveCount(2);
-    await status.click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
+    await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
     const problems = page.getByRole('dialog', { name: 'Problems · Open Files' });
     await expect(problems).toContainText("Type 'string' is not assignable to type 'number'");
     await expect(problems).toContainText('./missing-module');

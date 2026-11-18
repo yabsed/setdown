@@ -9,7 +9,7 @@
   let initialPage = $state<AnalysisPage>('summary'), expanded = $state(false), availableHeight = $state(540);
   let button = $state<HTMLButtonElement>(), panel = $state<HTMLDivElement>();
   const support = $derived.by(() => { revision; return documentSupport.get(tabId); });
-  const status = $derived(presentSupport(support?.providers ?? []));
+  const status = $derived(presentSupport(support?.providers ?? [], undefined, support?.name));
   // Workspace snapshots also refresh on group focus. Only a different view or
   // document incarnation ends this inspection, not an unchanged prop refresh.
   $effect(() => { if (target && (target.id !== tabId || support?.resource !== target.resource)) target = undefined; });

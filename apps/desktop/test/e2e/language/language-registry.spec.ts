@@ -27,7 +27,7 @@ test('the language sidebar searches all discoverable servers, shows language log
     const page = await application.firstWindow(); await focusApplication(application);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const panel = page.getByRole('region', { name: 'Language Support', exact: true });
     const detected = panel.locator('[data-group="detected"]');
     const available = panel.locator('[data-group="available"]');
@@ -92,12 +92,16 @@ test('the language sidebar searches all discoverable servers, shows language log
     await page.getByRole('button', { name: 'Language Support', exact: true }).click();
     await expect(panel).toHaveCount(0);
     await page.getByRole('button', { name: 'Language Support', exact: true }).click();
-    await panel.getByRole('button', { name: /^Installation management/ }).click();
+    await panel.getByRole('button', { name: /^Advanced/ }).click(); await panel.getByRole('button', { name: /^Installation management/ }).click();
     await expect(panel.getByRole('searchbox')).toBeFocused();
     await panel.getByRole('searchbox').fill('query');
     await panel.getByRole('searchbox').press('Escape');
     await expect(panel.getByRole('searchbox')).toHaveValue('');
+    // Escape leaves one level at a time: the list, the advanced page, then the panel.
     await panel.getByRole('searchbox').press('Escape');
+    await expect(panel.getByRole('heading', { name: 'Advanced', exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Back to language settings' })).toBeFocused();
+    await page.keyboard.press('Escape');
     await expect(panel.getByRole('heading', { name: 'Language settings' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
@@ -139,7 +143,7 @@ test('installing a server while editing and rescanning connects the current mode
     `); await chmod(executable, 0o755);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('gopls');
     await expect(management.locator('[data-server-id="gopls"]')).toContainText('Executable found');
@@ -250,7 +254,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await editor.press('Control+End'); await editor.pressSequentially('// unsaved');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(management).toBeVisible();
     await expect(management.locator('[data-server-id="pyright"]')).toContainText('Included');
@@ -286,7 +290,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     // Reconfigure through the real management screen, then Undo the preceding edit.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     await management.getByRole('searchbox').fill('fixture-custom'); await management.locator('.server-list button').click();
     await management.getByText('Connection settings', { exact: true }).click();
     await management.getByText('Advanced server options (JSON)', { exact: true }).click();
@@ -339,7 +343,7 @@ test('an imported npm profile starts automatically and supplies completion witho
     await editor.press('Escape'); await editor.pressSequentially('unsaved');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('json-lsp'); await management.locator('.server-list button').click();
     await expect(management.locator('.state')).toHaveText('Executable found');

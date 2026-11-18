@@ -172,7 +172,7 @@ test('settings are owner-checked, stop previous sessions and notify every subscr
   expect(mocks.servers[0].stop).toHaveBeenCalledOnce();
   for (const event of [f.first, f.second]) expect(event.sender.send).toHaveBeenCalledWith('language:event', { type: 'configuration', servers: expect.arrayContaining(['pyright']), retainedDocuments: [] });
   expect((await f.invoke('configuration', f.second)).find((r: { server: string }) => r.server === 'pyright')).toMatchObject({ enabled: false });
-  expect(await f.invoke('open', f.first, f.document('one'))).toEqual({ unavailable: 'missing' });
+  expect(await f.invoke('open', f.first, f.document('one'))).toMatchObject({ unavailable: 'missing', issue: { kind: 'no-installer' } });
   await f.invoke('set-enabled', f.first, 'pyright', true);
   await f.invoke('open', f.first, { ...f.document('one'), text: 'unsaved buffer', version: 5 });
   expect(mocks.servers[1].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ text: 'unsaved buffer', version: 5 }) }));
@@ -204,7 +204,7 @@ test('rescanning and configuring Fortran preserve unrelated Python sessions in e
   const f = fixture(discovery);
   await f.invoke('open', f.first, f.document('python'));
   await f.invoke('open', f.second, f.document('other-python'));
-  expect(await f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).toEqual({ unavailable: 'missing' });
+  expect(await f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).toMatchObject({ unavailable: 'missing', issue: { kind: 'no-installer' }, server: { id: 'fortls' } });
   await f.invoke('rescan', f.first);
   expect(mocks.servers).toHaveLength(2); expect(mocks.servers.every(s => !s.stop.mock.calls.length)).toBe(true);
   await f.invoke('configure', f.first, 'fortls', { args: ['--disable_autoupdate'], settings: {}, initializationOptions: {} });
@@ -281,22 +281,25 @@ test('an imported Node profile connects without configuration and launches the b
   discovery.dispose();
 });
 
-test('competing installed profiles wait for one choice, persist it, and never fall through a missing chosen server', async () => {
+test('competing installed profiles start the tool the language ranks first, keep an explicit choice, and never fall through a missing chosen server', async () => {
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
   const installed = new Set(['vtsls', 'deno']);
   vi.spyOn(discovery, 'find').mockImplementation(async command => {
     const selected = installed.has(command) ? { id: command, path: process.execPath, source: 'path' as const } : undefined;
     return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
   });
-  const f = fixture(discovery);
+  const f = fixture(discovery, undefined, { ...noPackages, rank: definition => definition.id === 'deno' ? 0 : 1 });
   await f.invoke('set-enabled', f.first, 'typescript-language-server', false);
-  expect(await f.invoke('open', f.first, f.document('one', 'main.ts'))).toEqual({ unavailable: 'selection-needed' });
-  expect(mocks.servers).toHaveLength(0);
+  // No question is asked: the person may not know either tool by name.
+  expect((await f.invoke('open', f.first, f.document('one', 'main.ts'))).server).toBe('deno');
+  await f.invoke('restart', f.first);
   await f.invoke('set-enabled', f.first, 'vtsls', true);
   expect((await f.invoke('open', f.first, f.document('one', 'main.ts'))).server).toBe('vtsls');
   await f.invoke('restart', f.first); installed.delete('vtsls');
+  f.first.sender.send.mockClear();
   await expect(f.invoke('open', f.first, f.document('one', 'main.ts'))).rejects.toThrow(/Executable not found/);
-  expect(mocks.servers).toHaveLength(1); discovery.dispose();
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status', state: 'failed', issue: { kind: 'no-installer', help: expect.any(Boolean) }, server: expect.objectContaining({ id: 'vtsls' }) }));
+  expect(mocks.servers).toHaveLength(2); discovery.dispose();
 });
 
 test('the full catalog discovers a server without a connection profile without launching it', async () => {
@@ -501,4 +504,56 @@ test('Zed YAML customTags reach automatic preparation and the live session and a
     expect(mocks.servers[1].profile.configuration).toMatchObject({ yaml: { customTags: ['!Ref scalar'] } });
     expect(mocks.servers[1].notify).toHaveBeenCalledWith('textDocument/didOpen', expect.objectContaining({ textDocument: expect.objectContaining({ version: 3, text: 'name: !Ref preserved' }) }));
   } finally { mocks.app.get('will-quit')?.({ preventDefault() {} }); discovery.dispose(); }
+});
+
+test('the name a Zed extension gives its server is never looked up as a program', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  // `java` on PATH is the JVM. Offering it as the "java" language server makes the tool exit at once.
+  const find = vi.spyOn(discovery, 'find').mockImplementation(async command => {
+    const selected = { id: command, path: process.execPath, source: 'path' as const };
+    return { selected, candidates: [selected], environment: { env: {}, source: 'inherited' }, searched: ['/usr/bin'] };
+  });
+  const f = fixture(discovery);
+  const java = (await f.invoke('catalog', f.first)).entries.find((entry: any) => entry.id === 'zed.java-eclipse-jdtls.java');
+  expect(java).toMatchObject({ candidates: [], available: false, selectionNeeded: false });
+  expect(find.mock.calls.map(([command]) => command)).not.toContain('java');
+  await expect(f.invoke('select-candidate', f.first, 'zed.java-eclipse-jdtls.java', 'java')).rejects.toThrow(/no longer available/);
+  discovery.dispose();
+});
+
+test('a tool that ends is reported with its cause, and a cause that repeats is not retried', async () => {
+  await writeFile(path.join(mocks.directory, 'language-servers.json'), JSON.stringify({ version: 1, servers: { clangd: { executable: process.execPath, automaticExecutable: false } }, custom: [], preferred: {} }));
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  vi.spyOn(discovery, 'find').mockImplementation(async command => {
+    const selected = path.isAbsolute(command) ? { id: command, path: command, source: 'explicit' as const } : undefined;
+    return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
+  });
+  const f = fixture(discovery);
+  const failed = (issue: object, recovery: object) => expect.objectContaining({ type: 'status', state: 'failed', issue, recovery: expect.objectContaining(recovery) });
+  await f.invoke('open', f.first, f.document('cpp', 'main.cpp'));
+  const chosen = mocks.servers.at(-1)! as any;
+  expect(chosen.launch.executable).toBe(process.execPath);
+  // It printed its usage and ended before answering: the program the person chose is not a language tool.
+  chosen.failureFacts = async () => ({ started: false, reason: 'clangd language server exited (1).', stderr: 'Usage: node [options]' });
+  f.first.sender.send.mockClear(); chosen.failed('initialization: exited');
+  await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', failed({ kind: 'executable', path: process.execPath, automatic: true }, { retrying: false })));
+  expect((await f.invoke('catalog', f.first, undefined, false)).entries.find((entry: any) => entry.id === 'clangd').sessions[0]).toMatchObject({ state: 'failed', issue: { kind: 'executable' } });
+  // A tool that worked and then stopped is a different cause: it is reconnected.
+  await f.invoke('open', f.first, f.document('python'));
+  const worked = mocks.servers.at(-1)! as any;
+  worked.failureFacts = async () => ({ started: true, reason: 'Pyright language server exited (SIGSEGV).', stderr: '' });
+  f.first.sender.send.mockClear(); worked.failed('running: exited');
+  await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', failed({ kind: 'crashed' }, { retrying: true, attempt: 1 })));
+  await f.invoke('restart', f.first); discovery.dispose();
+});
+
+test('a tool that cannot be prepared says why before the connection is refused', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const prepare = vi.fn(async () => { throw Error('error sending request: network is unreachable'); });
+  const f = fixture(discovery, undefined, { ...noPackages, canPrepare: () => true, prepare });
+  await expect(f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).rejects.toThrow(/network is unreachable/);
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status', state: 'failed',
+    issue: { kind: 'download-failed', detail: 'error sending request: network is unreachable' }, server: expect.objectContaining({ id: 'fortls' }),
+    documents: [{ id: 'fortran', generation: 'generation-fortran' }] }));
+  expect(mocks.servers).toHaveLength(0); discovery.dispose();
 });

@@ -7,7 +7,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { watchFile, unwatchFile } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
-import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageMethod } from '../../protocol/language';
+import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ServerRegistry, findExecutable } from './server-registry';
@@ -26,6 +26,8 @@ import { AnalysisContextService, type AnalysisPlan } from './analysis-context';
 import { analysisPreferences } from './analysis-preferences';
 import { AnalysisPreparation } from './analysis-preparation';
 import { LanguageServiceSupervisor } from './language-supervisor';
+import { preparationIssue, runtimeHelp, sessionIssue } from './language-issue';
+import { projectRuntimeSettings, toolRuntime, type ToolRuntime } from './tool-runtime';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
 import { AutomaticDownloadsDisabled, LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
@@ -90,7 +92,7 @@ export class LanguageManager {
   }
   private registryValue: ServerRegistry | undefined;
   private readonly subscribers = new Map<number, WindowState>();
-  private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; resource?: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[] }>();
+  private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; resource?: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue; settling?: Promise<void>; features?: string[] }>();
   private updating: Promise<void> = Promise.resolve();
   private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData'),()=>this.packageCatalog.profiles,
     (definition, resource) => this.zedSettings.options(definition, resource, this.packageCatalog.binding(definition.id)?.server),
@@ -156,6 +158,11 @@ export class LanguageManager {
     const snapshot = resolveEnvironment ? await this.discovery.environment.resolve() : this.discovery.environment.peek();
     const commands = definition ? [this.registry.executable(id, snapshot.env)]
       : languageCatalog.find(p => p.id === id)?.executables ?? [];
+    // A Zed extension names its server, and the profile keeps that name as its command.
+    // The name is not a program to look up: `java`, `cmake` and `gem` exist on PATH and
+    // are not language servers. The extension's adapter owns the lookup.
+    if (definition?.provenance?.source === 'Zed' && commands.every(command => !path.isAbsolute(command)))
+      return { candidates: [], searched: [], environment: snapshot };
     const results = await Promise.all(commands.map(command => this.discovery.find(command, {
       ...packageDiscovery(id), python: definition?.discovery === 'python' || packageDiscovery(id).python,
       npmPackage: definition?.npmPackage ?? packageDiscovery(id).npmPackage, resolveEnvironment,
@@ -181,7 +188,8 @@ export class LanguageManager {
       const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
       const found = inspectInstallations ? await this.discover(item.id) : undefined;
       const managedPreparation = definition && !registry.isCustom(item.id) && !path.isAbsolute(executable ?? '') && this.provisioner.canPrepare(definition);
-      const preparation = managedPreparation && inspectInstallations ? await this.provisioner.installation?.(item.id) : undefined;
+      // A receipt of a prepared tool is a small file Setdown wrote; reading it scans nothing.
+      const preparation = managedPreparation ? await this.provisioner.installation?.(item.id) : undefined;
       const resolved = bundled ? executable : found?.selected?.path;
       const owner = this.owners.get(state.webContentsId);
       return { id: item.id, name: definition?.name ?? item.id, languages: item.languages, description: item.description, homepage: item.homepage,
@@ -200,7 +208,7 @@ export class LanguageManager {
         options: definition ? { automaticInstall:options?.automaticInstall,role: registry.role(item.id, resource ?? projectRoot), formatting: options?.formatting, scope: projectRoot, args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
           initializationOptions: serverProfile(definition, options).initializationOptions ?? {}, root: options?.root } : undefined,
         sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
-          const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
+          const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, issue: info.issue, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
         }) };
     });
     entries.push({ id: 'notebook-python', name: 'Notebook Python', languages: ['python'],
@@ -404,11 +412,17 @@ export class LanguageManager {
       const definition = validateLanguageDefinition(JSON.parse(await readFile(result.filePaths[0], 'utf8')));
       await this.changed(() => this.registry.add(definition)); return true;
     });
-    ipcMain.handle('language:homepage', async (event, id: string) => {
+    ipcMain.handle('language:homepage', async (event, id: string, runtime?: string) => {
       state(event);
-      const entry = languageCatalog.find(item => item.id === id);
-      if (!entry || !/^https?:\/\//.test(entry.homepage)) throw Error('No installation page is available.');
-      await shell.openExternal(entry.homepage);
+      // Only pages from the shipped tables are opened; a renderer cannot supply a URL.
+      const page = runtime === undefined ? languageCatalog.find(item => item.id === id)?.homepage
+        : typeof runtime === 'string' && Object.hasOwn(runtimeHelp, runtime) ? runtimeHelp[runtime] : undefined;
+      if (!page || !/^https?:\/\//.test(page)) throw Error('No installation page is available.');
+      await shell.openExternal(page);
+    });
+    ipcMain.handle('language:allow-download', (event, id: string) => {
+      state(event);
+      return this.changed(() => this.registry.allowDownload(id));
     });
     let drained = false;
     app.on('will-quit', event => {
@@ -487,6 +501,26 @@ export class LanguageManager {
     let launch;
     let prepared: PreparedLanguageServer | undefined;
     let plan: AnalysisPlan | undefined;
+    let runtime: ToolRuntime | undefined;
+    const named = () => ({ id: support.server, name: definition.name });
+    // A connection that cannot be prepared reports why before the request is rejected,
+    // so the document shows the cause and its repair instead of a bare error.
+    const reject = (message: string, issue: LanguageIssue): never => {
+      if (pending.get(document.id) === opening) this.emit(owner, { type: 'status', state: 'failed', message, issue, server: named(), documents: [{ id: document.id, generation: document.generation }] });
+      throw Error(message);
+    };
+    const prepare = (environment: NodeJS.ProcessEnv) => {
+      const target = named();
+      return this.provisioner.prepare(definition, support.languageId, root, environment,
+        { ...this.registry.options(support.server, file), automaticInstall: this.registry.automaticInstall(support.server, file) }, message => {
+          if (current()) this.emit(owner, { type: 'status', state: 'starting', preparing: true, message, server: target, documents: [{ id: document.id, generation: document.generation }] });
+        }).catch(error => {
+          if (error instanceof AutomaticDownloadsDisabled || !current()) throw error;
+          return reject(String(error instanceof Error ? error.message : error), preparationIssue(error, false));
+        });
+    };
+    const ranked = <T extends { server: string; languageId: string }>(items: T[]) => [...items].sort((a, b) =>
+      this.provisioner.rank(this.registry.definition(a.server), a.languageId) - this.provisioner.rank(this.registry.definition(b.server), b.languageId));
     const analysisRevision = this.analysisRevisions.get(root) ?? 0;
     const current = () => analysisRevision === (this.analysisRevisions.get(root) ?? 0) && pending.get(document.id) === opening && this.owners.get(state.webContentsId) === owner
       && !state.window.isDestroyed() && !state.window.webContents.isDestroyed() && owns()
@@ -506,15 +540,13 @@ export class LanguageManager {
           })).filter((candidate): candidate is typeof support => !!candidate);
           if (revision !== this.discovery.generation) continue;
           if (!current()) throw Error('Language document closed or configuration changed during adapter selection.');
-          if (zed.length && candidates.length > 1 && !this.registry.defaultServer(support.languageId, file)) return { unavailable: 'selection-needed' as const };
           if (zed.length) {
-            support = zed[0]; definition = this.registry.definition(support.server); root = rootFor(definition);
+            // Several tools can serve a language with no declared default. The language's
+            // own order decides; the person can still choose another tool for the project.
+            support = ranked(zed)[0]; definition = this.registry.definition(support.server); root = rootFor(definition);
             const inherited = this.discovery.environment.peek().env;
             const environment = await this.provisioner.projectEnvironment?.(root, inherited) ?? inherited;
-            prepared = await this.provisioner.prepare(definition, support.languageId, root, environment,
-              { ...this.registry.options(support.server, file), automaticInstall: this.registry.automaticInstall(support.server, file) }, message => {
-                if (current()) this.emit(owner, { type: 'status', state: 'starting', message, server: { id: support.server, name: definition.name }, documents: [{ id: document.id, generation: document.generation }] });
-              });
+            prepared = await prepare(environment);
             if (revision !== this.discovery.generation) continue;
             if (!current()) throw Error('Language document closed or configuration changed during Zed preparation.');
             const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
@@ -534,25 +566,27 @@ export class LanguageManager {
               return !this.registry.isCustom(d.id) && !path.isAbsolute(this.registry.executable(d.id,this.discovery.environment.peek().env))
                 && this.provisioner.canPrepare(d);
             }).sort((a,b) => this.provisioner.rank(this.registry.definition(a.server),a.languageId) - this.provisioner.rank(this.registry.definition(b.server),b.languageId));
-            if (installable.length > 1 && !this.registry.defaultServer(support.languageId, file)) return { unavailable: 'selection-needed' as const };
             if (installable.length) {
               support = installable[0]; definition = this.registry.definition(support.server); root = rootFor(definition);
               const environment = this.discovery.environment.peek().env;
-              prepared = await this.provisioner.prepare(definition,support.languageId,root,environment,{ ...this.registry.options(support.server,file), automaticInstall: this.registry.automaticInstall(support.server, file) },message => {
-                if (current()) this.emit(owner, {type:'status',state:'starting',message,server:{id:support.server,name:definition.name},documents:[{id:document.id,generation:document.generation}]});
-              });
+              prepared = await prepare(environment);
               if (!current()) throw Error('Language document closed or configuration changed during installation.');
               const {NODE_OPTIONS:_node,NODE_PATH:_path,ELECTRON_RUN_AS_NODE:_electron,...env} = environment;
               launch = {executable:prepared.executable,args:prepared.args,env:{...env,...prepared.env}};
               break;
             }
           }
-          if (installed.length !== 1 || ambiguous) {
-            if (candidates.length === 1 && (!this.registry.automatic(support.server)
-              || path.isAbsolute(this.registry.executable(support.server, this.discovery.environment.peek().env))) && !ambiguous && !installed.length)
-              throw Error(`${definition.name}: Executable not found. Refresh external executable candidates or choose an executable in Language Support.`);
-            return { unavailable: installed.length > 1 || ambiguous ? 'selection-needed' as const : 'missing' as const };
+          if (!installed.length || ambiguous) {
+            const selected = this.registry.executable(support.server, this.discovery.environment.peek().env);
+            const help = /^https?:\/\//.test(languageCatalog.find(item => item.id === support.server)?.homepage ?? '');
+            if (candidates.length === 1 && (!this.registry.automatic(support.server) || path.isAbsolute(selected)) && !ambiguous)
+              reject(`${definition.name}: Executable not found. Refresh external executable candidates or choose an executable in Language Support.`,
+                path.isAbsolute(selected) ? { kind: 'executable', path: selected, missing: true, automatic: this.registry.canDetect(support.server) && !this.registry.isCustom(support.server) } : { kind: 'no-installer', help });
+            // Which of several copies of one program to run stays the person's choice.
+            return ambiguous ? { unavailable: 'selection-needed' as const, server: named() } : { unavailable: 'missing' as const, issue: { kind: 'no-installer' as const, help }, server: named() };
           }
+          // Several installed tools: the language's own order decides, as it does for managed ones.
+          installed.sort((a, b) => this.provisioner.rank(this.registry.definition(a.support.server), a.support.languageId) - this.provisioner.rank(this.registry.definition(b.support.server), b.support.languageId));
           support = installed[0].support;
           definition = this.registry.definition(support.server); root = rootFor(definition);
           const found = installed[0].found;
@@ -561,7 +595,7 @@ export class LanguageManager {
           break;
         } catch (error) {
           if (revision !== this.discovery.generation) continue;
-          if (error instanceof AutomaticDownloadsDisabled) return { unavailable: 'missing' as const, message: error.message };
+          if (error instanceof AutomaticDownloadsDisabled) return { unavailable: 'missing' as const, message: error.message, issue: { kind: 'downloads-off' as const }, server: named() };
           throw error;
         }
       }
@@ -580,6 +614,12 @@ export class LanguageManager {
         server = activeServer();
         if (!server && launch && definition.id === 'clangd') launch = this.contexts.launch(plan, launch, definition);
       }
+      if (!server && launch) {
+        // The tool may need a newer runtime than the project it analyzes.
+        runtime = await toolRuntime(launch);
+        if (!current()) throw Error('Language document closed or configuration changed while choosing a tool runtime.');
+        launch = runtime.launch; server = activeServer();
+      }
     } finally { if (pending.get(document.id) === opening) pending.delete(document.id); }
     const configuration = configurations.get(support.server)!;
     const owned = owner;
@@ -588,9 +628,16 @@ export class LanguageManager {
       const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch, this.registry.options(support.server, file)])).digest('hex').slice(0, 24);
       const key = `${support.server}:${root}:${fingerprint}`;
       if (!plan) throw Error('No analysis launch plan.');
-      const profile = prepared ? {...plan.profile,configuration:mergeLanguageSettings(prepared.settings,plan.profile.configuration),
+      const preparedProfile = prepared ? {...plan.profile,configuration:mergeLanguageSettings(prepared.settings,plan.profile.configuration),
         initializationOptions:mergeLanguageSettings(prepared.initializationOptions,plan.profile.initializationOptions)} : plan.profile;
+      // Explicit project settings win over the runtime Setdown kept for the project.
+      const runtimeSettings = projectRuntimeSettings(runtime?.project);
+      const profile = runtime?.project ? { ...preparedProfile, configuration: mergeLanguageSettings(runtimeSettings, preparedProfile.configuration),
+        initializationOptions: mergeLanguageSettings({ settings: runtimeSettings }, preparedProfile.initializationOptions) } : preparedProfile;
       const recoveryKey = `${state.webContentsId}:${support.server}:${root}`;
+      const pinned = prepared ? undefined : this.registry.options(support.server).executable;
+      const repair = this.registry.canDetect(support.server) && !this.registry.isCustom(support.server);
+      const runtimeFound = runtime?.found;
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
           // Versionless push diagnostics are best-effort observations, never used as edit versions.
@@ -600,14 +647,24 @@ export class LanguageManager {
       }, message => {
         const info = server && this.sessions.get(server);
         if (!info || !server) return;
-        info.state = 'failed';
-        const recovering = this.supervisor.schedule(recoveryKey, () => {
-          if (server && this.sessions.has(server) && this.owners.get(state.webContentsId) === owned)
-            void this.reconnect(owned, server).catch(error => console.warn('Language recovery failed', error));
-        });
-        info.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
-        this.emit(owned, { type: 'status', state: 'failed', message: info.message, recovery: { retrying: !!recovering, attempt: recovering?.attempt },
-          documents: [...owned.documents.values()].filter(binding => binding.server === server).map(({ id, generation }) => ({ id, generation })) });
+        const ended = server;
+        info.state = 'failed'; info.message = message;
+        // The process can still be writing its reason; classify once it has finished.
+        info.settling = (async () => {
+          const facts = await ended.failureFacts?.();
+          if (this.sessions.get(ended) !== info) return;
+          const found = facts ? sessionIssue({ ...facts, pinned, runtimeFound }) : { kind: 'crashed' as const };
+          const issue = info.issue = found.kind === 'executable' ? { ...found, automatic: repair } : found;
+          // A program that is not a language tool, or a missing runtime, ends the same way every time.
+          const repeats = issue.kind === 'executable' || issue.kind === 'runtime';
+          const recovering = repeats ? undefined : this.supervisor.schedule(recoveryKey, () => {
+            if (this.sessions.has(ended) && this.owners.get(state.webContentsId) === owned)
+              void this.reconnect(owned, ended).catch(error => console.warn('Language recovery failed', error));
+          });
+          info.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : repeats ? 'It will not start until its setup changes.' : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
+          this.emit(owned, { type: 'status', state: 'failed', message: info.message, issue, recovery: { retrying: !!recovering, attempt: recovering?.attempt },
+            documents: [...owned.documents.values()].filter(binding => binding.server === ended).map(({ id, generation }) => ({ id, generation })) });
+        })();
       }, profile, {
         filesChanged: paths => {
           if (!server || !this.sessions.has(server) || !plan?.inputs.some(input => paths.includes(input))) return;
@@ -618,7 +675,7 @@ export class LanguageManager {
           let resource = file;
           try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Invalid scopes use the session document. */ }
           const settings = this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
-          return mergeLanguageSettings(prepared?.settings,plan!.configuration(settings));
+          return mergeLanguageSettings(runtimeSettings,prepared?.settings,plan!.configuration(settings));
         },
         refresh: feature => this.emit(owned, { type: 'refresh', feature,
           documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
@@ -642,6 +699,7 @@ export class LanguageManager {
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
       });
       for (const evidence of plan.context.evidence) server.context?.set(evidence.split(': ')[0], evidence.split(': ').slice(1).join(': '));
+      if (runtime?.note) server.context?.set('Tool runtime', runtime.note);
       this.items.set(server, new ServerItems());
       this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
       owner.servers.set(key, server);
@@ -657,7 +715,7 @@ export class LanguageManager {
     const binding = { languageId: wireLanguage, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', server: { id: support.server, name: definition.name }, documents: [{ id: binding.id, generation: binding.generation }] });
-    await server.ready.catch(error => { throw Error(this.sessions.get(server)?.message ?? String(error)); });
+    await server.ready.catch(async error => { const info = this.sessions.get(server); await info?.settling; throw Error(info?.message ?? String(error)); });
     const capabilities = server.capabilities.forDocument(uri, wireLanguage);
     if (this.owners.get(state.webContentsId) !== owner || owner.documents.get(document.id) !== binding)
       throw new Error('Language document closed during initialization.');

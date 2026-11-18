@@ -195,7 +195,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(management).toBeVisible();
     await management.getByRole('button', { name: 'Back to language settings' }).click();
-    await management.getByRole('button', { name: /^Installation management/ }).click();
+    await management.getByRole('button', { name: /^Advanced/ }).click(); await management.getByRole('button', { name: /^Installation management/ }).click();
     await management.getByRole('searchbox').fill('clangd');
     await management.locator('[data-server-id="clangd"]').click();
     await management.getByText('Connection settings', { exact: true }).click();

@@ -1,16 +1,21 @@
-import type { LanguageCatalogEntry, LanguageRecovery, LanguageServerMessage, LanguageServerOptions } from '../../protocol/language';
+import type { LanguageCatalogEntry, LanguageIssue, LanguageRecovery, LanguageServerMessage, LanguageServerOptions } from '../../protocol/language';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 /** Small renderer store shared by editor groups. It has no Monaco/runtime imports. */
 export type ProviderSupport = {
   id: string; name: string; kind: 'builtin' | 'server';
   state: 'starting' | 'ready' | 'failed' | 'missing' | 'selection-needed' | 'off';
   role?: 'primary' | 'supplementary'; recovery?: LanguageRecovery;
+  /** Why the tool is not working, and whether it is being set up for the first time. */
+  issue?: LanguageIssue; preparing?: boolean;
   messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; diagnosticCount?: number; features: string[]; checks: string; message?: string; context?: string[];
 };
 export type DocumentSupport = {
   id: string; resource: string; language: string; name: string; path: string;
   providers: ProviderSupport[]; choices: { id: string; name: string }[];
   setLanguage(id: string): void; restart(server?: string): Promise<void>; problems(): void;
+  /** Repairs for a tool's setup. Each reconnects the document when it succeeds. */
+  useAutomatic(server: string): Promise<void>; allowDownload(server: string): Promise<void>; chooseExecutable(server: string): Promise<void>;
+  openHelp(server: string, runtime?: string): Promise<void>;
   answerMessage(server: string, request: string, action?: number): Promise<void>;
   environment(): Promise<DocumentAnalysis>; selectEnvironment(selection: AnalysisSelection): Promise<DocumentAnalysis>;
   prepareEnvironment(): Promise<{ output: string }>; cancelPreparation(): Promise<void>;

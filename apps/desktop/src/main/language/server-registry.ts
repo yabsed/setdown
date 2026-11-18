@@ -336,6 +336,11 @@ export class ServerRegistry {
     if (this.definition(id).launch.kind === 'bundledNode') throw Error('This server uses the bundled runtime.');
     this.data.servers[id] = { ...this.storedOptions(id), executable, automaticExecutable: false }; this.save();
   }
+  /** Lets this one tool be prepared while the app default keeps downloads off. */
+  allowDownload(id: string): void {
+    this.definition(id);
+    this.data.servers[id] = { ...this.storedOptions(id), automaticInstall: true }; this.save();
+  }
   useAutomatic(id: string): void {
     if (!this.canDetect(id)) throw Error('This connection has no automatic executable profile.');
     this.data.servers[id] = { ...this.storedOptions(id), executable: undefined, automaticExecutable: true }; this.save();

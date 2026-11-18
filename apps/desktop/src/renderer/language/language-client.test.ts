@@ -36,7 +36,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
     change: vi.fn(async () => {}), close: vi.fn(), saved: vi.fn(), cancel: vi.fn(), restart: vi.fn(async () => {}), configuration: vi.fn(async () => []), catalog: vi.fn(async () => ({ release: '', entries: [] })),
     rescan: vi.fn(async () => {}), useAutomatic: vi.fn(async () => {}), selectCandidate: vi.fn(async () => {}),
     setEnabled: vi.fn(async () => {}), setAutomaticInstall: vi.fn(async () => {}), setLanguageDefault: vi.fn(async () => {}), chooseExecutable: vi.fn(async () => false), configure: vi.fn(async () => {}),
-    addConnection: vi.fn(async () => false), importDefinition: vi.fn(async () => false), remove: vi.fn(async () => {}), openHomepage: vi.fn(async () => {}),
+    addConnection: vi.fn(async () => false), importDefinition: vi.fn(async () => false), remove: vi.fn(async () => {}), openHomepage: vi.fn(async () => {}), allowDownload: vi.fn(async () => {}),
     request: vi.fn(async () => null), onEvent: callback => { event = callback; return () => {}; },
   };
   const client = new LanguageClient(api, { port, route: file => languageSupport(file, routes), prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn() });

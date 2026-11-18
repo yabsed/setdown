@@ -39,22 +39,30 @@ IME and latency guarantees and tolerances remain unchanged.
 
 ## Guarantees and ownership
 
-Language Support's left sidebar is app settings: download policy, language
-defaults, custom connections and advanced installation management. Home does not
-scan executables or start tools. Runtime status, environment selection, output and
-restart belong to the owning document's Code support. A language without a primary
+Language Support's left sidebar is app settings: download policy, tools that need
+attention, tools that are ready, and, under Advanced, language defaults, custom
+connections and installation management. Home does not scan executables or start
+tools; its lists come from shipped tools, receipts Setdown wrote, and live
+sessions. Runtime status, environment selection, output and restart belong to the
+owning document's Code support. Its first step states one cause-specific sentence
+and action; Restart is offered only for a tool that had been working, and a cause
+that repeats identically (a chosen program that is not a language tool, a missing
+or outdated runtime) is not retried. A language without a primary
 analyzer (including Make) retains grammar/editing support without borrowing an
 environment from a disabled supplementary profile. App defaults preserve explicit
 project choices and unaffected live sessions; resetting a project to the app
 default preserves shared options. Global changes must preserve model identity,
-unsaved text and Undo. `language-manager.test.ts`, `server-registry.test.ts`,
-`language-provisioner.test.ts` and `language/document-analysis-ui.spec.ts` cover
+unsaved text and Undo. `language-manager.test.ts`, `language-issue.test.ts`,
+`tool-runtime.test.ts`, `server-registry.test.ts`, `language-provisioner.test.ts`,
+`document-presentation.test.ts` and `language/document-analysis-ui.spec.ts` cover
 these guarantees; `language/language-support.spec.ts` retains real crash recovery
 and restart through the document controls. Existing preview timing, native capture
 and focus/IME guarantees remain unchanged.
 
 Automatic connections supported by a Zed adapter resolve through that adapter
-before any global executable metadata lookup. Project environment capture uses
+before any global executable metadata lookup. The identifier an extension gives
+its server is never looked up on PATH as a program. Several tools without a
+declared default start the one the language ranks first instead of asking. Project environment capture uses
 Zed's shell implementation; managed command reuse must not hide a newly available
 project toolchain. Download policy remains effective for native and WASI installers.
 The global list distinguishes managed installations from unverified executable

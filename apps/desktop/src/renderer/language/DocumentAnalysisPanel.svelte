@@ -19,13 +19,12 @@
   const support = $derived.by(() => { revision; return documentSupport.current(target); });
   const provider = $derived(support?.providers.find(item => item.id === selectedServer));
   const context = $derived(analysis.context);
-  const summary = $derived(presentSupport(support?.providers ?? [], context));
+  const summary = $derived(presentSupport(support?.providers ?? [], context, support?.name));
   const active = $derived(support?.providers.find(p => p.kind === 'server' && p.role !== 'supplementary' && p.state === 'ready'));
   const hasPrimary = $derived(context?.servers.some(server => server.role === 'primary'));
-  const needsProviderChoice = $derived(hasPrimary && (context?.analysisSelection?.mode === 'off' || support?.providers.some(p => p.state === 'selection-needed' || p.state === 'missing')));
   const local = $derived(support?.providers.find(p => p.kind === 'builtin' && p.state === 'ready'));
   const environment = $derived(context?.choices.find(choice => choice.id === context.selected));
-  const title = $derived(({ summary: 'Code support', details: 'Document analysis', language: 'Document language', environment: context?.label ?? 'Project environment', provider: 'Choose analysis tool', tool: provider?.name ?? 'Analysis tool', settings: 'Project connection settings', output: 'Server output' })[page]);
+  const title = $derived(({ summary: support?.name ?? 'Code support', details: 'Document analysis', language: 'Document language', environment: context?.label ?? 'Project environment', provider: 'Choose analysis tool', tool: provider?.name ?? 'Analysis tool', settings: 'Project connection settings', output: 'Server output' })[page]);
   onMount(() => {
     page = initialPage; onpagechange(page);
     controller = new DocumentAnalysisController(target, value => analysis = value);
@@ -37,20 +36,42 @@
     });
     void controller.refresh();
     void tick().then(() => heading?.focus());
-    return () => { off(); controller.dispose(); };
+    return () => { off(); controller.dispose(); clearTimeout(repairTimer); };
   });
   async function navigate(next: AnalysisPage) {
     page = next; onpagechange(next); error = ''; await tick(); heading?.focus();
   }
   async function select(value: AnalysisSelection) { if (await controller.select(value)) await navigate('summary'); }
   async function perform(action: () => Promise<unknown>) { try { await action(); } catch (reason) { error = String(reason); } }
+  /** A repair runs where the problem is shown; none of them sends the person to another panel. */
   function repair(action: SupportAction) {
-    if (action.kind === 'restart') void perform(async () => { await documentSupport.current(target)?.restart(action.server); await controller.refresh(); });
-    else if (action.kind === 'details' && action.server) inspectProvider(action.server);
-    else void navigate(action.kind);
+    const current = () => documentSupport.current(target), server = action.server;
+    const apply = (task: () => Promise<unknown> | undefined) => void perform(async () => {
+      repairing = true; clearTimeout(repairTimer); repairTimer = setTimeout(() => repairing = false, 6000);
+      await task(); await controller.refresh();
+    });
+    if (action.kind === 'restart') apply(() => current()?.restart(server));
+    else if (action.kind === 'automatic' && server) apply(() => current()?.useAutomatic(server));
+    else if (action.kind === 'install' && server) apply(() => current()?.allowDownload(server));
+    else if (action.kind === 'locate' && server) apply(() => current()?.chooseExecutable(server));
+    else if (action.kind === 'help' && server) void perform(async () => current()?.openHelp(server, action.runtime));
+    else if (action.kind === 'manage' && server && support) onmanage(support.language, server);
+    else if (action.kind === 'log' && server) { selectedServer = server; direct = page === 'summary'; void navigate('output'); }
+    else if (action.kind === 'details' && server) inspectProvider(server, page === 'summary');
+    else if (action.kind === 'environment' || action.kind === 'provider' || action.kind === 'details') void navigate(action.kind);
   }
-  function back() { if (page === 'summary') onclose(); else void navigate(page === 'settings' || page === 'output' ? 'tool' : page === 'tool' ? 'details' : 'summary'); }
-  function inspectProvider(id: string) { selectedServer = id; void navigate('tool'); }
+  // Between a repair and the tool's next status the document briefly has no tool at all.
+  // That moment is the repair in progress, not a document without checks. Any status the
+  // tool reports is shown instead; the flag only covers the gap and expires on its own.
+  let repairing = $state(false), repairTimer: ReturnType<typeof setTimeout> | undefined;
+  // A log or tool opened from the summary returns to the summary, not through every step between.
+  let direct = false;
+  function back() {
+    if (page === 'summary') onclose();
+    else if (direct && (page === 'output' || page === 'tool')) { direct = false; void navigate('summary'); }
+    else void navigate(page === 'settings' || page === 'output' ? 'tool' : page === 'tool' ? 'details' : 'summary');
+  }
+  function inspectProvider(id: string, fromSummary = false) { selectedServer = id; direct = fromSummary; void navigate('tool'); }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape belongs to the inspection and its focused child controls.) -->
@@ -120,23 +141,28 @@
       <div class="analysis-notice" class:issue={summary.tone === 'warning'}>
         <strong>{summary.title}</strong>
         {#if summary.description}<p>{summary.description}</p>{/if}
-        {#if summary.action && !(page === 'details' && summary.action.kind === 'details' && !summary.action.server)}<button disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}
+        <div class="notice-actions">
+          {#if summary.action && !(page === 'details' && summary.action.kind === 'details' && !summary.action.server)}<button disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}
+          {#if summary.secondary}<button class="link" disabled={analysis.busy} onclick={() => repair(summary.secondary!)}>{summary.secondary.label}</button>{/if}
+        </div>
       </div>
+    {:else if page === 'summary'}
+      <p class="result">{#if summary.working}<span aria-hidden="true">✓</span> Working{:else if repairing || summary.tone === 'busy'}Starting…{:else}{summary.description}{/if}{#if summary.action && !repairing} <button class="link" disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}</p>
     {/if}
     <div class="rows">
-      <button class="analysis-row" onclick={() => navigate('language')}><span>Document language</span><strong>{support.name} <span aria-hidden="true">›</span></strong></button>
+      <button class="analysis-row" onclick={() => navigate('language')}><span>Language</span><strong>{support.name} <span aria-hidden="true">›</span></strong></button>
       {#if context}
-        <button class="analysis-row" onclick={() => navigate('details')} title={context.root}><span>Project</span><strong>{projectLabel(context.root)} <span aria-hidden="true">›</span></strong></button>
+        {#if page === 'details' || summary.action?.kind === 'environment'}<button class="analysis-row" onclick={() => navigate('details')} title={context.root}><span>Project</span><strong>{projectLabel(context.root)} <span aria-hidden="true">›</span></strong></button>{/if}
         {#if context.kind}<button class="analysis-row" onclick={() => navigate('environment')}><span>{context.label}</span><strong>{environment?.name ?? 'Choose…'} <span aria-hidden="true">›</span></strong></button>{/if}
       {/if}
     </div>
-    {#if hasPrimary && context?.analysisSelection}
-      <p class="muted">{context.analysisSelection.source === 'project' ? 'Analysis selection: this project' : 'Analysis selection: app default'}{context.servers.find(server => server.selected) ? ` · ${context.servers.find(server => server.selected)!.name}` : ''}</p>
-    {/if}
-    {#if active}<p class="result">{active.name} · {providerStatus(active)}<br />{analysisResult(active)}</p>
-    {:else if local}<p class="result">{local.name} · {analysisResult(local)}</p>{/if}
-    {#if summary.description && !summary.title}<p class="muted">{summary.description}</p>{/if}
     {#if page === 'details'}
+      {#if hasPrimary && context?.analysisSelection}
+        <p class="muted">{context.analysisSelection.source === 'project' ? 'Analysis selection: this project' : 'Analysis selection: app default'}{context.servers.find(server => server.selected) ? ` · ${context.servers.find(server => server.selected)!.name}` : ''}</p>
+      {/if}
+      {#if active}<p class="result">{active.name} · {providerStatus(active)}<br />{analysisResult(active)}</p>
+      {:else if local}<p class="result">{local.name} · {analysisResult(local)}</p>{/if}
+      {#if summary.description && !summary.title}<p class="muted">{summary.description}</p>{/if}
       <p class="path">Document · {support.path}</p>
       {#if context}
         <section class="detail-block"><h4>Project environment</h4><p class="path">{context.root}</p><p class="muted">{context.rootReason}</p>
@@ -155,9 +181,8 @@
       <button onclick={() => onmanage(support!.language)}>Manage analysis tools…</button>
     {/if}
     <footer>
-      <button onclick={() => { documentSupport.current(target)?.problems(); onclose(); }}>Problems</button>
-      {#if page === 'summary'}<button onclick={() => navigate('details')}>Details…</button>{/if}
-      {#if page === 'summary' && needsProviderChoice}<button onclick={() => navigate('provider')}>{context?.analysisSelection?.mode === 'off' ? 'Change analysis setting…' : 'Choose analysis tool…'}</button>{/if}
+      {#if page === 'summary'}<button class="link" onclick={() => navigate('details')}>More…</button>
+      {:else}<button onclick={() => { documentSupport.current(target)?.problems(); onclose(); }}>Problems</button>{/if}
     </footer>
   {/if}
   {#if analysis.busy}<p class="muted" role="status">{analysis.preparing ? 'Configuring project…' : 'Updating project environment…'}</p>{/if}
@@ -180,10 +205,13 @@
   .analysis-row > span { color: var(--app-muted-text); max-width: 100%; overflow-wrap: anywhere; }
   .analysis-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; text-align: right; }
   .analysis-notice { padding: 10px; margin: 0 0 12px; border: 1px solid var(--app-border); border-radius: 4px; }
-  .analysis-notice button { margin-top: 6px; } .issue { color: var(--app-warning-text); }
+  .notice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; } .issue { color: var(--app-warning-text); }
+  .analysis-notice p { margin: 4px 0 0; }
+  button.link { border: 0; padding: 2px 4px; text-decoration: underline; text-underline-offset: 2px; }
+  .result { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   p { margin: 8px 0; overflow-wrap: anywhere; } .muted, .path, .provider-title > span { color: var(--app-muted-text); font-size: 11px; }
   .result { margin: 12px 4px; } .detail-block { border-top: 1px solid var(--app-border); padding: 12px 0; }
   details { margin: 10px 0; } summary { cursor: pointer; }
   .actions, footer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  footer { justify-content: space-between; }
+  footer { justify-content: flex-end; }
 </style>

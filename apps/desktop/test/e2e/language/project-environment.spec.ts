@@ -52,7 +52,8 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     const choice = await environment.locator('option').filter({ hasText: '.venv · Project' }).getAttribute('value');
     expect(choice).toBeTruthy(); await environment.selectOption(choice!);
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
-    await expect(panel).toContainText('Results received for this open file');
+    await expect(panel).toContainText('Working');
+    await panel.getByRole('button', { name: 'More…', exact: true }).click(); await expect(panel).toContainText('Results received for this open file'); await panel.getByRole('button', { name: 'Back to code support' }).click();
     await expect(panel).not.toContainText(python);
     await panel.getByRole('button', { name: /^Python environment/ }).click();
     await expect(panel).toContainText(python);
@@ -68,7 +69,8 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     await disposeApplication(application); application = await launch(file, config); page = await application.firstWindow();
     await page.getByRole('button', { name: /Language status:/ }).click();
     const reopened = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(reopened).toContainText('Results received for this open file', { timeout: 20_000 });
+    await expect(reopened).toContainText('Working', { timeout: 20_000 });
+    await reopened.getByRole('button', { name: 'More…', exact: true }).click(); await expect(reopened).toContainText('Results received for this open file', { timeout: 20_000 });
     await reopened.getByRole('button', { name: /^Python environment/ }).click();
     await expect(reopened).toContainText(python);
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
@@ -108,7 +110,8 @@ test('C++ build selection changes the real clangd flags and repairs unsaved sour
     const right = await environment.locator('option').filter({ hasText: /^builddir ·/ }).getAttribute('value');
     await environment.selectOption(right!);
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
-    await expect(panel).toContainText('Results received for this open file');
+    await expect(panel).toContainText('Working');
+    await panel.getByRole('button', { name: 'More…', exact: true }).click(); await expect(panel).toContainText('Results received for this open file'); await panel.getByRole('button', { name: 'Back to code support' }).click();
     await expect(page.locator('.view-lines')).toContainText('unsaved configuration test');
     await page.screenshot({ path: testInfo.outputPath('cpp-build-environment.png') });
     await panel.getByRole('button', { name: 'Close language status' }).click();
@@ -137,7 +140,7 @@ test('TypeScript SDK selection and basic editing apply to this project; service 
     await expect(panel).toContainText(path.join(project, 'node_modules/typescript/lib/tsserver.js'));
     await panel.getByRole('button', { name: 'Back to code support' }).click();
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
-    await panel.getByRole('button', { name: 'Details…', exact: true }).click();
+    await panel.getByRole('button', { name: 'More…', exact: true }).click();
     const details = panel;
     await details.getByRole('button', { name: /^TypeScript and JavaScript/ }).click();
     await details.getByRole('button', { name: /^Restart TypeScript/ }).click();
@@ -147,7 +150,7 @@ test('TypeScript SDK selection and basic editing apply to this project; service 
     await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('off');
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
     await expect(details).toContainText('Analysis is turned off for this project. Local checks remain available.');
-    await details.getByRole('button', { name: 'Change analysis setting…', exact: true }).click();
+    await details.getByRole('button', { name: 'Change…', exact: true }).click();
     await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('typescript-language-server');
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await page.screenshot({ path: testInfo.outputPath('typescript-sdk.png') });
@@ -173,7 +176,8 @@ test('Configure project generates and selects a real CMake database only on the 
     await expect(panel).toContainText('Configuration output', { timeout: 30_000 });
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
     await panel.getByRole('button', { name: 'Back to code support' }).click();
-    await expect(panel).toContainText('Results received for this open file');
+    await expect(panel).toContainText('Working');
+    await panel.getByRole('button', { name: 'More…', exact: true }).click(); await expect(panel).toContainText('Results received for this open file'); await panel.getByRole('button', { name: 'Back to code support' }).click();
     const preferences = JSON.parse(await readFile(path.join(config, 'Setdown/project-analysis.json'), 'utf8'));
     const database = JSON.parse(await readFile(preferences.projects[project].compilation, 'utf8'));
     expect(JSON.stringify(database)).toContain('CONFIGURED_VALUE=42');
@@ -227,13 +231,85 @@ test('repeated initialization crashes stop automatic recovery and leave an actio
   try {
     const page = await application.firstWindow(); await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(panel).toContainText('Automatic recovery paused after repeated failures', { timeout: 25_000 });
+    // Three reconnections follow the first start. What remains is one sentence with the
+    // log and another attempt beside it; Restart is not offered for a tool that never worked.
+    await expect(panel).toContainText("can't start.", { timeout: 25_000 });
+    await expect(panel.getByRole('button', { name: 'Show log', exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: /^Restart/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Language status: .*, Not working/ })).toBeVisible();
     expect((await readFile(log, 'utf8')).trim().split('\n')).toHaveLength(4);
-    await panel.getByRole('button', { name: 'Restart Crashing fixture', exact: true }).click();
+    await panel.getByRole('button', { name: 'Try again', exact: true }).click();
     await expect.poll(async () => (await readFile(log, 'utf8')).trim().split('\n').length).toBe(5);
     await panel.getByRole('button', { name: 'Close language status' }).click();
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await page.keyboard.insertText('still_editable');
     await expect(page.locator('.view-lines')).toContainText('still_editable');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a chosen program that is not a language tool is not retried; the status and the sidebar offer automatic setup', async ({}, testInfo) => {
+  test.setTimeout(90_000);
+  const { root, project, config } = await fixture('setdown-project-wrong-program-');
+  const file = path.join(project, 'main.cpp'), settings = path.join(config, 'Setdown'), starts = path.join(root, 'starts');
+  const program = path.join(root, 'tools', 'bin', 'not-a-language-tool');
+  await mkdir(settings, { recursive: true }); await mkdir(path.dirname(program), { recursive: true });
+  await writeFile(file, 'int main() { return 0; }\n');
+  // The shape of a JVM chosen as the "java" language server: it prints its usage and ends.
+  await writeFile(program, `#!/bin/sh\necho start >> '${starts}'\necho 'Usage: not-a-language-tool [options]' >&2\nexit 1\n`, { mode: 0o755 });
+  await writeFile(path.join(settings, 'language-servers.json'), JSON.stringify({ version: 1,
+    servers: { clangd: { enabled: true, executable: program, automaticExecutable: false } }, preferred: {}, custom: [] }));
+  const application = await launch(file, config);
+  try {
+    const page = await application.firstWindow();
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    const status = page.getByRole('button', { name: /Language status:/ });
+    await expect(status).toHaveAccessibleName('Language status: C++, Not working', { timeout: 25_000 });
+    await status.click();
+    const panel = page.getByRole('dialog', { name: 'Current file language support' });
+    await expect(panel.getByRole('heading', { name: 'C++', exact: true })).toBeVisible();
+    await expect(panel).toContainText("C++ support can't start.");
+    await expect(panel).toContainText('It is set to run …/tools/bin/not-a-language-tool, which did not start as a language tool.');
+    // Running the same program again ends the same way: it ran once, and Restart is not offered.
+    await expect(panel.getByRole('button', { name: /^Restart/ })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Try again', exact: true })).toHaveCount(0);
+    await expect(panel).not.toContainText('Reconnecting');
+    expect((await readFile(starts, 'utf8')).trim().split('\n')).toHaveLength(1);
+    const repair = panel.getByRole('button', { name: 'Use automatic setup', exact: true });
+    expect((await repair.boundingBox())!.y).toBeLessThan((await panel.getByRole('button', { name: /^Language/ }).boundingBox())!.y);
+    await page.screenshot({ path: testInfo.outputPath('wrong-program-status.png') });
+    await panel.getByRole('button', { name: 'Show log', exact: true }).click();
+    await expect(panel).toContainText('Usage: not-a-language-tool [options]');
+    await panel.getByRole('button', { name: 'Back to code support' }).click();
+    await expect(repair).toBeVisible();
+    await panel.getByRole('button', { name: 'Close language status' }).click();
+    // The sidebar reports the same tool with the same sentence and the same repair.
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
+    const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
+    await expect(sidebar.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+    const attention = sidebar.locator('.attention[data-server-id="clangd"]');
+    await expect(attention).toContainText("clangd can't start."); await expect(attention).toContainText('Fix ›');
+    const ready = sidebar.locator('.ready-language').filter({ hasText: /^C\+\+$/ });
+    await expect(sidebar.locator('.ready-language').filter({ hasText: /^Python$/ })).toBeVisible(); await expect(ready).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('wrong-program-sidebar.png') });
+    await attention.click();
+    await expect(sidebar.locator('.issue-notice')).toContainText('not-a-language-tool, which did not start as a language tool.');
+    await sidebar.locator('.issue-notice').getByRole('button', { name: 'Use automatic setup', exact: true }).click();
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
+    // Once the tool runs, the next thing this project needs surfaces: its build configuration.
+    // It was not shown before, because no build configuration starts the wrong program.
+    await expect(status).toHaveAccessibleName('Language status: C++, Needs setup');
+    await status.click(); await expect(panel).toContainText('Choose a build folder or configure this project');
+    await expect(panel).not.toContainText("can't start"); await panel.getByRole('button', { name: 'Close language status' }).click();
+    await expect(sidebar.locator('.issue-notice')).toHaveCount(0);
+    await sidebar.getByRole('button', { name: 'Back to language settings' }).click();
+    await expect(sidebar.getByRole('heading', { name: 'Needs attention' })).toHaveCount(0);
+    // A language is ready once its tool runs, and opens its own page from there.
+    await ready.click(); await expect(sidebar.getByRole('combobox', { name: 'Default analysis tool' })).toBeVisible();
+    await page.keyboard.press('Escape'); await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
+    const saved = JSON.parse(await readFile(path.join(settings, 'language-servers.json'), 'utf8'));
+    expect(saved.servers.clangd?.executable).toBeUndefined();
+    expect((await readFile(starts, 'utf8')).trim().split('\n')).toHaveLength(1);
+    expect(await readFile(file, 'utf8')).toBe('int main() { return 0; }\n'); expect(errors).toEqual([]);
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });

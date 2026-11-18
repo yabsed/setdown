@@ -1,6 +1,6 @@
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
-import type { LanguageApi, LanguageConnection, LanguageMethod } from '../../protocol/language';
+import type { LanguageApi, LanguageConnection, LanguageIssue, LanguageMethod } from '../../protocol/language';
 import type { NotebookEntry } from './notebook-store';
 import { completion, completionDefaults, fromRange, markdown, marker, toPosition } from '../language/language-conversion';
 import { requestLanguageResult, languageItemHandles } from '../../protocol/language-request';
@@ -12,6 +12,9 @@ import { completionContext } from '../../protocol/language-completion';
 export class NotebookLanguage {
   private connection?: LanguageConnection;
   message = '';
+  /** Why analysis ended, once Setdown has stopped reconnecting it. */
+  issue?: LanguageIssue;
+  stopped = false;
   private failed = false;
   get analysisContext() { return this.connection?.analysis?.context; }
   get context() { return this.connection?.context ?? []; }
@@ -62,7 +65,7 @@ export class NotebookLanguage {
         const cell = this.entry.document.cells.find(cell => cell.id === event.cell);
         if (cell && cell.version === event.cellVersion) { this.diagnostics.set(cell.id, event.diagnostics); this.updateMarkers(); this.status('ready'); }
       }
-      if (event.type === 'status' && event.documents.some(doc => doc.id === this.id && doc.generation === this.generation)) { if (event.state === 'failed') { this.failed = true; this.message = `${event.message ?? 'Python analysis failed.'}${event.recovery?.retrying ? ` Retrying (${event.recovery.attempt}/3)…` : ''}`; this.diagnostics.clear(); this.updateMarkers(); } status(event.state); }
+      if (event.type === 'status' && event.documents.some(doc => doc.id === this.id && doc.generation === this.generation)) { if (event.state === 'failed') { this.failed = true; this.issue = event.issue; this.stopped = !event.recovery?.retrying; this.message = `${event.message ?? 'Python analysis failed.'}${event.recovery?.retrying ? ` Retrying (${event.recovery.attempt}/3)…` : ''}`; this.diagnostics.clear(); this.updateMarkers(); } status(event.state); }
     });
     this.disposables.push({ dispose: unsubscribe }, { dispose: events });
     this.installProviders = () => {
@@ -273,7 +276,7 @@ export class NotebookLanguage {
   }
   private async reconnect(): Promise<void> {
     if (this.disposed) return;
-    this.failed = false; this.message = '';
+    this.failed = false; this.message = ''; this.issue = undefined; this.stopped = false;
     for (const lease of this.leases.values()) lease.dispose(); this.leases.clear();
     const generation = this.generation = crypto.randomUUID(), version = this.version;
     this.port.close(this.id); this.connection = undefined; this.installProviders(); this.sent = 0; this.diagnostics.clear(); this.updateMarkers();

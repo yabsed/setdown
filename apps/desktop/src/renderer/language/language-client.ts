@@ -20,7 +20,7 @@ import { documentSupport, type ProviderSupport } from './document-support';
 import { problemsEmpty } from './document-presentation';
 import { featureNames } from '../../protocol/language-features';
 
-type Binding = { recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing' | 'selection-needed'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -92,7 +92,7 @@ export class LanguageClient {
         const affected = [...this.bindings.values()].filter(binding => event.documents.some(document => document.id === binding.id && document.generation === binding.generation));
         if (!affected.length) return;
         for (const binding of affected) {
-          binding.state = event.state; binding.message = event.message; binding.recovery = event.recovery;
+          binding.state = event.state; binding.message = event.message; binding.recovery = event.recovery; binding.issue = event.issue; binding.preparing = event.preparing;
           if (event.server) { this.setServer(binding, event.server.id); binding.serverName = event.server.name; }
         }
         this.publishStatus();
@@ -133,7 +133,7 @@ export class LanguageClient {
     this.bindings.set(model, binding);
     const fail = (error: unknown) => {
       if (this.bindings.get(model) !== binding) return;
-      binding.failed = true; binding.state = 'failed'; binding.message = String(error); binding.lease.clear();
+      binding.failed = true; binding.state = 'failed'; binding.preparing = false; binding.message = String(error); binding.lease.clear();
       for (const provider of binding.providers) provider.dispose(); binding.providers = []; this.publishStatus();
     };
     // A failed initialization is a language-service state, not a rejected
@@ -141,9 +141,11 @@ export class LanguageClient {
     binding.queue = connected.then(connection => {
       if (this.bindings.get(model) !== binding) return;
       if ('unavailable' in connection) {
-        binding.state = 'unavailable'; binding.unavailable = connection.unavailable; binding.message = connection.message; binding.listener.dispose(); this.publishStatus(); return;
+        binding.state = 'unavailable'; binding.unavailable = connection.unavailable; binding.message = connection.message; binding.issue = connection.issue; binding.preparing = false;
+        if (connection.server) { this.setServer(binding, connection.server.id); binding.serverName = connection.server.name; }
+        binding.listener.dispose(); this.publishStatus(); return;
       }
-      binding.uri = connection.uri; binding.state = 'ready'; binding.context = connection.context; binding.analysis = connection.analysis; binding.messages = connection.messages; binding.serverName = connection.name;
+      binding.uri = connection.uri; binding.state = 'ready'; binding.issue = undefined; binding.preparing = false; binding.context = connection.context; binding.analysis = connection.analysis; binding.messages = connection.messages; binding.serverName = connection.name;
       this.setServer(binding, connection.server ?? binding.serverId);
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
@@ -253,7 +255,7 @@ export class LanguageClient {
     for (const binding of bindings) this.options.documentStatus?.(binding.model, {
       id: binding.serverId, name: binding.serverName ?? binding.serverId, kind: 'server', state: binding.state === 'unavailable' ? binding.unavailable ?? 'missing' : binding.state,
       features: binding.failed ? [] : featureNames(binding.capabilities), checks: !binding.failed && binding.state === 'ready' && (binding.capabilities.diagnosticProvider || binding.hasDiagnostics) ? 'Server diagnostics' : 'none',
-      recovery: binding.recovery, message: binding.message, context: binding.context, analysis: binding.analysis, messages: binding.messages, diagnosticCount: binding.diagnostics.length,
+      recovery: binding.recovery, issue: binding.issue, preparing: binding.preparing, message: binding.message, context: binding.context, analysis: binding.analysis, messages: binding.messages, diagnosticCount: binding.diagnostics.length,
     });
     const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
     this.options.status(current?.state ?? (bindings.some(b => b.state === 'ready') ? 'ready' : 'unavailable'), current?.message);

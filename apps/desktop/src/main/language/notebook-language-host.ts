@@ -2,7 +2,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
-import type { LanguageCell, LanguageConnection, LanguageDocument, LanguageEvent, LanguageMethod } from '../../protocol/language';
+import type { LanguageCell, LanguageConnection, LanguageDocument, LanguageEvent, LanguageIssue, LanguageMethod } from '../../protocol/language';
 import type { WindowState } from '../windows/window-state';
 import { canonicalPath } from '../documents/file-system';
 import { ServerSession } from './server-session';
@@ -16,6 +16,7 @@ import { languageRoot } from './language-root';
 import { builtinLanguageServers } from './catalog/profiles';
 import { isPythonSettingsFile } from './python-project-settings';
 import { LanguageServiceSupervisor } from './language-supervisor';
+import { failureLine } from './language-issue';
 import { AnalysisContextService } from './analysis-context';
 
 type Cell = LanguageCell & { uri: string };
@@ -56,6 +57,8 @@ export class NotebookLanguageHost {
   private failed(session: Session, message: string): void {
     const key = this.key(session.state.webContentsId, session.document.id);
     if (this.sessions.get(key) !== session || session.phase === 'failed') return;
+    // The analyzer is shipped with the app: it either never answered or stopped while serving.
+    const issue: LanguageIssue = session.ready ? { kind: 'crashed' } : { kind: 'startup', ...(failureLine(message) ? { detail: failureLine(message) } : {}) };
     session.ready = false;
     const retry = this.supervisor.schedule(key, () => {
       if (this.sessions.get(key) === session) this.emit(session, { type: 'configuration', servers: ['notebook-python'],
@@ -63,7 +66,7 @@ export class NotebookLanguageHost {
     });
     this.status(session, 'failed', message);
     this.emit(session, { type: 'status', documents: [{ id: session.document.id, generation: session.document.generation }],
-      state: 'failed', message, recovery: { retrying: !!retry, attempt: retry?.attempt } });
+      state: 'failed', message, issue, recovery: { retrying: !!retry, attempt: retry?.attempt } });
   }
   private cells(uri: string, cells: LanguageCell[], epoch: string): Cell[] {
     return [{ id: '', version: 1, text: notebookPrelude }, ...cells].map(cell => ({ ...cell, text: notebookAnalysisSource(cell.text),

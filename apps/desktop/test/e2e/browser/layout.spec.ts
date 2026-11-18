@@ -476,8 +476,8 @@ test('language sidebar leaves the native web page live and Escape belongs to its
     await f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
     await f.page.getByRole('button', { name: 'Language Support', exact: true }).click();
     const panel = f.page.getByRole('region', { name: 'Language Support', exact: true });
-    await expect(panel.getByRole('button', { name: /^Language defaults/ })).toBeFocused();
-    await panel.getByRole('button', { name: /^Language defaults/ }).click();
+    await expect(panel.getByRole('button', { name: /^All languages/ })).toBeFocused();
+    await panel.getByRole('button', { name: /^All languages/ }).click();
     await expect(panel.getByRole('searchbox')).toBeFocused();
     await panel.getByRole('searchbox').fill('anything');
     const before = await evaluatePage<number>(f.app, f.origin, 'window.sidebarFrames');

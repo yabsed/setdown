@@ -521,6 +521,11 @@ export class MonacoEditor {
       },
       restart: async server => { requireCurrent(); retargetBuiltin(api, model, path); await this.options.language!.port.restart(path, server); this.languageClient?.retryUnavailable(); },
       answerMessage: async (server, request, action) => { requireCurrent(); await this.options.language!.port.answerMessage(path, server, request, action); },
+      // A setup change reconnects through the configuration broadcast; documents it does not reach retry here.
+      useAutomatic: async server => { requireCurrent(); await this.options.language!.port.useAutomatic(server); this.languageClient?.retryUnavailable(); },
+      allowDownload: async server => { requireCurrent(); await this.options.language!.port.allowDownload(server); this.languageClient?.retryUnavailable(); },
+      chooseExecutable: async server => { requireCurrent(); if (await this.options.language!.port.chooseExecutable(server)) this.languageClient?.retryUnavailable(); },
+      openHelp: async (server, runtime) => { requireCurrent(); await this.options.language!.port.openHomepage(server, runtime); },
       environment: async () => { requireCurrent(); return this.options.language!.port.environment(path, language); },
       selectEnvironment: async (selection) => { requireCurrent(); return this.options.language!.port.selectEnvironment(path, language, selection); },
       prepareEnvironment: async () => { requireCurrent(); return this.options.language!.port.prepareEnvironment(path, language); },

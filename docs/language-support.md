@@ -10,14 +10,30 @@ fall back to app settings.
 It stays beside the document; opening it does not cover or freeze a live web page.
 The Setdown button continues to toggle Folder Tools.
 
-The home screen contains the app's automatic-download policy, **Language defaults**,
-**Custom connections** and **Installation management**. Opening home or language
-defaults performs no executable scan, installation or server launch. No open
-project or document is needed. Ordinary file opening chooses the declared primary
-tool and prepares it automatically when downloads are allowed; users do not need
-to detect or register an imported Zed profile first. An explicit choice is
-authoritative even if that executable is unavailable. If no default distinguishes
-several primary tools, the document asks for a choice.
+The home screen is ordered by what a person asks, not by where a setting is stored:
+
+- **Set up language tools automatically** is the app's download policy.
+- **Needs attention** lists a tool whose session ended, under the name of its
+  language, with the same sentence the document shows. **Fix ›** opens that tool
+  with the same repair. The section is absent when nothing is wrong.
+- **Ready** lists the languages that have a tool Setdown ships, has already
+  prepared, or is running now. A language opens its own page.
+- **All languages…** searches every recognized language.
+- **Advanced** holds **Language defaults**, **Custom connections** and
+  **Installation management**.
+
+Opening home or language defaults performs no executable scan, installation or
+server launch. Ready is read from shipped tools and from the receipts Setdown
+wrote when it prepared a tool. No open project or document is needed. Ordinary
+file opening chooses the declared primary tool and prepares it automatically when
+downloads are allowed; users do not need to detect or register an imported Zed
+profile first. An explicit choice is authoritative even if that executable is
+unavailable. If no default distinguishes several primary tools, the language's
+own order decides and the tool starts; a person is asked only which of several
+copies of one program to run.
+
+The language list shows languages that have a usable tool or an explicit choice.
+A search reaches every language.
 
 Language defaults choose Automatic, a primary tool, or no project analysis. A
 project's explicit choice takes precedence; **Use app default** restores inheritance.
@@ -26,7 +42,7 @@ per-server preferences, explicit disabled states, executable paths and custom ID
 remain in the existing settings file. Restoring inheritance does not delete
 arguments or options shared by another language.
 
-Installation management is an advanced screen with **Provided and managed tools**,
+Installation management, under **Advanced**, has **Provided and managed tools**,
 **Needs attention**, **Custom connections**, **External executable candidates** and
 **Other tools**. The last group starts collapsed; search includes every group.
 Bundled tools and validated managed receipts are separated from files merely found
@@ -42,7 +58,8 @@ Select an installation to manage its global connection settings. Advanced
 arguments and profile information are under **Connection settings**; executable
 paths are under **Additional actions**. Runtime state, restart, project settings
 and output belong to the document's inspection. Escape clears a search, moves
-back one step, then closes the sidebar and restores its activity button.
+back one step (a list, then Advanced, then home), then closes the sidebar and
+restores its activity button.
 
 The advanced screen's **Refresh external executable candidates** action refreshes
 metadata, not a universal inventory or runtime health check. **Add server manually…**
@@ -76,20 +93,52 @@ controls analysis tools; it does not control syntax grammar package loading.
 ## Current file support
 
 The language button belongs to the document view in its editor group. Healthy
-project analysis shows only a neutral language name. Actual recovery, a limited
-environment or a required choice adds an indicator and an accessible status;
-narrow groups retain the indicator even when the explanatory text is hidden.
-The label never certifies that the document or project has been fully checked.
+project analysis shows only a neutral language name. Six other statuses exist:
+**Setting up…** (Setdown is fetching a tool), **Reconnecting…**, **Needs setup**,
+**Not working**, **Limited** (part of the support works) and **Needs answer**.
+Each adds an indicator and an accessible status; narrow groups retain the
+indicator even when the text is hidden. An ordinary start, local checks only and
+a language without a project analyzer show no text. The label never certifies
+that the document or project has been fully checked.
 
-The first step shows document language, the actual analysis root and environment,
-and a brief observation of results. Known environment repair or an exhausted
-server recovery comes first. A required environment choice takes precedence over
-restarting a process. Local-check failures and supplementary-provider failures
-remain visible independently of the primary provider.
+The first step is titled with the language. When something is wrong it states
+one sentence naming what the person lost ("Java support can't start."), the one
+action that addresses the cause, and at most one secondary action. The action
+follows the cause, not the state:
 
-**Details…** stays in the same editor group. It lists tools attached to that
-file; selecting one reveals its results, capabilities, recovery and messages.
-Project connection settings and output are separate steps. Longer inspection
+| Cause | Sentence | Action | Secondary |
+| --- | --- | --- | --- |
+| Setdown is fetching the tool | Setting up Java support… | none | none |
+| A download or installer failed | Couldn't download Java support. | Try again | none |
+| Downloads are off | Java support isn't installed. | Install Java support | none |
+| Setdown has no installer for it | Java support isn't installed. | How to install ↗ | I already have it… |
+| The chosen program does not start as a language tool | Java support can't start. | Use automatic setup | Show log |
+| The chosen program no longer exists | Java support can't start. | Use automatic setup | Choose program… |
+| A runtime is missing or too old | Java support needs Java 21 or newer. | How to install ↗ | Show log |
+| It never answered, cause unknown | Java support can't start. | Show log | Try again |
+| It worked, then stopped | Java support stopped unexpectedly. | Restart | Show log |
+
+**Restart** is offered only for a tool that had been working. A repair runs in
+the status itself: **Use automatic setup** clears the chosen program,
+**Install …** allows downloads for that tool, **I already have it…** opens a file
+chooser, and each reconnects the document. Help links open only addresses from
+the shipped catalog. When another tool still serves the document, the sentence
+names the tool instead of the language and adds that the other still works.
+
+A healthy document shows **✓ Working**. Below either form are the language row
+and, for a language with one, its environment row. A required environment choice
+takes precedence over restarting a process that stopped or failed for an unknown
+reason, and brings the project row with it. A tool that cannot start at all (a
+chosen program that is not a language tool, a missing runtime, a failed download)
+comes before the environment: no environment choice can start it.
+Local-check failures and supplementary-provider failures remain visible
+independently of the primary provider.
+
+**More…** stays in the same editor group. It adds the project, where the
+analysis selection comes from, the observation of results, **Problems**, and the
+tools attached to that file; selecting one reveals its results, capabilities,
+recovery and messages. Project connection settings and output are separate
+steps; a log opened from the first step returns to it. Longer inspection
 stays open while another editor group receives focus, and is bounded by its
 own group. Quick selection steps close on an outside click. Tab replacement,
 closing, path retargeting or language changes retire the old inspection; a
@@ -107,7 +156,7 @@ options instead of following live catalog refreshes.
 
 The left **Language Support** sidebar owns app defaults and advanced installation
 management, custom connections and import. It has no current-file
-mode. **Manage installation…** passes only the language/tool filter to it, not a
+mode; **Needs attention** reports tools, not the document in front. **Manage installation…** passes only the language/tool filter to it, not a
 project editing target. **Disable by default** is distinct from a document’s
 project analysis selection. Closing all code tabs leaves the catalog usable.
 
@@ -277,7 +326,12 @@ matching sessions for that root across subscribed windows.
 
 An unexpected server exit schedules reconnects after 1, 3 and 5 seconds, at most
 three attempts in a minute for each window/provider/root. A subsequent failure
-leaves a visible explanation and a manual restart action. Recovery resends current
+leaves the cause's sentence and its action. A session that ends is classified
+from what it recorded: whether it had answered `initialize`, its exit and its
+error output. Two causes repeat identically and are not retried: a program the
+person chose that ends before answering, and a runtime the tool itself reports
+as missing or too old. Their repair is a change of setup, so the status offers
+that instead of another attempt. Recovery resends current
 open buffers; it never replays editor commands or workspace edits. Requests from a
 server that offer choices appear in the status panel without a modal or focus
 change. Actions are bound to their original session and expire on shutdown or
@@ -340,8 +394,8 @@ and root markers:
   CMake and many others. Names such as `Dockerfile`, `CMakeLists.txt` and `go.mod`,
   path globs, compound suffixes and JSX/TSX language IDs are included.
 - The declared primary server connects or prepares automatically. Several
-  installed alternatives do not override a declared default. A genuinely ambiguous
-  primary choice is resolved in Code support. An explicit selection stays selected
+  installed alternatives do not override a declared default. Without a declared
+  default, the language's own server order decides. An explicit selection stays selected
   even if its executable disappears. Bundled Python and TypeScript services take precedence
   until the user chooses another primary server for those languages. Healthy sessions stay on their
   original server when new installations are discovered.
@@ -352,6 +406,17 @@ and root markers:
   formatting participation independently. Runtime-only profiles such as R/Julia explain the package that must
   be installed before enabling them. TCP bridges and download-capable launcher
   recipes are excluded from generated connections.
+- A Zed extension names its server with an identifier such as `java`, `cmake` or
+  `gem`. That identifier is not a program name and is never looked up on PATH:
+  the JVM is not a Java language server. The extension's adapter resolves and
+  prepares the real tool. A program chosen explicitly with **Choose executable…**
+  is still used as chosen.
+- A tool may need a newer runtime than the project it analyzes. eclipse.jdt.ls
+  states its minimum Java in its launcher. When the default JDK is older, Setdown
+  starts the tool on the closest installed JDK that satisfies it, found in the
+  known directories of system packages and version managers without executing
+  any candidate, and passes the project's own JDK as its default runtime. With no
+  suitable JDK the status says which Java is needed and which was found.
 - Entries without a connection profile still detect their installed executable.
   **Connect installed server…** asks for the missing language ID, extensions and
   stdio arguments. When there is one detected installation, it reuses that path
@@ -777,7 +842,9 @@ product contract. The implementation does not add a VS Code extension runtime.
 
 ## UI regression coverage
 
-`document-analysis-ui.spec.ts` checks the quiet summary, IME/Escape steps, two
+`document-analysis-ui.spec.ts` checks the short summary (language title, Working,
+no project row, Problems or selection source before **More…**), the home lists
+without a scan, the Advanced step, IME/Escape steps, two
 projects in separate groups, group-bounded inspection, explicit shared scope,
 project-only writes from an inspection while another group has focus, Undo, the
 independent catalog after tab closure, and an actionable missing-environment
@@ -786,7 +853,10 @@ coverage from the Problems summary. `project-environment.spec.ts` retains real P
 clangd, TypeScript, CMake, recovery and persistence checks through the new paths.
 `language-policy.spec.ts` retains local checks, supplementary tools and genuine
 project diagnostic coverage. Presentation/controller unit tests cover priority,
-partial failure, pending/stale observations, closure and obsolete async responses.
+one sentence and action per cause, partial failure, pending/stale observations,
+closure and obsolete async responses. `language-issue.test.ts` covers cause
+classification and `tool-runtime.test.ts` the JDK choice; `language-manager.test.ts`
+covers the extension-name lookup, ranked choice, and which causes are retried.
 These are included in the preview contract; its GUI and performance gates still
 apply to changes in these surfaces.
 

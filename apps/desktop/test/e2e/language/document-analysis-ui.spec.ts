@@ -24,9 +24,11 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await page.keyboard.insertText('unsaved = 42');
-    await status.click(); await popup.getByRole('button', { name: 'Details…', exact: true }).click();
+    await status.click(); await popup.getByRole('button', { name: 'More…', exact: true }).click();
     await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
     await popup.getByRole('combobox', { name: 'Analysis provider' }).selectOption('pyright');
+    // The choice returns to the short summary; where the choice is stored is one step further in.
+    await expect(popup).not.toContainText('Analysis selection'); await popup.getByRole('button', { name: 'More…', exact: true }).click();
     await expect(popup).toContainText('Analysis selection: this project');
     await popup.getByRole('button', { name: 'Close language status' }).click();
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -34,12 +36,17 @@ test('global language defaults preserve project choices, unsaved text and Make e
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
     await expect(sidebar.getByRole('button', { name: 'Refresh external executable candidates' })).toHaveCount(0);
+    // Home lists what is already usable from what Setdown ships and the receipts it wrote; nothing was searched for.
+    await expect(sidebar.locator('.ready-language[data-language-id="python"]')).toHaveText('Python');
     await expect(sidebar.locator('[data-server-id]')).toHaveCount(0);
+    await expect(sidebar.getByRole('heading', { name: 'Needs attention' })).toHaveCount(0);
+    for (const name of [/^Language defaults/, /^Custom connections/, /^Installation management/]) await expect(sidebar.getByRole('button', { name })).toHaveCount(0);
     await sidebar.getByRole('checkbox', { name: 'Download analysis tools automatically' }).uncheck();
     await page.screenshot({ path: testInfo.outputPath('global-language-settings.png') });
     await application.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click());
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
     await page.screenshot({ path: testInfo.outputPath('global-language-settings-dark.png') });
+    await sidebar.getByRole('button', { name: /^Advanced/ }).click();
     await sidebar.getByRole('button', { name: /^Language defaults/ }).click();
     await sidebar.getByRole('searchbox').fill('python');
     await sidebar.locator('[data-language-id="python"]').click();
@@ -57,8 +64,8 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await expect(popup).toContainText('Analysis is turned off by the app default.');
     await popup.getByRole('button', { name: 'Close language status' }).click();
     await open(path.join(alpha, 'main.py')); await status.click();
+    await popup.getByRole('button', { name: 'More…', exact: true }).click();
     await expect(popup).toContainText('Analysis selection: this project');
-    await popup.getByRole('button', { name: 'Details…', exact: true }).click();
     await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
     await popup.getByRole('combobox', { name: 'Analysis provider' }).selectOption('automatic');
     await expect(popup).toContainText('Analysis is turned off by the app default.');
@@ -67,7 +74,10 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await expect(popup).toContainText('does not include project analysis');
     await expect(popup).not.toContainText('Python environment');
     await expect(popup).not.toContainText('turned off');
+    await expect(popup.getByRole('button', { name: 'Change…', exact: true })).toHaveCount(0);
+    await popup.getByRole('button', { name: 'More…', exact: true }).click();
     await expect(popup.getByRole('button', { name: 'Choose analysis tool…', exact: true })).toHaveCount(0);
+    await popup.getByRole('button', { name: 'Back to code support' }).click();
     await page.screenshot({ path: testInfo.outputPath('make-editing-support.png') });
     const saved = JSON.parse(await readFile(path.join(config, 'Setdown/language-servers.json'), 'utf8'));
     expect(saved.automaticInstall).toBe(false); expect(saved.languageDefaults.python).toBe('off');
@@ -98,13 +108,18 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
     await editor.press('Control+End'); await page.keyboard.insertText('unsaved = 42');
     await status.click();
     const popup = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(popup).toContainText('Results received for this open file', { timeout: 20_000 });
+    // A healthy document says so in one word; observations and controls are under More….
+    await expect(popup).toContainText('Working', { timeout: 20_000 });
+    await expect(popup.getByRole('heading', { name: 'Python', exact: true })).toBeVisible();
+    for (const name of ['Problems', 'Details…']) await expect(popup.getByRole('button', { name, exact: true })).toHaveCount(0);
+    await expect(popup.getByRole('button', { name: /^Project/ })).toHaveCount(0);
+    await expect(popup).not.toContainText('Analysis selection');
     await expect(popup.getByRole('combobox')).toHaveCount(0);
     await expect(popup).not.toContainText(files[0]);
     await expect(popup).not.toContainText('Completion');
-    expect((await popup.boundingBox())!.height).toBeLessThan(340);
+    expect((await popup.boundingBox())!.height).toBeLessThan(220);
     await page.screenshot({ path: testInfo.outputPath('compact-normal.png') });
-    await popup.getByRole('button', { name: /^Document language/ }).click();
+    await popup.getByRole('button', { name: /^Language/ }).click();
     await expect(popup.getByRole('combobox', { name: 'Language mode' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(popup.getByRole('combobox')).toHaveCount(0);
@@ -120,18 +135,19 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
     await application.evaluate(({ BrowserWindow }, snapshot) => BrowserWindow.getAllWindows()[0].webContents.send('document:opened', snapshot), snapshot);
     const rightInstance = page.locator('.group-monaco-instance').filter({ has: page.locator('.view-lines').filter({ hasText: 'value = 1' }) });
     await expect(rightInstance.locator('.view-lines')).toContainText('value = 1');
-    await status.click(); await popup.getByRole('button', { name: 'Details…', exact: true }).click();
+    await status.click(); await popup.getByRole('button', { name: 'More…', exact: true }).click();
     await expect(popup).toContainText(files[0]);
+    await expect(popup).toContainText('Results received for this open file', { timeout: 20_000 });
     await rightInstance.locator('.view-line').first().click({ position: { x: 25, y: 8 } });
     await expect(popup).toBeVisible(); await expect(popup).not.toContainText(files[1]);
     await popup.getByRole('button', { name: /^Python environment/ }).click();
     await expect(popup).toContainText('including other tabs and windows');
     const select = popup.getByRole('combobox', { name: 'Python environment' });
     const selected = await select.inputValue(); expect(selected).toBeTruthy(); await select.selectOption(selected);
-    await expect(popup.getByRole('heading', { name: 'Code support' })).toBeVisible();
+    await expect(popup.getByRole('heading', { name: 'Python', exact: true })).toBeVisible();
     const preferences = JSON.parse(await readFile(path.join(config, 'Setdown/project-analysis.json'), 'utf8'));
     expect(Object.keys(preferences.projects)).toEqual([projects[0]]);
-    await popup.getByRole('button', { name: 'Details…', exact: true }).click();
+    await popup.getByRole('button', { name: 'More…', exact: true }).click();
     await popup.getByRole('button', { name: /^Pyright/ }).click();
     await popup.getByRole('button', { name: 'Project connection settings…', exact: true }).click();
     await expect(popup).toContainText(projects[0]); await expect(popup).not.toContainText(projects[1]);
@@ -175,7 +191,7 @@ test('a missing environment exposes the repair first and retains an issue indica
     const page = await application.firstWindow(); await focusApplication(application);
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 700));
     const status = page.getByRole('button', { name: /Language status:/ });
-    await expect(status).toHaveAccessibleName(/Choose environment/, { timeout: 20_000 });
+    await expect(status).toHaveAccessibleName('Language status: Python, Needs setup', { timeout: 20_000 });
     await expect(status.locator('.indicator')).toHaveText('!');
     await status.click();
     const popup = page.getByRole('dialog', { name: 'Current file language support' });
@@ -183,7 +199,7 @@ test('a missing environment exposes the repair first and retains an issue indica
     await expect(action).toBeVisible();
     expect(await popup.evaluate(el => el.scrollTop)).toBe(0);
     expect(await popup.evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
-    expect((await action.boundingBox())!.y).toBeLessThan((await popup.getByRole('button', { name: /^Document language/ }).boundingBox())!.y);
+    expect((await action.boundingBox())!.y).toBeLessThan((await popup.getByRole('button', { name: /^Language/ }).boundingBox())!.y);
     await expect(popup.getByRole('button', { name: /^Restart/ })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('compact-missing.png') });
     await action.click(); await expect(popup.getByRole('combobox', { name: 'Python environment' })).toBeVisible();
@@ -203,7 +219,7 @@ test('closing the last view of a checked document retires its coverage from Prob
     const status = page.getByRole('button', { name: /Language status:/ });
     const support = page.getByRole('dialog', { name: 'Current file language support' });
     const problems = page.getByRole('dialog', { name: 'Problems · Open Files' });
-    await status.click(); await support.getByRole('button', { name: 'Problems', exact: true }).click();
+    await status.click(); await support.getByRole('button', { name: 'More…', exact: true }).click(); await support.getByRole('button', { name: 'Problems', exact: true }).click();
     await expect(problems).toContainText('No diagnostics reported by the active checks');
     await problems.getByRole('button', { name: 'Close language results' }).click();
     const snapshot = await page.evaluate(file => window.marktex.readDocumentLocation(file), plain);
@@ -211,7 +227,7 @@ test('closing the last view of a checked document retires its coverage from Prob
     await expect(page.locator('.location-bar input')).toHaveValue(new URL(`file://${plain}`).href);
     await page.locator('.document-tab').filter({ hasText: 'checked.json' }).locator('.tab-close').click();
     await expect(page.locator('.document-tab').filter({ hasText: 'checked.json' })).toHaveCount(0);
-    await status.click(); await support.getByRole('button', { name: 'Problems', exact: true }).click();
+    await status.click(); await support.getByRole('button', { name: 'More…', exact: true }).click(); await support.getByRole('button', { name: 'Problems', exact: true }).click();
     await expect(problems).toContainText('Check code support to see which checks are active');
     await expect(problems).not.toContainText('by the active checks');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }

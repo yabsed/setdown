@@ -22,7 +22,7 @@ test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, n
     await expect(editor).toBeVisible();
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('rust-analyzer');
     await management.locator('.server-list button').click();

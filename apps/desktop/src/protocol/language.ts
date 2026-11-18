@@ -23,7 +23,7 @@ export type LanguageCatalogEntry = {
   discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
   profileSource?: string; setupNote?: string;
   preparation?: { state: 'available' | 'preparing' | 'ready' | 'failed'; source?: 'managed' | 'external'; message?: string; executable?: string; downloadsAllowed?: boolean };
-  sessions: { root: string; rootReason?: string; context?: string[]; state: 'starting' | 'ready' | 'failed'; message?: string; features?: string[]; logs?: string[]; progress?: string[] }[];
+  sessions: { root: string; rootReason?: string; context?: string[]; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue; features?: string[]; logs?: string[]; progress?: string[] }[];
 };
 export type LanguageDefault = { id: string; name: string; selection: import('../core/document/analysis-context').AnalysisPolicy; servers: string[]; defaultServer?: string };
 export type LanguageCatalog = { release: string; profileSource?: string; profiles?: number; entries: LanguageCatalogEntry[]; automaticInstall?: boolean; languages?: LanguageDefault[] };
@@ -58,8 +58,18 @@ export type LanguageCell = { id: string; version: number; text: string };
 export type LanguageDocument = { server?: string; languageId?: string; notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
 export type LanguageServerMessage = { id: string; message: string; actions: string[] };
 export type LanguageRecovery = { retrying: boolean; attempt?: number };
+/** Why a tool is not working, as a fact the main process observed. The renderer
+ * turns one issue into one sentence and one action; `help` means a page can be opened. */
+export type LanguageIssue =
+  | { kind: 'download-failed'; detail?: string }
+  | { kind: 'downloads-off' }
+  | { kind: 'no-installer'; help?: boolean }
+  | { kind: 'executable'; path: string; missing?: boolean; automatic?: boolean }
+  | { kind: 'runtime'; runtime: string; required: string; found?: string }
+  | { kind: 'startup'; detail?: string }
+  | { kind: 'crashed' };
 export type LanguageConnection = { messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
-export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed'; message?: string };
+export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed'; message?: string; issue?: LanguageIssue; server?: { id: string; name: string } };
 export type LanguageEvent =
   | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[]; retainedDocuments?: { id: string; generation: string }[] }
   | { type: 'discovery' }
@@ -70,7 +80,7 @@ export type LanguageEvent =
   | { type: 'context'; messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; id: string; generation: string; context: string[] }
   | { type: 'activity' }
   | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
-  | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; recovery?: LanguageRecovery; server?: { id: string; name: string } };
+  | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; recovery?: LanguageRecovery; issue?: LanguageIssue; preparing?: boolean; server?: { id: string; name: string } };
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
   highlight?(file: string, languageId: string, text: string): Promise<Array<[number, number, string]>>;
@@ -102,6 +112,9 @@ export type LanguageApi = {
   addConnection(draft: LanguageConnectionDraft): Promise<boolean>;
   importDefinition(): Promise<boolean>;
   remove(id: string): Promise<void>;
-  openHomepage(id: string): Promise<void>;
+  /** `runtime` opens the installation page of the runtime the tool needs instead of the tool's own page. */
+  openHomepage(id: string, runtime?: string): Promise<void>;
+  /** Lets this one tool be downloaded while the app default stays as it is. */
+  allowDownload(id: string): Promise<void>;
   onEvent(listener: (event: LanguageEvent) => void): () => void;
 };

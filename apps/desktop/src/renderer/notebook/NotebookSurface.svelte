@@ -8,7 +8,7 @@
   import { textZoomFactor, onTextZoom } from '../editor/text-zoom';
   import { loadMonaco } from '../editor/monaco-runtime';
   import { NotebookLanguage } from './notebook-language';
-  import { notebookAnalysisStatus, type NotebookAnalysisStatus } from './notebook-analysis-status.svelte';
+  import { notebookAnalysisStatus, notebookAnalysisStopped, type NotebookAnalysisStatus } from './notebook-analysis-status.svelte';
   import type { AnalysisContext, PythonChecking } from '../../core/document/analysis-context';
   import { checkingLevels } from '../language/python-checking';
   import type { NotebookEnvironments } from '../../protocol/notebook';
@@ -41,6 +41,7 @@
   let search = $state(''), searchOpen = $state(false), searchInput = $state<HTMLInputElement>(), matchIndex = $state(-1);
   let surface = $state<HTMLDivElement>();
   let analysisOpen = $state(false), analysisBusy = $state(false), analysisMessage = $state('');
+  let analysisStopped = $state<{ title: string; description?: string }>();
   let analysisContext = $state<AnalysisContext>();
   let analysisObservation = $state('Waiting for current diagnostics.');
   let analysisDetails = $state<string[]>([]);
@@ -392,7 +393,7 @@
   $effect(() => {
     if (!api || !environmentReady || entry.document.error || entry.document.language !== 'python') return;
     const file = documentPath, owner = entry, monaco = api, environment = selectedPython;
-    const current = untrack(() => new NotebookLanguage(monaco, desktop.language, owner, file, value => { language = value; analysisContext = client?.analysisContext; analysisDetails = client?.context ?? []; analysisMessage = client?.message ?? ''; analysisObservation = client?.observation ?? 'Waiting for current diagnostics.'; }, (uri, selection) => openFile(api!.Uri.parse(uri).fsPath, selection), showCell, environment));
+    const current = untrack(() => new NotebookLanguage(monaco, desktop.language, owner, file, value => { language = value; analysisContext = client?.analysisContext; analysisDetails = client?.context ?? []; analysisMessage = client?.message ?? ''; analysisStopped = value === 'failed' && client?.stopped ? notebookAnalysisStopped(client.issue) : undefined; analysisObservation = client?.observation ?? 'Waiting for current diagnostics.'; }, (uri, selection) => openFile(api!.Uri.parse(uri).fsPath, selection), showCell, environment));
     client = current;
     return () => { current.dispose(); if (client === current) client = undefined; };
   });
@@ -433,8 +434,9 @@
   <div class="notebook-overflow-widgets monaco-editor"></div>
   {#if analysisOpen}<div class="analysis-popover" role="region" aria-label="Notebook Python analysis">
     <header><h3>Python analysis</h3><button aria-label="Close" onclick={() => analysisOpen = false}>×</button></header>
-    <p class="analysis-status" role="status">{applying ? `Applying ${applying}: analysis is restarting…` : `${language || 'starting'} · ${analysisObservation}`}</p>
-    {#if analysisMessage}<p role="status">{analysisMessage}</p>{/if}
+    <p class="analysis-status" role="status">{applying ? `Applying ${applying}: analysis is restarting…` : analysisStopped ? analysisStopped.title : `${language || 'starting'} · ${analysisObservation}`}</p>
+    {#if analysisStopped}{#if analysisStopped.description}<p role="status">{analysisStopped.description}</p>{/if}<details><summary>Show log</summary><p>{analysisMessage}</p></details>
+    {:else if analysisMessage}<p role="status">{analysisMessage}</p>{/if}
     {#if checking}
       <PythonCheckingLevel {checking} busy={analysisBusy} select={value => void setChecking(value)} />
     {/if}

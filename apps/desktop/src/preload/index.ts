@@ -106,7 +106,8 @@ const api: MarkTexApi = {
     addConnection: draft => ipcRenderer.invoke('language:add-connection', draft),
     importDefinition: () => ipcRenderer.invoke('language:import-definition'),
     remove: id => ipcRenderer.invoke('language:remove', id),
-    openHomepage: id => ipcRenderer.invoke('language:homepage', id),
+    openHomepage: (id, runtime) => ipcRenderer.invoke('language:homepage', id, runtime),
+    allowDownload: id => ipcRenderer.invoke('language:allow-download', id),
     onEvent: listener => subscribe('language:event', listener),
   },
   browser: {

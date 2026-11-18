@@ -3,6 +3,10 @@ import type { LanguageCatalogEntry } from '../../protocol/language';
 export function installed(entry: LanguageCatalogEntry): boolean {
   return !!(entry.bundled || entry.preparation?.state === 'ready');
 }
+/** Ready for a file that needs it: shipped, already prepared, or serving a file now. */
+export function usable(entry: LanguageCatalogEntry): boolean {
+  return installed(entry) || entry.sessions.some(session => session.state === 'ready');
+}
 const found = (entry: LanguageCatalogEntry) => !!(entry.available || entry.candidates?.length || entry.sessions.some(session => session.state === 'ready'));
 
 export function serverStatus(entry: LanguageCatalogEntry): { label: string; tone: 'neutral' | 'success' | 'warning' | 'error' } {

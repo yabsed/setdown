@@ -39,6 +39,7 @@ export class ServerSession {
   private stopped = false;
   private stderr = '';
   private failureMessage: string | undefined;
+  private failure: { started: boolean; reason: string } | undefined;
   private readonly exited: Promise<void>;
   private stopping: Promise<void> | undefined;
   private watcher: Promise<AsyncSubscription> | undefined;
@@ -75,6 +76,7 @@ export class ServerSession {
       if (this.stopped) return;
       this.stopped = true;
       for (const entry of this.messageRequests.values()) entry.finish();
+      this.failure = { started: this.phase === 'running', reason };
       this.failureMessage = `${this.phase}: ${reason}${this.stderr ? `\n${this.stderr}` : ''}`;
       this.connection.dispose();
       for (const token of this.pending) token.cancel();
@@ -161,6 +163,15 @@ export class ServerSession {
     void this.ready.catch(() => {});
   }
 
+  /** What ended the session. The process can report its reason on stderr after
+   * its output closes, so this waits briefly for the process to finish. */
+  async failureFacts(): Promise<{ started: boolean; reason: string; stderr: string } | undefined> {
+    if (!this.failure) return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([this.exited, new Promise<void>(resolve => { timer = setTimeout(resolve, 300); timer.unref(); })]);
+    clearTimeout(timer);
+    return { ...this.failure, stderr: this.stderr };
+  }
   private log(message: string): void {
     this.logs.push(String(message).slice(-2048));
     if (this.logs.length > 80) this.logs.shift();

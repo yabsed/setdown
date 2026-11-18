@@ -843,7 +843,8 @@ test('notebook Literal errors under a project’s own configuration share Proble
     const clean = path.join(root, 'clean.py'); await writeFile(clean, 'pass\n');
     await page.evaluate(file => (window as any).marktex.openLink(`marktex-resource://file${file}`), clean);
     await page.getByRole('button', { name: /Language status:/ }).click();
-    await page.getByRole('dialog', { name: 'Current file language support' }).getByRole('button', { name: 'Problems', exact: true }).click();
+    const support = page.getByRole('dialog', { name: 'Current file language support' });
+    await support.getByRole('button', { name: 'More…', exact: true }).click(); await support.getByRole('button', { name: 'Problems', exact: true }).click();
     await expect(problems.locator('.result')).toHaveCount(1);
     await expect(problems.locator('.result')).toContainText('literal.ipynb');
     await problems.locator('.result .location').click();
