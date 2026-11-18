@@ -18,6 +18,10 @@
   let finder = $state<ReturnType<typeof createRenderedFind>>();
   let exporting = $state(false);
   let readyTheme = $state('');
+  /** The article is shown without its theme because the theme did not load. A readable plain
+   * article with a visible error replaces a column that would otherwise stay hidden for good. */
+  let unthemed = $state(false);
+  const THEME_WAIT_MS = 3000;
   $effect(() => {
     const request = browser.readerFind[tabId];
     if (finder && request) finder.search(request.query, request.forward, request.next);
@@ -99,18 +103,42 @@
     const style = document.createElement('style');
     document.head.append(style);
     let generation = 0;
+    const place = () => positionAt(browser.readerPositions[tabId] ?? snapshot.anchor);
+    let reported = '';
+    const themeFailed = (reason: unknown) => {
+      console.error('[web-reader] theme was not applied', reason);
+      browser.error = reported = `Reader theme could not be loaded: ${reason instanceof Error ? reason.message : String(reason)}`;
+      // A theme applied earlier still styles the article; only a never-themed one is hidden.
+      if (readyTheme || unthemed) return;
+      unthemed = true;
+      place();
+      element.focus({ preventScroll: true });
+    };
     const applyTheme = async () => {
       const theme = document.documentElement.dataset.theme ?? 'github-light';
       const request = ++generation;
-      const { readerThemeCss } = await import('./reader-theme');
-      const css = await readerThemeCss(theme);
+      let css: string;
+      try {
+        const { readerThemeCss } = await import('./reader-theme');
+        css = await readerThemeCss(theme);
+      } catch (reason) {
+        if (current() && request === generation) themeFailed(reason);
+        return;
+      }
       if (!current() || request !== generation) return;
       style.textContent = `@scope ([data-reader-tab="${CSS.escape(tabId)}"] .web-reader-column) { ${css} }`;
-      const first = !readyTheme;
-      readyTheme = theme;
-      positionAt(browser.readerPositions[tabId] ?? snapshot.anchor);
+      const first = !readyTheme && !unthemed;
+      readyTheme = theme; unthemed = false;
+      // The theme arrived after all (a slow load, or the next theme): retire this reader's own report.
+      if (reported && browser.error === reported) browser.error = '';
+      reported = '';
+      place();
       if (first) element.focus({ preventScroll: true });
     };
+    // A load that never settles gets the same fallback; a late theme still applies.
+    const themeTimer = setTimeout(() => {
+      if (current() && !readyTheme && !unthemed) themeFailed(new Error(`no response after ${THEME_WAIT_MS / 1000} seconds`));
+    }, THEME_WAIT_MS);
     const theme = new MutationObserver(() => { void applyTheme(); });
     theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     // Native Markdown code blocks use Prism's plain-text presentation even
@@ -128,7 +156,7 @@
     return () => {
       // A tab switch can follow the last scroll within the same frame. Measure before the theme goes.
       if (publishFrame) { cancelAnimationFrame(publishFrame); publishPosition(); }
-      disposed = true; theme.disconnect(); style.remove(); window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(linkTimer); };
+      disposed = true; theme.disconnect(); style.remove(); window.removeEventListener('setdown:reader-focus', focus); window.removeEventListener('setdown:reader-select-all', select); finder?.dispose(); element.removeEventListener('load', settle, true); clearTimeout(timer); clearTimeout(themeTimer); clearTimeout(linkTimer); };
   });
 
   function anchorFor(el: HTMLElement | undefined): ReaderAnchor {
@@ -236,7 +264,7 @@
   onscroll={onScroll}
   oncontextmenu={contextMenu}
   onclick={clicked} ondblclick={dblclick} onkeydown={keydown}>
-  <div class="web-reader-column" class:pending={!readyTheme}>
+  <div class="web-reader-column" class:pending={!readyTheme && !unthemed}>
     <div class="web-reader-content" bind:this={content}>
       <h1>{article.title}</h1>
       {#if meta}<p class="meta">{meta}</p>{/if}

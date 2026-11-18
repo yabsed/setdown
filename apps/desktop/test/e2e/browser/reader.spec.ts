@@ -628,3 +628,30 @@ test('reader tabs return to the exact place they were left at and keep keyboard 
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });
+
+test('a reader whose theme cannot be loaded shows the plain article and reports it, then takes the next theme', async () => {
+  const f = await fixture(false);
+  try {
+    const reader = f.page.locator('.web-reader');
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article-breaks`);
+    await expect(f.page.getByRole('tab', { name: /Newsletter article/ })).toHaveAttribute('aria-selected', 'true');
+    // Theme assembly is the first use of replaceSync in a fresh shell; fail it once.
+    await f.page.evaluate(() => {
+      const original = CSSStyleSheet.prototype.replaceSync;
+      CSSStyleSheet.prototype.replaceSync = function () { CSSStyleSheet.prototype.replaceSync = original; throw new Error('theme assembly failed'); };
+    });
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    await expect(reader.locator('h1').first()).toBeVisible();
+    await expect(reader.getByText('Break paragraph 0')).toBeVisible();
+    await expect(reader).toHaveAttribute('data-reader-theme', '');
+    await expect(reader).toBeFocused();
+    const report = f.page.getByRole('alert').filter({ hasText: 'Reader theme could not be loaded: theme assembly failed' });
+    await expect(report).toBeVisible();
+    // The failed load is not remembered: the next theme styles the article and retires the report.
+    await f.page.evaluate(() => window.marktex.executeApplicationMenuItem('preview-theme-solarized-light'));
+    await expect(reader).toHaveAttribute('data-reader-theme', 'solarized-light');
+    await expect(reader.getByText('Break paragraph 0')).toBeVisible();
+    await expect(report).toHaveCount(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
