@@ -62,7 +62,9 @@ export class ZedLanguageHost {
     const payload = JSON.stringify({ ...values, op, id }) + '\n';
     if (payload.length > 4 * 1024 * 1024) throw Error('Language host request is too large.');
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => this.fail(child, Error('Language installation timed out. Reopen the file to retry.')), 10 * 60 * 1000);
+      // The limit is for an installer that has stopped, not for a slow line: the Kotlin tool is
+      // 370 MB and the Java tool brings its own Java, which is ten minutes at 5 Mbit/s already.
+      const timer = setTimeout(() => this.fail(child, Error('Language installation timed out. Reopen the file to retry.')), 30 * 60 * 1000);
       timer.unref(); this.pending.set(id, { resolve, reject, timer, progress });
       child.stdin.write(payload, error => { if (error) this.fail(child, error); });
     });

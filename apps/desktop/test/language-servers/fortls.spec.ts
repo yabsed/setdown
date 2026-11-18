@@ -22,13 +22,13 @@ test('installed fortls connects without registration and supplies hover and comp
     await editor.press('Escape');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('fortls'); await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Executable found');
-    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
-    await expect(management.getByRole('button', { name: 'Refresh external executable candidates' })).toBeEnabled();
-    await expect(management.locator('.state')).toHaveText('Executable found');
+    await expect(management.locator('.state')).toHaveText('Found on this computer');
+    await management.getByRole('button', { name: 'Check again for installed tools' }).click();
+    await expect(management.getByRole('button', { name: 'Check again for installed tools' })).toBeEnabled();
+    await expect(management.locator('.state')).toHaveText('Found on this computer');
     const data = await application.evaluate(({ app }) => app.getPath('userData'));
     expect(await readFile(path.join(data, 'language-servers.json'), 'utf8').catch(() => null)).toBeNull();
     await management.getByRole('button', { name: 'Close language support' }).click();

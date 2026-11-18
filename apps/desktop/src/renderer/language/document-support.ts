@@ -3,7 +3,7 @@ import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '.
 /** Small renderer store shared by editor groups. It has no Monaco/runtime imports. */
 export type ProviderSupport = {
   id: string; name: string; kind: 'builtin' | 'server';
-  state: 'starting' | 'ready' | 'failed' | 'missing' | 'selection-needed' | 'off';
+  state: 'starting' | 'ready' | 'failed' | 'missing' | 'off';
   role?: 'primary' | 'supplementary'; recovery?: LanguageRecovery;
   /** Why the tool is not working, and whether it is being set up for the first time. */
   issue?: LanguageIssue; preparing?: boolean;

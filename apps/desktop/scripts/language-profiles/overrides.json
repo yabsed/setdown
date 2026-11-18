@@ -268,6 +268,47 @@
       "setupNote": "Bundled project analysis. Uses the project’s installed TypeScript SDK when there is one, otherwise the bundled SDK."
     }
   },
+  "settings": {
+    "json-lsp": {
+      "json": {
+        "validate": {
+          "enable": true
+        },
+        "schemas": [
+          {
+            "fileMatch": ["package.json"],
+            "url": "https://www.schemastore.org/package.json"
+          },
+          {
+            "fileMatch": ["tsconfig.json", "tsconfig.*.json"],
+            "url": "https://www.schemastore.org/tsconfig.json"
+          },
+          {
+            "fileMatch": ["jsconfig.json", "jsconfig.*.json"],
+            "url": "https://www.schemastore.org/jsconfig.json"
+          },
+          {
+            "fileMatch": [".babelrc", ".babelrc.json", "babel.config.json"],
+            "url": "https://www.schemastore.org/babelrc.json"
+          },
+          {
+            "fileMatch": [".eslintrc", ".eslintrc.json"],
+            "url": "https://www.schemastore.org/eslintrc.json"
+          },
+          {
+            "fileMatch": [".prettierrc.json"],
+            "url": "https://www.schemastore.org/prettierrc.json"
+          }
+        ]
+      }
+    },
+    "html-lsp": {
+      "css": {
+        "validate": true,
+        "lint": {}
+      }
+    }
+  },
   "aliases": {
     "cuelsp": "cuelsp"
   },

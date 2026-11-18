@@ -113,6 +113,9 @@ def generate():
             for language in ('css', 'scss', 'less'):
                 definition.get('initializationOptions', {}).pop(language, None)
                 definition['settings'][language] = {'validate': True, 'lint': {}, 'completion': {}, 'hover': {}}
+        # What a tool has to be told before it answers fully: the JSON tool which schema
+        # describes a well-known file, the HTML tool how to check the style sheet in a page.
+        definition['settings'].update(overrides['settings'].get(identity, {}))
         if source.startswith('pkg:pypi/'):
             definition['discovery'] = 'python'
         if npm:

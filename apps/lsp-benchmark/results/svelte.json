@@ -1,0 +1,137 @@
+{
+  "date": "2026-11-18T19:06:48.942Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "svelte",
+      "language": "Svelte",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "src/lib/ArticleList/ArticlePreview.svelte",
+      "expectedTool": "svelte-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.664
+        },
+        {
+          "kind": "mistake",
+          "what": "<img src=\"setdown-mistake.png\">",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: `<img>` element should have an alt attribute",
+          "seconds": 1.361
+        },
+        {
+          "kind": "hover",
+          "what": "enhance } from '$app/forms'",
+          "ok": true,
+          "expected": "text matching /function enhance/",
+          "observed": "```typescript (alias) function enhance<Success extends Record<string, unknown> | undefined, Failure extends Record<string, unknown> | undefined>(form_element: …",
+          "seconds": 1.391
+        },
+        {
+          "kind": "hover",
+          "what": "type",
+          "ok": true,
+          "expected": "text matching /\\(property\\) type: /",
+          "observed": "```typescript (property) type: \"success\" | \"redirect\" | \"error\" | \"failure\" ```",
+          "seconds": 1.395
+        },
+        {
+          "kind": "completion",
+          "what": "result.ty|",
+          "ok": true,
+          "expected": "\"type\" offered",
+          "observed": "54 offered, first: data?, error, location, status?, type, __sveltets_$$bindings",
+          "seconds": 1.454
+        },
+        {
+          "kind": "definition",
+          "what": "enhance } from '$app/forms'",
+          "ok": true,
+          "expected": "leads to /@sveltejs\\/kit\\//",
+          "observed": "node_modules/@sveltejs/kit/src/runtime/app/forms.js:80",
+          "seconds": 1.459
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 4.131,
+        "tool": "svelte-language-server",
+        "name": "svelte-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "svelte-page",
+      "language": "Svelte, a page",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "src/routes/article/[slug]/+page.svelte",
+      "expectedTool": "svelte-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.52
+        },
+        {
+          "kind": "mistake",
+          "what": "<img src=\"setdown-mistake.png\">",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: `<img>` element should have an alt attribute",
+          "seconds": 1.287
+        },
+        {
+          "kind": "hover",
+          "what": "ArticleMeta",
+          "ok": true,
+          "expected": "text matching /ArticleMeta/",
+          "observed": "```typescript (alias) const ArticleMeta: Component<$$ComponentProps, {}, \"\"> import ArticleMeta ```",
+          "seconds": 1.31
+        },
+        {
+          "kind": "hover",
+          "what": "data.article.title}</title>",
+          "ok": true,
+          "expected": "text matching /data/",
+          "observed": "```typescript const data: { user: any; article: any; comments: any; } ```",
+          "seconds": 1.312
+        },
+        {
+          "kind": "definition",
+          "what": "CommentContainer",
+          "ok": true,
+          "expected": "leads to CommentContainer.svelte",
+          "observed": "src/routes/article/[slug]/CommentContainer.svelte:1",
+          "seconds": 1.315
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.489,
+        "tool": "svelte-language-server",
+        "name": "svelte-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    }
+  ]
+}

@@ -24,30 +24,35 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await page.keyboard.insertText('unsaved = 42');
-    await status.click(); await popup.getByRole('button', { name: 'More…', exact: true }).click();
-    await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    // The tool for this project is chosen on the tool's own page, two steps in.
+    const chooseTool = async () => {
+      await popup.getByRole('button', { name: 'More…', exact: true }).click();
+      await popup.getByRole('button', { name: /^Pyright/ }).click();
+      await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    };
+    await status.click(); await chooseTool();
     await popup.getByRole('combobox', { name: 'Analysis provider' }).selectOption('pyright');
-    // The choice returns to the short summary; where the choice is stored is one step further in.
-    await expect(popup).not.toContainText('Analysis selection'); await popup.getByRole('button', { name: 'More…', exact: true }).click();
-    await expect(popup).toContainText('Analysis selection: this project');
+    // The choice returns to the short summary, which never says where a choice is stored.
+    await expect(popup.getByRole('button', { name: 'More…', exact: true })).toBeVisible();
+    await expect(popup).not.toContainText('Analysis selection'); await chooseTool();
+    await expect(popup.getByRole('combobox', { name: 'Analysis provider' })).toHaveValue('pyright');
     await popup.getByRole('button', { name: 'Close language status' }).click();
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
-    await expect(sidebar.getByRole('button', { name: 'Refresh external executable candidates' })).toHaveCount(0);
+    await expect(sidebar.getByRole('button', { name: 'Check again for installed tools' })).toHaveCount(0);
+    await expect(sidebar).toContainText('Supported: Python, JavaScript and TypeScript, Svelte,');
     // Home lists what is already usable from what Setdown ships and the receipts it wrote; nothing was searched for.
     await expect(sidebar.locator('.ready-language[data-language-id="python"]')).toHaveText('Python');
     await expect(sidebar.locator('[data-server-id]')).toHaveCount(0);
     await expect(sidebar.getByRole('heading', { name: 'Needs attention' })).toHaveCount(0);
-    for (const name of [/^Language defaults/, /^Custom connections/, /^Installation management/]) await expect(sidebar.getByRole('button', { name })).toHaveCount(0);
-    await sidebar.getByRole('checkbox', { name: 'Download analysis tools automatically' }).uncheck();
+    await sidebar.getByRole('checkbox', { name: 'Set up language tools automatically' }).uncheck();
     await page.screenshot({ path: testInfo.outputPath('global-language-settings.png') });
     await application.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click());
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
     await page.screenshot({ path: testInfo.outputPath('global-language-settings-dark.png') });
-    await sidebar.getByRole('button', { name: /^Advanced/ }).click();
-    await sidebar.getByRole('button', { name: /^Language defaults/ }).click();
+    await sidebar.getByRole('button', { name: /^All languages/ }).click();
     await sidebar.getByRole('searchbox').fill('python');
     await sidebar.locator('[data-language-id="python"]').click();
     await sidebar.getByRole('combobox', { name: 'Default analysis tool' }).selectOption('off');
@@ -63,10 +68,8 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await open(path.join(beta, 'main.py')); await status.click();
     await expect(popup).toContainText('Analysis is turned off by the app default.');
     await popup.getByRole('button', { name: 'Close language status' }).click();
-    await open(path.join(alpha, 'main.py')); await status.click();
-    await popup.getByRole('button', { name: 'More…', exact: true }).click();
-    await expect(popup).toContainText('Analysis selection: this project');
-    await popup.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await open(path.join(alpha, 'main.py')); await status.click(); await chooseTool();
+    await expect(popup.getByRole('combobox', { name: 'Analysis provider' })).toHaveValue('pyright');
     await popup.getByRole('combobox', { name: 'Analysis provider' }).selectOption('automatic');
     await expect(popup).toContainText('Analysis is turned off by the app default.');
     await popup.getByRole('button', { name: 'Close language status' }).click();
@@ -136,7 +139,6 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
     const rightInstance = page.locator('.group-monaco-instance').filter({ has: page.locator('.view-lines').filter({ hasText: 'value = 1' }) });
     await expect(rightInstance.locator('.view-lines')).toContainText('value = 1');
     await status.click(); await popup.getByRole('button', { name: 'More…', exact: true }).click();
-    await expect(popup).toContainText(files[0]);
     await expect(popup).toContainText('Results received for this open file', { timeout: 20_000 });
     await rightInstance.locator('.view-line').first().click({ position: { x: 25, y: 8 } });
     await expect(popup).toBeVisible(); await expect(popup).not.toContainText(files[1]);

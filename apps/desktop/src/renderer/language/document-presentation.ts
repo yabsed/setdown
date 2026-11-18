@@ -2,7 +2,7 @@ import type { AnalysisContext, DocumentAnalysis } from '../../core/document/anal
 import type { LanguageIssue } from '../../protocol/language';
 import type { ProviderSupport } from './document-support';
 
-export type SupportAction = { kind: 'environment' | 'provider' | 'details' | 'restart' | 'automatic' | 'install' | 'locate' | 'help' | 'log' | 'manage';
+export type SupportAction = { kind: 'environment' | 'provider' | 'details' | 'restart' | 'automatic' | 'install' | 'locate' | 'help' | 'log';
   label: string; server?: string; runtime?: string };
 /** `label` is the short status beside the language name; `title` is the one sentence
  * that says what is wrong, and `action` the one control that addresses its cause. */
@@ -23,7 +23,9 @@ export function presentIssue(issue: LanguageIssue | undefined, subject: string, 
   switch (issue?.kind) {
     case 'download-failed': return { title: `Couldn't ${/download|network|fetch|connect|resolv|timed out|offline|dns|certificate|http|socket/i.test(issue.detail ?? '') ? 'download' : 'set up'} ${subject}.`,
       description: issue.detail, action: { kind: 'restart', label: 'Try again', server } };
-    case 'downloads-off': return { title: `${subject} isn't installed.`, description: 'Downloads are off.', action: { kind: 'install', label: `Install ${subject}`, server } };
+    // Outside the supported languages a tool waits to be asked for; the same button installs it.
+    case 'downloads-off': return { title: `${subject} isn't installed.`,
+      description: issue.optional ? 'Setdown asks before it downloads a tool for this language.' : 'Downloads are off.', action: { kind: 'install', label: `Install ${subject}`, server } };
     case 'no-installer': return { title: `${subject} isn't installed.`, description: `Setdown can't install it by itself.`,
       ...(issue.help ? { action: { kind: 'help', label: 'How to install ↗', server }, secondary: locate } : { action: locate }) };
     case 'executable': {
@@ -66,11 +68,6 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
   const environment = !projectOff && (context?.environment === 'action-needed' ? context : servers.find(p => p.analysis?.context.environment === 'action-needed')?.analysis?.context);
   if (environment) return { label: 'Needs setup', tone: 'warning', title: environment.issues[0]?.message ?? 'Choose an environment for this project.',
     action: { kind: 'environment', label: environment.kind === 'compilation' ? 'Choose build configuration…' : 'Choose environment…' } };
-  const selection = servers.find(p => p.state === 'selection-needed');
-  // Several tools are no longer a question: the language's order decides. What remains is
-  // several copies of one program, and the tool's own page lists them.
-  if (selection) return { label: 'Needs setup', tone: 'warning', title: `Choose which copy of ${selection.name} to use.`, description: 'More than one was found on this computer.',
-    action: { kind: 'manage', label: 'Choose…', server: selection.id } };
   if (failed) return stopped();
   const limited = !projectOff && (context?.environment === 'partial' ? context : servers.find(p => p.analysis?.context.environment === 'partial')?.analysis?.context);
   if (limited) return { label: 'Limited', tone: 'warning', title: limited.issues[0]?.message ?? 'The project environment has limitations.', action: { kind: 'details', label: 'Review environment…' } };
@@ -82,7 +79,11 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
     // A tool Setdown cannot install is a quiet state: the file still opens and edits as before.
     // The sentence and its action are there when the person opens the status.
     const quiet = missing.issue?.kind === 'no-installer';
-    if (!quiet || !active.length) return { label: quiet ? '' : partial ? 'Limited' : 'Needs setup', tone: quiet ? 'neutral' : 'warning', ...shown,
+    // A tool that waits to be asked for is not a fault: the name says so without a warning.
+    const optional = missing.issue?.kind === 'downloads-off' && !!missing.issue.optional;
+    // An offer to install a tool never hides a warning about the file itself.
+    const warned = optional && providers.some(p => p.kind === 'builtin' && p.state === 'failed');
+    if (!warned && (!quiet || !active.length)) return { label: quiet ? '' : optional ? 'Not installed' : partial ? 'Limited' : 'Needs setup', tone: quiet || optional ? 'neutral' : 'warning', ...shown,
       description: [shown.description, partial].filter(Boolean).join(' ') || undefined };
   }
   const localFailure = providers.find(p => p.kind === 'builtin' && p.state === 'failed');
@@ -106,7 +107,7 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
 
 export function providerStatus(provider: ProviderSupport): string {
   if (provider.recovery?.retrying) return 'Reconnecting';
-  return ({ ready: provider.kind === 'builtin' ? 'Built in' : 'Connected', starting: 'Starting', failed: 'Stopped', missing: 'Not installed', 'selection-needed': 'Selection needed', off: 'Off' })[provider.state];
+  return ({ ready: provider.kind === 'builtin' ? 'Built in' : 'Connected', starting: 'Starting', failed: 'Stopped', missing: 'Not installed', off: 'Off' })[provider.state];
 }
 export function analysisResult(provider: ProviderSupport): string {
   if (provider.state !== 'ready') return providerStatus(provider);

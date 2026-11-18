@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-18T18:52:29.528Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "tool": "yaml-language-server",
+  "outcomes": [
+    {
+      "id": "dockercompose",
+      "language": "Docker Compose",
+      "project": "docker/awesome-compose@30f4b7f6a6",
+      "file": "nginx-flask-mysql/compose.yaml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.07
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Property setdown_mistake is not allowed.",
+          "seconds": 2.023
+        },
+        {
+          "kind": "hover",
+          "what": "healthcheck:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Configure a health check for the container to monitor its health status. Source: [compose-spec.json](https://raw.githubusercontent.com/…",
+          "seconds": 2.053
+        },
+        {
+          "kind": "hover",
+          "what": "depends_on:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Express dependency between services. Service dependencies cause services to be started in dependency order. The dependent service will …",
+          "seconds": 2.057
+        },
+        {
+          "kind": "completion",
+          "what": "healthch|",
+          "ok": true,
+          "expected": "\"healthcheck\" offered",
+          "observed": "86 offered, first: annotations, blkio_config, cap_add, cap_drop, cgroup, cgroup_parent",
+          "seconds": 2.069
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.593,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/compose/nginx-flask-mysql",
+          "Root: Project marker: compose.yaml",
+          "Server: yaml-language-server 2.0.0"
+        ]
+      }
+    }
+  ]
+}

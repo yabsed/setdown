@@ -20,6 +20,14 @@ test('TypeScript and CSS workspace settings are delivered separately from initia
   }
 });
 
+test('the JSON tool is told the schema of well-known files and the HTML tool how to check a style sheet', () => {
+  const json = builtinLanguageServers.find(d => d.id === 'json-lsp')!.settings.json as { schemas: { fileMatch: string[]; url: string }[] };
+  expect(json.schemas.find(schema => schema.fileMatch.includes('package.json'))?.url).toBe('https://www.schemastore.org/package.json');
+  expect(json.schemas.every(schema => schema.url.startsWith('https://www.schemastore.org/') && schema.fileMatch.length > 0)).toBe(true);
+  // Without a `css` answer the HTML tool fails while checking a page's style sheet and reports nothing.
+  expect(builtinLanguageServers.find(d => d.id === 'html-lsp')!.settings.css).toMatchObject({ validate: true, lint: {} });
+});
+
 test('every catalog entry has explicit coverage and generated native profiles satisfy the connection schema', () => {
   expect(new Set(data.coverage.map(c => c.id))).toEqual(new Set(mason.packages.map(p => p.id)));
   expect(new Set(languageCatalog.map(p => p.id)).size).toBe(languageCatalog.length);

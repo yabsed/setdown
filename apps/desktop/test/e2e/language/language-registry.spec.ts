@@ -12,11 +12,13 @@ const catalogSize = new Set([
   ...require('../../../src/main/language/catalog/zed-profiles.json').profiles,
 ].map((entry: { id: string }) => entry.id)).size;
 
-test('the language sidebar searches all discoverable servers, shows language logos and keeps manual connections repairable', async ({}, testInfo) => {
+test('the tool list holds what is set up, a search reaches every tool, and an imported connection stays repairable', async ({}, testInfo) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-sidebar-'));
-  const file = path.join(root, 'notes.txt'), executable = path.join(root, 'manual-server');
+  const file = path.join(root, 'notes.txt'), executable = path.join(root, 'manual-server'), definition = path.join(root, 'connection.json');
   await writeFile(file, 'Keep editing while managing language support.\n');
   await writeFile(executable, '#!/bin/sh\nexit 0\n'); await chmod(executable, 0o755);
+  await writeFile(definition, JSON.stringify({ id: 'manual-fixture', name: 'Manual Fixture', launch: { kind: 'native', command: executable, args: [] },
+    languages: [{ languageId: 'manualfixture', monacoId: 'plaintext', extensions: ['.manualfixture'] }], rootMarkers: [] }));
   const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
   const application = await electron.launch({ args: ['.', file], env: { ...env, HOME: root,
     XDG_CONFIG_HOME: path.join(root, 'config'), PATH: '', CONDA_PREFIX: '', VIRTUAL_ENV: '',
@@ -27,7 +29,7 @@ test('the language sidebar searches all discoverable servers, shows language log
     const page = await application.firstWindow(); await focusApplication(application);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const panel = page.getByRole('region', { name: 'Language Support', exact: true });
     const detected = panel.locator('[data-group="detected"]');
     const available = panel.locator('[data-group="available"]');
@@ -39,69 +41,68 @@ test('the language sidebar searches all discoverable servers, shows language log
     await detected.locator('[data-server-id="notebook-python"]').click();
     await expect(panel).toContainText('Analysis and execution share that environment.');
     await expect(panel.getByRole('button', { name: 'Restart servers in this window' })).toHaveCount(0);
-    await panel.getByRole('button', { name: 'Back to language servers' }).click();
-    await expect(available.locator('summary')).toContainText('Other tools');
-    expect(await available.locator('.server').count()).toBeGreaterThan(300);
-    await expect(available).not.toHaveAttribute('open');
+    await panel.getByRole('button', { name: 'Back to language tools' }).click();
+    // Nothing else is set up, and nothing was looked up: the other tools are one search away.
+    await expect(available).toHaveCount(0);
+    await expect(panel).toContainText('Search to reach every tool Setdown knows.');
     await panel.getByRole('searchbox').fill('svelte');
     // Shared extension servers also support Svelte; select the primary server by its stable identity.
     const svelte = available.locator('[data-server-id="svelte-language-server"]');
     await expect(svelte).toHaveCount(1);
     await expect(svelte).toBeVisible();
-    await expect(svelte).toContainText('Prepares when needed');
+    await expect(svelte).toContainText('Installs when needed');
     await expect(svelte.getByRole('img', { name: 'Svelte logo' })).toBeVisible();
     await svelte.click();
-    await expect(panel.locator('.state')).toHaveText('Prepares when needed');
-    await expect(panel.getByRole('button', { name: 'Choose executable…', exact: true })).toBeHidden();
-    await panel.getByRole('button', { name: 'Back to language servers' }).click();
+    // Svelte is a supported language: its tool needs no question before it is downloaded.
+    await expect(panel.locator('.state')).toHaveText('Installs when needed');
+    await expect(panel.getByRole('button', { name: 'Choose program…', exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Install', exact: true })).toHaveCount(0);
+    await panel.getByRole('button', { name: 'Back to language tools' }).click();
+    // Outside the supported languages the same kind of tool waits to be asked for.
+    await panel.getByRole('searchbox').fill('zls');
+    await expect(available.locator('[data-server-id="zls"]')).toContainText('Asks before installing');
+    await available.locator('[data-server-id="zls"]').click();
+    await expect(panel.getByRole('button', { name: 'Install', exact: true })).toBeVisible();
+    await panel.getByRole('button', { name: 'Back to language tools' }).click();
     await panel.getByRole('searchbox').fill('apex-language-server');
-    await expect(panel.locator('.server')).toHaveCount(0); // No discovery metadata: manual-only.
-    await expect(panel).toContainText('No matching servers.');
-    await panel.getByRole('button', { name: 'Add server manually…', exact: true }).click();
-    await expect(panel.getByLabel('Existing server profile').locator('option[value="apex-language-server"]')).toHaveCount(1);
-    await panel.getByLabel('Connection ID', { exact: true }).fill('manual-fixture');
-    await panel.getByLabel('Name', { exact: true }).fill('Manual Fixture');
-    await panel.getByLabel('LSP language ID').fill('manualfixture');
-    await panel.getByLabel('File extensions').fill('.manualfixture');
-    await application.evaluate(({ dialog }, executable) => {
-      dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
-    }, executable);
-    await panel.getByRole('button', { name: 'Choose executable and connect…' }).click();
-    // Finding an executable is not evidence that initialization succeeded.
-    await expect(panel.locator('.state')).toHaveText('Executable found');
-    await panel.getByRole('button', { name: 'Back to language servers' }).click();
-    await panel.getByRole('searchbox').fill('');
-    await expect(panel.locator('.server-group').filter({ hasText: 'Custom connections' })).toContainText('Manual Fixture');
+    await expect(panel.locator('.server')).toHaveCount(0); // No connection profile: it cannot run, so it is not offered.
+    await expect(panel).toContainText('No matching tools.');
+    await application.evaluate(({ dialog }, definition) => {
+      dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [definition] })) as typeof dialog.showOpenDialog;
+    }, definition);
+    await panel.getByRole('button', { name: 'Import a connection (JSON)…', exact: true }).click();
+    await expect(panel.getByRole('searchbox')).toHaveValue('');
+    const own = panel.locator('[data-group="manual"]');
+    await expect(own.locator('summary')).toContainText('Your connections');
+    // Finding a program is not evidence that initialization succeeded.
+    await expect(own.locator('[data-server-id="manual-fixture"]')).toContainText('Your connection');
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await editor.pressSequentially('No modal focus trap.');
     await editor.press('Control+s');
     await expect.poll(() => readFile(file, 'utf8')).toContain('No modal focus trap.');
     await rm(executable);
-    await panel.getByRole('button', { name: 'Refresh external executable candidates' }).click();
+    await panel.getByRole('button', { name: 'Check again for installed tools' }).click();
     const missing = panel.locator('.server-group').filter({ hasText: 'Needs attention' });
-    await expect(missing).toContainText('Manual Fixture'); await expect(missing).toContainText('Not found in searched locations');
+    await expect(missing).toContainText('Manual Fixture'); await expect(missing).toContainText('Program not found');
     await page.screenshot({ path: testInfo.outputPath('language-sidebar.png') });
     await application.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('preview-theme-night')?.click());
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
     await page.screenshot({ path: testInfo.outputPath('language-sidebar-dark.png') });
     await missing.getByRole('button').click();
     await panel.screenshot({ path: testInfo.outputPath('language-server-details.png') });
-    await expect(panel.getByRole('button', { name: 'Choose executable…', exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Choose program…', exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Remove connection' }).click();
     await expect(panel.locator('[data-server-id="manual-fixture"]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Language Support', exact: true }).click();
     await expect(panel).toHaveCount(0);
     await page.getByRole('button', { name: 'Language Support', exact: true }).click();
-    await panel.getByRole('button', { name: /^Advanced/ }).click(); await panel.getByRole('button', { name: /^Installation management/ }).click();
+    await panel.getByRole('button', { name: /^Advanced/ }).click();
     await expect(panel.getByRole('searchbox')).toBeFocused();
     await panel.getByRole('searchbox').fill('query');
     await panel.getByRole('searchbox').press('Escape');
     await expect(panel.getByRole('searchbox')).toHaveValue('');
-    // Escape leaves one level at a time: the list, the advanced page, then the panel.
+    // Escape leaves one level at a time: the search, the list, then the panel.
     await panel.getByRole('searchbox').press('Escape');
-    await expect(panel.getByRole('heading', { name: 'Advanced', exact: true })).toBeVisible();
-    await expect(panel.getByRole('button', { name: 'Back to language settings' })).toBeFocused();
-    await page.keyboard.press('Escape');
     await expect(panel.getByRole('heading', { name: 'Language settings' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
@@ -143,21 +144,22 @@ test('installing a server while editing and rescanning connects the current mode
     `); await chmod(executable, 0o755);
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('gopls');
-    await expect(management.locator('[data-server-id="gopls"]')).toContainText('Executable found');
+    // The list does not look for programs. Downloads are off for gopls, and that is all it says.
+    await expect(management.locator('[data-server-id="gopls"]')).toContainText('Downloads off');
     await expect(management.getByRole('img', { name: 'Go logo' })).toBeVisible();
-    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
+    await management.getByRole('button', { name: 'Check again for installed tools' }).click();
     await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Executable found');
+    await expect(management.locator('.state')).toHaveText('Found on this computer');
     await expect(management.locator('.details code').first()).toHaveText(executable);
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
     expect((await messages()).find(m => m.method === 'open').params.textDocument.text).toContain('// edited before connection');
     const originalPid = (await messages())[0].pid;
-    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
-    await expect(management.getByRole('button', { name: 'Refresh external executable candidates' })).toBeEnabled();
-    await management.getByRole('button', { name: 'Back to language servers' }).click();
+    await management.getByRole('button', { name: 'Check again for installed tools' }).click();
+    await expect(management.getByRole('button', { name: 'Check again for installed tools' })).toBeEnabled();
+    await management.getByRole('button', { name: 'Back to language tools' }).click();
     await management.getByRole('searchbox').fill('pyright'); await management.locator('[data-server-id="pyright"]').click();
     await management.getByRole('button', { name: 'Disable by default', exact: true }).click();
     await expect(management.locator('.state')).toHaveText('Included');
@@ -254,7 +256,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await editor.press('Control+End'); await editor.pressSequentially('// unsaved');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(management).toBeVisible();
     await expect(management.locator('[data-server-id="pyright"]')).toContainText('Included');
@@ -267,10 +269,10 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     await application.evaluate(({ dialog }, definition) => {
       dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [definition] })) as typeof dialog.showOpenDialog;
     }, definition);
-    await management.getByRole('button', { name: 'Import JSON…', exact: true }).click();
+    await management.getByRole('button', { name: 'Import a connection (JSON)…', exact: true }).click();
     await management.getByRole('searchbox').fill('fixture-custom');
     await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Executable found');
+    await expect(management.locator('.state')).toHaveText('Your connection');
     await management.getByRole('button', { name: 'Enable by default', exact: true }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'open').length).toBe(1);
@@ -290,7 +292,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     // Reconfigure through the real management screen, then Undo the preceding edit.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     await management.getByRole('searchbox').fill('fixture-custom'); await management.locator('.server-list button').click();
     await management.getByText('Connection settings', { exact: true }).click();
     await management.getByText('Advanced server options (JSON)', { exact: true }).click();
@@ -343,13 +345,13 @@ test('an imported npm profile starts automatically and supplies completion witho
     await editor.press('Escape'); await editor.pressSequentially('unsaved');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
-    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click(); await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Installation management/ }).click();
+    await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('searchbox').fill('json-lsp'); await management.locator('.server-list button').click();
-    await expect(management.locator('.state')).toHaveText('Executable found');
+    await expect(management.locator('.state')).toHaveText('Found on this computer');
     await expect(management.locator('.details code').first()).toHaveText(path.join(folder, 'cli.cjs'));
-    await management.getByRole('button', { name: 'Refresh external executable candidates' }).click();
-    await expect(management.getByRole('button', { name: 'Refresh external executable candidates' })).toBeEnabled();
+    await management.getByRole('button', { name: 'Check again for installed tools' }).click();
+    await expect(management.getByRole('button', { name: 'Check again for installed tools' })).toBeEnabled();
     expect(new Set((await messages()).map(m => m.pid))).toEqual(new Set([original.pid]));
     await management.getByRole('button', { name: 'Close language support' }).click();
     await editor.press('Control+z'); await editor.press('Control+s');

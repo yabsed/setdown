@@ -157,7 +157,6 @@ test('the project’s TypeScript SDK is used automatically; an explicit bundled 
     await details.getByRole('button', { name: /^TypeScript and JavaScript/ }).click();
     await details.getByRole('button', { name: /^Restart TypeScript/ }).click();
     await expect(details).toContainText('Results received for this open file', { timeout: 20_000 });
-    await details.getByRole('button', { name: 'Back to code support' }).click();
     await details.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
     await details.getByRole('combobox', { name: 'Analysis provider' }).selectOption('off');
     await expect(page.locator('.squiggly-error')).toHaveCount(0);

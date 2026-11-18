@@ -7,7 +7,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { watchFile, unwatchFile } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
-import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageConnectionDraft, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod } from '../../protocol/language';
+import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ServerRegistry, findExecutable } from './server-registry';
@@ -17,6 +17,7 @@ import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation 
 import { ServerItems } from './server-items';
 import { featureNames, isDocumentMethod, resolveMethods } from '../../protocol/language-features';
 import { ServerSession } from './server-session';
+import { supportedTool } from '../../core/document/supported-languages';
 import { ServerDiscovery, type Discovery } from './server-discovery';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
@@ -140,10 +141,8 @@ export class LanguageManager {
       await this.updating;
       this.discovery.reset();
       this.provisionerValue?.resetEnvironment?.();
+      // Forgets what was found, so documents without a tool look again. Nothing is scanned here.
       await this.discovery.environment.resolve();
-      // Eight metadata workers share directory/package caches; no candidate is executed.
-      const entries = [...languageCatalog.map(item => item.id), ...this.registry.definitions().map(d => d.id)];
-      await mapLimited([...new Set(entries)], id => this.discover(id, true));
       this.broadcast({ type: 'discovery' });
     })().finally(() => { this.scanning = undefined; });
   }
@@ -168,17 +167,21 @@ export class LanguageManager {
       npmPackage: definition?.npmPackage ?? packageDiscovery(id).npmPackage, resolveEnvironment,
     })));
     const candidates = [...new Map(results.flatMap(r => r.candidates).map(c => [c.id, c])).values()];
-    return { candidates, selected: candidates.length === 1 ? candidates[0] : results.length === 1 ? results[0].selected : undefined,
+    // The first match in search order is the one to run; a person who wants another names its path.
+    return { candidates, selected: results.length === 1 ? results[0].selected : candidates[0],
       searched: [...new Set(results.flatMap(r => r.searched))], environment: snapshot };
   }
-  private async catalogFor(state: WindowState, file?: string, inspectInstallations = true): Promise<LanguageCatalog> {
+  /** Reads settings and the receipts of prepared tools. Only `inspect`, the one tool a person
+   * opened, is looked up on this computer; nothing lists what else is installed. */
+  private async catalogFor(state: WindowState, file?: string, inspect?: string): Promise<LanguageCatalog> {
     this.subscribe(state);
     await this.updating;
     const resource = file === undefined ? undefined : this.ownedFile(state, file);
     const catalog = (await import('./catalog/mason.json')).default;
     const registry = this.registry;
     const definitions = registry.definitions();
-    const packages = [...languageCatalog];
+    // A catalog entry without a connection profile cannot run; it is not offered.
+    const packages = languageCatalog.filter(item => definitions.some(d => d.id === item.id));
     for (const definition of definitions) if (!packages.some(item => item.id === definition.id))
       packages.push({ id: definition.id, languages: definition.languages.map(l => l.languageId), description: 'Custom language server connection.', homepage: '', licenses: [], source: { id: '' }, executables: [] } as typeof packages[number]);
     const entries: LanguageCatalogEntry[] = await mapLimited(packages, async item => {
@@ -186,7 +189,9 @@ export class LanguageManager {
       const projectRoot = definition && resource ? languageRoot(resource, definition, state.projectRoot ?? undefined, options?.root).path : undefined;
       const bundled = definition?.launch.kind === 'bundledNode';
       const executable = definition ? registry.executable(item.id, this.discovery.environment.peek().env) : undefined;
-      const found = inspectInstallations ? await this.discover(item.id) : undefined;
+      // A path a person named, or their own connection, is checked for existence; that reads one file.
+      const named = !!definition && !bundled && (registry.isCustom(item.id) || path.isAbsolute(executable ?? ''));
+      const found = item.id === inspect || named ? await this.discover(item.id, item.id === inspect) : undefined;
       const managedPreparation = definition && !registry.isCustom(item.id) && !path.isAbsolute(executable ?? '') && this.provisioner.canPrepare(definition);
       // A receipt of a prepared tool is a small file Setdown wrote; reading it scans nothing.
       const preparation = managedPreparation ? await this.provisioner.installation?.(item.id) : undefined;
@@ -196,13 +201,12 @@ export class LanguageManager {
         role: definition ? registry.role(item.id, resource ?? projectRoot) : undefined, projectRoot,
         globalOptions: definition ? { automaticInstall:registry.options(item.id).automaticInstall,args: registry.options(item.id).args ?? definition.launch.args, settings: registry.options(item.id).settings ?? definition.settings, initializationOptions: registry.options(item.id).initializationOptions ?? definition.initializationOptions ?? {}, root: registry.options(item.id).root, role: registry.role(item.id), formatting: registry.options(item.id).formatting } : undefined,
         configured: !!definition, bundled, custom: !!definition && registry.isCustom(item.id),
-        preparation: preparation || (managedPreparation ? { state: 'available' as const, downloadsAllowed: registry.automaticInstall(item.id) } : undefined),
+        preparation: preparation || (managedPreparation ? { state: 'available' as const, downloadsAllowed: registry.automaticInstall(item.id), asks: registry.asksBeforeInstalling(item.id) } : undefined),
         managed: !!definition && (registry.isCustom(item.id) || Object.keys(options ?? {}).length > 0 || !!executable && path.isAbsolute(executable)),
-        discoverable: definition ? registry.canDetect(item.id) : item.executables.length > 0,
         enabled: !!definition && registry.enabled(item.id), selected: [] as string[],
-        executable: resolved || executable, available: !!resolved, automatic: !!definition && registry.automatic(item.id),
-        canDetect: !!definition && registry.canDetect(item.id), candidates: found?.candidates, selectionNeeded: !!found?.candidates.length && !found.selected,
-        discoveryMessage: found?.environment.message, searched: found?.searched,
+        executable: resolved || executable, available: bundled || found ? !!resolved : undefined, automatic: !!definition && registry.automatic(item.id),
+        canDetect: !!definition && registry.canDetect(item.id),
+        chosen: !!definition && !bundled && path.isAbsolute(executable ?? ''),
         profileSource: definition?.provenance ? `${definition.provenance.source} · ${definition.provenance.profile}` : undefined,
         setupNote: definition?.setupNote,
         options: definition ? { automaticInstall:options?.automaticInstall,role: registry.role(item.id, resource ?? projectRoot), formatting: options?.formatting, scope: projectRoot, args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
@@ -215,7 +219,12 @@ export class LanguageManager {
       description: 'Cell-aware Python analysis for Jupyter notebooks, using the Python environment selected in the notebook.',
       homepage: '', configured: true, bundled: true, custom: false, enabled: true, selected: ['Python notebooks'],
       available: true, notebook: true, sessions: this.notebooks.snapshot(state.webContentsId) });
-    const languages = [...new Map([...languageDefinitions, ...this.packageCatalog.languages].map(language => [language.id, language])).values()].map(language => ({ id: language.id, name: language.label ?? language.name,
+    // Dialects share their language's editor id (TSX is edited as TypeScript). The language
+    // is listed once, under its own name and not under the name of its last dialect.
+    const named = new Map<string, typeof languageDefinitions[number]>();
+    for (const language of [...languageDefinitions, ...this.packageCatalog.languages])
+      if (!named.has(language.id) || language.sourceId === language.id) named.set(language.id, language);
+    const languages = [...named.values()].map(language => ({ id: language.id, name: language.label ?? language.name,
       selection: registry.analysisSelection(language.id), defaultServer: registry.defaultServer(language.id),
       servers: definitions.filter(d => registry.role(d.id) === 'primary' && d.languages.some(l => l.languageId === language.id || l.monacoId === language.id)).map(d => d.id) }));
     for (const definition of definitions.filter(d => registry.isCustom(d.id))) for (const language of definition.languages) if (!languages.some(l => l.id === language.languageId))
@@ -351,20 +360,12 @@ export class LanguageManager {
       return { output: result.output };
     });
     ipcMain.handle('language:cancel-preparation', async (event, file: string, language: string) => { const owner = state(event), context = await this.documentEnvironment(owner, file, language); this.preparation.cancel(owner.webContentsId, context.root); });
-    ipcMain.handle('language:catalog', (event, file?: string, inspectInstallations = true) => {
-      if (typeof inspectInstallations !== 'boolean') throw Error('Invalid installation inspection.');
-      return this.catalogFor(state(event), file, inspectInstallations);
+    ipcMain.handle('language:catalog', async (event, file?: string, inspect?: string) => {
+      if (inspect !== undefined && (typeof inspect !== 'string' || inspect.length > 128)) throw Error('Invalid tool.');
+      return this.catalogFor(state(event), file, inspect);
     });
     ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
     ipcMain.handle('language:automatic', (event, id: string) => { state(event); return this.changed(() => this.registry.useAutomatic(id)); });
-    ipcMain.handle('language:select-candidate', async (event, id: string, candidateId: string) => {
-      const owner = state(event), definition = this.registry.definition(id);
-      if (definition.launch.kind !== 'native' || typeof candidateId !== 'string') throw Error('Invalid executable selection.');
-      const found = await this.discover(id);
-      const candidate = found?.candidates.find(c => c.id === candidateId);
-      if (!candidate || owner.window.isDestroyed()) throw Error('Executable candidate is no longer available. Refresh external executable candidates.');
-      await this.changed(() => this.registry.chooseExecutable(id, candidate.path, !!candidate.runtime));
-    });
     ipcMain.handle('language:set-enabled', (event, id: string, enabled: boolean) => {
       state(event); return this.changed(() => this.registry.setEnabled(id, enabled));
     });
@@ -384,25 +385,6 @@ export class LanguageManager {
       const result = await pathDialog.showOpenDialog(owner.window, { title: `Select ${definition.name} Executable`, properties: ['openFile'] });
       if (result.canceled || !result.filePaths[0] || owner.window.isDestroyed()) return false;
       await this.changed(() => this.registry.chooseExecutable(id, result.filePaths[0])); return true;
-    });
-    ipcMain.handle('language:add-connection', async (event, draft: LanguageConnectionDraft) => {
-      const owner = state(event);
-      const definition = validateLanguageDefinition({ ...draft, launch: { kind: 'native', command: 'pending', args: draft?.args } });
-      if (draft.candidateId !== undefined) {
-        if (typeof draft.candidateId !== 'string') throw Error('Invalid executable selection.');
-        const candidate = (await this.discover(definition.id))?.candidates.find(c => c.id === draft.candidateId);
-        if (!candidate || owner.window.isDestroyed()) throw Error('Installation changed. Refresh external executable candidates.');
-        definition.launch = { kind: 'native', command: candidate.runtime ?? candidate.path,
-          args: [...(candidate.runtime ? [candidate.path] : []), ...draft.args] };
-        await this.changed(() => { this.registry.add(definition); this.registry.setEnabled(definition.id, true); });
-        return true;
-      }
-      const result = await pathDialog.showOpenDialog(owner.window, { title: `Select ${definition.name} Executable`, properties: ['openFile'] });
-      if (result.canceled || !result.filePaths[0] || owner.window.isDestroyed()) return false;
-      const executable = result.filePaths[0];
-      if (!path.isAbsolute(executable) || !await findExecutable(executable)) throw Error('Select an executable file.');
-      definition.launch = { kind: 'native', command: executable, args: draft.args };
-      await this.changed(() => { this.registry.add(definition); this.registry.setEnabled(definition.id, true); }); return true;
     });
     ipcMain.handle('language:import-definition', async event => {
       const owner = state(event);
@@ -509,10 +491,13 @@ export class LanguageManager {
       if (pending.get(document.id) === opening) this.emit(owner, { type: 'status', state: 'failed', message, issue, server: named(), documents: [{ id: document.id, generation: document.generation }] });
       throw Error(message);
     };
-    const prepare = (environment: NodeJS.ProcessEnv) => {
+    const prepare = async (environment: NodeJS.ProcessEnv) => {
       const target = named();
+      // A tool Setdown installed once was asked for then; another project reuses that answer.
+      const automaticInstall = this.registry.automaticInstall(support.server, file)
+        || this.registry.asksBeforeInstalling(support.server, file) && !!await this.provisioner.installation?.(support.server);
       return this.provisioner.prepare(definition, support.languageId, root, environment,
-        { ...this.registry.options(support.server, file), automaticInstall: this.registry.automaticInstall(support.server, file) }, message => {
+        { ...this.registry.options(support.server, file), automaticInstall }, message => {
           if (current()) this.emit(owner, { type: 'status', state: 'starting', preparing: true, message, server: target, documents: [{ id: document.id, generation: document.generation }] });
         }).catch(error => {
           if (error instanceof AutomaticDownloadsDisabled || !current()) throw error;
@@ -546,12 +531,16 @@ export class LanguageManager {
             support = ranked(zed)[0]; definition = this.registry.definition(support.server); root = rootFor(definition);
             const inherited = this.discovery.environment.peek().env;
             const environment = await this.provisioner.projectEnvironment?.(root, inherited) ?? inherited;
-            prepared = await prepare(environment);
+            // Without leave to download, an extension is not loaded and cannot look for its tool.
+            // A program already on this computer still runs: it is looked up by name below.
+            prepared = await prepare(environment).catch(error => { if (error instanceof AutomaticDownloadsDisabled) return undefined; throw error; });
             if (revision !== this.discovery.generation) continue;
             if (!current()) throw Error('Language document closed or configuration changed during Zed preparation.');
-            const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
-            launch = { executable: prepared.executable, args: prepared.args, env: { ...env, ...prepared.env } };
-            break;
+            if (prepared) {
+              const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
+              launch = { executable: prepared.executable, args: prepared.args, env: { ...env, ...prepared.env } };
+              break;
+            }
           }
           const bundled = candidates.find(c => this.registry.definition(c.server).launch.kind === 'bundledNode');
           const available: { support: typeof support; found?: Discovery }[] = bundled ? [{ support: bundled }]
@@ -559,8 +548,7 @@ export class LanguageManager {
           if (revision !== this.discovery.generation) continue;
           if (!current()) throw Error('Language document closed or configuration changed during discovery.');
           const installed = available.filter(c => !c.found || c.found.selected);
-          const ambiguous = available.some(c => c.found && c.found.candidates.length && !c.found.selected);
-          if (!installed.length && !ambiguous) {
+          if (!installed.length) {
             const installable = candidates.filter(candidate => {
               const d = this.registry.definition(candidate.server);
               return !this.registry.isCustom(d.id) && !path.isAbsolute(this.registry.executable(d.id,this.discovery.environment.peek().env))
@@ -576,14 +564,13 @@ export class LanguageManager {
               break;
             }
           }
-          if (!installed.length || ambiguous) {
+          if (!installed.length) {
             const selected = this.registry.executable(support.server, this.discovery.environment.peek().env);
             const help = /^https?:\/\//.test(languageCatalog.find(item => item.id === support.server)?.homepage ?? '');
-            if (candidates.length === 1 && (!this.registry.automatic(support.server) || path.isAbsolute(selected)) && !ambiguous)
-              reject(`${definition.name}: Executable not found. Refresh external executable candidates or choose an executable in Language Support.`,
+            if (candidates.length === 1 && (!this.registry.automatic(support.server) || path.isAbsolute(selected)))
+              reject(`${definition.name}: Program not found. Install it, or choose its program in Language Support.`,
                 path.isAbsolute(selected) ? { kind: 'executable', path: selected, missing: true, automatic: this.registry.canDetect(support.server) && !this.registry.isCustom(support.server) } : { kind: 'no-installer', help });
-            // Which of several copies of one program to run stays the person's choice.
-            return ambiguous ? { unavailable: 'selection-needed' as const, server: named() } : { unavailable: 'missing' as const, issue: { kind: 'no-installer' as const, help }, server: named() };
+            return { unavailable: 'missing' as const, issue: { kind: 'no-installer' as const, help }, server: named() };
           }
           // Several installed tools: the language's own order decides, as it does for managed ones.
           installed.sort((a, b) => this.provisioner.rank(this.registry.definition(a.support.server), a.support.languageId) - this.provisioner.rank(this.registry.definition(b.support.server), b.support.languageId));
@@ -595,7 +582,14 @@ export class LanguageManager {
           break;
         } catch (error) {
           if (revision !== this.discovery.generation) continue;
-          if (error instanceof AutomaticDownloadsDisabled) return { unavailable: 'missing' as const, message: error.message, issue: { kind: 'downloads-off' as const }, server: named() };
+          if (error instanceof AutomaticDownloadsDisabled) {
+            const optional = this.registry.asksBeforeInstalling(support.server, file);
+            // The person turned this language's own tool off. An extension that also lists the
+            // language is not offered in its place; it runs once it is installed or selected.
+            if (optional && supportedTool(support.languageId)) return { unavailable: 'missing' as const, server: named() };
+            return { unavailable: 'missing' as const, message: error.message,
+              issue: { kind: 'downloads-off' as const, ...(optional ? { optional: true } : {}) }, server: named() };
+          }
           throw error;
         }
       }

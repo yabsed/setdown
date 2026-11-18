@@ -12,83 +12,145 @@ The Setdown button continues to toggle Folder Tools.
 
 The home screen is ordered by what a person asks, not by where a setting is stored:
 
-- **Set up language tools automatically** is the app's download policy.
+- **Set up language tools automatically** is the app's download policy. Under it
+  is the list of supported languages.
 - **Needs attention** lists a tool whose session ended, under the name of its
   language, with the same sentence the document shows. **Fix ›** opens that tool
   with the same repair. The section is absent when nothing is wrong.
 - **Ready** lists the languages that have a tool Setdown ships, has already
   prepared, or is running now. A language opens its own page.
-- **All languages…** searches every recognized language.
-- **Advanced** holds **Language defaults**, **Custom connections** and
-  **Installation management**.
+- **All languages…** searches every recognized language and sets a language's
+  default tool.
+- **Advanced** is one list of tools, where a person names a tool's program
+  themselves or changes its connection settings.
 
-Opening home or language defaults performs no executable scan, installation or
+## Supported languages and other languages
+
+Setdown answers for a fixed list of languages, kept in
+`src/core/document/supported-languages.ts`: Python, JavaScript and TypeScript,
+Svelte, C and C++, Rust, Go, PHP, Kotlin, JSON, YAML, Dockerfile, Docker Compose,
+CSS and HTML. Each names the one tool that serves it. Opening a file of a
+supported language starts that tool and, when downloads are on, downloads it the
+first time without a question. `apps/lsp-benchmark` opens files of real projects
+in each of these languages through the same code and records what the tool
+answers; a tool is put on the list, or replaced, on that evidence. Docker Compose
+is served by the YAML tool for that reason: on a real Compose file it was the one
+of three tools that marked a wrong key.
+
+A file kind that is not on the list but is read by a supported tool starts that
+tool: a GitHub workflow file is checked by the YAML tool, without a question,
+before the dedicated GitHub Actions tool that would first ask to be installed. A
+person can still choose the dedicated tool.
+
+Kotlin is served by JetBrains' own tool (`kotlin-lsp`). The community tool
+(`kotlin-language-server`) reads a Gradle build inside its start-up, which
+outlasts the time Setdown gives a tool to start, and its built-in compiler does
+not read libraries built with Kotlin 2.3. The JetBrains tool is 370 MB, brings
+its own Java and takes about 3 GiB of memory with a Gradle project open. When a
+project has both a Gradle and a Maven build it asks which one to use; the
+question appears in the document's panel and nothing is analysed before it is
+answered.
+
+An installation may take up to thirty minutes before Setdown gives it up. The
+limit is there for an installer that has stopped, not for a slow connection.
+
+Java is not on the list. Its tool installs through an extension that needs a
+newer Java than most projects build with and a download that did not finish on
+the measuring machine; it was never seen answering on a real project. It works
+like every other tool once a person asks for it.
+
+Two supported tools are told more than their catalog entry says
+(`scripts/language-profiles/overrides.json`, `settings`). The JSON tool is given
+the schema address of well-known files (`package.json`, `tsconfig.json`,
+`jsconfig.json`, Babel, ESLint and Prettier configuration), so that such a file
+has descriptions, allowed keys and schema errors. The tool downloads a schema
+from schemastore.org the first time a matching file is opened; the YAML tool does
+the same for the files it recognizes. The HTML tool is given style-sheet settings,
+without which it reports nothing for a page's `<style>`.
+
+Every other tool in the imported catalogs works the same way once a person asks
+for it, and is not downloaded before that. Its file shows the neutral status
+**Not installed** with one sentence and one button, **Install … support**. Saying
+yes is the whole installation: the choice is saved for that tool and the file
+connects. Selecting the tool as a language's default, or for a project, is also
+asking for it. A tool that Setdown installed once stays in use everywhere. A
+program that is already on the computer runs without a question, because nothing
+is downloaded.
+
+A supported language whose tool a person turned off has no stand-in: an extension
+that merely lists the same language is neither started in its place nor offered
+as that language's support. It runs when it is already installed or when the
+person selects it.
+
+Opening home or the language list performs no executable scan, installation or
 server launch. Ready is read from shipped tools and from the receipts Setdown
-wrote when it prepared a tool. No open project or document is needed. Ordinary
-file opening chooses the declared primary tool and prepares it automatically when
-downloads are allowed; users do not need to detect or register an imported Zed
-profile first. An explicit choice is authoritative even if that executable is
-unavailable. If no default distinguishes several primary tools, the language's
-own order decides and the tool starts; a person is asked only which of several
-copies of one program to run.
+wrote when it prepared a tool. No open project or document is needed. An explicit
+choice is authoritative even if that executable is unavailable. If no default
+distinguishes several primary tools, the language's own order decides and the
+tool starts; nobody is asked to choose between programs.
 
 The language list shows languages that have a usable tool or an explicit choice.
 A search reaches every language.
 
-Language defaults choose Automatic, a primary tool, or no project analysis. A
+A language's page chooses Automatic, a primary tool, or no project analysis. A
 project's explicit choice takes precedence; **Use app default** restores inheritance.
 Changing the app default keeps unaffected project sessions running. Existing
 per-server preferences, explicit disabled states, executable paths and custom IDs
 remain in the existing settings file. Restoring inheritance does not delete
 arguments or options shared by another language.
 
-Installation management, under **Advanced**, has **Provided and managed tools**,
-**Needs attention**, **Custom connections**, **External executable candidates** and
-**Other tools**. The last group starts collapsed; search includes every group.
-Bundled tools and validated managed receipts are separated from files merely found
-in the app environment. A live external session does not turn its executable into
-an app-managed installation. Missing
-saved executables remain repairable; a found executable without a connection
-profile appears with **Setup needed**. Language logos use named SVG
+## The tool list
+
+**Advanced** opens one searchable list. Without a search it holds what this
+person has: **Needs attention**, **Your connections** (imported), and **Set up**
+(shipped, prepared, chosen by hand or running now). A search adds **Other tools**,
+every other tool that has a connection profile. A catalog entry without a profile
+cannot run and is not listed. The list reads settings and receipts; it does not
+look for programs on the computer.
+
+Each row has one status that says how the tool gets onto the computer:
+**Included**, **Installed**, **Installs when needed**, **Asks before installing**,
+**Downloads off**, **Install it yourself**, **Your program**, **Your connection**,
+**Found on this computer** or **Program not found**. Language logos use named SVG
 exports from the already installed Simple Icons package, pinned to 9.21.0 as a
 direct dependency. Logos adapt contrast to light/dark themes; languages without
 a matching logo use a short language label. No remote image requests are needed.
 
-Select an installation to manage its global connection settings. Advanced
-arguments and profile information are under **Connection settings**; executable
-paths are under **Additional actions**. Runtime state, restart, project settings
-and output belong to the document's inspection. Escape clears a search, moves
-back one step (a list, then Advanced, then home), then closes the sidebar and
-restores its activity button.
+A tool's own page is the only place that looks its program up, and only for that
+tool. It shows the program in use and these actions: **Choose program…**,
+**Use automatic setup** (after a program was chosen by hand), **Install** (for a
+tool that asks first), **Enable/Disable by default**, **Connection settings**
+(arguments and options), and **Remove connection** for an imported one. Runtime
+state, restart, project settings and output belong to the document's inspection.
+Escape clears a search, moves back one step, then closes the sidebar and restores
+its activity button.
 
-The advanced screen's **Refresh external executable candidates** action refreshes
-metadata, not a universal inventory or runtime health check. **Add server manually…**
-opens the manual flow: choose a known profile and locate its executable, or enter
-a custom connection. **Import JSON…** remains available. Browsing a manual-only profile
-in this flow does not add it to the default list until it is detected or saved.
+**Check again for installed tools**, in the header of the list and of a tool's
+page, forgets what was looked up and reconnects open documents whose tool was
+missing. **Import a connection (JSON)…** adds a tool Setdown does not know.
 
-The installation list's compact view title, icon actions, search field, counted
-sections, and row hierarchy follow [VS Code's view guidance](https://code.visualstudio.com/api/ux-guidelines/views)
+The list's compact view title, icon actions, search field, counted sections and
+row hierarchy follow [VS Code's view guidance](https://code.visualstudio.com/api/ux-guidelines/views)
 and its vendored `extensionsViewlet.ts` / `media/extensionsViewlet.css`. Setdown
 retains its own theme tokens and sidebar layout; the screen is not a marketplace.
 
 The [discovery design](../reports/2026_10_16_00_09_lsp_discovery_and_connection_design.md)
-explains the architecture and follow-up work. The behavior below describes the
-implemented discovery and imported connection profiles. The
+explains the architecture and follow-up work. The
 [global settings design](language-support-global-settings-design.ko.md) explains
 why detection moved out of the ordinary workflow after the Zed integration.
 
 The automatic-download switch is a default; explicit tool/project download
-settings override it. Bundled and external executables and validated managed
-launch receipts remain usable with downloads off. Native Zed adapters can still
-check an external tool in an isolated host with HTTP and Node downloads disabled.
-WASI extensions own their installers and may invoke package managers; without
-download permission they require a validated prepared command or an explicit
-executable. A receipt is specific to its
-project inputs and launch settings: a new project or changed manifest may require
-preparation even if the same tool was prepared elsewhere. Setdown reports that
-condition without starting an installer or silently downloading. This switch
-controls analysis tools; it does not control syntax grammar package loading.
+settings override it. With the switch off nothing is downloaded and nothing is
+offered. Bundled and external executables and validated managed launch receipts
+remain usable with downloads off. Native Zed adapters can still check an external
+tool in an isolated host with HTTP and Node downloads disabled. WASI extensions
+own their installers and may invoke package managers; without download permission
+the extension is not loaded, and Setdown looks for the tool's program by name
+instead. A receipt is specific to its project inputs and launch settings: a new
+project or changed manifest may require preparation even if the same tool was
+prepared elsewhere. Setdown reports that condition without starting an installer
+or silently downloading. This switch controls analysis tools; it does not control
+syntax grammar package loading.
 
 ## Current file support
 
@@ -111,6 +173,7 @@ follows the cause, not the state:
 | Setdown is fetching the tool | Setting up Java support… | none | none |
 | A download or installer failed | Couldn't download Java support. | Try again | none |
 | Downloads are off | Java support isn't installed. | Install Java support | none |
+| The tool is outside the supported languages and was not asked for | Zig support isn't installed. | Install Zig support | none |
 | Setdown has no installer for it | Java support isn't installed. | How to install ↗ | I already have it… |
 | The chosen program does not start as a language tool | Java support can't start. | Use automatic setup | Show log |
 | The chosen program no longer exists | Java support can't start. | Use automatic setup | Choose program… |
@@ -134,11 +197,15 @@ comes before the environment: no environment choice can start it.
 Local-check failures and supplementary-provider failures remain visible
 independently of the primary provider.
 
-**More…** stays in the same editor group. It adds the project, where the
-analysis selection comes from, the observation of results, **Problems**, and the
-tools attached to that file; selecting one reveals its results, capabilities,
-recovery and messages. Project connection settings and output are separate
-steps; a log opened from the first step returns to it. Longer inspection
+**More…** stays in the same editor group. It adds one block per tool attached
+to the file: the tool's name and state, what it last reported, and **Restart**
+and **Show log** for that tool. **Problems** is below them. Selecting a tool's
+name opens its own step: results, capabilities, recovery, messages,
+**Choose analysis tool…** (the project's choice between primary tools) and
+**Project connection settings…**. The project folder, the file's path and where a
+choice is stored are not listed; the environment row and the tool's step say
+which project a choice applies to. Project connection settings and output are
+separate steps; a log returns to the step it was opened from. Longer inspection
 stays open while another editor group receives focus, and is bounded by its
 own group. Quick selection steps close on an outside click. Tab replacement,
 closing, path retargeting or language changes retire the old inspection; a
@@ -154,10 +221,10 @@ incarnation and root; late responses cannot update a replacement document or
 retarget an in-progress choice. Connection-setting edits retain their original
 options instead of following live catalog refreshes.
 
-The left **Language Support** sidebar owns app defaults and advanced installation
-management, custom connections and import. It has no current-file
-mode; **Needs attention** reports tools, not the document in front. **Manage installation…** passes only the language/tool filter to it, not a
-project editing target. **Disable by default** is distinct from a document’s
+The left **Language Support** sidebar owns app defaults, the tool list and
+import. It has no current-file mode; **Needs attention** reports tools, not the
+document in front. The document's inspection does not link into it: a repair is
+offered where the fault is shown. **Disable by default** is distinct from a document’s
 project analysis selection. Closing all code tabs leaves the catalog usable.
 
 Disabling or uninstalling a server does not remove language associations or
@@ -422,7 +489,7 @@ and root markers:
 - A Zed extension names its server with an identifier such as `java`, `cmake` or
   `gem`. That identifier is not a program name and is never looked up on PATH:
   the JVM is not a Java language server. The extension's adapter resolves and
-  prepares the real tool. A program chosen explicitly with **Choose executable…**
+  prepares the real tool. A program chosen explicitly with **Choose program…**
   is still used as chosen.
 - A tool may need a newer runtime than the project it analyzes. eclipse.jdt.ls
   states its minimum Java in its launcher. When the default JDK is older, Setdown
@@ -430,11 +497,9 @@ and root markers:
   known directories of system packages and version managers without executing
   any candidate, and passes the project's own JDK as its default runtime. With no
   suitable JDK the status says which Java is needed and which was found.
-- Entries without a connection profile still detect their installed executable.
-  **Connect installed server…** asks for the missing language ID, extensions and
-  stdio arguments. When there is one detected installation, it reuses that path
-  without opening a file chooser. **Add server manually…** and **Import JSON…** remain
-  available; imported custom connections initially stay disabled.
+- A catalog entry without a connection profile cannot run and is not listed.
+  **Import a connection (JSON)…** adds a tool with its language ID, extensions
+  and stdio arguments; imported custom connections initially stay disabled.
 
 Automatic preparation uses Zed's actual installers/extensions and supported npm
 package metadata; it does not execute arbitrary Mason installation recipes.
@@ -444,11 +509,7 @@ interpreter. npm package `bin` metadata can also resolve an installed Node runti
 and script directly, including on Windows without running `.cmd`/`.bat` wrappers.
 Custom connections can still select Node and put the server script in `args`.
 
-Installation management distinguishes **Included**, managed **Installed**,
-**Executable found**, **Not found in searched locations**, **Prepares when needed**,
-**Downloads disabled** and **Choose executable**. Found entries
-lacking a profile show **Setup needed**. Installation details expose the
-executable; document tool details expose the analysis root, negotiated features
+A tool's page exposes the program in use; document tool details expose the analysis root, negotiated features
 and startup/crash errors (including available stderr). Finding an executable does
 not prove that its runtime or project is healthy; **Connected** means LSP
 initialization completed, not that analysis completed.
@@ -490,8 +551,13 @@ declare other custom tags such as `!Ref` and `!GetAtt`.
 
 ## Finding an installation
 
-If you install a server while Setdown is running, open **Edit → Language Support…**
-and click **Refresh external executable candidates**. Open documents with unavailable or failed
+A tool's program is looked for in one order: the program a person chose, the
+project's environment (its shell PATH, then the known user locations below), and
+last Setdown's own prepared copy. There is no list of everything installed on the
+computer and no step where a person picks between programs.
+
+If you install a server while Setdown is running, open **Edit → Language Support…**,
+**Advanced**, and click **Check again for installed tools**. Open documents with unavailable or failed
 connections retry using their latest unsaved text. Healthy connections keep their
 processes, and explicitly disabled servers stay disabled. Additional documents in
 the same live workspace reuse its session; a newly detected path takes effect on
@@ -500,20 +566,19 @@ also recheck after the short discovery cache expires.
 
 Discovery first honors a manually selected executable, including the legacy clangd
 selection. An explicit path that disappears reports an error; it does not silently
-switch versions. **Use automatic detection** clears that path choice without
-changing enablement or server options. The existing native **Choose executable…**
-button remains available.
+switch versions. **Use automatic setup** clears that path choice without
+changing enablement or server options. **Choose program…** names a program again.
 
-The global candidate list and compatibility fallback use the selected environment's absolute PATH directories in
+The lookup by name uses the selected environment's absolute PATH directories in
 order, then known user locations such as `~/.local/bin`, Cargo's bin directory,
 GOBIN/GOPATH and configured pipx/uv bin directories. For profiles/catalog packages distributed through Python, it can query the
 selected interpreter's scripts and user-scripts directories. npm packages use
 known global directories and `package.json` bin mappings. On a document connection
 or Rescan, a shared `npm root --global` metadata query can locate a custom prefix;
 it runs the installed npm CLI through Node with fixed arguments and no scripts.
-The same runtime lookup is shared across the entire catalog. Multiple PATH
-matches follow PATH order; multiple fallback matches require choosing a candidate
-in Language Support. No home-directory crawl or server `--version` sweep occurs.
+Multiple PATH matches follow PATH order, and among the known user locations the
+first in the order above is used; a person who wants another copy names its path
+with **Choose program…**. No home-directory crawl or server `--version` sweep occurs.
 
 For Zed-supported automatic connections, project shell capture uses the vendored
 Zed `util::shell_env::capture`, including its quoting, shell hooks and `--printenv`
@@ -523,7 +588,7 @@ Conda or `SETDOWN_LSP_INHERIT_ENV=1`) remain authoritative. Refresh invalidates 
 project environment cache. A project shell failure is surfaced rather than silently
 selecting a different project's environment.
 
-For the compatibility path and global candidate list, a native connection or explicit refresh
+For the lookup by name, a native connection or **Check again for installed tools**
 can read the user's shell environment asynchronously. Shell queries have a
 five-second timeout; Python/npm metadata queries have a three-second timeout, with a
 1 MiB combined output limit and process cleanup on cancellation. Activated venv
@@ -535,21 +600,22 @@ inherited environment and appears in connection details.
 
 The resolved executable and environment are passed together to the server. They
 never replace Setdown's global environment or persist the entire environment in
-settings. Opening the catalog performs only file checks; shell/Python/npm queries
-require a native language document or Rescan. Markdown reading, PDF and web use do
+settings. Opening the tool list reads settings and receipts only; a tool's own
+page looks up that one tool. Shell/Python/npm queries require a native language
+document, a tool's page or **Check again for installed tools**. Markdown reading, PDF and web use do
 not trigger this discovery unless explicitly connected to a language server.
 
-A missing eligible server is prepared asynchronously when automatic installation
-is enabled. Servers without a supported installation path remain unavailable;
+A missing tool of a supported language is prepared asynchronously when automatic
+installation is enabled; any other tool is prepared after a person asks for it. Servers without a supported installation path remain unavailable;
 normal editing and saving stay usable. Explicit connection failures show their cause.
 Finding an executable cannot repair a missing shared library or toolchain.
 
-Directory listings and Python/npm metadata are shared across scans; eight workers
-bound catalog I/O. The global scan does not execute discovered servers. Zed adapters
+Directory listings and Python/npm metadata are shared between lookups; eight workers
+bound catalog I/O. A lookup does not execute what it finds. Zed adapters
 may probe a selected tool when a document needs it (for example, Rust's `--help`
 check rejects broken rustup shims). Results
-are cached briefly; Rescan invalidates results and pending metadata work. Explicit
-candidate IDs are revalidated in main before they become a saved connection.
+are cached briefly; **Check again for installed tools** invalidates results and
+pending metadata work.
 
 Python can select a unique local `.venv`/`venv` from metadata. Other toolchain
 choices and dependency installation remain explicit.
@@ -623,7 +689,7 @@ metadata are not used for LSP routing.
 
 ## Custom connection format
 
-Save the following as JSON and choose **Import JSON…**, then enable the connection.
+Save the following as JSON and choose **Import a connection (JSON)…** in the tool list, then enable the connection.
 Use the installed server's real executable and documented arguments.
 
 ```json
@@ -724,9 +790,9 @@ checks the Edit menu, catalog, import, Full sync, initialization settings, save 
 configuration restart and Undo. It also checks a missing automatic server,
 installation followed by Rescan, current unsaved text, a stable server process
 through repeated scans and unrelated configuration changes. Discovery unit tests
-cover candidate precedence, caching, shell fallback, npm bin/runtime resolution,
-shared custom-prefix metadata, catalog-wide detection, ambiguous primary selection
-and metadata process limits. Real Electron fixtures exercise generated npm-profile discovery, built-in
+cover lookup precedence, caching, shell fallback, npm bin/runtime resolution,
+shared custom-prefix metadata, the first fallback location winning without a
+question and metadata process limits. Real Electron fixtures exercise generated npm-profile discovery, built-in
 workers with all servers disabled, and concurrent analysis/formatting providers
 with unified Problems. Unit tests also execute real Pyright, basedpyright and
 clangd. Each test records which server or fixture it exercises; profile presence
@@ -857,7 +923,7 @@ product contract. The implementation does not add a VS Code extension runtime.
 
 `document-analysis-ui.spec.ts` checks the short summary (language title, Working,
 no project row, Problems or selection source before **More…**), the home lists
-without a scan, the Advanced step, IME/Escape steps, two
+without a scan, the tool choice on a tool's own step, IME/Escape steps, two
 projects in separate groups, group-bounded inspection, explicit shared scope,
 project-only writes from an inspection while another group has focus, Undo, the
 independent catalog after tab closure, and an actionable missing-environment
@@ -869,7 +935,12 @@ project diagnostic coverage. Presentation/controller unit tests cover priority,
 one sentence and action per cause, partial failure, pending/stale observations,
 closure and obsolete async responses. `language-issue.test.ts` covers cause
 classification and `tool-runtime.test.ts` the JDK choice; `language-manager.test.ts`
-covers the extension-name lookup, ranked choice, and which causes are retried.
+covers the extension-name lookup, ranked choice, which causes are retried, the
+question before a tool outside the supported languages is downloaded, and an
+installed program running without that question. `server-registry.test.ts` checks
+that every supported language names a tool that exists and is its default.
+`language-registry.spec.ts` covers the tool list: what is listed without a search,
+the statuses of a supported and of another tool, import, and a missing program.
 These are included in the preview contract; its GUI and performance gates still
 apply to changes in these surfaces.
 

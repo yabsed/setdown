@@ -9,6 +9,7 @@ import { languageSupport, type LanguageRoute } from '../../core/document/languag
 import type { ServerLaunch } from './server-session';
 import { languageDefinition } from '../../core/document/language-catalog';
 import type { AnalysisPolicy } from '../../core/document/analysis-context';
+import { isSupportedTool, supportedTool } from '../../core/document/supported-languages';
 
 export type Options = { automaticInstall?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean; enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
 type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string>; projectPreferred?: Record<string, Record<string, string>>; projects?: Record<string, Record<string, Options>>;
@@ -106,7 +107,23 @@ export class ServerRegistry {
     return roots.reduce((options, root) => ({ ...options, ...this.data.projects![root][id] }), global);
   }
   role(id: string, resource?: string): 'primary' | 'supplementary' { return this.options(id, resource).role ?? this.definition(id).role ?? 'primary'; }
-  automaticInstall(id?: string, resource?: string): boolean { return (id ? this.options(id, resource).automaticInstall : undefined) ?? this.data.automaticInstall ?? true; }
+  /** Without an id: the app's switch. With one: whether this tool may be downloaded now.
+   * The switch covers the supported languages. Any other tool is downloaded once a person
+   * asked for it: by installing it, enabling it, adding it, or choosing it for a language. */
+  automaticInstall(id?: string, resource?: string): boolean {
+    const general = this.data.automaticInstall ?? true;
+    if (!id) return general;
+    return this.options(id, resource).automaticInstall ?? (general && (isSupportedTool(id) || this.asked(id, resource)));
+  }
+  /** True when the app would download this tool if the person asked: the switch is on and nothing forbids this tool. */
+  asksBeforeInstalling(id: string, resource?: string): boolean {
+    return (this.data.automaticInstall ?? true) && this.options(id, resource).automaticInstall === undefined && !this.automaticInstall(id, resource);
+  }
+  private asked(id: string, resource?: string): boolean {
+    if (this.isCustom(id) || this.storedOptions(id, resource).enabled === true) return true;
+    return [this.data.languageDefaults, this.data.preferred, ...Object.values(this.data.projectDefaults ?? {}), ...Object.values(this.data.projectPreferred ?? {})]
+      .some(choices => !!choices && Object.values(choices).includes(id));
+  }
   setAutomaticInstall(enabled: boolean): void {
     if (typeof enabled !== 'boolean') throw Error('Invalid automatic installation setting.');
     this.data.automaticInstall = enabled; this.save();
@@ -193,14 +210,21 @@ export class ServerRegistry {
     if (policy.mode !== 'automatic') return policy.server;
     const definitions = this.definitions().filter(d => d.languages.some(l => l.languageId === language || l.monacoId === language)
       && this.role(d.id, resource) === 'primary' && this.enabledFor(d.id, language, resource));
-    const order = this.declaredServers(this.policyLanguage(language));
+    // A supported language names its tool itself; imported catalogs order only the rest.
+    const supported = supportedTool(language) ?? supportedTool(this.policyLanguage(language));
+    const order = [...(supported ? [supported] : []), ...this.declaredServers(this.policyLanguage(language))];
     const rank = (d: LanguageServerDefinition) => {
       const index = order.findIndex(id => id === d.id || id === d.provenance?.profile || d.launch.kind === 'native' && id === d.launch.command);
       return index < 0 ? order.length : index;
     };
     const declared = definitions.filter(d => d.launch.kind === 'bundledNode' || rank(d) < order.length);
-    return declared.sort((a, b) => Number(b.launch.kind === 'bundledNode') - Number(a.launch.kind === 'bundledNode') || rank(a) - rank(b))[0]?.id
-      ?? (definitions.length === 1 ? definitions[0].id : undefined);
+    // A file kind outside the supported list is read by a supported tool that knows it
+    // (a workflow file by the YAML tool) before a tool that first asks to be installed.
+    const guaranteed = (d: LanguageServerDefinition) => Number(!supported && isSupportedTool(d.id));
+    return declared.sort((a, b) => Number(b.launch.kind === 'bundledNode') - Number(a.launch.kind === 'bundledNode') || guaranteed(b) - guaranteed(a) || rank(a) - rank(b))[0]?.id
+      // A language nobody ordered starts its only tool. A supported language whose tool was
+      // turned off does not fall back to whichever extension also lists the language.
+      ?? (!supported && definitions.length === 1 ? definitions[0].id : undefined);
   }
   associations(resource?: string): LanguageRoute[] {
     const roots = [...new Set([...Object.keys(this.data.projects ?? {}), ...Object.keys(this.data.projectDefaults ?? {}), ...Object.keys(this.data.projectPreferred ?? {})])];

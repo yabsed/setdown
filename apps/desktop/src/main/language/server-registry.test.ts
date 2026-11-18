@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { ServerRegistry } from './server-registry';
 import { languageSupport } from '../../core/document/language-support';
+import { supportedLanguages } from '../../core/document/supported-languages';
 import { validateLanguageDefinition } from '../../core/document/language-definition';
 import { standaloneLanguageRoot } from './server-definitions';
 import { configurationSection } from './server-session';
@@ -293,4 +294,59 @@ test('project primary choices and disabled state survive reload without changing
   expect(reopened.candidates(path.join(project, 'main.py'))).toEqual([]);
   expect(reopened.candidates(path.join(other, 'main.py'))[0].server).toBe('pyright');
   expect(reopened.associations().find(route => route.server === 'pyright')?.scopes).toContainEqual(expect.objectContaining({ root: project, enabled: false }));
+});
+
+test('every supported language starts its own tool by default, and that tool can run', async () => {
+  const registry = new ServerRegistry(await directory());
+  const tools = new Map(registry.definitions().map(item => [item.id, item]));
+  for (const entry of supportedLanguages) {
+    const tool = tools.get(entry.tool);
+    expect(tool, entry.tool).toBeDefined();
+    expect(registry.role(entry.tool), entry.tool).toBe('primary');
+    for (const language of entry.languages) {
+      expect(tool!.languages.map(item => item.languageId), `${entry.tool} serves ${language}`).toContain(language);
+      expect(registry.defaultServer(language), language).toBe(entry.tool);
+    }
+  }
+});
+
+test('a file kind outside the supported list is read by a supported tool that knows it', async () => {
+  const root = await directory(), registry = new ServerRegistry(root);
+  // The imported order names the GitHub Actions tool first; it would ask before it is installed.
+  // The YAML tool reads a workflow file too and is installed without a question.
+  expect(registry.defaultServer('github-action')).toBe('yaml-language-server');
+  expect(registry.candidates(path.join(root, '.github', 'workflows', 'ci.yml'))).toEqual([{ server: 'yaml-language-server', languageId: 'github-action' }]);
+  registry.selectAnalysis('github-action', 'gh-actions-language-server');
+  expect(registry.defaultServer('github-action')).toBe('gh-actions-language-server');
+  // Among supported tools the language's own tool still comes first.
+  expect(registry.defaultServer('dockerfile')).toBe('dockerfile-language-server');
+});
+
+test('a supported language whose tool was turned off has no default tool', async () => {
+  const registry = new ServerRegistry(await directory());
+  expect(registry.defaultServer('json')).toBe('json-lsp');
+  registry.setEnabled('json-lsp', false);
+  // Other extensions list JSON too. None of them becomes "the JSON tool" by being the one left.
+  expect(registry.defaultServer('json')).toBeUndefined();
+});
+
+test('a supported tool is downloaded when needed; any other tool waits until a person asks for it', async () => {
+  const root = await directory(), registry = new ServerRegistry(root), project = path.join(root, 'project');
+  expect(registry.automaticInstall('svelte-language-server')).toBe(true);
+  expect(registry.asksBeforeInstalling('svelte-language-server')).toBe(false);
+  expect(registry.automaticInstall('fortls')).toBe(false);
+  expect(registry.asksBeforeInstalling('fortls')).toBe(true);
+  // Choosing the tool for a language is asking for it, in that project or everywhere.
+  registry.selectAnalysis('fortran', 'fortls', project);
+  expect(new ServerRegistry(root).automaticInstall('fortls')).toBe(true);
+  expect(registry.asksBeforeInstalling('fortls')).toBe(false);
+  registry.selectAnalysis('fortran', 'automatic', project);
+  expect(registry.asksBeforeInstalling('fortls')).toBe(true);
+  registry.allowDownload('fortls');
+  expect(new ServerRegistry(root).automaticInstall('fortls')).toBe(true);
+  // With downloads off nothing is offered: the general switch is the person's answer.
+  registry.setAutomaticInstall(false);
+  expect(registry.automaticInstall('svelte-language-server')).toBe(false);
+  expect(registry.asksBeforeInstalling('zls')).toBe(false);
+  expect(registry.automaticInstall('fortls')).toBe(true);
 });

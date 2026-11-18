@@ -26,10 +26,10 @@ test('PATH ordering wins; discovery does not execute found servers or change the
   expect(process.env.PATH).toBe(originalPath); f.discovery.dispose();
 });
 
-test('fallback installations require a choice when ambiguous; explicit missing selections never fall through', async () => {
+test('the first fallback installation in search order is used without a question; explicit missing selections never fall through', async () => {
   const f = await fixture();
   await f.create(path.join(f.home, '.local/bin')); await f.create(path.join(f.home, '.cargo/bin'));
-  const found = await f.discovery.find('fortls'); expect(found.candidates).toHaveLength(2); expect(found.selected).toBeUndefined();
+  const found = await f.discovery.find('fortls'); expect(found.candidates).toHaveLength(2); expect(found.selected).toBe(found.candidates[0]);
   expect((await f.discovery.find(path.join(f.home, 'removed/fortls'))).candidates).toEqual([]);
   f.discovery.dispose();
 });

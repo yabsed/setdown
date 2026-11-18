@@ -39,11 +39,14 @@ IME and latency guarantees and tolerances remain unchanged.
 
 ## Guarantees and ownership
 
-Language Support's left sidebar is app settings: download policy, tools that need
-attention, tools that are ready, and, under Advanced, language defaults, custom
-connections and installation management. Home does not scan executables or start
-tools; its lists come from shipped tools, receipts Setdown wrote, and live
-sessions. Runtime status, environment selection, output and restart belong to the
+Language Support's left sidebar is app settings: download policy and the list of
+supported languages, tools that need attention, tools that are ready, every
+language's default, and, under Advanced, one list of tools. Neither home nor that
+list scans executables or starts tools; they are read from shipped tools,
+receipts Setdown wrote, and live sessions, and only a tool's own page looks up
+that tool's program. A supported language's tool is downloaded when a file needs
+it; any other tool is downloaded after the person asks for it, and a program
+already on the computer runs without that question. Runtime status, environment selection, output and restart belong to the
 owning document's Code support. Its first step states one cause-specific sentence
 and action; Restart is offered only for a tool that had been working, and a cause
 that repeats identically (a chosen program that is not a language tool, a missing
@@ -65,8 +68,8 @@ its server is never looked up on PATH as a program. Several tools without a
 declared default start the one the language ranks first instead of asking. Project environment capture uses
 Zed's shell implementation; managed command reuse must not hide a newly available
 project toolchain. Download policy remains effective for native and WASI installers.
-The global list distinguishes managed installations from unverified executable
-candidates. `tooling/language-host/test/resolution.mjs` exercises the real pinned
+The tool list distinguishes managed installations from a program a person
+chose and from one found by name. `tooling/language-host/test/resolution.mjs` exercises the real pinned
 Rust adapter with broken shims, project toolchain overrides and downloads disabled,
 and the actual shell-capture callback. This Linux integration gate complements
 the manager/provisioner unit checks and real language GUI scenarios. Document

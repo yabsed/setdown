@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { documentSupport, openLanguageCatalog, type DocumentSupportTarget, type AnalysisPage } from './document-support';
+  import { documentSupport, type DocumentSupportTarget, type AnalysisPage } from './document-support';
   import { presentSupport } from './document-presentation';
   import DocumentAnalysisPanel from './DocumentAnalysisPanel.svelte';
   import LanguageStatusButton from './LanguageStatusButton.svelte';
@@ -45,7 +45,7 @@
   {#if target}
     <div bind:this={panel} class="document-language-status" class:expanded style:max-height={`${availableHeight}px`} role="dialog" aria-label="Current file language support" tabindex="-1">
       {#key target.resource}
-        <DocumentAnalysisPanel {target} {initialPage} onpagechange={page => { expanded = ['details', 'tool', 'settings', 'output'].includes(page); if (panel) panel.scrollTop = 0; }} onclose={close} onmanage={(language, server) => { target = undefined; openLanguageCatalog(language, server); }} />
+        <DocumentAnalysisPanel {target} {initialPage} onpagechange={page => { expanded = ['details', 'tool', 'settings', 'output'].includes(page); if (panel) panel.scrollTop = 0; }} onclose={close} />
       {/key}
     </div>
   {/if}

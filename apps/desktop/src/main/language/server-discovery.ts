@@ -58,12 +58,12 @@ export class ServerDiscovery {
   async find(command: string, options: FindOptions = {}): Promise<Discovery> {
     const signal = this.controller.signal;
     const snapshot = options.resolveEnvironment ? await this.environment.resolve() : this.environment.peek();
-    if (signal.aborted) throw new Error('Server discovery cancelled. Refresh external executable candidates.');
+    if (signal.aborted) throw new Error('Server discovery cancelled.');
     const key = JSON.stringify([command, snapshot.env, !!options.python, options.npmPackage, !!options.resolveEnvironment]);
     const cached = this.cache.get(key);
     if (cached && cached.expires > Date.now()) return cached.value;
     const value = this.collect(command, snapshot, options, signal).then(result => {
-      if (signal.aborted) throw new Error('Server discovery cancelled. Refresh external executable candidates.');
+      if (signal.aborted) throw new Error('Server discovery cancelled.');
       if (options.resolveEnvironment)
         this.cache.delete(JSON.stringify([command, snapshot.env, !!options.python, options.npmPackage, false]));
       return result;
@@ -149,7 +149,8 @@ export class ServerDiscovery {
       }
     }
     const preferred = candidates.find(c => c.source === 'explicit' || c.source === 'path');
-    return { candidates, selected: preferred ?? (candidates.length === 1 ? candidates[0] : undefined), environment, searched };
+    // One order, no question: a chosen path, then PATH as the project sees it, then the usual user folders.
+    return { candidates, selected: preferred ?? candidates[0], environment, searched };
   }
   private async pythonScripts(env: NodeJS.ProcessEnv, signal: AbortSignal): Promise<string[]> {
     const home = env.HOME || env.USERPROFILE || os.homedir();

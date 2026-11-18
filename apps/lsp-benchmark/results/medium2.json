@@ -1,0 +1,524 @@
+{
+  "date": "2026-11-18T19:06:00.357Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "python",
+      "language": "Python",
+      "project": "pallets/flask@49943b5a94",
+      "file": "src/flask/app.py",
+      "expectedTool": "pyright",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error; line 1363 accepted: Pyright does not take a bytearray where werkzeug declares bytes; flask is checked with mypy, which does",
+          "seconds": 5.027
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type \"Literal['three']\" is not assignable to declared type \"int\"",
+          "seconds": 2.027
+        },
+        {
+          "kind": "hover",
+          "what": "MapAdapter | None:",
+          "ok": true,
+          "expected": "text matching /\\(class\\) MapAdapter|class MapAdapter/",
+          "observed": "```python class MapAdapter( map: Map, server_name: str, script_name: str, subdomain: str | None, url_scheme: str, path_info: str, default_method: str, query_ar…",
+          "seconds": 1.014
+        },
+        {
+          "kind": "hover",
+          "what": "get_debug_flag()",
+          "ok": true,
+          "expected": "text matching /get_debug_flag\\(\\) -> bool/",
+          "observed": "```python (function) def get_debug_flag() -> bool ``` --- Get whether debug mode should be enabled for the app, indicated by the `FLASK_DEBUG` environment vari…",
+          "seconds": 1.016
+        },
+        {
+          "kind": "completion",
+          "what": "self.url_map.bind_to_env|",
+          "ok": true,
+          "expected": "\"bind_to_environ\" offered",
+          "observed": "1 offered, first: bind_to_environ",
+          "seconds": 1.023
+        },
+        {
+          "kind": "definition",
+          "what": "get_debug_flag()",
+          "ok": true,
+          "expected": "leads to src/flask/helpers.py",
+          "observed": "src/flask/helpers.py:28",
+          "seconds": 1.025
+        },
+        {
+          "kind": "definition",
+          "what": "MapAdapter | None:",
+          "ok": true,
+          "expected": "leads to /werkzeug\\/routing\\/map\\.pyi?$/",
+          "observed": ".venv/lib/python3.13/site-packages/werkzeug/routing/map.py:382",
+          "seconds": 1.026
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.356,
+        "tool": "pyright",
+        "name": "Pyright",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask",
+          "Root: Project marker: pyproject.toml",
+          "Python interpreter: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask/.venv/bin/python (configured)",
+          "Type checking: basic (client policy)",
+          "Analysis paths: [] (client configuration; project configuration may override)",
+          "Analysis path source: Server defaults",
+          "Project analysis configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask/pyproject.toml (detected; interpreted by server, including executionEnvironments)"
+        ]
+      }
+    },
+    {
+      "id": "typescript",
+      "language": "TypeScript",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "source/index.ts",
+      "expectedTool": "typescript-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.312
+        },
+        {
+          "kind": "mistake",
+          "what": "const setdownMistake: number = 'three';",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type 'string' is not assignable to type 'number'.; error: 'setdownMistake' is declared but its value is never read.",
+          "seconds": 2.311
+        },
+        {
+          "kind": "hover",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "text matching /enqueue: \\(run: RunFunction/",
+          "observed": "```typescript (property) enqueue: (run: RunFunction, options?: Partial<EnqueueOptionsType> | undefined) => void ```",
+          "seconds": 1.282
+        },
+        {
+          "kind": "hover",
+          "what": "AbortSignal, callback",
+          "ok": true,
+          "expected": "text matching /AbortSignal/",
+          "observed": "```typescript interface AbortSignal ``` The **`AbortSignal`** interface represents a signal object that allows you to communicate with an asynchronous operatio…",
+          "seconds": 0.228
+        },
+        {
+          "kind": "completion",
+          "what": "this.#queue.deq|",
+          "ok": true,
+          "expected": "\"dequeue\" offered",
+          "observed": "6 offered, first: dequeue, enqueue, filter, remove, setPriority, size",
+          "seconds": 1.304
+        },
+        {
+          "kind": "definition",
+          "what": "PriorityQueue from './priority-queue.js'",
+          "ok": true,
+          "expected": "leads to source/priority-queue.ts",
+          "observed": "source/priority-queue.ts:11",
+          "seconds": 1.309
+        },
+        {
+          "kind": "definition",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "leads to source/queue.ts",
+          "observed": "source/queue.ts:7",
+          "seconds": 1.311
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.233,
+        "tool": "typescript-language-server",
+        "name": "TypeScript and JavaScript",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Project marker: tsconfig.json",
+          "TypeScript SDK: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue/node_modules/typescript/lib/tsserver.js",
+          "Project configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue/package.json"
+        ]
+      }
+    },
+    {
+      "id": "svelte",
+      "language": "Svelte",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "src/lib/ArticleList/ArticlePreview.svelte",
+      "expectedTool": "svelte-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": null,
+          "expected": "no error above the added line",
+          "observed": "no error, but the tool reported nothing at all",
+          "seconds": 124.145
+        },
+        {
+          "kind": "mistake",
+          "what": "<p>{setdownMistake}</p>",
+          "ok": false,
+          "expected": "the added line is marked",
+          "observed": "not marked",
+          "seconds": 120.94
+        },
+        {
+          "kind": "hover",
+          "what": "enhance } from '$app/forms'",
+          "ok": true,
+          "expected": "text matching /function enhance/",
+          "observed": "```typescript (alias) function enhance<Success extends Record<string, unknown> | undefined, Failure extends Record<string, unknown> | undefined>(form_element: …",
+          "seconds": 1.5
+        },
+        {
+          "kind": "hover",
+          "what": "querySelector",
+          "ok": false,
+          "expected": "text matching /querySelector/",
+          "observed": "```typescript any ```",
+          "seconds": 120.941
+        },
+        {
+          "kind": "completion",
+          "what": "form.querySel|",
+          "ok": false,
+          "expected": "\"querySelector\" offered",
+          "observed": "50 offered, first: __sveltets_$$bindings, __sveltets_2_ensureAction, __sveltets_2_ensureArray, __sveltets_2_fn_component, __sveltets_2_union, $$action_0",
+          "seconds": 120.943
+        },
+        {
+          "kind": "definition",
+          "what": "enhance } from '$app/forms'",
+          "ok": true,
+          "expected": "leads to /@sveltejs\\/kit\\//",
+          "observed": "node_modules/@sveltejs/kit/src/runtime/app/forms.js:80",
+          "seconds": 1.575
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 3.691,
+        "tool": "svelte-language-server",
+        "name": "svelte-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "svelte-page",
+      "language": "Svelte, a page",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "src/routes/article/[slug]/+page.svelte",
+      "expectedTool": "svelte-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": null,
+          "expected": "no error above the added line",
+          "observed": "no error, but the tool reported nothing at all",
+          "seconds": 123.533
+        },
+        {
+          "kind": "mistake",
+          "what": "<p>{setdownMistake}</p>",
+          "ok": false,
+          "expected": "the added line is marked",
+          "observed": "not marked",
+          "seconds": 120.33
+        },
+        {
+          "kind": "hover",
+          "what": "ArticleMeta",
+          "ok": true,
+          "expected": "text matching /ArticleMeta/",
+          "observed": "```typescript (alias) const ArticleMeta: Component<$$ComponentProps, {}, \"\"> import ArticleMeta ```",
+          "seconds": 1.301
+        },
+        {
+          "kind": "hover",
+          "what": "data.article.title}</title>",
+          "ok": true,
+          "expected": "text matching /data/",
+          "observed": "```typescript const data: { user: any; article: any; comments: any; } ```",
+          "seconds": 1.305
+        },
+        {
+          "kind": "definition",
+          "what": "CommentContainer",
+          "ok": true,
+          "expected": "leads to CommentContainer.svelte",
+          "observed": "src/routes/article/[slug]/CommentContainer.svelte:1",
+          "seconds": 1.309
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.489,
+        "tool": "svelte-language-server",
+        "name": "svelte-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "cpp",
+      "language": "C++",
+      "project": "fmtlib/fmt@14ac0d5a9d",
+      "file": "src/os.cc",
+      "expectedTool": "clangd",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.009
+        },
+        {
+          "kind": "mistake",
+          "what": "int setdown_mistake() { return missing_name; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Use of undeclared identifier 'missing_name'; hint: Use a trailing return type for this function (fix available)",
+          "seconds": 1.009
+        },
+        {
+          "kind": "hover",
+          "what": "error_code",
+          "ok": true,
+          "expected": "text matching /error_code/",
+          "observed": "### class `error_code` provided by `<system_error>` --- @addtogroup diagnostics @{ --- ```cpp // In namespace std class error_code {} ```",
+          "seconds": 0.001
+        },
+        {
+          "kind": "hover",
+          "what": "close",
+          "ok": true,
+          "expected": "text matching /close/",
+          "observed": "### instance-method `buffered_file::close` provided by `\"fmt/os.h\"` --- → `void` Closes the file. --- ```cpp // In buffered_file public: void buffered_file::cl…",
+          "seconds": 0.002
+        },
+        {
+          "kind": "completion",
+          "what": "std::generic_cat|",
+          "ok": true,
+          "expected": "\"generic_category\" offered",
+          "observed": "1 offered, first: •generic_category",
+          "seconds": 0.008
+        },
+        {
+          "kind": "definition",
+          "what": "close",
+          "ok": true,
+          "expected": "leads to include/fmt/os.h",
+          "observed": "include/fmt/os.h:201",
+          "seconds": 0.009
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.128,
+        "tool": "clangd",
+        "name": "clangd",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/fmt",
+          "Root: Project marker: .git",
+          "Compilation database: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/fmt/build/compile_commands.json",
+          "Server: clangd clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532) linux+debug x86_64-unknown-linux-gnu"
+        ]
+      }
+    },
+    {
+      "id": "gomod",
+      "language": "Go module file",
+      "project": "spf13/cobra@adbc881390",
+      "file": "go.mod",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.015
+        },
+        {
+          "kind": "hover",
+          "what": "github.com/spf13/pflag",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### github.com/spf13/pflag This module is necessary because [github.com/spf13/pflag](https://pkg.go.dev/github.com/spf13/pflag@v1.0.9) is imported in `github.…",
+          "seconds": 0.014
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.102,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Project marker: go.mod",
+          "Toolchain configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/go.sum",
+          "The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.: ",
+          "Server: gopls {\"GoVersion\":\"go1.27.4-X:nodwarf5\",\"Path\":\"golang.org/x/tools/gopls\",\"Main\":{\"Path\":\"golang.org/x/tools/gopls\",\"Version\":\"v0.24.0\",\"Sum\":\"h1:nPO/LffYa4sP62Ueuema5PPnZPGaZjGl+vZGvbTek4g=\"},\"Deps\""
+        ]
+      }
+    },
+    {
+      "id": "json",
+      "language": "JSON",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "package.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.134
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.127
+        },
+        {
+          "kind": "hover",
+          "what": "\"scripts\"",
+          "ok": true,
+          "expected": "text matching /script/i",
+          "observed": "The 'scripts' member is an object hash of script commands that are run at various times in the lifecycle of your package\\. The key is the lifecycle event, and …",
+          "seconds": 1.129
+        },
+        {
+          "kind": "completion",
+          "what": "\"scr|",
+          "ok": true,
+          "expected": "\"scripts\" offered",
+          "observed": "52 offered, first: homepage, bugs, licenses, author, contributors, maintainers",
+          "seconds": 1.132
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.449,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "dockercompose",
+      "language": "Docker Compose",
+      "project": "docker/awesome-compose@30f4b7f6a6",
+      "file": "nginx-flask-mysql/compose.yaml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 10.196
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Property setdown_mistake is not allowed.",
+          "seconds": 7.196
+        },
+        {
+          "kind": "hover",
+          "what": "healthcheck:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Configure a health check for the container to monitor its health status. Source: [compose-spec.json](https://raw.githubusercontent.com/…",
+          "seconds": 6.184
+        },
+        {
+          "kind": "hover",
+          "what": "depends_on:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Express dependency between services. Service dependencies cause services to be started in dependency order. The dependent service will …",
+          "seconds": 6.187
+        },
+        {
+          "kind": "completion",
+          "what": "healthch|",
+          "ok": true,
+          "expected": "\"healthcheck\" offered",
+          "observed": "86 offered, first: annotations, blkio_config, cap_add, cap_drop, cgroup, cgroup_parent",
+          "seconds": 6.195
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.418,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/compose/nginx-flask-mysql",
+          "Root: Project marker: compose.yaml",
+          "Server: yaml-language-server 2.0.0"
+        ]
+      }
+    }
+  ]
+}

@@ -2,14 +2,13 @@
   import { onMount, tick } from 'svelte';
   import { documentSupport, featureLabels, type DocumentSupportTarget, type AnalysisPage } from './document-support';
   import { DocumentAnalysisController, type AnalysisState } from './document-analysis-controller';
-  import { presentSupport, providerStatus, analysisResult, projectLabel, selectionSource, type SupportAction } from './document-presentation';
+  import { presentSupport, providerStatus, analysisResult, projectLabel, type SupportAction } from './document-presentation';
   import AnalysisEnvironment from './AnalysisEnvironment.svelte';
   import DocumentProviderDetails from './DocumentProviderDetails.svelte';
   import { isComposingInput } from '../editor/composition-guard';
   import type { AnalysisSelection } from '../../core/document/analysis-context';
-  let { target, initialPage = 'summary', onclose, onmanage, onpagechange }: {
-    target: DocumentSupportTarget; initialPage?: AnalysisPage; onclose(): void;
-    onmanage(language: string, server?: string): void; onpagechange(page: AnalysisPage): void;
+  let { target, initialPage = 'summary', onclose, onpagechange }: {
+    target: DocumentSupportTarget; initialPage?: AnalysisPage; onclose(): void; onpagechange(page: AnalysisPage): void;
   } = $props();
   let selectedServer = $state('');
   let page = $state<AnalysisPage>('summary'), revision = $state(0), error = $state('');
@@ -20,9 +19,7 @@
   const provider = $derived(support?.providers.find(item => item.id === selectedServer));
   const context = $derived(analysis.context);
   const summary = $derived(presentSupport(support?.providers ?? [], context, support?.name));
-  const active = $derived(support?.providers.find(p => p.kind === 'server' && p.role !== 'supplementary' && p.state === 'ready'));
   const hasPrimary = $derived(context?.servers.some(server => server.role === 'primary'));
-  const local = $derived(support?.providers.find(p => p.kind === 'builtin' && p.state === 'ready'));
   const environment = $derived(context?.choices.find(choice => choice.id === context.selected));
   const title = $derived(({ summary: support?.name ?? 'Code support', details: 'Document analysis', language: 'Document language', environment: context?.label ?? 'Project environment', provider: 'Choose analysis tool', tool: provider?.name ?? 'Analysis tool', settings: 'Project connection settings', output: 'Server output' })[page]);
   onMount(() => {
@@ -55,10 +52,10 @@
     else if (action.kind === 'install' && server) apply(() => current()?.allowDownload(server));
     else if (action.kind === 'locate' && server) apply(() => current()?.chooseExecutable(server));
     else if (action.kind === 'help' && server) void perform(async () => current()?.openHelp(server, action.runtime));
-    else if (action.kind === 'manage' && server && support) onmanage(support.language, server);
     else if (action.kind === 'log' && server) { selectedServer = server; direct = page === 'summary'; void navigate('output'); }
     else if (action.kind === 'details' && server) inspectProvider(server, page === 'summary');
-    else if (action.kind === 'environment' || action.kind === 'provider' || action.kind === 'details') void navigate(action.kind);
+    else if (action.kind === 'environment' || action.kind === 'provider') void navigate(action.kind);
+    else if (action.kind === 'details') void navigate(context?.kind ? 'environment' : 'details');
   }
   // Between a repair and the tool's next status the document briefly has no tool at all.
   // That moment is the repair in progress, not a document without checks. Any status the
@@ -69,9 +66,13 @@
   function back() {
     if (page === 'summary') onclose();
     else if (direct && (page === 'output' || page === 'tool')) { direct = false; void navigate('summary'); }
-    else void navigate(page === 'settings' || page === 'output' ? 'tool' : page === 'tool' ? 'details' : 'summary');
+    else if (page === 'output' && logParent === 'details') { logParent = 'tool'; void navigate('details'); }
+    else void navigate(page === 'settings' || page === 'output' ? 'tool' : page === 'tool' ? 'details' : page === 'provider' && selectedServer && provider ? 'tool' : 'summary');
   }
   function inspectProvider(id: string, fromSummary = false) { selectedServer = id; direct = fromSummary; void navigate('tool'); }
+  function showLog(id: string) { selectedServer = id; direct = false; logParent = 'details'; void navigate('output'); }
+  // The log opens from the list of tools as well as from one tool's own page.
+  let logParent: 'tool' | 'details' = 'tool';
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape belongs to the inspection and its focused child controls.) -->
@@ -103,7 +104,6 @@
       </select></label>
       <p class="muted">Applies to files using this analysis root, including other tabs and windows.</p>
     {/if}
-    <button onclick={() => onmanage(support!.language)}>Manage analysis tools…</button>
   {:else if page === 'settings' || page === 'output'}
     {#key selectedServer + page}<DocumentProviderDetails {target} server={selectedServer} mode={page} />{/key}
   {:else if page === 'tool'}
@@ -130,9 +130,9 @@
         <p class="muted">Session for {provider.analysis?.context.root || context?.root ? projectLabel(provider.analysis?.context.root ?? context!.root) : 'this document'}. Restarting also reconnects files sharing this session in this window.</p>
         <div class="actions">
           <button onclick={() => perform(async () => { await documentSupport.current(target)?.restart(provider.id); await controller.refresh(); })}>Restart {provider.name}</button>
+          <button onclick={() => { logParent = 'tool'; void navigate('output'); }}>Show log</button>
+          {#if hasPrimary && provider.role !== 'supplementary'}<button onclick={() => navigate('provider')}>Choose analysis tool…</button>{/if}
           <button onclick={() => navigate('settings')}>Project connection settings…</button>
-          <button onclick={() => navigate('output')}>Server output…</button>
-          <button onclick={() => onmanage(support!.language, provider.id)}>Manage installation…</button>
         </div>
       {/if}
     {:else}<p>This tool is no longer attached to the document.</p>{/if}
@@ -152,33 +152,25 @@
     <div class="rows">
       <button class="analysis-row" onclick={() => navigate('language')}><span>Language</span><strong>{support.name} <span aria-hidden="true">›</span></strong></button>
       {#if context}
-        {#if page === 'details' || summary.action?.kind === 'environment'}<button class="analysis-row" onclick={() => navigate('details')} title={context.root}><span>Project</span><strong>{projectLabel(context.root)} <span aria-hidden="true">›</span></strong></button>{/if}
         {#if context.kind}<button class="analysis-row" onclick={() => navigate('environment')}><span>{context.label}</span><strong>{environment?.name ?? 'Choose…'} <span aria-hidden="true">›</span></strong></button>{/if}
       {/if}
     </div>
     {#if page === 'details'}
-      {#if hasPrimary && context?.analysisSelection}
-        <p class="muted">{context.analysisSelection.source === 'project' ? 'Analysis selection: this project' : 'Analysis selection: app default'}{context.servers.find(server => server.selected) ? ` · ${context.servers.find(server => server.selected)!.name}` : ''}</p>
-      {/if}
-      {#if active}<p class="result">{active.name} · {providerStatus(active)}<br />{analysisResult(active)}</p>
-      {:else if local}<p class="result">{local.name} · {analysisResult(local)}</p>{/if}
-      {#if summary.description && !summary.title}<p class="muted">{summary.description}</p>{/if}
-      <p class="path">Document · {support.path}</p>
-      {#if context}
-        <section class="detail-block"><h4>Project environment</h4><p class="path">{context.root}</p><p class="muted">{context.rootReason}</p>
-          {#if environment}<p class="path">{environment.path}</p><p>{selectionSource(context)}</p>{/if}
-          {#if hasPrimary}<button onclick={() => navigate('provider')}>Choose analysis tool…</button>{/if}
-          <button disabled={analysis.busy} onclick={() => controller.refresh()} aria-label="Refresh project environment">Refresh</button>
-          <details><summary>Environment details</summary>{#each context.evidence as evidence}<p class="path">{evidence}</p>{/each}</details>
-        </section>
-      {/if}
-      <section class="detail-block"><h4>Tools for this document</h4>
-        {#each support.providers as item (item.id)}
+      <!-- One block per tool: its name, what it reported, and the two things a person does to it. -->
+      {#each support.providers as item (item.id)}
+        <section class="detail-block" data-tool={item.id}>
           <button class="analysis-row" onclick={() => inspectProvider(item.id)}><span>{item.name}</span><strong>{providerStatus(item)} ›</strong></button>
-          {#if item.role === 'supplementary'}<p class="muted">Additional diagnostics and tools</p>{/if}
-        {/each}
-      </section>
-      <button onclick={() => onmanage(support!.language)}>Manage analysis tools…</button>
+          <p class="result">{analysisResult(item)}{#if item.role === 'supplementary'} · Additional diagnostics and tools{/if}</p>
+          {#if item.kind === 'server' && item.state !== 'missing' && item.state !== 'off'}
+            <div class="actions">
+              <button onclick={() => perform(async () => { await documentSupport.current(target)?.restart(item.id); await controller.refresh(); })} aria-label={`Restart ${item.name}`}>Restart</button>
+              <button onclick={() => showLog(item.id)} aria-label={`Show log of ${item.name}`}>Show log</button>
+            </div>
+          {/if}
+        </section>
+      {/each}
+      {#if summary.description && !summary.title}<p class="muted">{summary.description}</p>{/if}
+      {#if hasPrimary && !support.providers.some(item => item.kind === 'server' && item.role !== 'supplementary')}<button onclick={() => navigate('provider')}>Choose analysis tool…</button>{/if}
     {/if}
     <footer>
       {#if page === 'summary'}<button class="link" onclick={() => navigate('details')}>More…</button>

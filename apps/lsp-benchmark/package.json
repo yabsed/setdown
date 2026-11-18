@@ -1,0 +1,11 @@
+{
+  "name": "@setdown/lsp-benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "node bench.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "license": "GPL-3.0-only"
+}

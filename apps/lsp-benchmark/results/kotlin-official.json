@@ -1,0 +1,97 @@
+{
+  "date": "2026-11-18T20:03:10.102Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "tool": "kotlin-lsp",
+  "outcomes": [
+    {
+      "id": "kotlin",
+      "language": "Kotlin",
+      "project": "spring-guides/tut-spring-boot-kotlin@4b45a63b46",
+      "file": "src/main/kotlin/com/example/blog/HttpControllers.kt",
+      "expectedTool": "kotlin-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 52.774
+        },
+        {
+          "kind": "mistake",
+          "what": "val setdownMistake: Int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Initializer type mismatch: expected 'Int', actual 'String'.; warning: Might be 'const'",
+          "seconds": 49.749
+        },
+        {
+          "kind": "hover",
+          "what": "ResponseStatusException(NOT_FOUND, \"This article",
+          "ok": true,
+          "expected": "text matching /ResponseStatusException/",
+          "observed": "From class: [`org.springframework.web.server.ResponseStatusException`](command:jetbrains.navigateToLocation?%5B%22jar%3A%2F%2F%2Fhome%2Fyabsed%2F.gradle%2Fcach…",
+          "seconds": 38.943
+        },
+        {
+          "kind": "hover",
+          "what": "findBySlug",
+          "ok": true,
+          "expected": "text matching /findBySlug/",
+          "observed": "````kotlin fun findBySlug(slug: String): Article? ````",
+          "seconds": 31.238
+        },
+        {
+          "kind": "completion",
+          "what": "repository.findByLog|",
+          "ok": true,
+          "expected": "\"findByLogin\" offered",
+          "observed": "1 offered, first: findByLogin",
+          "seconds": 31.649
+        },
+        {
+          "kind": "definition",
+          "what": "findBySlug",
+          "ok": true,
+          "expected": "leads to blog/Repositories.kt",
+          "observed": "src/main/kotlin/com/example/blog/Repositories.kt:6",
+          "seconds": 31.658
+        },
+        {
+          "kind": "definition",
+          "what": "User",
+          "ok": true,
+          "expected": "leads to blog/Entities.kt",
+          "observed": "src/main/kotlin/com/example/blog/Entities.kt:23",
+          "seconds": 31.671
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.705,
+        "tool": "kotlin-lsp",
+        "name": "kotlin-lsp",
+        "source": "chosen program",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/spring-kotlin",
+          "Root: Project marker: settings.gradle.kts",
+          "Server: IntelliJ Language Server by JetBrains ILS-271.2085.0"
+        ]
+      },
+      "asked": [
+        {
+          "question": "Build tool conflicts are detected in workspace. Which one would you like to use?",
+          "choices": [
+            "Use Gradle",
+            "Use Maven",
+            "Configure…"
+          ],
+          "chose": "Use Gradle"
+        }
+      ]
+    }
+  ]
+}

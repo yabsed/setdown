@@ -2,6 +2,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, stat, writeFile, rename } from 'node:fs/promises';
 import { languageDefinition } from '../../core/document/language-catalog';
+import { supportedTool } from '../../core/document/supported-languages';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import type { Options } from './server-registry';
 import { LanguagePackageStore } from './language-package-store';
@@ -64,6 +65,7 @@ export class LanguageProvisioner {
   }
   resetEnvironment(): void { this.environments.clear(); }
   rank(definition: LanguageServerDefinition, languageId: string): number {
+    if (supportedTool(languageId) === definition.id) return -1;
     const order = (this.catalog?.definition(languageId)??languageDefinition(languageId))?.servers ?? [];
     const index = order.findIndex(id => id === definition.id || id === definition.provenance?.profile || definition.launch.kind === 'native' && id === definition.launch.command);
     return index < 0 ? order.length + 1 : index;

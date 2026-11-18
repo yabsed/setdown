@@ -1,0 +1,514 @@
+{
+  "date": "2026-11-18T18:59:46.081Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "python",
+      "language": "Python",
+      "project": "pallets/flask@49943b5a94",
+      "file": "src/flask/app.py",
+      "expectedTool": "pyright",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": false,
+          "expected": "no error above the added line",
+          "observed": "2 errors: line 1137 Import \"asgiref.sync\" could not be resolved; line 1363 Argument of type \"str | bytes | bytearray | Iterator[str] | Iterator[bytes] | Iterator[Unknown]\" cannot be assigned to parameter \"response\"…",
+          "seconds": 5.018
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type \"Literal['three']\" is not assignable to declared type \"int\"",
+          "seconds": 2.018
+        },
+        {
+          "kind": "hover",
+          "what": "MapAdapter | None:",
+          "ok": true,
+          "expected": "text matching /\\(class\\) MapAdapter|class MapAdapter/",
+          "observed": "```python class MapAdapter( map: Map, server_name: str, script_name: str, subdomain: str | None, url_scheme: str, path_info: str, default_method: str, query_ar…",
+          "seconds": 1.005
+        },
+        {
+          "kind": "hover",
+          "what": "get_debug_flag()",
+          "ok": true,
+          "expected": "text matching /get_debug_flag\\(\\) -> bool/",
+          "observed": "```python (function) def get_debug_flag() -> bool ``` --- Get whether debug mode should be enabled for the app, indicated by the `FLASK_DEBUG` environment vari…",
+          "seconds": 1.007
+        },
+        {
+          "kind": "completion",
+          "what": "self.url_map.bind_to_env|",
+          "ok": true,
+          "expected": "\"bind_to_environ\" offered",
+          "observed": "1 offered, first: bind_to_environ",
+          "seconds": 1.014
+        },
+        {
+          "kind": "definition",
+          "what": "get_debug_flag()",
+          "ok": true,
+          "expected": "leads to src/flask/helpers.py",
+          "observed": "src/flask/helpers.py:28",
+          "seconds": 1.016
+        },
+        {
+          "kind": "definition",
+          "what": "MapAdapter | None:",
+          "ok": true,
+          "expected": "leads to /werkzeug\\/routing\\/map\\.pyi?$/",
+          "observed": ".venv/lib/python3.13/site-packages/werkzeug/routing/map.py:382",
+          "seconds": 1.017
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.347,
+        "tool": "pyright",
+        "name": "Pyright",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask",
+          "Root: Project marker: pyproject.toml",
+          "Python interpreter: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask/.venv/bin/python (configured)",
+          "Type checking: basic (client policy)",
+          "Analysis paths: [] (client configuration; project configuration may override)",
+          "Analysis path source: Server defaults",
+          "Project analysis configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask/pyproject.toml (detected; interpreted by server, including executionEnvironments)"
+        ]
+      }
+    },
+    {
+      "id": "javascript",
+      "language": "JavaScript",
+      "project": "expressjs/express@43fca52d28",
+      "file": "lib/application.js",
+      "expectedTool": "typescript-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.188
+        },
+        {
+          "kind": "mistake",
+          "what": "var = ;",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Variable declaration expected.",
+          "seconds": 2.182
+        },
+        {
+          "kind": "hover",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "text matching /finalhandler/",
+          "observed": "```typescript import finalhandler ``` Module dependencies. *@private*",
+          "seconds": 0.133
+        },
+        {
+          "kind": "hover",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "text matching /compileETag/",
+          "observed": "```typescript import compileETag ```",
+          "seconds": 0.137
+        },
+        {
+          "kind": "completion",
+          "what": "this.router.rou|",
+          "ok": true,
+          "expected": "\"route\" offered",
+          "observed": "114 offered, first: _locals, all, app, apply, arg, args",
+          "seconds": 0.167
+        },
+        {
+          "kind": "definition",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "leads to lib/utils.js",
+          "observed": "lib/utils.js:130",
+          "seconds": 2.188
+        },
+        {
+          "kind": "definition",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "leads to /application\\.js$|node_modules\\/finalhandler\\/index\\.js$/",
+          "observed": "lib/application.js:16",
+          "seconds": 0.179
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.226,
+        "tool": "typescript-language-server",
+        "name": "TypeScript and JavaScript",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express",
+          "Root: Project marker: package.json",
+          "TypeScript SDK: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/tsserver.js",
+          "Project configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express/package.json"
+        ]
+      }
+    },
+    {
+      "id": "c",
+      "language": "C",
+      "project": "DaveGamble/cJSON@6d9f2443ab",
+      "file": "cJSON_Utils.c",
+      "expectedTool": "clangd",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.022
+        },
+        {
+          "kind": "mistake",
+          "what": "int setdown_mistake(void) { return missing_name; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Use of undeclared identifier 'missing_name'; error: No previous prototype for function 'setdown_mistake' (fix available)",
+          "seconds": 1.021
+        },
+        {
+          "kind": "hover",
+          "what": "cJSON_IsArray(object)",
+          "ok": true,
+          "expected": "text matching /cJSON_IsArray/",
+          "observed": "### function `cJSON_IsArray` provided by `\"cJSON.h\"` --- → `cJSON_bool (aka int)` Parameters: - `const cJSON *const item (aka const struct cJSON *const)` --- `…",
+          "seconds": 0.004
+        },
+        {
+          "kind": "hover",
+          "what": "strlen((const char*)string)",
+          "ok": true,
+          "expected": "text matching /strlen/",
+          "observed": "### function `strlen` provided by `<string.h>` --- → `__size_t (aka unsigned long)` Parameters: - `const char * __s` Return the length of S. --- ```cpp extern …",
+          "seconds": 0.006
+        },
+        {
+          "kind": "completion",
+          "what": "cJSON_IsArr|",
+          "ok": true,
+          "expected": "\"cJSON_IsArray\" offered",
+          "observed": "1 offered, first: •cJSON_IsArray",
+          "seconds": 0.02
+        },
+        {
+          "kind": "definition",
+          "what": "cJSON_IsArray(object)",
+          "ok": true,
+          "expected": "leads to /cJSON\\.[ch]$/",
+          "observed": "cJSON.c:3042",
+          "seconds": 0.021
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.25,
+        "tool": "clangd",
+        "name": "clangd",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson",
+          "Root: Project marker: .git",
+          "Compilation database: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson/build/compile_commands.json",
+          "Server: clangd clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532) linux+debug x86_64-unknown-linux-gnu"
+        ]
+      }
+    },
+    {
+      "id": "cpp",
+      "language": "C++",
+      "project": "fmtlib/fmt@14ac0d5a9d",
+      "file": "src/os.cc",
+      "expectedTool": "clangd",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 123.203
+        },
+        {
+          "kind": "mistake",
+          "what": "int setdown_mistake() { return missing_name; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Use of undeclared identifier 'missing_name'; hint: Use a trailing return type for this function (fix available)",
+          "seconds": 1.008
+        },
+        {
+          "kind": "hover",
+          "what": "vformat(format_str, args)",
+          "ok": false,
+          "expected": "text matching /vformat/",
+          "observed": "no answer",
+          "seconds": 120.203
+        },
+        {
+          "kind": "hover",
+          "what": "error_code",
+          "ok": false,
+          "expected": "text matching /error_code/",
+          "observed": "no answer",
+          "seconds": 120.203
+        },
+        {
+          "kind": "completion",
+          "what": "std::generic_cat|",
+          "ok": true,
+          "expected": "\"generic_category\" offered",
+          "observed": "1 offered, first: •generic_category",
+          "seconds": 0.007
+        },
+        {
+          "kind": "definition",
+          "what": "close",
+          "ok": true,
+          "expected": "leads to include/fmt/os.h",
+          "observed": "include/fmt/os.h:201",
+          "seconds": 0.008
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.077,
+        "tool": "clangd",
+        "name": "clangd",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/fmt",
+          "Root: Project marker: .git",
+          "Compilation database: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/fmt/build/compile_commands.json",
+          "Server: clangd clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532) linux+debug x86_64-unknown-linux-gnu"
+        ]
+      }
+    },
+    {
+      "id": "go",
+      "language": "Go",
+      "project": "spf13/cobra@adbc881390",
+      "file": "command.go",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.035
+        },
+        {
+          "kind": "mistake",
+          "what": "var setdownMistake string = 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: cannot use 1 (untyped int constant) as string value in variable declaration",
+          "seconds": 1.035
+        },
+        {
+          "kind": "hover",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "text matching /func \\(.*FlagSet\\) GetBool/",
+          "observed": "```go func (f *flag.FlagSet) GetBool(name string) (bool, error) ``` --- GetBool return the bool value of a flag with the given name --- [`(pflag.FlagSet).GetBo…",
+          "seconds": 0.031
+        },
+        {
+          "kind": "hover",
+          "what": "ExecuteC",
+          "ok": true,
+          "expected": "text matching /func \\(c \\*Command\\) ExecuteC/",
+          "observed": "```go func (c *Command) ExecuteC() (cmd *Command, err error) ``` --- ExecuteC executes the command. --- [`(cobra.Command).ExecuteC` on pkg.go.dev](https://pkg.…",
+          "seconds": 0.032
+        },
+        {
+          "kind": "completion",
+          "what": "c.Flags().ArgsLenAt|",
+          "ok": true,
+          "expected": "\"ArgsLenAtDash\" offered",
+          "observed": "1 offered, first: ArgsLenAtDash",
+          "seconds": 0.034
+        },
+        {
+          "kind": "definition",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "leads to /spf13\\/pflag@[^/]+\\/bool\\.go$/",
+          "observed": "../../../../../../../../../../go/pkg/mod/github.com/spf13/pflag@v1.0.9/bool.go:39",
+          "seconds": 0.034
+        },
+        {
+          "kind": "definition",
+          "what": "Root",
+          "ok": true,
+          "expected": "leads to command.go",
+          "observed": "command.go:892",
+          "seconds": 0.035
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 66.259,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": true,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Project marker: go.mod",
+          "Toolchain configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/go.sum",
+          "The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.: ",
+          "Server: gopls {\"GoVersion\":\"go1.27.4-X:nodwarf5\",\"Path\":\"golang.org/x/tools/gopls\",\"Main\":{\"Path\":\"golang.org/x/tools/gopls\",\"Version\":\"v0.24.0\",\"Sum\":\"h1:nPO/LffYa4sP62Ueuema5PPnZPGaZjGl+vZGvbTek4g=\"},\"Deps\""
+        ]
+      }
+    },
+    {
+      "id": "gomod",
+      "language": "Go module file",
+      "project": "spf13/cobra@adbc881390",
+      "file": "go.mod",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 183.221
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown mistake",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: unknown directive: setdown",
+          "seconds": 2.005
+        },
+        {
+          "kind": "hover",
+          "what": "github.com/spf13/pflag",
+          "ok": false,
+          "observed": "error: getting modfile handle: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/go.mod:11: unknown directive: setdown",
+          "seconds": 180.22
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.083,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Project marker: go.mod",
+          "Toolchain configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/go.sum",
+          "The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.: ",
+          "Server: gopls {\"GoVersion\":\"go1.27.4-X:nodwarf5\",\"Path\":\"golang.org/x/tools/gopls\",\"Main\":{\"Path\":\"golang.org/x/tools/gopls\",\"Version\":\"v0.24.0\",\"Sum\":\"h1:nPO/LffYa4sP62Ueuema5PPnZPGaZjGl+vZGvbTek4g=\"},\"Deps\""
+        ]
+      }
+    },
+    {
+      "id": "php",
+      "language": "PHP",
+      "project": "nikic/FastRoute@1c961398be",
+      "file": "src/RouteCollector.php",
+      "expectedTool": "intelephense",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.038
+        },
+        {
+          "kind": "mistake",
+          "what": "function setdown_mistake(): void { echo missing_function(); }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Undefined function 'FastRoute\\missing_function'.",
+          "seconds": 1.038
+        },
+        {
+          "kind": "hover",
+          "what": "parse",
+          "ok": true,
+          "expected": "text matching /parse/",
+          "observed": "__FastRoute\\\\RouteParser::parse__ Parses a route string into multiple route data arrays. ```php <?php public function parse(string $route): array { } ``` The e…",
+          "seconds": 0.029
+        },
+        {
+          "kind": "hover",
+          "what": "ConfigureRoutes",
+          "ok": true,
+          "expected": "text matching /ConfigureRoutes/",
+          "observed": "__FastRoute\\\\ConfigureRoutes__ ```php <?php interface ConfigureRoutes { } ```",
+          "seconds": 0.033
+        },
+        {
+          "kind": "completion",
+          "what": "$this->dataGenerator->addRou|",
+          "ok": true,
+          "expected": "\"addRoute\" offered",
+          "observed": "1 offered, first: addRoute",
+          "seconds": 0.037
+        },
+        {
+          "kind": "definition",
+          "what": "parse",
+          "ok": true,
+          "expected": "leads to src/RouteParser.php",
+          "observed": "src/RouteParser.php:41",
+          "seconds": 0.038
+        },
+        {
+          "kind": "definition",
+          "what": "ConfigureRoutes",
+          "ok": true,
+          "expected": "leads to src/ConfigureRoutes.php",
+          "observed": "src/ConfigureRoutes.php:13",
+          "seconds": 0.038
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.066,
+        "tool": "intelephense",
+        "name": "intelephense",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/fastroute",
+          "Root: Project marker: composer.json"
+        ]
+      }
+    }
+  ]
+}

@@ -86,6 +86,15 @@ test('Setdown says once that it is fetching a tool and stays quiet for an ordina
     .toEqual({ label: 'Setting up…', tone: 'busy', title: 'Setting up Java support…', description: 'Downloading jdtls' });
   expect(presentSupport([server({ state: 'starting', analysis: undefined })], undefined, 'Java')).toEqual({ label: '', tone: 'busy', description: 'Starting…' });
   expect(presentSupport([server({ messages: [{ id: 'm', message: 'Import the Gradle project?', actions: ['Yes'] }] })])).toMatchObject({ label: 'Needs answer', action: { kind: 'details', label: 'Answer…' } });
-  expect(presentSupport([server({ id: 'hls', name: 'haskell-language-server', state: 'selection-needed', analysis: undefined })], undefined, 'Haskell'))
-    .toMatchObject({ label: 'Needs setup', title: 'Choose which copy of haskell-language-server to use.', action: { kind: 'manage', label: 'Choose…', server: 'hls' } });
+});
+
+test('a tool outside the supported languages waits to be asked for, without a warning', () => {
+  const waiting = server({ id: 'zls', name: 'zls', state: 'missing', analysis: undefined, issue: { kind: 'downloads-off', optional: true } });
+  expect(presentSupport([waiting], undefined, 'Zig')).toMatchObject({ label: 'Not installed', tone: 'neutral', title: "Zig support isn't installed.",
+    description: 'Setdown asks before it downloads a tool for this language.', action: { kind: 'install', label: 'Install Zig support', server: 'zls' } });
+  // The app switch being off is a setting the person made; that stays a setup notice.
+  expect(presentSupport([{ ...waiting, issue: { kind: 'downloads-off' } }], undefined, 'Zig')).toMatchObject({ label: 'Needs setup', tone: 'warning', description: 'Downloads are off.' });
+  // An offer never hides a warning about the file itself.
+  expect(presentSupport([waiting, server({ id: 'builtin', kind: 'builtin', state: 'failed', message: 'Unable to load schema' })], undefined, 'Zig'))
+    .toMatchObject({ label: 'Limited', tone: 'warning', title: 'Unable to load schema' });
 });

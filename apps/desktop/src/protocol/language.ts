@@ -2,13 +2,10 @@ import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '.
 import type { LanguageRefresh } from './language-features';
 import type { Diagnostic, DiagnosticOptions, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import type { LanguageRoute } from '../core/document/language-support';
-import type { LanguageServerDefinition } from '../core/document/language-definition';
 
 export type LanguageServerOptions = { automaticInstall?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean; scope?: string; args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
 /** Local bridge metadata, never sent as an LSP ServerCapabilities object. */
 export type LanguageCapabilities = ServerCapabilities & { diagnosticProviders?: { id: string; options: DiagnosticOptions }[] };
-export type LanguageConnectionDraft = LanguageServerOptions & { id: string; name: string;
-  languages: LanguageServerDefinition['languages']; rootMarkers: string[]; candidateId?: string };
 export type LanguageServerCandidate = { id: string; path: string; source: 'explicit' | 'path' | 'user' | 'python' | 'npm' };
 export type LanguageCatalogEntry = {
   id: string; name: string; description: string; homepage: string; languages: string[];
@@ -16,13 +13,12 @@ export type LanguageCatalogEntry = {
   configured: boolean; bundled: boolean; custom: boolean; enabled: boolean; selected: string[];
   /** A user-owned connection or override, retained in management even when missing. */
   managed?: boolean;
-  /** Executable metadata exists for automatic discovery, even without a connection profile. */
-  discoverable?: boolean;
-  executable?: string; available?: boolean; options?: LanguageServerOptions;
-  automatic?: boolean; canDetect?: boolean; candidates?: LanguageServerCandidate[];
-  discoveryMessage?: string; selectionNeeded?: boolean; searched?: string[];
+  /** `available`: the program was found when this tool's own page asked. `chosen`: a person named its path. */
+  executable?: string; available?: boolean; chosen?: boolean; options?: LanguageServerOptions;
+  automatic?: boolean; canDetect?: boolean;
   profileSource?: string; setupNote?: string;
-  preparation?: { state: 'available' | 'preparing' | 'ready' | 'failed'; source?: 'managed' | 'external'; message?: string; executable?: string; downloadsAllowed?: boolean };
+  /** `asks`: outside the supported languages, so it is downloaded only after the person says so. */
+  preparation?: { state: 'available' | 'preparing' | 'ready' | 'failed'; source?: 'managed' | 'external'; message?: string; executable?: string; downloadsAllowed?: boolean; asks?: boolean };
   sessions: { root: string; rootReason?: string; context?: string[]; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue; features?: string[]; logs?: string[]; progress?: string[] }[];
 };
 export type LanguageDefault = { id: string; name: string; selection: import('../core/document/analysis-context').AnalysisPolicy; servers: string[]; defaultServer?: string };
@@ -62,14 +58,15 @@ export type LanguageRecovery = { retrying: boolean; attempt?: number };
  * turns one issue into one sentence and one action; `help` means a page can be opened. */
 export type LanguageIssue =
   | { kind: 'download-failed'; detail?: string }
-  | { kind: 'downloads-off' }
+  /** `optional`: downloads are on, but this tool is outside the supported languages and waits to be asked for. */
+  | { kind: 'downloads-off'; optional?: boolean }
   | { kind: 'no-installer'; help?: boolean }
   | { kind: 'executable'; path: string; missing?: boolean; automatic?: boolean }
   | { kind: 'runtime'; runtime: string; required: string; found?: string }
   | { kind: 'startup'; detail?: string }
   | { kind: 'crashed' };
 export type LanguageConnection = { messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
-export type LanguageUnavailable = { unavailable: 'missing' | 'selection-needed'; message?: string; issue?: LanguageIssue; server?: { id: string; name: string } };
+export type LanguageUnavailable = { unavailable: 'missing'; message?: string; issue?: LanguageIssue; server?: { id: string; name: string } };
 export type LanguageEvent =
   | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[]; retainedDocuments?: { id: string; generation: string }[] }
   | { type: 'discovery' }
@@ -100,16 +97,15 @@ export type LanguageApi = {
   prepareEnvironment(file: string, language: string): Promise<{ output: string }>;
   cancelPreparation(file: string, language: string): Promise<void>;
   configuration(): Promise<LanguageRoute[]>;
-  catalog(file?: string, inspectInstallations?: boolean): Promise<LanguageCatalog>;
+  /** `inspect` names the one tool whose program is looked up on this computer. */
+  catalog(file?: string, inspect?: string): Promise<LanguageCatalog>;
   rescan(): Promise<void>;
   useAutomatic(id: string): Promise<void>;
-  selectCandidate(id: string, candidateId: string): Promise<void>;
   setEnabled(id: string, enabled: boolean): Promise<void>;
   setAutomaticInstall(enabled: boolean): Promise<void>;
   setLanguageDefault(language: string, value: string): Promise<void>;
   chooseExecutable(id: string): Promise<boolean>;
   configure(id: string, options: LanguageServerOptions): Promise<void>;
-  addConnection(draft: LanguageConnectionDraft): Promise<boolean>;
   importDefinition(): Promise<boolean>;
   remove(id: string): Promise<void>;
   /** `runtime` opens the installation page of the runtime the tool needs instead of the tool's own page. */

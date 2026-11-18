@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { WindowState } from '../windows/window-state';
 import { LanguageManager, type AutomaticLanguagePackages } from './language-manager';
+import { AutomaticDownloadsDisabled } from './language-provisioner';
 import { ServerDiscovery } from './server-discovery';
 import { ServerEnvironment } from './server-environment';
 
@@ -54,13 +55,15 @@ test('Make has editing support without borrowing a disabled companion environmen
 test('opening app settings performs no executable discovery or automatic preparation', async () => {
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
   const find = vi.spyOn(discovery, 'find'), prepare = vi.fn(noPackages.prepare), f = fixture(discovery, undefined, { ...noPackages, prepare });
-  const settings = await f.invoke('catalog', f.first, undefined, false);
+  const settings = await f.invoke('catalog', f.first);
   expect(settings.languages.find((language: any) => language.id === 'make').servers).toEqual([]);
+  // TSX and JSX are edited as TypeScript and JavaScript; the language is listed under its own name.
+  expect(settings.languages.filter((language: any) => ['typescript', 'javascript'].includes(language.id)).map((language: any) => language.name).sort()).toEqual(['JavaScript', 'TypeScript']);
   expect(settings.automaticInstall).toBe(true); expect(find).not.toHaveBeenCalled(); expect(prepare).not.toHaveBeenCalled();
   expect(mocks.servers).toHaveLength(0); discovery.dispose();
 });
 
-test('Zed resolves a supported server before global executable candidates and receives the project environment', async () => {
+test('Zed resolves a server before global executable candidates, receives the project environment, and downloads only a supported or requested tool', async () => {
   const root = path.join(mocks.directory, 'zed-project'); await mkdir(path.join(root, '.git'), { recursive: true }); await writeFile(path.join(root, '.git/HEAD'), 'ref: refs/heads/main\n');
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '/global/broken-shims', SETDOWN_LSP_INHERIT_ENV: '1' }));
   const find = vi.spyOn(discovery, 'find');
@@ -70,9 +73,45 @@ test('Zed resolves a supported server before global executable candidates and re
   await f.invoke('open', f.first, f.document('fortran', 'hello.f90'));
   expect(find).not.toHaveBeenCalled();
   expect(projectEnvironment).toHaveBeenCalledWith(root, expect.objectContaining({ PATH: '/global/broken-shims' }));
+  // Fortran is outside the supported languages: its tool is used where it already exists, and not downloaded unasked.
   expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ id: 'fortls' }), 'fortran', root,
-    { PATH: '/project/toolchain' }, expect.objectContaining({ automaticInstall: true }), expect.any(Function));
+    { PATH: '/project/toolchain' }, expect.objectContaining({ automaticInstall: false }), expect.any(Function));
   expect(mocks.servers[0]).toMatchObject({ launch: { executable: '/zed/managed/fortls', env: { PATH: '/project/toolchain' } } });
+  await f.invoke('open', f.first, f.document('cpp', 'main.cpp'));
+  expect(prepare).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'clangd' }), 'cpp', root,
+    { PATH: '/project/toolchain' }, expect.objectContaining({ automaticInstall: true }), expect.any(Function));
+  discovery.dispose();
+});
+
+test('a tool outside the supported languages asks once; a stand-in for a supported language that was turned off is not offered', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const prepare = vi.fn(async (_definition: unknown, _language: string, _root: string, _env: unknown, options: { automaticInstall?: boolean }) => {
+    if (!options.automaticInstall) throw new AutomaticDownloadsDisabled('Automatic downloads are off.');
+    return { executable: '/managed/tool', args: [], settings: {}, initializationOptions: {} };
+  });
+  const f = fixture(discovery, undefined, { ...noPackages, usesZed: async () => true, canPrepare: () => true, prepare });
+  expect(await f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).toMatchObject({ unavailable: 'missing', issue: { kind: 'downloads-off', optional: true }, server: { id: 'fortls' } });
+  await f.invoke('set-enabled', f.first, 'json-lsp', false);
+  // Other extensions list JSON as well. None of them is offered as "JSON support".
+  const standIn = await f.invoke('open', f.first, f.document('json', 'main.json'));
+  expect(standIn.unavailable).toBe('missing'); expect(standIn.issue).toBeUndefined(); expect(standIn.server.id).not.toBe('json-lsp');
+  // Saying yes to the question is the whole installation.
+  await f.invoke('allow-download', f.first, 'fortls');
+  expect((await f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).server).toBe('fortls');
+  expect(mocks.servers).toHaveLength(1); discovery.dispose();
+});
+
+test('a tool that waits to be asked for still runs from a program already on this computer', async () => {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  vi.spyOn(discovery, 'find').mockImplementation(async command => {
+    const selected = command === 'fortls' ? { id: 'fortls-bin', path: process.execPath, source: 'path' as const } : undefined;
+    return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
+  });
+  // The extension that prepares fortls is not loaded without leave to download.
+  const prepare = vi.fn(async () => { throw new AutomaticDownloadsDisabled('Automatic downloads are off.'); });
+  const f = fixture(discovery, undefined, { ...noPackages, usesZed: async () => true, canPrepare: () => true, prepare });
+  expect((await f.invoke('open', f.first, f.document('fortran', 'hello.f90'))).server).toBe('fortls');
+  expect(mocks.servers[0]).toMatchObject({ launch: { executable: process.execPath } });
   discovery.dispose();
 });
 
@@ -185,8 +224,9 @@ test('save includeText uses the actual disk snapshot and a catalog read starts n
   expect(catalog.entries.length).toBeGreaterThan(300); expect(mocks.servers).toHaveLength(0);
   expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').automatic).toBe(true);
   expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').managed).toBe(false);
-  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').discoverable).toBe(true);
-  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'apex-language-server').discoverable).toBe(false);
+  // Nothing was looked up on this computer, so whether the program exists is not claimed.
+  expect(catalog.entries.find((entry: { id: string }) => entry.id === 'gopls').available).toBeUndefined();
+  expect(catalog.entries.every((entry: { configured: boolean }) => entry.configured)).toBe(true);
   await f.invoke('set-enabled', f.first, 'gopls', false);
   const updated = await f.invoke('catalog', f.first);
   expect(updated.entries.find((entry: { id: string }) => entry.id === 'gopls').managed).toBe(true);
@@ -297,29 +337,27 @@ test('competing installed profiles start the tool the language ranks first, keep
   expect((await f.invoke('open', f.first, f.document('one', 'main.ts'))).server).toBe('vtsls');
   await f.invoke('restart', f.first); installed.delete('vtsls');
   f.first.sender.send.mockClear();
-  await expect(f.invoke('open', f.first, f.document('one', 'main.ts'))).rejects.toThrow(/Executable not found/);
+  await expect(f.invoke('open', f.first, f.document('one', 'main.ts'))).rejects.toThrow(/Program not found/);
   expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status', state: 'failed', issue: { kind: 'no-installer', help: expect.any(Boolean) }, server: expect.objectContaining({ id: 'vtsls' }) }));
   expect(mocks.servers).toHaveLength(2); discovery.dispose();
 });
 
-test('the full catalog discovers a server without a connection profile without launching it', async () => {
+test('the catalog lists only tools that can run and looks up a program for the one tool a person opened', async () => {
   const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
-  const query = vi.spyOn(discovery.environment, 'resolve');
-  vi.spyOn(discovery, 'find').mockImplementation(async command => {
-    const selected = command === 'aiken' ? { id: 'aiken-bin', path: process.execPath, source: 'path' as const } : undefined;
+  const find = vi.spyOn(discovery, 'find').mockImplementation(async command => {
+    const selected = command === 'gopls' ? { id: 'gopls-bin', path: process.execPath, source: 'path' as const } : undefined;
     return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
   });
   const f = fixture(discovery);
   const catalog = await f.invoke('catalog', f.first);
-  expect(catalog.entries.find((e: { id: string }) => e.id === 'aiken')).toMatchObject({ configured: false, discoverable: true, available: true, candidates: [{ id: 'aiken-bin', path: process.execPath, source: 'path' }] });
-  expect(mocks.servers).toHaveLength(0); expect(query).not.toHaveBeenCalled();
-  await expect(f.invoke('add-connection', f.first, { id: 'aiken', name: 'Aiken', candidateId: 'forged', args: ['lsp'],
-    languages: [{ languageId: 'aiken', extensions: ['.ak'] }], rootMarkers: [] })).rejects.toThrow(/Installation changed/);
-  await f.invoke('add-connection', f.first, { id: 'aiken', name: 'Aiken', candidateId: 'aiken-bin', args: ['lsp'],
-    languages: [{ languageId: 'aiken', extensions: ['.ak'] }], rootMarkers: [] });
-  expect(mocks.servers).toHaveLength(0);
-  expect((await f.invoke('configuration', f.first)).some((r: { server: string }) => r.server === 'aiken')).toBe(true);
-  discovery.dispose();
+  // Aiken is in an imported catalog but has no connection profile: it cannot run, so it is not offered.
+  expect(catalog.entries.some((e: { id: string }) => e.id === 'aiken')).toBe(false);
+  expect(find).not.toHaveBeenCalled();
+  const inspected = await f.invoke('catalog', f.first, undefined, 'gopls');
+  expect(inspected.entries.find((e: { id: string }) => e.id === 'gopls')).toMatchObject({ available: true, executable: process.execPath, chosen: false });
+  expect(find.mock.calls.map(([command]) => command)).toEqual(['gopls']);
+  await expect(f.invoke('catalog', f.first, undefined, 7)).rejects.toThrow(/Invalid tool/);
+  expect(mocks.servers).toHaveLength(0); discovery.dispose();
 });
 
 
@@ -514,10 +552,9 @@ test('the name a Zed extension gives its server is never looked up as a program'
     return { selected, candidates: [selected], environment: { env: {}, source: 'inherited' }, searched: ['/usr/bin'] };
   });
   const f = fixture(discovery);
-  const java = (await f.invoke('catalog', f.first)).entries.find((entry: any) => entry.id === 'zed.java-eclipse-jdtls.java');
-  expect(java).toMatchObject({ candidates: [], available: false, selectionNeeded: false });
+  const java = (await f.invoke('catalog', f.first, undefined, 'zed.java-eclipse-jdtls.java')).entries.find((entry: any) => entry.id === 'zed.java-eclipse-jdtls.java');
+  expect(java).toMatchObject({ available: false, chosen: false });
   expect(find.mock.calls.map(([command]) => command)).not.toContain('java');
-  await expect(f.invoke('select-candidate', f.first, 'zed.java-eclipse-jdtls.java', 'java')).rejects.toThrow(/no longer available/);
   discovery.dispose();
 });
 
@@ -537,7 +574,7 @@ test('a tool that ends is reported with its cause, and a cause that repeats is n
   chosen.failureFacts = async () => ({ started: false, reason: 'clangd language server exited (1).', stderr: 'Usage: node [options]' });
   f.first.sender.send.mockClear(); chosen.failed('initialization: exited');
   await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', failed({ kind: 'executable', path: process.execPath, automatic: true }, { retrying: false })));
-  expect((await f.invoke('catalog', f.first, undefined, false)).entries.find((entry: any) => entry.id === 'clangd').sessions[0]).toMatchObject({ state: 'failed', issue: { kind: 'executable' } });
+  expect((await f.invoke('catalog', f.first)).entries.find((entry: any) => entry.id === 'clangd').sessions[0]).toMatchObject({ state: 'failed', issue: { kind: 'executable' } });
   // A tool that worked and then stopped is a different cause: it is reconnected.
   await f.invoke('open', f.first, f.document('python'));
   const worked = mocks.servers.at(-1)! as any;
