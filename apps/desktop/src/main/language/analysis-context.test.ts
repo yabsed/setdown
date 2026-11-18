@@ -86,18 +86,41 @@ test('the actual clangd process receives an external database with include paths
   expect(failures).toEqual([]);
 }, 25_000);
 
-test('TypeScript keeps the bundled SDK until the project SDK is explicitly selected and preserves a missing choice', async () => {
-  const root = state.directory, service = new AnalysisContextService();
+test('TypeScript uses an installed project SDK automatically; explicit choices win and a missing choice is preserved', async () => {
+  const root = state.directory, service = new AnalysisContextService(), server = definition('typescript-language-server');
+  const sdkPath = (plan: Awaited<ReturnType<AnalysisContextService['resolve']>>) => configurationSection(plan.profile.initializationOptions!, 'tsserver.path');
+  // A repository boundary keeps discovery inside the fixture, whatever lies above the temporary directory.
+  await mkdir(path.join(root, '.git'));
+  const without = await service.resolve(root, 'fixture', server);
+  const bundled = without.context.choices.find(c => c.source === 'Bundled')!.path;
+  expect(sdkPath(without)).toBe(bundled);
+  expect(without.context.selectionSource).toBe('automatic');
+
   const sdk = path.join(root, 'node_modules/typescript/lib/tsserver.js');
   await mkdir(path.dirname(sdk), { recursive: true }); await writeFile(sdk, 'throw Error("discovery must never execute this file")');
   await writeFile(path.join(path.dirname(sdk), '../package.json'), '{"version":"9.9.9-fixture"}');
-  const initial = await service.resolve(root, 'fixture', definition('typescript-language-server'));
-  expect(configurationSection(initial.profile.initializationOptions!, 'tsserver.path')).not.toBe(sdk);
-  expect(initial.context.choices.some(c => c.path === sdk && c.name.includes('9.9.9-fixture'))).toBe(true);
+  const automatic = await service.resolve(root, 'fixture', server, {}, true);
+  expect(sdkPath(automatic)).toBe(sdk);
+  expect(automatic.context.selectionSource).toBe('automatic');
+  expect(automatic.context.choices.find(c => c.id === automatic.context.selected)).toMatchObject({ path: sdk, source: 'Project', name: 'Project TypeScript 9.9.9-fixture' });
+  expect(automatic.context.environment).toBe('usable');
+  expect(automatic.context.id).not.toBe(without.context.id);
+
+  const configured = path.join(root, 'configured/tsserver.js');
+  await mkdir(path.dirname(configured)); await writeFile(configured, '');
+  const connection = await service.resolve(root, 'fixture', server, { initializationOptions: { tsserver: { path: configured } } });
+  expect(sdkPath(connection)).toBe(configured);
+  expect(connection.context.selectionSource).toBe('connection');
+
+  analysisPreferences.set(root, 'typescript', 'bundled');
+  const keptBundled = await service.resolve(root, 'fixture', server);
+  expect(sdkPath(keptBundled)).toBe(bundled);
+  expect(keptBundled.context.selectionSource).toBe('project');
+  expect(keptBundled.context.inherited?.path).toBe(sdk);
+
   analysisPreferences.set(root, 'typescript', sdk);
-  const selected = await service.resolve(root, 'fixture', definition('typescript-language-server'));
-  expect(configurationSection(selected.profile.initializationOptions!, 'tsserver.path')).toBe(sdk);
-  await rm(sdk); const missing = await service.resolve(root, 'fixture', definition('typescript-language-server'), {}, true);
+  await rm(sdk); const missing = await service.resolve(root, 'fixture', server, {}, true);
   expect(missing.context.environment).toBe('action-needed');
-  expect(configurationSection(missing.profile.initializationOptions!, 'tsserver.path')).toBe(sdk);
+  expect(missing.context.issues[0].code).toBe('typescript-sdk-missing');
+  expect(sdkPath(missing)).toBe(sdk);
 });

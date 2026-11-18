@@ -930,7 +930,10 @@ execute cells. A stopped notebook can adopt the new shared default.
 
 `language/project-environment.spec.ts` covers real Python import repair, C++ build
 flags, TypeScript SDK/disabled state, explicit CMake preparation, process recovery,
-unsaved buffers and Undo/Redo. The contract also includes analysis context and
+unsaved buffers and Undo/Redo. Since 2026-11-18 an installed project TypeScript SDK
+is used automatically, as a unique project Python environment already was; the
+bundled SDK is the fallback and an explicit project choice. Discovery still reads
+metadata only, in main. The contract also includes analysis context and
 CMake/Meson preparation unit/integration checks. Existing focus/IME, ordinary and
 Git-review transition guarantees and benchmark tolerances are unchanged.
 

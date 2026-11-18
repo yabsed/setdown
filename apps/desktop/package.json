@@ -112,6 +112,8 @@
   "build": {
     "npmRebuild": false,
     "beforePack": "./scripts/rebuild-native.mjs",
+    "onNodeModuleFile": "./scripts/package-typescript-sdk.mjs",
+    "afterPack": "./scripts/package-typescript-sdk.mjs",
     "appId": "app.setdown.desktop",
     "productName": "Setdown",
     "artifactName": "Setdown-${version}-${os}-${arch}.${ext}",

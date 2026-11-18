@@ -512,7 +512,7 @@
         "hostInfo": "setdown"
       },
       "npmPackage": "typescript-language-server",
-      "setupNote": "Bundled project analysis. Uses the bundled TypeScript SDK unless a different SDK is selected."
+      "setupNote": "Bundled project analysis. Uses the project’s installed TypeScript SDK when there is one, otherwise the bundled SDK."
     },
     {
       "id": "ada-gpr-language-server",

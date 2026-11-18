@@ -287,10 +287,23 @@ checks. Re-enable its primary provider from the same chooser.
   override client policy. The UI shows the source and this distinction. Changing
   checking does not restart notebook kernels. Missing imports and type mismatches
   retain the server's severity; no blanket suppression is applied.
-- **TypeScript:** the bundled SDK remains the default. A project SDK is discovered
-  through bounded ancestor metadata lookup and offered for explicit selection.
-  The selected `tsserver.js` is passed in initialization options. The server’s
-  own version/source report is shown under service details.
+- **TypeScript:** a project that installs TypeScript is analysed with its own SDK,
+  so diagnostics match the project's `tsc`. `node_modules/typescript/lib/tsserver.js`
+  is looked up from the analysis root through its ancestors to the repository
+  boundary, reading metadata only, and the nearest one is used without a choice.
+  Without one the bundled SDK is used; that includes TypeScript 7, which ships no
+  `tsserver.js`. A `tsserver.path` in the connection's initialization options wins
+  over discovery. An explicit project choice, including **Bundled TypeScript**, wins
+  over both, and **Remove project override** returns to the automatic choice.
+  The selected `tsserver.js` is passed in initialization options and runs as the
+  analysis process. The server’s own version/source report is shown under service
+  details.
+  The installed application carries TypeScript's standard library (`lib.*.d.ts`)
+  beside the bundled `tsserver.js`. electron-builder leaves declaration files out
+  of `node_modules`; without them every built-in type (`Array`, `Promise`,
+  `console`) is reported as an error, and only in a packaged build.
+  `scripts/package-typescript-sdk.mjs` keeps them and fails packaging when one is
+  missing.
 - **C/C++:** root, `build`, `builddir`, `out/build`, and literal local CMake preset
   directories are checked for `compile_commands.json`. A unique database is used
   automatically; several build configurations require a choice. **Choose build

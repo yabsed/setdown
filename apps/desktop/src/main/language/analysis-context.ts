@@ -28,7 +28,8 @@ const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(va
 export type AnalysisPlan = { context: AnalysisContext; profile: ServerProfile; args: string[]; inputs: string[]; configuration(settings: Record<string, unknown>): Record<string, unknown> };
 
 /** Builder's context → tooling → launch boundary, using Setdown's existing LSP transport.
- * Discovery reads metadata only. Python can select an unambiguous local environment; project SDK choices remain explicit.
+ * Discovery reads metadata only. Python selects an unambiguous local environment and TypeScript an installed project SDK;
+ * every other project choice remains explicit.
  * The plan used to explain the environment is also the plan used to start its server. */
 export class AnalysisContextService {
   private readonly cache = new Map<string, { expires: number; result: Promise<AnalysisPlan> }>();
@@ -98,19 +99,29 @@ export class AnalysisContextService {
       const bundled = require.resolve('typescript/lib/tsserver.js').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
       const bundledVersion = json(path.join(path.dirname(bundled), '..', 'package.json'))?.version;
       const bundledChoice = choice(bundled, 'Bundled', `Bundled TypeScript${bundledVersion ? ` ${bundledVersion}` : ''}`);
-      let directory = root;
+      let directory = root, project: AnalysisChoice | undefined;
       for (let depth = 0; depth < 64; depth++) {
         const sdk = path.join(directory, 'node_modules/typescript/lib/tsserver.js');
         inputs.add(path.join(directory, 'node_modules/typescript/package.json'));
-        if (fileExists(sdk)) { const version = json(path.join(path.dirname(sdk), '..', 'package.json'))?.version; choice(sdk, 'Project', `Project TypeScript${version ? ` ${version}` : ''}`); break; }
+        if (fileExists(sdk)) {
+          const version = json(path.join(path.dirname(sdk), '..', 'package.json'))?.version;
+          // In Setdown's own checkout the installed TypeScript is the bundled one.
+          if (sdk !== bundled) project = choice(sdk, 'Project', `Project TypeScript${version ? ` ${version}` : ''}`);
+          break;
+        }
         if (existsSync(path.join(directory, '.git')) || path.dirname(directory) === directory) break;
         directory = path.dirname(directory);
       }
-      const configured = section(profile.initializationOptions ?? {}, 'tsserver.path');
-      context.selectionSource = preferences.typescript ? 'project' : configured ? 'connection' : 'automatic';
-      context.inherited = typeof configured === 'string' ? choice(configured, 'Connection settings', 'Configured TypeScript SDK') : bundledChoice;
-      const selected = preferences.typescript === 'bundled' ? bundled : preferences.typescript ?? (typeof configured === 'string' ? configured : bundled);
-      const item = selected === bundled ? bundledChoice : choice(selected, preferences.typescript ? 'Project selection' : 'Connection settings', 'Selected TypeScript SDK');
+      // serverProfile() always fills in the bundled path; only the connection's own options are an explicit setting.
+      const configured = section(options.initializationOptions ?? definition.initializationOptions ?? {}, 'tsserver.path');
+      // As in Zed's adapters, a project that installs TypeScript is analysed with that
+      // version, so diagnostics match its own `tsc`. TypeScript 7 ships no tsserver.js
+      // and is therefore not discovered. Explicit choices still win.
+      const automatic = typeof configured === 'string' && configured ? choice(configured, 'Connection settings', 'Configured TypeScript SDK') : project ?? bundledChoice;
+      context.selectionSource = preferences.typescript ? 'project' : automatic.source === 'Connection settings' ? 'connection' : 'automatic';
+      context.inherited = automatic;
+      const selected = preferences.typescript === 'bundled' ? bundled : preferences.typescript ?? automatic.path;
+      const item = context.choices.find(c => c.path === selected) ?? choice(selected, 'Project selection', 'Selected TypeScript SDK');
       context.selected = item.id; context.evidence.push(`TypeScript SDK: ${selected}`);
       if (!item.available) issue('typescript-sdk-missing', `The selected TypeScript SDK is missing: ${selected}. Choose the bundled SDK or restore the project SDK.`, true);
       const previous = profile.initializationOptions?.tsserver;

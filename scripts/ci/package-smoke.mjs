@@ -55,8 +55,28 @@ try {
   }, snapshot);
   await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
   await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 30_000 });
+  // The packaged TypeScript SDK must carry its standard library. The packager
+  // drops declaration files by default; without lib.*.d.ts every line below is
+  // an error, not only the last one. A development build cannot show this.
+  const typescript = path.join(profile, 'smoke.ts');
+  await writeFile(typescript, 'const names: string[] = ["a", "b"];\nconst upper = names.map(name => name.toUpperCase());\n'
+    + 'console.log(upper, Promise.resolve(upper.length), new Map<string, number>());\nexport const wrong: number = "text";\n');
+  const typescriptSnapshot = await page.evaluate(file => window.marktex.readDocumentLocation(file), typescript);
+  await app.evaluate(({ BrowserWindow }, document) => {
+    BrowserWindow.getAllWindows()[0].webContents.send('document:opened', document);
+  }, typescriptSnapshot);
+  await expect(page.locator('.editor-surface .view-lines')).toContainText('names.map', { timeout: 30_000 });
+  await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
+  await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 30_000 });
+  await page.getByRole('button', { name: /Language status:/ }).click();
+  const support = page.getByRole('dialog', { name: 'Current file language support' });
+  await support.getByRole('button', { name: 'More…', exact: true }).click();
+  await support.getByRole('button', { name: 'Problems', exact: true }).click();
+  const problems = page.getByRole('dialog', { name: /^Problems/ });
+  await expect(problems).toContainText("Type 'string' is not assignable to type 'number'");
+  await expect(problems).not.toContainText(/Cannot find (name|global type)|does not exist on type/);
   expect(pageErrors).toEqual([]);
-  console.log(`Packaged ${platform} ${version}: launched, rendered Markdown, opened editor, received Python diagnostics.`);
+  console.log(`Packaged ${platform} ${version}: launched, rendered Markdown, opened editor, received Python and TypeScript diagnostics.`);
 } catch (error) {
   stderr += `\n${error.stack ?? error}\n`;
   await page?.screenshot({ path: path.join(output, 'shell.png') }).catch(() => undefined);

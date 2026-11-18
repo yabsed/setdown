@@ -120,7 +120,7 @@ test('C++ build selection changes the real clangd flags and repairs unsaved sour
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
-test('TypeScript SDK selection and basic editing apply to this project; service restart retains current source', async ({}, testInfo) => {
+test('the project’s TypeScript SDK is used automatically; an explicit bundled choice and basic editing apply to this project; service restart retains current source', async ({}, testInfo) => {
   const { root, project, config } = await fixture('setdown-project-ts-');
   const file = path.join(project, 'main.ts');
   await mkdir(path.join(project, 'node_modules'), { recursive: true });
@@ -133,11 +133,23 @@ test('TypeScript SDK selection and basic editing apply to this project; service 
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' }), sdk = panel.getByRole('combobox', { name: 'TypeScript SDK' });
-    await panel.getByRole('button', { name: /^TypeScript SDK/ }).click();
-    const projectSdk = await sdk.locator('option').filter({ hasText: 'Project TypeScript' }).getAttribute('value');
-    await sdk.selectOption(projectSdk!);
-    await panel.getByRole('button', { name: /^TypeScript SDK/ }).click();
-    await expect(panel).toContainText(path.join(project, 'node_modules/typescript/lib/tsserver.js'));
+    const sdkRow = panel.getByRole('button', { name: /^TypeScript SDK/ }), projectSdk = path.join(project, 'node_modules/typescript/lib/tsserver.js');
+    // The installed project SDK is in use before any choice is made.
+    await expect(sdkRow).toContainText('Project TypeScript');
+    await sdkRow.click();
+    await expect(panel).toContainText(projectSdk);
+    await expect(panel).toContainText('Automatic selection');
+    // The bundled SDK remains an explicit choice for this project; removing it returns to the project's own.
+    const bundledSdk = await sdk.locator('option').filter({ hasText: 'Bundled TypeScript' }).getAttribute('value');
+    await sdk.selectOption(bundledSdk!);
+    await expect(sdkRow).toContainText('Bundled TypeScript');
+    await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
+    await sdkRow.click();
+    await expect(panel).toContainText('Project selection');
+    await panel.getByRole('button', { name: 'Remove project override', exact: true }).click();
+    await expect(sdkRow).toContainText('Project TypeScript');
+    await sdkRow.click();
+    await expect(panel).toContainText(projectSdk);
     await panel.getByRole('button', { name: 'Back to code support' }).click();
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await panel.getByRole('button', { name: 'More…', exact: true }).click();
