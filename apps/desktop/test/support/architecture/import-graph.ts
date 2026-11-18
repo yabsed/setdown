@@ -77,8 +77,11 @@ export function boundaryViolations(dependencies: Dependency[]): string[] {
   // separate public entries so basic editing does not import the project client.
   // Syntax metadata/theme rules are lightweight public entries; the TextMate
   // engine stays private and lazy, independent of the project-provider client.
-  const languagePublic = new Set(['language-runtime.ts', 'syntax-runtime.ts', 'syntax-themes.ts', 'language-services.ts', 'DocumentLanguageStatus.svelte', 'language-client.ts', 'language-conversion.ts', 'language-diagnostics-api.ts', 'language-feature-context.ts', 'LanguageSupport.svelte']);
-  const notebookPublic = new Set(['document-content.ts', 'NotebookSurface.svelte']);
+  // The status button and the Python checking control are presentation shared
+  // with notebooks; they import neither the project client nor a store. A
+  // notebook's status is a location-bar entry like the document's.
+  const languagePublic = new Set(['language-runtime.ts', 'syntax-runtime.ts', 'syntax-themes.ts', 'language-services.ts', 'DocumentLanguageStatus.svelte', 'language-client.ts', 'language-conversion.ts', 'language-diagnostics-api.ts', 'language-feature-context.ts', 'LanguageSupport.svelte', 'LanguageStatusButton.svelte', 'PythonCheckingLevel.svelte', 'python-checking.ts']);
+  const notebookPublic = new Set(['document-content.ts', 'NotebookSurface.svelte', 'NotebookLanguageStatus.svelte']);
   return dependencies.flatMap(edge => {
     const { from, to, specifier } = edge;
     const node = builtins.has(specifier.replace(/^node:/, '')) || specifier === 'electron' || specifier.startsWith('electron/');
