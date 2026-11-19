@@ -52,7 +52,8 @@ export const languageMethods = [
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageCell = { id: string; version: number; text: string };
 export type LanguageDocument = { server?: string; languageId?: string; notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
-export type LanguageServerMessage = { id: string; message: string; actions: string[] };
+/** What a tool tells the person: a question with its answers, or a notice (`severity`, no actions) that stays until dismissed. */
+export type LanguageServerMessage = { id: string; message: string; actions: string[]; severity?: 'error' | 'warning' | 'info' };
 export type LanguageRecovery = { retrying: boolean; attempt?: number };
 /** Why a tool is not working, as a fact the main process observed. The renderer
  * turns one issue into one sentence and one action; `help` means a page can be opened. */

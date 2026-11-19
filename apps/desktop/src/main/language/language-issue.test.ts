@@ -22,6 +22,18 @@ test('a runtime the tool names is reported ahead of the program that needed it',
   expect(runtimeIssue("No such file or directory: 'compile_commands.json'")).toBeUndefined();
 });
 
+test('the Zed Java extension states a Java problem before any process starts', () => {
+  const old = 'Failed to build JDTLS launch arguments: Current JDTLS versions require at least Java version 25 to run. You can either specify a different JDK to use by configuring lsp.jdtls.settings.java_home to point to a different JDK, or set lsp.jdtls.settings.jdk_auto_download to true to let the extension automatically download one for you.';
+  expect(preparationIssue(Error(old), false)).toEqual({ kind: 'runtime', runtime: 'Java', required: '25' });
+  expect(preparationIssue(Error(old), false, { required: 25, found: '17' })).toEqual({ kind: 'runtime', runtime: 'Java', required: '25', found: '17' });
+  // No Java at all: the extension names no release, and Setdown knows which one the tool needs.
+  const missing = 'Failed to build JDTLS launch arguments: Failed to locate Java executable for JDTLS: Could not find Java executable in JAVA_HOME or on PATH';
+  expect(preparationIssue(Error(missing), false)).toEqual({ kind: 'runtime', runtime: 'Java', required: '' });
+  expect(preparationIssue(Error(missing), false, { required: 25 })).toEqual({ kind: 'runtime', runtime: 'Java', required: '25' });
+  // What Setdown knew about Java does not turn another failure into a Java problem.
+  expect(preparationIssue(Error('error sending request for url (https://download.eclipse.org/jdtls)'), false, { required: 25, found: '17' })).toMatchObject({ kind: 'download-failed' });
+});
+
 test('an unexplained start failure keeps the line a person would read first', () => {
   expect(sessionIssue({ started: false, reason: 'exited (1).', stderr: 'loading config\nerror: unknown option --stdio\n    at main (index.js:1)\n\nNode.js v22.1.0\n' }))
     .toEqual({ kind: 'startup', detail: 'error: unknown option --stdio' });

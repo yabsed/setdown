@@ -28,7 +28,7 @@ import { analysisPreferences } from './analysis-preferences';
 import { AnalysisPreparation } from './analysis-preparation';
 import { LanguageServiceSupervisor } from './language-supervisor';
 import { preparationIssue, runtimeHelp, sessionIssue } from './language-issue';
-import { projectRuntimeSettings, toolRuntime, type ToolRuntime } from './tool-runtime';
+import { isJdtls, javaPlan, javaSettings, jdtlsJava, toolRuntime, type JavaPlan, type ToolRuntime } from './tool-runtime';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
 import { AutomaticDownloadsDisabled, LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
@@ -518,6 +518,8 @@ export class LanguageManager {
     let prepared: PreparedLanguageServer | undefined;
     let plan: AnalysisPlan | undefined;
     let runtime: ToolRuntime | undefined;
+    // What was decided about Java when the tool is jdt.ls: the JDK it runs on and the JDKs a project may use.
+    let java: JavaPlan | undefined;
     const named = () => ({ id: support.server, name: definition.name });
     // A connection that cannot be prepared reports why before the request is rejected,
     // so the document shows the cause and its repair instead of a bare error.
@@ -530,12 +532,17 @@ export class LanguageManager {
       // A tool Setdown installed once was asked for then; another project reuses that answer.
       const automaticInstall = this.registry.automaticInstall(support.server, file)
         || this.registry.asksBeforeInstalling(support.server, file) && !!await this.provisioner.installation?.(support.server);
+      const options = this.registry.options(support.server, file);
+      // The Zed Java extension starts jdt.ls on `java_home`, else on the environment's Java, and
+      // refuses one that is too old. It is told the JDK the VS Code Java extension would run on.
+      java = isJdtls(definition) ? await javaPlan(environment, options.settings ?? definition.settings) : undefined;
+      const settings = java?.tooling ? { settings: { ...(options.settings ?? definition.settings), java_home: java.tooling.home } } : {};
       return this.provisioner.prepare(definition, support.languageId, root, environment,
-        { ...this.registry.options(support.server, file), automaticInstall }, message => {
+        { ...options, ...settings, automaticInstall }, message => {
           if (current()) this.emit(owner, { type: 'status', state: 'starting', preparing: true, message, server: target, documents: [{ id: document.id, generation: document.generation }] });
         }).catch(error => {
           if (error instanceof AutomaticDownloadsDisabled || !current()) throw error;
-          return reject(String(error instanceof Error ? error.message : error), preparationIssue(error, false));
+          return reject(String(error instanceof Error ? error.message : error), preparationIssue(error, false, java && { required: jdtlsJava, found: java.found }));
         });
     };
     const ranked = <T extends { server: string; languageId: string }>(items: T[]) => [...items].sort((a, b) =>
@@ -644,9 +651,9 @@ export class LanguageManager {
       }
       if (!server && launch) {
         // The tool may need a newer runtime than the project it analyzes.
-        runtime = await toolRuntime(launch);
+        runtime = await toolRuntime(launch, undefined, this.registry.options(support.server, file).settings ?? definition.settings);
         if (!current()) throw Error('Language document closed or configuration changed while choosing a tool runtime.');
-        launch = runtime.launch; server = activeServer();
+        launch = runtime.launch; java = runtime.java ?? java; server = activeServer();
       }
     } finally { if (pending.get(document.id) === opening) pending.delete(document.id); }
     const configuration = configurations.get(support.server)!;
@@ -658,14 +665,17 @@ export class LanguageManager {
       if (!plan) throw Error('No analysis launch plan.');
       const preparedProfile = prepared ? {...plan.profile,configuration:mergeLanguageSettings(prepared.settings,plan.profile.configuration),
         initializationOptions:mergeLanguageSettings(prepared.initializationOptions,plan.profile.initializationOptions)} : plan.profile;
-      // Explicit project settings win over the runtime Setdown kept for the project.
-      const runtimeSettings = projectRuntimeSettings(runtime?.project);
-      const profile = runtime?.project ? { ...preparedProfile, configuration: mergeLanguageSettings(runtimeSettings, preparedProfile.configuration),
-        initializationOptions: mergeLanguageSettings({ settings: runtimeSettings }, preparedProfile.initializationOptions) } : preparedProfile;
+      // jdt.ls learns the JDKs of this computer before it imports the project, as the VS Code Java
+      // extension tells it: in the initialization options and again with the settings. The list
+      // starts from the runtimes the person wrote in either place.
+      const written = (value: unknown) => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+      const runtimeSettings = java ? javaSettings(java, mergeLanguageSettings(written(preparedProfile.initializationOptions?.settings), preparedProfile.configuration)) : {};
+      const profile = java ? { ...preparedProfile, configuration: mergeLanguageSettings(preparedProfile.configuration, runtimeSettings),
+        initializationOptions: mergeLanguageSettings(preparedProfile.initializationOptions, { settings: runtimeSettings }) } : preparedProfile;
       const recoveryKey = `${state.webContentsId}:${support.server}:${root}`;
       const pinned = prepared ? undefined : this.registry.options(support.server).executable;
       const repair = this.registry.canDetect(support.server) && !this.registry.isCustom(support.server);
-      const runtimeFound = runtime?.found;
+      const runtimeFound = runtime?.found ?? java?.found;
       server = new ServerSession(launch, root, params => {
         for (const binding of owned.documents.values()) {
           // Versionless push diagnostics are best-effort observations, never used as edit versions.
@@ -703,7 +713,7 @@ export class LanguageManager {
           let resource = file;
           try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Invalid scopes use the session document. */ }
           const settings = this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
-          return mergeLanguageSettings(runtimeSettings,prepared?.settings,plan!.configuration(settings));
+          return mergeLanguageSettings(prepared?.settings,plan!.configuration(settings),runtimeSettings);
         },
         refresh: feature => this.emit(owned, { type: 'refresh', feature,
           documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
@@ -727,7 +737,8 @@ export class LanguageManager {
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
       });
       for (const evidence of plan.context.evidence) server.context?.set(evidence.split(': ')[0], evidence.split(': ').slice(1).join(': '));
-      if (runtime?.note) server.context?.set('Tool runtime', runtime.note);
+      const runtimeNote = runtime?.note ?? java?.note;
+      if (runtimeNote) server.context?.set('Tool runtime', runtimeNote);
       this.items.set(server, new ServerItems());
       this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
       owner.servers.set(key, server);

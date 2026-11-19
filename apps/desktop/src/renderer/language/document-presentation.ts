@@ -88,8 +88,11 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
   }
   const localFailure = providers.find(p => p.kind === 'builtin' && p.state === 'failed');
   if (localFailure) return { label: 'Limited', tone: 'warning', title: localFailure.message ?? `${localFailure.name} checks are limited.`, action: { kind: 'details', label: 'Review checks…', server: localFailure.id } };
-  const request = providers.find(p => p.messages?.length);
+  const request = providers.find(p => p.messages?.some(message => message.actions.length));
   if (request) return { label: 'Needs answer', tone: 'warning', title: `${request.name} has a question.`, action: { kind: 'details', label: 'Answer…', server: request.id } };
+  // A tool's warning or error is announced; what it merely mentions waits in the panel.
+  const notice = providers.find(p => p.messages?.some(message => message.severity === 'error' || message.severity === 'warning'));
+  if (notice) return { label: 'Notice', tone: 'warning', title: `${notice.name} has a message.`, action: { kind: 'details', label: 'Read…', server: notice.id } };
   const recovery = servers.find(p => p.recovery?.retrying);
   if (recovery) return { label: 'Reconnecting…', tone: 'busy', title: `Reconnecting ${subject(recovery)}…`, description: `Attempt ${recovery.recovery!.attempt} of 3.` };
   const starting = servers.find(p => p.state === 'starting');

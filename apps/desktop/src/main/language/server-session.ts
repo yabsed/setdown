@@ -117,8 +117,21 @@ export class ServerSession {
       this.capabilities.unregister(params.unregisterations.map(item => item.id)); hooks.capabilitiesChanged?.(); return null;
     });
     for (const [method, feature] of Object.entries(refreshMethods)) this.connection.onRequest(method, () => { hooks.refresh?.(feature); return null; });
-    for (const method of ['window/logMessage', 'window/showMessage'])
-      this.connection.onNotification(method, (params: { message: string }) => this.log(params.message));
+    this.connection.onNotification('window/logMessage', (params: { message: string }) => this.log(params.message));
+    // A tool's own notice stays in the panel until the person dismisses it. VS Code shows it as a
+    // notification, and a tool's terms can forbid hiding it (vendor/vscode-intelephense/LICENSE.txt, 3d).
+    this.connection.onNotification('window/showMessage', (params: { type?: number; message?: unknown }) => {
+      const message = String(params?.message ?? '').slice(0, 4096);
+      this.log(message);
+      const severity = ({ 1: 'error', 2: 'warning', 3: 'info' } as const)[params?.type as 1 | 2 | 3];
+      const notices = [...this.messageRequests.values()].filter(entry => entry.value.severity);
+      if (!severity || !message.trim() || notices.some(entry => entry.value.message === message)) return;
+      // The newest four are kept, so a tool that repeats itself cannot crowd out a question.
+      if (notices.length >= 4) this.messageRequests.delete(notices[0].value.id);
+      const id = randomUUID();
+      this.messageRequests.set(id, { value: { id, message, actions: [], severity }, finish: () => { this.messageRequests.delete(id); hooks.activity?.(); } });
+      hooks.activity?.();
+    });
     // Requests are recorded in the panel. No server-driven modal interrupts typing.
     this.connection.onRequest('window/showMessageRequest', (params: { message: string; actions?: { title: string }[] }) => {
       this.log(params.message);

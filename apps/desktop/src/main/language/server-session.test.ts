@@ -265,6 +265,39 @@ test('server action requests remain nonmodal, bounded to their session and cance
   await server.stop(); await pending; expect(server.messages).toEqual([]);
 });
 
+test('a notice the server shows stays until it is dismissed, without repeats and within a bound', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-notices-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    c.onRequest('initialize', () => ({capabilities:{}}));
+    c.onRequest('say', params => { for (const [type, message] of params) c.sendNotification('window/showMessage', {type, message}); return null; });
+    c.onRequest('ask', () => c.sendRequest('window/showMessageRequest', {message:'Reload workspace?',actions:[{title:'Reload'}]}));
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  let activity = 0;
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, undefined, { activity: () => { activity++; } });
+  sessions.push(server); await server.ready;
+  // A log-level message and an empty one are not notices; the same text is shown once.
+  await server.request('say', [[2, 'Your licence key has expired.'], [2, 'Your licence key has expired.'], [4, 'verbose'], [3, ' '], [1, 'Indexing failed.']]);
+  await expect.poll(() => server.messages.length).toBe(2);
+  expect(server.messages.map(({ message, actions, severity }) => ({ message, actions, severity }))).toEqual([
+    { message: 'Your licence key has expired.', actions: [], severity: 'warning' }, { message: 'Indexing failed.', actions: [], severity: 'error' }]);
+  expect(activity).toBeGreaterThanOrEqual(2);
+  expect(server.logs.join('\n')).toContain('verbose');
+  server.answerMessage(server.messages[0].id);
+  expect(server.messages.map(entry => entry.message)).toEqual(['Indexing failed.']);
+  // The newest four notices are kept, and they do not displace a question.
+  const question = server.request('ask', {}); await expect.poll(() => server.messages.some(entry => entry.actions.length)).toBe(true);
+  await server.request('say', [[3, 'one'], [3, 'two'], [3, 'three'], [3, 'four'], [3, 'five']]);
+  await expect.poll(() => server.messages.some(entry => entry.message === 'five')).toBe(true);
+  expect(server.messages.filter(entry => entry.severity).map(entry => entry.message)).toEqual(['two', 'three', 'four', 'five']);
+  const asked = server.messages.find(entry => entry.actions.length)!; server.answerMessage(asked.id, 0);
+  expect(await question).toEqual({ title: 'Reload' });
+  await server.stop(); expect(server.messages).toEqual([]);
+});
+
 test('a server that registers configuration or unknown capabilities stays connected', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-registration-'));
   roots.push(root);

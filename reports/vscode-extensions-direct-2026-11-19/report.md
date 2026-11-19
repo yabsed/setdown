@@ -2,6 +2,8 @@
 
 작성일: 2026-11-19 · 조사 보고서 · Setdown `d75384a` · VS Code 소스 `vendor/vscode` 1.142.0 · 새로 추가한 확장 저장소 13개(부록 A) · Open VSX 조회 2026-11-19
 
+**이후 진행은 8절에 있다.** 6.2절의 결정이 내려졌고 5절의 일부를 옮겼다. 아래 본문은 결정 전에 쓴 조사 내용 그대로다.
+
 **소스를 읽고 쓴 보고서다. 확장을 실제로 실행해 보지는 않았다.** 실행 실험은 준비했으나 돌리지 못했다(7절). "확인"은 해당 커밋의 소스에서 본 것이고, "추정"은 따로 표시한다. 언어별 근거는 [languages/](languages/)의 일곱 파일에 줄 번호와 함께 있다. 이 본문은 그 파일들을 묶어 질문에 답한다.
 
 질문은 이것이다. "VS Code 확장을 그대로 적용하면 되지 않는가. 전문가들이 만든 로직이니 완벽할 텐데."
@@ -158,7 +160,7 @@ Intelephense에서 **확장과 무관하게 지금 고칠 것** 두 가지가 �
 
 ## 5. 확장을 명세로 쓸 때 가져올 것
 
-언어별 파일의 4절("Zed와 Setdown은 지금 어떻게 하는가")에서 나온 것을, 분석이 맞게 되느냐에 영향이 큰 순서로 적는다. 모두 양쪽 소스에서 확인한 차이다. 구현 제안이며 아직 만든 것은 없다.
+언어별 파일의 4절("Zed와 Setdown은 지금 어떻게 하는가")에서 나온 것을, 분석이 맞게 되느냐에 영향이 큰 순서로 적는다. 모두 양쪽 소스에서 확인한 차이다. 작성 시점에는 구현 제안이었고, 그 뒤 만든 것은 8절에 적는다.
 
 | # | 언어 | 지금 빠진 것 | 근거가 되는 확장 소스 | Setdown에서 잇는 곳 |
 | --- | --- | --- | --- | --- |
@@ -230,6 +232,43 @@ git -C vendor/vscode-java diff HEAD FETCH_HEAD -- src/requirements.ts src/jdkUti
 - 약관의 법적 해석, Marketplace 약관 원문, PET와 `jdk-utils`의 라이선스 원문(`jdk-utils`는 `package.json`에 MIT로 표시).
 - 5절의 크기 추정("수백 줄")과 3절의 "옮길 수 있다"는 판단. 옮겨 본 것이 아니다.
 - Open VSX에 있는 판이 Setdown 같은 호스트에서 실제로 켜지는지.
+
+## 8. 진행 상황 (2026-11-19 저녁)
+
+6.2절의 결정이 내려졌다. 목표는 "코드 분석을 믿을 수 있는 Setdown"이고, 확장은 실행하지 않고 명세로 쓴다. 5절의 목록을 6.3절 순서로 옮기는 중이다.
+
+| 5절 | 상태 | 옮긴 규칙 | 옮긴 곳 |
+| --- | --- | --- | --- |
+| 1 | 됨 | JDK 탐색(jdk-utils 0.6.0), 도구를 돌릴 JDK 선택(`requirements.ts`), 프로젝트용 JDK 목록과 기본값(`utils.ts`의 `getJavaConfig`, `addAutoDetectedJdks`) | `apps/desktop/src/main/language/tool-runtime.ts`, `language-manager.ts` |
+| 2 | 됨 | Zed Java 확장의 두 실패 문구("require at least Java version 25", "Could not find Java executable") | `language-issue.ts` |
+| 11 | 됨 | Intelephense 라이선스 표기(`proprietary`), 서버가 보낸 알림을 패널에 남기기 | `catalog/mason.json`과 그 생성 스크립트, `server-session.ts`, `document-presentation.ts` |
+| 5의 `isTrusted` | 보류 | 아래 "정할 것" | |
+
+**Java가 이제 하는 일.** jdt.ls를 띄우기 전에 이 컴퓨터의 JDK를 찾는다. 찾는 곳은 `JDK_HOME`, `JAVA_HOME`, PATH, SDKMAN, jEnv, jabba, JBang, asdf, Gradle이 받은 JDK, Homebrew, OS의 표준 폴더다. 도구는 25 이상인 것 가운데 "환경 변수가 가리킨 것, 버전 관리 도구의 것, 시스템 폴더의 것" 순서로, 같은 순위에서는 최신으로 돌린다. 찾은 JDK는 전부 `JavaSE-N` 이름으로 jdt.ls에 알려 주고, 어느 것이 프로젝트에 맞는지는 jdt.ls가 빌드 파일을 보고 고른다. 사람이 `java_home`이나 `java.configuration.runtimes`를 직접 적었으면 그 값이 남는다.
+
+**확인한 것.** 사용자의 Java 25 프로젝트 사본(Spring Boot 4.1.2, Gradle 9.7.0, 툴체인 25)을 열었다. 이 컴퓨터의 셸은 `JAVA_HOME`을 JDK 17로 두고, JDK 25는 `/usr/lib/jvm`에만 있다. `java_home` 설정은 없다.
+
+| 조건 | 바꾸기 전 | 바꾼 뒤 |
+| --- | --- | --- |
+| Setdown의 언어 관리자를 직접 돌림(재현 도구), 환경 `JAVA_HOME`=17 | 3.5초에 실패: "require at least Java version 25" | 6.0초에 준비. 오류 0개, `SpringApplication.run` 호버 정상, 완성 14개. jdt.ls 프로세스가 JDK 25로 뜸 |
+| 실제 앱(숨은 화면, 임시 프로필), 띄운 환경을 그대로 물려줌 | 앞선 조사에서 "Couldn't set up Java support" | 6.8초에 준비, 편집기의 오류 표시 0개, 패널 "jdtls Connected" |
+| 실제 앱, 로그인 셸에 환경을 물어봄(바탕화면 아이콘으로 띄울 때의 경로) | 같음 | 8.3초에 준비, 오류 표시 0개 |
+| JDK 25 폴더를 가린 상태(재현 도구) | 긴 원문과 함께 "Couldn't set up" | "Java 25 이상이 필요합니다. Java 17을 찾았습니다"와 설치 안내 |
+
+jdt.ls의 자체 기록에도 `JavaSE-25`와 `JavaSE-17` 두 런타임을 받아 등록했다고 남았다. 단위 테스트는 탐색 순서, 선택 규칙, 이름 규칙, 실패 문구를 다루고, 옮겨 적은 두 숫자(최소 버전 25, 런타임 이름의 범위)를 `vendor/vscode-java`의 값과 비교한다. 서브모듈을 올려 그 값이 바뀌면 테스트가 실패한다. 전체 단위 테스트 1,521개가 통과했고, 언어 E2E는 38개 가운데 37개가 통과했다. 실패한 하나(`language-registry.spec.ts:310`)는 이 변경 전에도 같은 자리에서 같은 값으로 실패하던 것으로, JSON 도구를 Zed 엔진 경로로 옮긴 뒤 남은 결정 사항이다.
+
+**바뀐 기존 동작.** 전에는 도구를 "요구를 채우는 가장 낮은 JDK"로 돌리고 프로젝트 기본값을 셸의 JDK로 묶었다. 이제는 vscode-java와 같이 "가장 좋은 위치의 최신 JDK"로 돌리고, 빌드 파일이 버전을 말하지 않는 프로젝트의 기본값도 그 JDK다. Maven과 Gradle 프로젝트는 빌드 파일의 버전을 따르므로 달라지지 않는다.
+
+**하지 않은 것.**
+
+- JDK 25 이상이 하나도 없는 컴퓨터. 지금은 원인과 설치 안내만 보여 준다. vscode-java는 JRE를 내장해 이 경우가 없다. Zed Java 확장의 `jdk_auto_download`를 켜는 버튼을 붙이면 같은 결과가 되지만 만들지 않았다.
+- Java 17이나 21을 쓰는 프로젝트에서 jdt.ls가 등록된 JDK 가운데 맞는 것을 고르는지. 25 프로젝트만 열어 봤다.
+- macOS와 Windows. 탐색 위치는 옮겼으나 이 컴퓨터(Linux)에서만 돌렸다. `release` 파일이 없는 JDK는 찾지 않는다(jdk-utils는 `java -version`을 실행해 알아내지만, Setdown은 후보를 실행하지 않는다).
+- Zed 엔진 경로. Java는 아직 기존 경로에 있어 그쪽에만 넣었다.
+- Gradle 언어 서버의 `java_home`(Zed Java 확장에서 jdt.ls와 따로 정한다).
+- 서버 알림 표시는 가짜 서버로 한 단위 테스트까지다. 실제 Intelephense가 보내는 알림을 앱 화면에서 보지는 않았다.
+
+**정할 것: Svelte의 `isTrusted`.** Svelte 서버는 이 값을 받지 못하면 신뢰한다고 보고 프로젝트의 `svelte.config.js`를 실행한다. VS Code는 작업 영역 신뢰 여부를 넘긴다. Setdown에는 신뢰 개념이 없고, "파일을 연 것이 동의"라는 입장이다(`tooling/language-host/src/project_host.rs:198`). 그래서 `true`를 보내는 것은 지금과 같고, 뜻 있는 변화는 "처음 여는 폴더는 묻는다" 같은 신뢰 개념을 들이는 것이다. 이것은 Svelte만의 일이 아니라 제품 결정이라 손대지 않았다.
 
 ## 부록 A. 기준 소스
 

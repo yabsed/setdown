@@ -88,6 +88,15 @@ test('Setdown says once that it is fetching a tool and stays quiet for an ordina
   expect(presentSupport([server({ messages: [{ id: 'm', message: 'Import the Gradle project?', actions: ['Yes'] }] })])).toMatchObject({ label: 'Needs answer', action: { kind: 'details', label: 'Answer…' } });
 });
 
+test('a warning the tool sends is announced, and a question comes before it', () => {
+  const warning = { id: 'w', message: 'Your licence key has expired.', actions: [], severity: 'warning' as const };
+  expect(presentSupport([server({ name: 'intelephense', messages: [warning] })])).toMatchObject({ label: 'Notice', tone: 'warning', title: 'intelephense has a message.', action: { kind: 'details', label: 'Read…' } });
+  expect(presentSupport([server({ messages: [warning, { id: 'q', message: 'Reload?', actions: ['Reload'] }] })])).toMatchObject({ label: 'Needs answer' });
+  // What a tool merely mentions is read in the panel and changes nothing on the status button.
+  const quiet = presentSupport([server({ messages: [{ id: 'i', message: 'Indexing finished.', actions: [], severity: 'info' as const }] })]);
+  expect(quiet.label).not.toBe('Notice'); expect(quiet).toEqual(presentSupport([server({})]));
+});
+
 test('a tool outside the supported languages waits to be asked for, without a warning', () => {
   const waiting = server({ id: 'zls', name: 'zls', state: 'missing', analysis: undefined, issue: { kind: 'downloads-off', optional: true } });
   expect(presentSupport([waiting], undefined, 'Zig')).toMatchObject({ label: 'Not installed', tone: 'neutral', title: "Zig support isn't installed.",

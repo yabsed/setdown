@@ -5,9 +5,13 @@ const release = '2026-10-15-sedate-sheep';
 const sha256 = '76df9a5627a77983a956b17549483ba2f9292eecafd2150875b3dc4540a91ed1';
 const raw = await readFile(process.argv[2]);
 if (createHash('sha256').update(raw).digest('hex') !== sha256) throw Error('Unexpected Mason registry checksum');
+// Where the registry states a licence the tool does not have. Intelephense is distributed under
+// its own licence, which forbids redistribution and hiding its notifications
+// (vendor/vscode-intelephense/LICENSE.txt); the registry lists it as MIT.
+const licences = { intelephense: ['proprietary'] };
 const packages = JSON.parse(raw).filter(item => item.categories?.includes('LSP')).map(item => ({
   id: item.name, description: item.description.trim(), homepage: item.homepage,
-  languages: item.languages ?? [], licenses: item.licenses ?? [],
+  languages: item.languages ?? [], licenses: licences[item.name] ?? item.licenses ?? [],
   source: item.source, executables: Object.keys(item.bin ?? {}),
 })).sort((a, b) => a.id.localeCompare(b.id, 'en'));
 await writeFile(new URL('../src/main/language/catalog/mason.json', import.meta.url),

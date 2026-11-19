@@ -16,8 +16,11 @@ export const runtimeHelp: Record<string, string> = {
 /** Tools state a missing or outdated runtime in their own words. Only wording that
  * names the runtime is recognized; everything else stays an unexplained failure. */
 export function runtimeIssue(output: string, found?: string): Extract<LanguageIssue, { kind: 'runtime' }> | undefined {
-  const java = /requires (?:at least )?(?:Java|JDK|JRE) (\d+)/i.exec(output) ?? /(?:Java|JDK|JRE) (\d+)(?: or (?:newer|later|higher|above)|\+) is required/i.exec(output);
+  // jdtls.py says "requires at least Java 21"; the Zed Java extension says "require at least Java version 25".
+  const java = /requires? (?:at least )?(?:Java|JDK|JRE)(?: version)? (\d+)/i.exec(output) ?? /(?:Java|JDK|JRE) (\d+)(?: or (?:newer|later|higher|above)|\+) is required/i.exec(output);
   if (java) return { kind: 'runtime', runtime: 'Java', required: java[1], ...(found ? { found } : {}) };
+  // The Zed Java extension, when neither `JAVA_HOME` nor PATH has a Java.
+  if (/Could not find Java executable/i.test(output)) return { kind: 'runtime', runtime: 'Java', required: '' };
   // A class file version is the Java major version plus 44.
   const classFile = /UnsupportedClassVersionError[^\n]*class file version (\d+)/.exec(output);
   if (classFile) return { kind: 'runtime', runtime: 'Java', required: String(Number(classFile[1]) - 44), ...(found ? { found } : {}) };
@@ -45,11 +48,15 @@ export function sessionIssue(facts: FailureFacts): LanguageIssue {
   return { kind: 'startup', ...(detail ? { detail } : {}) };
 }
 
-/** Preparation ends before any process starts: nothing was downloaded, or an installer failed. */
-export function preparationIssue(error: unknown, downloadsDisabled: boolean): LanguageIssue {
+/** Preparation ends before any process starts: nothing was downloaded, or an installer failed.
+ * `java` is what Setdown knew before it asked: the release the tool needs and the one it found.
+ * It completes a Java problem the tool stated without those numbers. */
+export function preparationIssue(error: unknown, downloadsDisabled: boolean, java?: { required: number; found?: string }): LanguageIssue {
   if (downloadsDisabled) return { kind: 'downloads-off' };
   const text = String(error instanceof Error ? error.message : error);
   if (/No automatic installer is available/.test(text)) return { kind: 'no-installer' };
   const detail = failureLine(text);
-  return runtimeIssue(text) ?? { kind: 'download-failed', ...(detail ? { detail } : {}) };
+  const runtime = runtimeIssue(text);
+  if (runtime?.runtime === 'Java' && java) return { ...runtime, required: runtime.required || String(java.required), ...(runtime.found ?? java.found ? { found: runtime.found ?? java.found } : {}) };
+  return runtime ?? { kind: 'download-failed', ...(detail ? { detail } : {}) };
 }
