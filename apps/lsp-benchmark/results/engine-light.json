@@ -1,0 +1,545 @@
+{
+  "date": "2026-11-19T06:45:00.680Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "json",
+      "language": "JSON",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "package.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.023
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.022
+        },
+        {
+          "kind": "hover",
+          "what": "\"scripts\"",
+          "ok": true,
+          "expected": "text matching /script/i",
+          "observed": "The 'scripts' member is an object hash of script commands that are run at various times in the lifecycle of your package\\. The key is the lifecycle event, and …",
+          "seconds": 0.014
+        },
+        {
+          "kind": "completion",
+          "what": "\"scr|",
+          "ok": true,
+          "expected": "\"scripts\" offered",
+          "observed": "48 offered, first: homepage, bugs, licenses, author, contributors, maintainers",
+          "seconds": 0.02
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.711,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "jsonc",
+      "language": "JSON with comments",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "tsconfig.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.023
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.022
+        },
+        {
+          "kind": "hover",
+          "what": "\"outDir\"",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "If specified, `.js` (as well as `.d.ts`, `.js.map`, etc.) files will be emitted into this directory. The directory structure of the original source files is pr…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "completion",
+          "what": "\"rootD|",
+          "ok": true,
+          "expected": "\"rootDir\" offered",
+          "observed": "117 offered, first: allowArbitraryExtensions, allowImportingTsExtensions, charset, composite, customConditions, declaration",
+          "seconds": 0.021
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.509,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "yaml",
+      "language": "YAML",
+      "project": "spf13/cobra@adbc881390",
+      "file": ".golangci.yml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.06
+        },
+        {
+          "kind": "mistake",
+          "what": "version: \"3\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Map keys must be unique",
+          "seconds": 1.061
+        },
+        {
+          "kind": "hover",
+          "what": "timeout: 5m",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### Golangci-lint Configuration Timeout for the analysis. Example: ```yaml 30s ``` Example: ```yaml 5m ``` Example: ```yaml 5m30s ``` Source: [golangci.jsonsc…",
+          "seconds": 0.06
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.972,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "yaml-workflow",
+      "language": "YAML, a GitHub workflow",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": ".github/workflows/main.yml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.046
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown-mistake: 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Property setdown-mistake is not allowed.",
+          "seconds": 1.007
+        },
+        {
+          "kind": "hover",
+          "what": "runs-on",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### GitHub Workflow The type of machine to run the job on. The machine can be either a GitHub-hosted runner, or a self-hosted runner. Source: [github-workflow…",
+          "seconds": 1.035
+        },
+        {
+          "kind": "completion",
+          "what": "runs-|",
+          "ok": true,
+          "expected": "\"runs-on\" offered",
+          "observed": "16 offered, first: needs, snapshot, permissions, cache-mode, runs-on, normalJob",
+          "seconds": 1.045
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.177,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "dockerfile",
+      "language": "Dockerfile",
+      "project": "docker/awesome-compose@30f4b7f6a6",
+      "file": "nginx-flask-mysql/backend/Dockerfile",
+      "expectedTool": "dockerfile-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.007
+        },
+        {
+          "kind": "mistake",
+          "what": "EXPOSE eighty",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Invalid containerPort: eighty",
+          "seconds": 0.001
+        },
+        {
+          "kind": "hover",
+          "what": "WORKDIR /code",
+          "ok": true,
+          "expected": "text matching /working directory/i",
+          "observed": "Set the working directory for any subsequent `ADD`, `COPY`, `CMD`, `ENTRYPOINT`, or `RUN` instructions that follow it in the `Dockerfile`. ``` WORKDIR /path/to…",
+          "seconds": 0.004
+        },
+        {
+          "kind": "hover",
+          "what": "EXPOSE 8000",
+          "ok": true,
+          "expected": "text matching /port/i",
+          "observed": "Define the network `port`s that this container will listen on at runtime. ``` EXPOSE 8080 EXPOSE 80 443 22 EXPOSE 7000-8000 ``` [Online documentation](https://…",
+          "seconds": 0.005
+        },
+        {
+          "kind": "completion",
+          "what": "WORKD|",
+          "ok": true,
+          "expected": "\"WORKDIR\" offered",
+          "observed": "1 offered, first: WORKDIR /the/workdir/path",
+          "seconds": 0.007
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.229,
+        "tool": "dockerfile-language-server",
+        "name": "dockerfile-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/compose",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "dockercompose",
+      "language": "Docker Compose",
+      "project": "docker/awesome-compose@30f4b7f6a6",
+      "file": "nginx-flask-mysql/compose.yaml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.135
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Property setdown_mistake is not allowed.",
+          "seconds": 1.134
+        },
+        {
+          "kind": "hover",
+          "what": "healthcheck:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Configure a health check for the container to monitor its health status. Source: [compose-spec.json](https://raw.githubusercontent.com/…",
+          "seconds": 0.111
+        },
+        {
+          "kind": "hover",
+          "what": "depends_on:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Express dependency between services. Service dependencies cause services to be started in dependency order. The dependent service will …",
+          "seconds": 0.116
+        },
+        {
+          "kind": "completion",
+          "what": "healthch|",
+          "ok": true,
+          "expected": "\"healthcheck\" offered",
+          "observed": "86 offered, first: annotations, blkio_config, cap_add, cap_drop, cgroup, cgroup_parent",
+          "seconds": 0.133
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.657,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/compose",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "css",
+      "language": "CSS",
+      "project": "picocss/pico@a07563ddc8",
+      "file": "css/pico.css",
+      "expectedTool": "css-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.029
+        },
+        {
+          "kind": "mistake",
+          "what": ".setdown-mistake { colr: red; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 1.028
+        },
+        {
+          "kind": "hover",
+          "what": "cursor: pointer",
+          "ok": true,
+          "expected": "text matching /cursor/i",
+          "observed": "Allows control over cursor appearance in an element ![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAw…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "completion",
+          "what": "cursor: poin|",
+          "ok": true,
+          "expected": "\"pointer\" offered",
+          "observed": "198 offered, first: alias, all-scroll, auto, cell, col-resize, context-menu",
+          "seconds": 0.027
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.625,
+        "tool": "css-lsp",
+        "name": "css-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/pico",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "scss",
+      "language": "SCSS",
+      "project": "picocss/pico@a07563ddc8",
+      "file": "scss/content/_button.scss",
+      "expectedTool": "css-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.112
+        },
+        {
+          "kind": "mistake",
+          "what": ".setdown-mistake { colr: red; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 1.112
+        },
+        {
+          "kind": "hover",
+          "what": "overflow: visible",
+          "ok": true,
+          "expected": "text matching /overflow/i",
+          "observed": "Shorthand for setting 'overflow\\-x' and 'overflow\\-y'\\. ![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAg…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "completion",
+          "what": "text-transf|",
+          "ok": true,
+          "expected": "\"text-transform\" offered",
+          "observed": "1107 offered, first: @extend, @at-root, @debug, @warn, @error, @if",
+          "seconds": 0.111
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.826,
+        "tool": "css-lsp",
+        "name": "css-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/pico",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "less",
+      "language": "Less",
+      "project": "twbs/bootstrap@68b0d231a1",
+      "file": "less/buttons.less",
+      "expectedTool": "css-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.109
+        },
+        {
+          "kind": "mistake",
+          "what": ".setdown-mistake { colr: red; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 1.108
+        },
+        {
+          "kind": "hover",
+          "what": "white-space: nowrap",
+          "ok": true,
+          "expected": "text matching /white-space/i",
+          "observed": "Specifies how whitespace is handled in an element\\. ![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAw…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "completion",
+          "what": "vertical-al|",
+          "ok": true,
+          "expected": "\"vertical-align\" offered",
+          "observed": "1099 offered, first: :active, :any-link, :checked, :corner-present, :decrement, :default",
+          "seconds": 0.107
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.622,
+        "tool": "css-lsp",
+        "name": "css-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/bootstrap3",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "html",
+      "language": "HTML",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": "src/index.html",
+      "expectedTool": "html-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.021
+        },
+        {
+          "kind": "mistake",
+          "what": "<style>.setdown-mistake { colr: red; }</style>",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 1.021
+        },
+        {
+          "kind": "hover",
+          "what": "meta charset",
+          "ok": true,
+          "expected": "text matching /meta/i",
+          "observed": "The meta element represents various kinds of metadata that cannot be expressed using the title, base, link, style, and script elements. ![Baseline icon](data:i…",
+          "seconds": 0.006
+        },
+        {
+          "kind": "completion",
+          "what": "<scr|",
+          "ok": true,
+          "expected": "\"script\" offered",
+          "observed": "116 offered, first: html, head, title, base, link, meta",
+          "seconds": 0.021
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.506,
+        "tool": "html-lsp",
+        "name": "html-lsp",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Open folder"
+        ]
+      }
+    }
+  ]
+}

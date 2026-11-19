@@ -1,0 +1,803 @@
+{
+  "date": "2026-11-19T07:23:12.737Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "go",
+      "language": "Go",
+      "project": "spf13/cobra@adbc881390",
+      "file": "command.go",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.043
+        },
+        {
+          "kind": "mistake",
+          "what": "var setdownMistake string = 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: cannot use 1 (untyped int constant) as string value in variable declaration",
+          "seconds": 1.042
+        },
+        {
+          "kind": "hover",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "text matching /func \\(.*FlagSet\\) GetBool/",
+          "observed": "```go func (f *flag.FlagSet) GetBool(name string) (bool, error) ``` --- GetBool return the bool value of a flag with the given name --- [`(pflag.FlagSet).GetBo…",
+          "seconds": 0.037
+        },
+        {
+          "kind": "hover",
+          "what": "ExecuteC",
+          "ok": true,
+          "expected": "text matching /func \\(c \\*Command\\) ExecuteC/",
+          "observed": "```go func (c *Command) ExecuteC() (cmd *Command, err error) ``` --- ExecuteC executes the command. --- [`(cobra.Command).ExecuteC` on pkg.go.dev](https://pkg.…",
+          "seconds": 0.038
+        },
+        {
+          "kind": "completion",
+          "what": "c.Flags().ArgsLenAt|",
+          "ok": true,
+          "expected": "\"ArgsLenAtDash\" offered",
+          "observed": "1 offered, first: ArgsLenAtDash",
+          "seconds": 0.041
+        },
+        {
+          "kind": "definition",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "leads to /spf13\\/pflag@[^/]+\\/bool\\.go$/",
+          "observed": "../../../../../../../../../../go/pkg/mod/github.com/spf13/pflag@v1.0.9/bool.go:39",
+          "seconds": 0.042
+        },
+        {
+          "kind": "definition",
+          "what": "Root",
+          "ok": true,
+          "expected": "leads to command.go",
+          "observed": "command.go:892",
+          "seconds": 0.042
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.284,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Project marker: go.mod",
+          "Toolchain configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/go.sum",
+          "The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.: ",
+          "Server: gopls {\"GoVersion\":\"go1.27.4-X:nodwarf5\",\"Path\":\"golang.org/x/tools/gopls\",\"Main\":{\"Path\":\"golang.org/x/tools/gopls\",\"Version\":\"v0.24.0\",\"Sum\":\"h1:nPO/LffYa4sP62Ueuema5PPnZPGaZjGl+vZGvbTek4g=\"},\"Deps\""
+        ]
+      }
+    },
+    {
+      "id": "gomod",
+      "language": "Go module file",
+      "project": "spf13/cobra@adbc881390",
+      "file": "go.mod",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.015
+        },
+        {
+          "kind": "hover",
+          "what": "github.com/spf13/pflag",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### github.com/spf13/pflag This module is necessary because [github.com/spf13/pflag](https://pkg.go.dev/github.com/spf13/pflag@v1.0.9) is imported in `github.…",
+          "seconds": 0.014
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.096,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Project marker: go.mod",
+          "Toolchain configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/go.sum",
+          "The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.: ",
+          "Server: gopls {\"GoVersion\":\"go1.27.4-X:nodwarf5\",\"Path\":\"golang.org/x/tools/gopls\",\"Main\":{\"Path\":\"golang.org/x/tools/gopls\",\"Version\":\"v0.24.0\",\"Sum\":\"h1:nPO/LffYa4sP62Ueuema5PPnZPGaZjGl+vZGvbTek4g=\"},\"Deps\""
+        ]
+      }
+    },
+    {
+      "id": "json",
+      "language": "JSON",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "package.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.264
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 0.258
+        },
+        {
+          "kind": "hover",
+          "what": "\"scripts\"",
+          "ok": true,
+          "expected": "text matching /script/i",
+          "observed": "The 'scripts' member is an object hash of script commands that are run at various times in the lifecycle of your package\\. The key is the lifecycle event, and …",
+          "seconds": 0.259
+        },
+        {
+          "kind": "completion",
+          "what": "\"scr|",
+          "ok": true,
+          "expected": "\"scripts\" offered",
+          "observed": "52 offered, first: homepage, bugs, licenses, author, contributors, maintainers",
+          "seconds": 0.263
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.51,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "jsonc",
+      "language": "JSON with comments",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "tsconfig.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.281
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 0.271
+        },
+        {
+          "kind": "hover",
+          "what": "\"outDir\"",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "If specified, `.js` (as well as `.d.ts`, `.js.map`, etc.) files will be emitted into this directory. The directory structure of the original source files is pr…",
+          "seconds": 0.273
+        },
+        {
+          "kind": "completion",
+          "what": "\"rootD|",
+          "ok": true,
+          "expected": "\"rootDir\" offered",
+          "observed": "121 offered, first: allowArbitraryExtensions, allowImportingTsExtensions, charset, composite, customConditions, declaration",
+          "seconds": 0.28
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.264,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "json-manifest",
+      "language": "JSON, a web manifest",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": "src/site.webmanifest",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.006
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 0.004
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.267,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "json-prettier",
+      "language": "JSON, a Prettier file",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": ".prettierrc.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.526
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 0.519
+        },
+        {
+          "kind": "hover",
+          "what": "\"singleQuote\"",
+          "ok": true,
+          "expected": "text matching /quote/i",
+          "observed": "Use single quotes instead of double quotes\\.",
+          "seconds": 0.521
+        },
+        {
+          "kind": "completion",
+          "what": "\"bracketSameL|",
+          "ok": true,
+          "expected": "\"bracketSameLine\" offered",
+          "observed": "27 offered, first: arrowParens, bracketSameLine, bracketSpacing, checkIgnorePragma, cursorOffset, endOfLine",
+          "seconds": 0.524
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.262,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "jsonc-jsconfig",
+      "language": "JSON with comments, a jsconfig",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "jsconfig.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.055
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 0.05
+        },
+        {
+          "kind": "hover",
+          "what": "\"extends\"",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "Path to base configuration file to inherit from \\(requires TypeScript version 2\\.1 or later\\), or array of base files, with the rightmost files having the grea…",
+          "seconds": 0.052
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.262,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "yaml",
+      "language": "YAML",
+      "project": "spf13/cobra@adbc881390",
+      "file": ".golangci.yml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.122
+        },
+        {
+          "kind": "mistake",
+          "what": "version: \"3\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Map keys must be unique",
+          "seconds": 1.121
+        },
+        {
+          "kind": "hover",
+          "what": "timeout: 5m",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### Golangci-lint Configuration Timeout for the analysis. Example: ```yaml 30s ``` Example: ```yaml 5m ``` Example: ```yaml 5m30s ``` Source: [golangci.jsonsc…",
+          "seconds": 0.12
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.392,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Repository boundary (.git)",
+          "Server: yaml-language-server 2.0.0"
+        ]
+      }
+    },
+    {
+      "id": "yaml-workflow",
+      "language": "YAML, a GitHub workflow",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": ".github/workflows/main.yml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.188
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown-mistake: 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Property setdown-mistake is not allowed.",
+          "seconds": 1.188
+        },
+        {
+          "kind": "hover",
+          "what": "runs-on",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### GitHub Workflow The type of machine to run the job on. The machine can be either a GitHub-hosted runner, or a self-hosted runner. Source: [github-workflow…",
+          "seconds": 0.179
+        },
+        {
+          "kind": "completion",
+          "what": "runs-|",
+          "ok": true,
+          "expected": "\"runs-on\" offered",
+          "observed": "16 offered, first: needs, snapshot, permissions, cache-mode, runs-on, normalJob",
+          "seconds": 0.188
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.383,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Repository boundary (.git)",
+          "Server: yaml-language-server 2.0.0"
+        ]
+      }
+    },
+    {
+      "id": "dockerfile",
+      "language": "Dockerfile",
+      "project": "docker/awesome-compose@30f4b7f6a6",
+      "file": "nginx-flask-mysql/backend/Dockerfile",
+      "expectedTool": "dockerfile-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.007
+        },
+        {
+          "kind": "mistake",
+          "what": "EXPOSE eighty",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Invalid containerPort: eighty",
+          "seconds": 0
+        },
+        {
+          "kind": "hover",
+          "what": "WORKDIR /code",
+          "ok": true,
+          "expected": "text matching /working directory/i",
+          "observed": "Set the working directory for any subsequent `ADD`, `COPY`, `CMD`, `ENTRYPOINT`, or `RUN` instructions that follow it in the `Dockerfile`. ``` WORKDIR /path/to…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "hover",
+          "what": "EXPOSE 8000",
+          "ok": true,
+          "expected": "text matching /port/i",
+          "observed": "Define the network `port`s that this container will listen on at runtime. ``` EXPOSE 8080 EXPOSE 80 443 22 EXPOSE 7000-8000 ``` [Online documentation](https://…",
+          "seconds": 0.004
+        },
+        {
+          "kind": "completion",
+          "what": "WORKD|",
+          "ok": true,
+          "expected": "\"WORKDIR\" offered",
+          "observed": "1 offered, first: WORKDIR /the/workdir/path",
+          "seconds": 0.006
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.17,
+        "tool": "dockerfile-language-server",
+        "name": "dockerfile-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/compose/nginx-flask-mysql/backend",
+          "Root: Project marker: Dockerfile"
+        ]
+      }
+    },
+    {
+      "id": "dockercompose",
+      "language": "Docker Compose",
+      "project": "docker/awesome-compose@30f4b7f6a6",
+      "file": "nginx-flask-mysql/compose.yaml",
+      "expectedTool": "yaml-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.058
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Property setdown_mistake is not allowed.",
+          "seconds": 1.017
+        },
+        {
+          "kind": "hover",
+          "what": "healthcheck:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Configure a health check for the container to monitor its health status. Source: [compose-spec.json](https://raw.githubusercontent.com/…",
+          "seconds": 1.044
+        },
+        {
+          "kind": "hover",
+          "what": "depends_on:",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### docker-compose.yml Express dependency between services. Service dependencies cause services to be started in dependency order. The dependent service will …",
+          "seconds": 1.047
+        },
+        {
+          "kind": "completion",
+          "what": "healthch|",
+          "ok": true,
+          "expected": "\"healthcheck\" offered",
+          "observed": "86 offered, first: annotations, blkio_config, cap_add, cap_drop, cgroup, cgroup_parent",
+          "seconds": 1.058
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.401,
+        "tool": "yaml-language-server",
+        "name": "yaml-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/compose/nginx-flask-mysql",
+          "Root: Project marker: compose.yaml",
+          "Server: yaml-language-server 2.0.0"
+        ]
+      }
+    },
+    {
+      "id": "css",
+      "language": "CSS",
+      "project": "picocss/pico@a07563ddc8",
+      "file": "css/pico.css",
+      "expectedTool": "css-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.116
+        },
+        {
+          "kind": "mistake",
+          "what": ".setdown-mistake { colr: red; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 0.083
+        },
+        {
+          "kind": "hover",
+          "what": "cursor: pointer",
+          "ok": true,
+          "expected": "text matching /cursor/i",
+          "observed": "Allows control over cursor appearance in an element ![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAw…",
+          "seconds": 0.085
+        },
+        {
+          "kind": "completion",
+          "what": "cursor: poin|",
+          "ok": true,
+          "expected": "\"pointer\" offered",
+          "observed": "198 offered, first: alias, all-scroll, auto, cell, col-resize, context-menu",
+          "seconds": 0.1
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.309,
+        "tool": "css-lsp",
+        "name": "css-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/pico",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "scss",
+      "language": "SCSS",
+      "project": "picocss/pico@a07563ddc8",
+      "file": "scss/content/_button.scss",
+      "expectedTool": "css-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.062
+        },
+        {
+          "kind": "mistake",
+          "what": ".setdown-mistake { colr: red; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 0.03
+        },
+        {
+          "kind": "hover",
+          "what": "overflow: visible",
+          "ok": true,
+          "expected": "text matching /overflow/i",
+          "observed": "Shorthand for setting 'overflow\\-x' and 'overflow\\-y'\\. ![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAg…",
+          "seconds": 0.031
+        },
+        {
+          "kind": "completion",
+          "what": "text-transf|",
+          "ok": true,
+          "expected": "\"text-transform\" offered",
+          "observed": "1107 offered, first: @extend, @at-root, @debug, @warn, @error, @if",
+          "seconds": 0.059
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.291,
+        "tool": "css-lsp",
+        "name": "css-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/pico",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "less",
+      "language": "Less",
+      "project": "twbs/bootstrap@68b0d231a1",
+      "file": "less/buttons.less",
+      "expectedTool": "css-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.047
+        },
+        {
+          "kind": "mistake",
+          "what": ".setdown-mistake { colr: red; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 0.015
+        },
+        {
+          "kind": "hover",
+          "what": "white-space: nowrap",
+          "ok": true,
+          "expected": "text matching /white-space/i",
+          "observed": "Specifies how whitespace is handled in an element\\. ![Baseline icon](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCA1NDAgMzAw…",
+          "seconds": 0.017
+        },
+        {
+          "kind": "completion",
+          "what": "vertical-al|",
+          "ok": true,
+          "expected": "\"vertical-align\" offered",
+          "observed": "1099 offered, first: :active, :any-link, :checked, :corner-present, :decrement, :default",
+          "seconds": 0.045
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.291,
+        "tool": "css-lsp",
+        "name": "css-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/bootstrap3",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "html",
+      "language": "HTML",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": "src/index.html",
+      "expectedTool": "html-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.02
+        },
+        {
+          "kind": "mistake",
+          "what": "<style>.setdown-mistake { colr: red; }</style>",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 0.01
+        },
+        {
+          "kind": "hover",
+          "what": "meta charset",
+          "ok": true,
+          "expected": "text matching /meta/i",
+          "observed": "The meta element represents various kinds of metadata that cannot be expressed using the title, base, link, style, and script elements. ![Baseline icon](data:i…",
+          "seconds": 0.014
+        },
+        {
+          "kind": "completion",
+          "what": "<scr|",
+          "ok": true,
+          "expected": "\"script\" offered",
+          "observed": "116 offered, first: html, head, title, base, link, meta",
+          "seconds": 0.018
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.046,
+        "tool": "html-lsp",
+        "name": "html-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    }
+  ]
+}

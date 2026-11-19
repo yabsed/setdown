@@ -106,6 +106,10 @@ export class ServerRegistry {
     }).sort((a, b) => a.length - b.length);
     return roots.reduce((options, root) => ({ ...options, ...this.data.projects![root][id] }), global);
   }
+  /** What a person set for this tool everywhere, without what Zed settings files add. */
+  chosen(id: string): Options { return this.storedOptions(id); }
+  /** True when a choice made for one project folder applies to this file. */
+  hasProjectChoices(resource: string): boolean { return this.projectScopes(resource).length > 0; }
   role(id: string, resource?: string): 'primary' | 'supplementary' { return this.options(id, resource).role ?? this.definition(id).role ?? 'primary'; }
   /** Without an id: the app's switch. With one: whether this tool may be downloaded now.
    * The switch covers the supported languages. Any other tool is downloaded once a person

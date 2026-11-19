@@ -15,7 +15,9 @@ use serde_json::{Value, json};
 use settings::{Settings as _, SettingsStore, WorktreeId};
 use util::rel_path::RelPath;
 use streaming_iterator::StreamingIterator as _;
-use futures::FutureExt as _;
+use futures::{FutureExt as _, StreamExt as _};
+
+mod project_host;
 
 struct HostHttp(reqwest_client::ReqwestClient);
 impl HttpClient for HostHttp {
@@ -28,10 +30,17 @@ impl HttpClient for HostHttp {
 }
 
 const PREFIX: &str = "SETDOWN-LANGUAGE/1 ";
-fn emit(value: Value) {
+/// One request is one line. The largest is a whole document of 16 MiB, which escaping can double.
+const LINE_LIMIT: u64 = 40 * 1024 * 1024;
+pub(crate) fn emit(value: Value) {
     let mut out = io::stdout().lock();
     let _ = writeln!(out, "{PREFIX}{value}");
     let _ = out.flush();
+}
+/// What a person reads while a tool is fetched. Zed names the step and no amount. A tool from
+/// an extension looks for a new version each time it starts; only a download is worth telling.
+fn report_status(request: u64, server: &LanguageServerName, status: &BinaryStatus) {
+    if matches!(status, BinaryStatus::Downloading) { emit(json!({"event":"status","id":request,"server":server.0,"message":"Downloading…"})); }
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,9 +78,7 @@ impl LspAdapterDelegate for Delegate {
     fn worktree_root_path(&self) -> &Path { &self.root }
     fn resolve_relative_path(&self, path: PathBuf) -> PathBuf { self.root.join(path) }
     fn status_source_id(&self) -> EntityId { self.entity }
-    fn update_status(&self, server: LanguageServerName, status: BinaryStatus) {
-        emit(json!({"event":"status","id":self.request_id,"server":server.0,"status":format!("{status:?}")}));
-    }
+    fn update_status(&self, server: LanguageServerName, status: BinaryStatus) { report_status(self.request_id, &server, &status); }
     fn registered_lsp_adapters(&self) -> Vec<Arc<dyn LspAdapter>> { self.registry.all_lsp_adapters().iter().map(|a| a.adapter.clone()).collect() }
     async fn language_server_download_dir(&self, name: &LanguageServerName) -> Option<Arc<Path>> {
         let dir = self.registry.language_server_download_dir(name)?;
@@ -198,23 +205,26 @@ fn main() -> Result<()> {
     ensure!(data.is_absolute(), "Data directory must be absolute");
     std::fs::create_dir_all(&data)?;
     paths::set_custom_data_dir(data.to_str().context("Invalid data path")?);
-    let (send, receive) = smol::channel::bounded::<String>(16);
+    let (send, receive) = smol::channel::bounded::<String>(4);
     std::thread::spawn(move || {
         let mut input = io::stdin().lock();
         loop {
             let mut bytes = Vec::new();
-            match input.by_ref().take(4 * 1024 * 1024 + 1).read_until(b'\n', &mut bytes) {
+            match input.by_ref().take(LINE_LIMIT + 1).read_until(b'\n', &mut bytes) {
                 Ok(0) | Err(_) => break,
-                Ok(n) if n > 4 * 1024 * 1024 => break,
+                Ok(n) if n as u64 > LINE_LIMIT => break,
                 _ => if let Ok(line) = String::from_utf8(bytes) { if send.send_blocking(line).is_err() { break; } }
             }
         }
     });
     gpui_platform::headless().run(move |cx| {
         settings::init(cx);
+        SettingsStore::update_global(cx, |store, cx| store.set_global_settings(&project_host::shipped_settings(json!({})), cx).result()).expect("Shipped settings are valid");
         release_channel::init(release_channel::AppVersion::load("0.1.0", None, None), cx);
         gpui_tokio::init(cx);
         extension::init(cx);
+        // Zed's JSON server asks Zed for the schemas of package.json, tsconfig.json and Zed's own files.
+        json_schema_store::init(cx);
         language::language_settings::AllLanguageSettings::register(cx);
         project::project_settings::ProjectSettings::register(cx);
         let offline = std::env::var_os("SETDOWN_LANGUAGE_HOST_OFFLINE").is_some();
@@ -225,14 +235,28 @@ fn main() -> Result<()> {
         registry.set_language_server_download_dir(data.join("servers"));
         let registry = Arc::new(registry);
         languages::init(registry.clone(), fs.clone(), node.clone(), cx);
+        // Zed lets a setting give any language one of the few servers it calls available
+        // (Tailwind, ESLint, vtsls). Setdown's settings name the CSS server for SCSS and the
+        // YAML server for Docker Compose, so every server Zed ships is available the same way.
+        for adapter in registry.all_lsp_adapters() { registry.register_available_lsp_adapter(adapter.name(), adapter.adapter.clone()); }
         let proxy = ExtensionHostProxy::global(cx);
         language_extension::init(language_extension::LspAccess::Noop, proxy.clone(), registry.clone());
-        let extensions = HeadlessExtensionStore::new(fs, http.clone(), data.join("extensions"), proxy, node.clone(), cx);
+        let extensions = HeadlessExtensionStore::new(fs.clone(), http.clone(), data.join("extensions"), proxy, node.clone(), cx);
         let source = cx.new(|_| ());
+        // Zed's project needs a client for its collaboration and account services, which this
+        // process never uses. Their address does not resolve, so nothing here can reach them;
+        // language servers are downloaded through full URLs and are unaffected.
+        let client = client::Client::new(Arc::new(clock::RealSystemClock), Arc::new(http_client::HttpClientWithUrl::new_url(http.clone(), "https://setdown.invalid", http.proxy().cloned())), cx);
+        let projects = project_host::ProjectHost::new(client, node.clone(), registry.clone(), fs.clone(), cx);
         cx.spawn(async move |cx| {
             let mut grammars = HashMap::default();
             while let Ok(line) = receive.recv().await {
-                let request = match serde_json::from_str::<Request>(&line) { Ok(r) => r, Err(e) => { emit(json!({"error":e.to_string()})); continue; } };
+                let message = match serde_json::from_str::<Value>(&line) { Ok(m) => m, Err(e) => { emit(json!({"error":e.to_string()})); continue; } };
+                if message["op"].as_str().is_some_and(|op| op.starts_with("project.")) {
+                    match message["id"].as_u64() { Some(id) => project_host::ProjectHost::handle(&projects, id, message, cx).await, None => emit(json!({"error":"Missing `id`"})) }
+                    continue;
+                }
+                let request = match serde_json::from_value::<Request>(message) { Ok(r) => r, Err(e) => { emit(json!({"error":e.to_string()})); continue; } };
                 let result: Result<Value> = async {
                     match request.op.as_str() {
                         "environment" => {
@@ -258,6 +282,26 @@ fn main() -> Result<()> {
                             ensure!(request.root.is_absolute(), "Workspace root must be absolute");
                             cx.update(|cx| SettingsStore::update_global(cx, |store,cx| { let _ = store.set_user_settings(&json!({"lsp":request.settings}).to_string(),cx); }));
                             let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });
+                            // A tool from a Zed extension reports its installation to the registry and not
+                            // to the delegate. Unheard, a 370 MB download looked like nothing happening.
+                            let (mut statuses, _subscription) = registry.language_server_binary_statuses();
+                            let (id, server) = (request.id, LanguageServerName::from(request.server.as_str()));
+                            let timers = cx.background_executor().clone();
+                            let _reporting = cx.background_spawn(async move {
+                                // An extension says "downloading" before it looks whether the tool is already
+                                // there. A download is one that is still going on a second later.
+                                let mut downloading = false;
+                                loop {
+                                    let next = if downloading {
+                                        futures::select_biased! {
+                                            next = statuses.next().fuse() => next,
+                                            _ = timers.timer(std::time::Duration::from_secs(1)).fuse() => { report_status(id, &server, &BinaryStatus::Downloading); downloading = false; continue; }
+                                        }
+                                    } else { statuses.next().await };
+                                    let Some((_, name, status)) = next else { break };
+                                    if name == server { downloading = matches!(status, BinaryStatus::Downloading); }
+                                }
+                            });
                             prepare(&request,&registry,delegate,cx).await
                         },
                         _ => bail!("Unknown operation"),

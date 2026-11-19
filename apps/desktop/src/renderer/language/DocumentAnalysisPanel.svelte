@@ -139,7 +139,7 @@
   {:else}
     {#if summary.title}
       <div class="analysis-notice" class:issue={summary.tone === 'warning'}>
-        <strong>{summary.title}</strong>
+        <strong>{#if summary.tone === 'busy'}<span class="turning" aria-hidden="true"></span>{/if}{summary.title}</strong>
         {#if summary.description}<p>{summary.description}</p>{/if}
         <div class="notice-actions">
           {#if summary.action && !(page === 'details' && summary.action.kind === 'details' && !summary.action.server)}<button disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}
@@ -199,6 +199,11 @@
   .analysis-notice { padding: 10px; margin: 0 0 12px; border: 1px solid var(--app-border); border-radius: 4px; }
   .notice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; } .issue { color: var(--app-warning-text); }
   .analysis-notice p { margin: 4px 0 0; }
+  .turning { display: inline-block; box-sizing: border-box; width: 10px; height: 10px; margin-right: 7px; border: 1.5px solid color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor; border-radius: 50%;
+    animation: notice-turning .9s linear infinite; }
+  @keyframes notice-turning { to { transform: rotate(360deg); } }
+  /* Without motion the ring still says "working"; it just does not turn. */
+  @media (prefers-reduced-motion: reduce) { .turning { animation: none; } }
   button.link { border: 0; padding: 2px 4px; text-decoration: underline; text-underline-offset: 2px; }
   .result { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   p { margin: 8px 0; overflow-wrap: anywhere; } .muted, .path, .provider-title > span { color: var(--app-muted-text); font-size: 11px; }

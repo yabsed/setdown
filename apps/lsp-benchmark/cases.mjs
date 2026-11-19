@@ -95,6 +95,17 @@ export const cases = [
     mistake: '{}',
     hover: [{ at: '"outDir"', expect: /\S/ }],
     completion: [{ after: '"rootD', expect: 'rootDir' }] },
+  // File names an editor has to be told about: a web manifest is JSON by nobody's default, and
+  // the schemas of a Prettier file and a jsconfig come from the schema store.
+  { id: 'json-manifest', language: 'JSON, a web manifest', languageId: 'json', project: 'boilerplate', file: 'src/site.webmanifest',
+    mistake: '{}' },
+  { id: 'json-prettier', language: 'JSON, a Prettier file', languageId: 'json', project: 'boilerplate', file: '.prettierrc.json',
+    mistake: '{}',
+    hover: [{ at: '"singleQuote"', expect: /quote/i }],
+    completion: [{ after: '  "bracketSameL', expect: 'bracketSameLine' }] },
+  { id: 'jsonc-jsconfig', language: 'JSON with comments, a jsconfig', languageId: 'jsonc', project: 'realworld', file: 'jsconfig.json',
+    mistake: '{}',
+    hover: [{ at: '"extends"', expect: /\S/ }] },
   { id: 'yaml', language: 'YAML', languageId: 'yaml', project: 'cobra', file: '.golangci.yml',
     mistake: 'version: "3"',
     hover: [{ at: 'timeout: 5m', expect: /\S/ }] },

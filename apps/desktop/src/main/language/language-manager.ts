@@ -36,6 +36,7 @@ import type { PreparedLanguageServer } from './zed-language-host';
 import { RuntimeLanguageCatalog } from './runtime-language-catalog';
 import { ZedProjectSettings } from './zed-project-settings';
 import { catalogLanguage, languageDefinitions } from '../../core/document/language-catalog';
+import { ProjectLanguages } from './project-languages';
 
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
@@ -51,8 +52,20 @@ export class LanguageManager {
   private catalogValue?: RuntimeLanguageCatalog;
   private get packageCatalog(): RuntimeLanguageCatalog { return this.catalogValue ??= new RuntimeLanguageCatalog(path.join(app.getPath('userData'),'language-packages')); }
   private get provisioner(): AutomaticLanguagePackages {
-    return this.provisionerValue ??= this.packagePreparation ?? new LanguageProvisioner(path.join(app.getPath('userData'), 'language-packages'),
-      path.join(__dirname, 'language-host', process.platform === 'win32' ? 'setdown-language-host.exe' : 'setdown-language-host').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2'),fetch,this.packageCatalog);
+    return this.provisionerValue ??= this.packagePreparation ?? new LanguageProvisioner(path.join(app.getPath('userData'), 'language-packages'), this.hostExecutable, fetch, this.packageCatalog);
+  }
+  private get hostExecutable(): string {
+    return path.join(__dirname, 'language-host', process.platform === 'win32' ? 'setdown-language-host.exe' : 'setdown-language-host').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
+  }
+  private projectsValue?: ProjectLanguages | null;
+  /** Zed's project engine, for the ordinary files of the tools that have moved to it. */
+  private get projects(): ProjectLanguages | undefined {
+    if (this.projectsValue === undefined) this.projectsValue = this.projectEngine !== undefined ? this.projectEngine
+      // A stand-in for tool preparation (in tests) has no Zed host behind it.
+      : this.packagePreparation ? null : new ProjectLanguages({ directory: path.join(app.getPath('userData'), 'language-packages'), executable: this.hostExecutable,
+        home: app.getPath('home'), packaged: app.isPackaged, registry: () => this.registry, catalog: () => this.packageCatalog,
+        emit: (state, event) => { if (!state.window.isDestroyed() && !state.window.webContents.isDestroyed()) state.window.webContents.send('language:event', event); } });
+    return this.projectsValue ?? undefined;
   }
   private readonly analysisRevisions = new Map<string, number>();
   private readonly notebooks = new NotebookLanguageHost();
@@ -65,7 +78,8 @@ export class LanguageManager {
   private readonly editRequests = new Map<string, { owner: Owner; server: ServerSession; finish(result: ApplyWorkspaceEditResult): void }>();
   private activityTimer?: ReturnType<typeof setTimeout>;
   private scanning?: Promise<void>;
-  constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery(), private readonly packagePreparation?: AutomaticLanguagePackages) {}
+  constructor(private readonly stateFor: (id: number) => WindowState | null, private readonly discovery = new ServerDiscovery(), private readonly packagePreparation?: AutomaticLanguagePackages,
+    private readonly projectEngine?: ProjectLanguages | null) {}
   private zedSettingsValue?: ZedProjectSettings;
   private get zedSettings(): ZedProjectSettings {
     return this.zedSettingsValue ??= new ZedProjectSettings({ home: app.getPath('home'), changed: servers => this.zedSettingsChanged(servers) });
@@ -112,6 +126,7 @@ export class LanguageManager {
           affected.add(route.server);
       }
       if (!affected.size) return;
+      await this.projectsValue?.configure().catch(error => console.warn('Could not apply language settings to Zed', error));
       const retainedDocuments: { id: string; generation: string }[] = [];
       for (const owner of this.owners.values()) {
         const servers = [...owner.servers.values()].filter(server => {
@@ -211,9 +226,9 @@ export class LanguageManager {
         setupNote: definition?.setupNote,
         options: definition ? { automaticInstall:options?.automaticInstall,role: registry.role(item.id, resource ?? projectRoot), formatting: options?.formatting, scope: projectRoot, args: options?.args ?? definition.launch.args, settings: options?.settings ?? definition.settings,
           initializationOptions: serverProfile(definition, options).initializationOptions ?? {}, root: options?.root } : undefined,
-        sessions: [...(owner?.servers.values() ?? [])].flatMap(server => {
+        sessions: [...[...(owner?.servers.values() ?? [])].flatMap(server => {
           const info = this.sessions.get(server); return info?.id === item.id ? [{ root: info.root, rootReason: info.rootReason, state: info.state, message: info.message, issue: info.issue, features: info.features, context: [...server.context ?? []].map(([key, value]) => `${key}: ${value}`), logs: server.logs, progress: [...(server.progress?.values() ?? [])] }] : [];
-        }) };
+        }), ...this.projectsValue?.sessions(state.webContentsId, item.id) ?? []] };
     });
     entries.push({ id: 'notebook-python', name: 'Notebook Python', languages: ['python'],
       description: 'Cell-aware Python analysis for Jupyter notebooks, using the Python environment selected in the notebook.',
@@ -255,7 +270,9 @@ export class LanguageManager {
     });
     ipcMain.handle('language:notebook-change', (event, id, version, cells) => this.notebooks.change(state(event).webContentsId, id, version, cells));
     ipcMain.handle('language:change', (event, id: string, version: number, changes: TextDocumentContentChangeEvent[]) => {
-      const binding = this.binding(state(event).webContentsId, id);
+      const sender = state(event);
+      if (this.projectsValue?.has(sender.webContentsId, id)) return this.projectsValue.change(sender.webContentsId, id, version, changes);
+      const binding = this.binding(sender.webContentsId, id);
       if (!Number.isSafeInteger(version) || version <= binding.version || !Array.isArray(changes)
         || changes.length > 10000 || JSON.stringify(changes).length > 32 * 1024 * 1024) throw new Error('Invalid language change.');
       binding.version = version;
@@ -266,6 +283,7 @@ export class LanguageManager {
     ipcMain.handle('language:request', async (event, id: string, version: number, requestId: string, method: LanguageMethod, params: unknown) => {
       const sender = state(event);
       if (this.notebooks.has(sender.webContentsId, id)) return this.notebooks.request(sender.webContentsId, id, version, requestId, method, params).catch(languageFailure);
+      if (this.projectsValue?.has(sender.webContentsId, id)) return this.projectsValue.request(sender.webContentsId, id, version, requestId, method, params);
       const owner = this.owners.get(state(event).webContentsId);
       const binding = this.binding(event.sender.id, id);
       if (!owner || binding.version !== version || !languageMethods.includes(method)
@@ -298,8 +316,9 @@ export class LanguageManager {
     });
     ipcMain.on('language:edit-applied', (event, requestId: string, applied: boolean, failureReason?: string) => {
       let sender: WindowState; try { sender = state(event); } catch { return; }
+      if (typeof applied !== 'boolean' || this.projectsValue?.editApplied(sender, requestId, applied, failureReason)) return;
       const proposal = this.editRequests.get(requestId);
-      if (!proposal || proposal.owner.state !== sender || typeof applied !== 'boolean') return;
+      if (!proposal || proposal.owner.state !== sender) return;
       proposal.finish({ applied, failureReason: typeof failureReason === 'string' ? failureReason.slice(0, 1000) : undefined });
     });
     const listen = (channel: string, handler: (owner: WindowState, id: string) => void) => {
@@ -310,17 +329,19 @@ export class LanguageManager {
         handler(owner, id);
       });
     };
-    listen('language:cancel', (owner, id) => { this.notebooks.cancel(owner.webContentsId, id); this.owners.get(owner.webContentsId)?.requests.get(id)?.cancel(); });
+    listen('language:cancel', (owner, id) => { this.notebooks.cancel(owner.webContentsId, id); this.projectsValue?.cancel(owner.webContentsId, id); this.owners.get(owner.webContentsId)?.requests.get(id)?.cancel(); });
     listen('language:close', (owner, id) => this.close(owner.webContentsId, id));
     ipcMain.on('language:release-items', (event, id: string, handles: unknown) => {
       let sender: WindowState; try { sender = state(event); } catch { return; }
       if (!Array.isArray(handles) || handles.length > 100000 || handles.some(value => typeof value !== 'string' || value.length > 128)) return;
       if (this.notebooks.has(sender.webContentsId, id)) { this.notebooks.releaseItems(sender.webContentsId, id, handles); return; }
+      if (this.projectsValue?.has(sender.webContentsId, id)) { this.projectsValue.releaseItems(sender.webContentsId, id, handles); return; }
       const binding = this.owners.get(sender.webContentsId)?.documents.get(id);
       if (binding) this.items.get(binding.server)?.release(handles, { document: id, generation: binding.generation });
     });
     ipcMain.on('language:saved', (event, id: string, text?: string) => {
       let owner: WindowState; try { owner = state(event); } catch { return; }
+      if (this.projectsValue?.has(owner.webContentsId, id)) { this.projectsValue.saved(owner.webContentsId, id); return; }
       const binding = this.owners.get(owner.webContentsId)?.documents.get(id);
       if (!binding) return;
       const save = textSynchronization(binding.capabilities).save;
@@ -335,6 +356,7 @@ export class LanguageManager {
         const current = this.owners.get(owner.webContentsId);
         const servers = new Set([...current?.documents.values() ?? []].filter(b => b.uri === pathToFileURL(resource).href && (!provider || this.sessions.get(b.server)?.id === provider)).map(b => b.server));
         for (const server of servers) { const key = this.sessions.get(server)?.recoveryKey; if (key) this.supervisor.reset(key); await this.reconnect(current!, server); }
+        await this.projectsValue?.restart(owner.webContentsId, resource, provider);
         return;
       } await this.dispose(owner.webContentsId);
       if (!owner.window.webContents.isDestroyed()) owner.window.webContents.send('language:event', { type: 'configuration', servers: ['notebook-python'] });
@@ -409,9 +431,9 @@ export class LanguageManager {
     let drained = false;
     app.on('will-quit', event => {
       this.discovery.dispose(); this.preparation.dispose(); this.supervisor.dispose(); this.provisionerValue?.dispose(); this.catalogValue?.dispose(); this.zedSettingsValue?.dispose();
-      if (drained || (!this.owners.size && !this.draining.size && !this.notebooks.running)) return;
+      if (drained || (!this.owners.size && !this.draining.size && !this.notebooks.running && !this.projectsValue)) return;
       event.preventDefault();
-      void Promise.all([this.notebooks.dispose(), ...[...this.owners.keys()].map(id => this.dispose(id))])
+      void Promise.all([this.notebooks.dispose(), this.projectsValue?.dispose(), ...[...this.owners.keys()].map(id => this.dispose(id))])
         .then(() => Promise.all([...this.draining])).finally(() => { drained = true; app.quit(); });
     });
   }
@@ -462,6 +484,18 @@ export class LanguageManager {
     }
     const uri = pathToFileURL(file).href;
     this.close(state.webContentsId, document.id);
+    const projects = this.projects;
+    if (projects) {
+      // The tool this language starts first. When Zed's project engine serves it, Zed opens
+      // the file; otherwise everything below still runs on Setdown's own client.
+      const first = [...candidates].sort((a, b) => this.provisioner.rank(this.registry.definition(a.server), a.languageId) - this.provisioner.rank(this.registry.definition(b.server), b.languageId))[0];
+      const tool = this.registry.definition(first.server);
+      const served = projects.eligible(tool, file, first.languageId) ? await projects.target(tool) : undefined;
+      if (served) {
+        if (!owns() || this.owners.get(state.webContentsId) !== owner) throw new Error('The language document is not open in this window.');
+        return projects.open(state, document, file, { tool: tool.id, toolName: tool.name, server: served, primary: document.server === undefined, languageId: first.languageId }, tool);
+      }
+    }
     const configurations = new Map(candidates.map(c => [c.server, this.registry.fingerprint(c.server, file)]));
     const roots = new Map<string, LanguageRoot>();
     const rootFor = (definition: LanguageServerDefinition) => {
@@ -811,6 +845,7 @@ export class LanguageManager {
     if (notify && documents.length && this.owners.get(owner.state.webContentsId) === owner) this.emit(owner, { type: 'configuration', servers: [info.id], documents });
   }
   async fileOperation(state: WindowState, operation: LanguageFileOperation, phase: 'will' | 'did'): Promise<void> {
+    await this.projectsValue?.fileOperation(state, operation, phase);
     const owner = this.owners.get(state.webContentsId);
     if (!owner) return;
     for (const server of owner.servers.values()) {
@@ -857,6 +892,7 @@ export class LanguageManager {
   }
   private close(ownerId: number, id: string): void {
     this.notebooks.close(ownerId, id);
+    this.projectsValue?.close(ownerId, id);
     this.pendingOpens.get(ownerId)?.delete(id);
     const owner = this.owners.get(ownerId);
     const binding = owner?.documents.get(id);
@@ -871,7 +907,7 @@ export class LanguageManager {
   }
   private async dispose(id: number): Promise<void> {
     this.preparation.cancel(id);
-    const notebooks = this.notebooks.dispose(id);
+    const notebooks = Promise.all([this.notebooks.dispose(id), this.projectsValue?.disposeWindow(id)]);
     this.pendingOpens.delete(id);
     const owner = this.owners.get(id);
     if (!owner) { await notebooks; return; }
