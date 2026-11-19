@@ -24,9 +24,23 @@ impl HttpClient for HostHttp {
     fn user_agent(&self) -> Option<&http_client::http::HeaderValue> { self.0.user_agent() }
     fn proxy(&self) -> Option<&http_client::Url> { self.0.proxy() }
     fn send(&self, request: http_client::Request<http_client::AsyncBody>) -> futures::future::BoxFuture<'static, Result<http_client::Response<http_client::AsyncBody>>> {
+        if unverified_kotlin_server(request.uri()) {
+            return async { Err(anyhow::anyhow!("Setdown downloads the Kotlin language server itself and verifies its checksum. This download reads no checksum and was refused.")) }.boxed();
+        }
         let future = self.0.send(request);
         async move { future.await.inspect_err(|error| eprintln!("Language package HTTP request failed: {error:#}")) }.boxed()
     }
+}
+
+/// JetBrains' Kotlin server is downloaded by Setdown, which compares the archive with the SHA-256
+/// published beside it (`kotlin-download.ts`) and puts it where the Zed Kotlin extension looks
+/// first. The extension reads no checksum, so its own download of an archive is refused. The
+/// release list and the checksum file are other addresses and pass.
+fn unverified_kotlin_server(uri: &http_client::http::Uri) -> bool {
+    let host = uri.host().unwrap_or_default().to_ascii_lowercase();
+    let name = uri.path().rsplit('/').next().unwrap_or_default();
+    (host == "jetbrains.com" || host.ends_with(".jetbrains.com")) && name.starts_with("kotlin-server-")
+        && [".tar.gz", ".sit", ".zip"].iter().any(|kind| name.ends_with(kind))
 }
 
 const PREFIX: &str = "SETDOWN-LANGUAGE/1 ";
@@ -267,6 +281,19 @@ fn main() -> Result<()> {
                             };
                             for key in ["ELECTRON_RUN_AS_NODE", "NODE_OPTIONS", "NODE_PATH", "SETDOWN_LANGUAGE_HOST_OFFLINE"] { env.remove(key); }
                             Ok(serde_json::to_value(env)?)
+                        },
+                        // The environments of a language that are on this computer, as Zed lists them for
+                        // its environment picker and in its order. For Python this is the search the two VS Code
+                        // Python extensions use (PET): pyenv, Poetry, Pipenv, Hatch, Pixi, Conda, uv and venv.
+                        // Nothing is chosen here; Setdown applies its own rule to the list.
+                        "toolchains" => {
+                            ensure!(request.root.is_absolute(), "Workspace root must be absolute");
+                            let language = registry.language_for_name(&request.language).await?;
+                            let lister = language.toolchain_lister().with_context(|| format!("Zed lists no environments for {}", request.language))?;
+                            let (root, env) = (request.root.clone(), normalize_path(request.env.clone()));
+                            // The search reads many folders; requests of other files are answered meanwhile by the servers themselves.
+                            let list = cx.background_spawn(async move { lister.list(root, RelPath::empty().into(), Some(env)).await }).await;
+                            Ok(json!({"toolchains": list.toolchains.iter().map(|toolchain| json!({"name": toolchain.name, "path": toolchain.path, "data": toolchain.as_json})).collect::<Vec<_>>()}))
                         },
                         "inventory" => Ok(json!({"servers":registry.all_lsp_adapters().iter().map(|a|a.name().0.to_string()).collect::<Vec<_>>(),"languages":registry.language_names()})),
                         "extensions" => {

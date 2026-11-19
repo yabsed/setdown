@@ -12,7 +12,7 @@ test('every case names a known project, at one commit, and asks at least one que
   assert.equal(new Set(cases.map(item => item.id)).size, cases.length);
   for (const item of cases) {
     assert.match(projects[item.project]?.commit ?? '', /^[0-9a-f]{40}$/, item.id);
-    assert.ok((item.hover ?? []).length, item.id);
+    assert.ok(item.mistake || [item.hover, item.completion, item.definition, item.faded].some(list => list?.length), item.id);
     for (const entry of item.accept ?? []) assert.ok(entry.at && entry.because, item.id);
   }
 });
@@ -27,6 +27,7 @@ test('every case names text that its file contains', async t => {
     for (const check of item.hover ?? []) at(text, check.at, check.on);
     for (const check of item.completion ?? []) after(text, check.after);
     for (const check of item.definition ?? []) at(text, check.at, check.on);
+    for (const check of item.faded ?? []) at(text, check.at);
     for (const entry of item.accept ?? []) at(text, entry.at);
   }
   if (!read) t.skip('no project has been fetched');

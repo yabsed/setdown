@@ -551,11 +551,12 @@ export class MonacoEditor {
       if (tab?.document.path && model) await this.options.pythonCells!(tab.document.path, model.getValue());
     } });
     const symbols = editor.createContextKey<boolean>('setdownLanguageSymbols', false), calls = editor.createContextKey<boolean>('setdownLanguageCalls', false),
-      types = editor.createContextKey<boolean>('setdownLanguageTypes', false), problems = editor.createContextKey<boolean>('setdownLanguageProblems', false);
+      types = editor.createContextKey<boolean>('setdownLanguageTypes', false), problems = editor.createContextKey<boolean>('setdownLanguageProblems', false),
+      companion = editor.createContextKey<boolean>('setdownLanguageCompanion', false);
     const updateLanguageContext = () => {
       const cap = this.languageClient?.capabilitiesFor(editor.getModel());
       symbols.set(!!cap?.workspaceSymbolProvider); calls.set(!!cap?.callHierarchyProvider); types.set(!!cap?.typeHierarchyProvider);
-      problems.set(!!editor.getModel());
+      problems.set(!!editor.getModel()); companion.set(!!this.languageClient?.hasCompanion(editor.getModel()));
     };
     this.languageContexts.set(editor, updateLanguageContext);
     editor.onDidChangeModel(updateLanguageContext);
@@ -564,6 +565,14 @@ export class MonacoEditor {
       editor.addAction({ id: `setdown.language-${kind}`, label, precondition: kind === 'symbols' ? 'setdownLanguageSymbols' : kind === 'incoming' || kind === 'outgoing' ? 'setdownLanguageCalls' : kind === 'problems' ? 'setdownLanguageProblems' : 'setdownLanguageTypes', contextMenuGroupId: 'navigation', contextMenuOrder: 5,
         run: () => this.languageClient?.showNavigation(kind, editor) });
     }
+    // vendor/vscode-clangd/package.json: the command, its place in the menu and its key (Alt+O, ⌥⌘O on macOS).
+    editor.addAction({ id: 'setdown.language-companion', label: 'Switch Between Source/Header', precondition: 'setdownLanguageCompanion', contextMenuGroupId: 'navigation', contextMenuOrder: 5,
+      keybindings: [(/Mac/i.test(navigator.platform) ? api.KeyMod.Alt | api.KeyMod.CtrlCmd : api.KeyMod.Alt) | api.KeyCode.KeyO],
+      run: async () => {
+        const model = editor.getModel(), position = editor.getPosition();
+        if (!model || await this.languageClient?.openCompanion(model) || editor.getModel() !== model || !position) return;
+        (editor.getContribution('editor.contrib.messageController') as unknown as { showMessage?(message: string, position: Monaco.IPosition): void } | null)?.showMessage?.('Didn\'t find a corresponding file.', position);
+      } });
     editor.addAction({ id: 'setdown.toggle-inlay-hints', label: 'Toggle Inlay Hints', run: () => {
       const enabled = editor.getOption(api.editor.EditorOption.inlayHints).enabled;
       editor.updateOptions({ inlayHints: { enabled: enabled === 'on' ? 'offUnlessPressed' : 'on' } });

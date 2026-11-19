@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { WindowState } from '../windows/window-state';
 import { LanguageManager, type AutomaticLanguagePackages } from './language-manager';
 import { AutomaticDownloadsDisabled } from './language-provisioner';
@@ -11,7 +12,8 @@ import { ServerEnvironment } from './server-environment';
 
 const mocks = vi.hoisted(() => ({ directory: '', handles: new Map<string, (...args: any[]) => any>(),
   events: new Map<string, (...args: any[]) => void>(), app: new Map<string, (...args: any[]) => void>(),
-  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; profile: any; failed: (message: string) => void; diagnostics: (params: any) => void }[] }));
+  answer: undefined as ((method: string, params: unknown) => unknown) | undefined,
+  servers: [] as { notify: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; root: string; profile: any; hooks: any; context: Map<string, string>; failed: (message: string) => void; diagnostics: (params: any) => void }[] }));
 vi.mock('electron', () => ({ app: { getPath: () => mocks.directory, on: (key: string, fn: (...args: any[]) => void) => mocks.app.set(key, fn), quit: vi.fn() },
   ipcMain: { handle: (key: string, fn: (...args: any[]) => any) => mocks.handles.set(key, fn),
     on: (key: string, fn: (...args: any[]) => void) => mocks.events.set(key, fn) } }));
@@ -21,11 +23,12 @@ vi.mock('./server-session', () => ({ ServerSession: class {
   readonly capabilities = { forDocument: () => ({ textDocumentSync: { openClose: true, change: 2, save: { includeText: true } } }) };
   readonly notify = vi.fn(async (_method: string, _params: unknown) => {});
   readonly stop = vi.fn(async () => {});
-  readonly request = vi.fn(async () => null);
+  readonly request = vi.fn(async (method: string, params: unknown) => mocks.answer?.(method, params) ?? null);
   readonly watch = vi.fn();
-  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void, readonly failed: (message: string) => void, readonly profile: any) { mocks.servers.push(this); }
+  readonly context = new Map<string, string>();
+  constructor(readonly launch: unknown, readonly root: string, readonly diagnostics: (params: any) => void, readonly failed: (message: string) => void, readonly profile: any, readonly hooks: any) { mocks.servers.push(this); }
 } }));
-beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 'setdown-manager-test-'));  mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; });
+beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 'setdown-manager-test-'));  mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; mocks.answer = undefined; });
 
 afterEach(async () => { await rm(mocks.directory, { recursive: true, force: true }); });
 
@@ -35,7 +38,7 @@ function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixt
   const event = (id: number) => {
     const contents = Object.assign(new EventEmitter(), { id, mainFrame: {}, isDestroyed: () => false, send: vi.fn() });
     states.set(id, { webContentsId: id, projectRoot: root, currentDocument: { path: path.join(root, 'main.py') },
-      rendererTabs: ['Makefile', 'other.py', 'template.yaml', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb'].map(name => ({ path: path.join(root, name), isUntitled: false })),
+      rendererTabs: ['Makefile', 'other.py', 'template.yaml', 'main.cpp', 'helper.h', 'other.c', 'hello.f90', 'other.f90', 'main.ts', 'other.ts', 'main.json', 'other.json', 'Dockerfile', 'notes.ipynb', 'other.ipynb', 'index.html', 'App.svelte', 'Main.kt'].map(name => ({ path: path.join(root, name), isUntitled: false })),
       window: { webContents: contents, isDestroyed: () => false } } as unknown as WindowState);
     return { sender: contents, senderFrame: contents.mainFrame };
   };
@@ -181,6 +184,29 @@ test('foreign frames, unknown files, methods and stale versions cannot reach a s
   expect(mocks.servers[0].stop).not.toHaveBeenCalled();
 });
 
+
+test('an ordinary Python file starts with the project\'s environment that Zed\'s search finds; a failed search starts with the one Setdown finds', async () => {
+  const root = path.join(mocks.directory, 'poetry-project'), poetry = path.join(mocks.directory, 'pypoetry/virtualenvs/app-x-py3.12/bin/python');
+  await mkdir(path.join(root, '.git'), { recursive: true }); await mkdir(path.dirname(poetry), { recursive: true }); await writeFile(poetry, '');
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '/global/bin', PYENV_ROOT: '/pyenv', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const pythonEnvironments = vi.fn(async () => [{ path: poetry, name: 'Python 3.12.3 (app-x-py3.12; Poetry)', kind: 'Poetry', project: root }]);
+  const f = fixture(discovery, root, { ...noPackages, pythonEnvironments });
+  await f.invoke('open', f.first, f.document('python'));
+  expect(pythonEnvironments).toHaveBeenCalledWith(root, expect.objectContaining({ PATH: '/global/bin', PYENV_ROOT: '/pyenv' }));
+  expect(mocks.servers[0].profile.configuration).toMatchObject({ python: { pythonPath: poetry } });
+  const environment = await f.invoke('environment', f.first, f.document('python').path, 'python');
+  expect(environment.choices.find((choice: { id: string }) => choice.id === environment.selected)).toMatchObject({ path: poetry, name: 'Python 3.12.3 (app-x-py3.12; Poetry)' });
+  expect(environment.issues).toEqual([]);
+  discovery.dispose();
+  mocks.servers.length = 0;
+  const failing = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '/global/bin', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const g = fixture(failing, root, { ...noPackages, pythonEnvironments: async () => { throw Error('Zed lists no environments for Python'); } });
+  await g.invoke('open', g.first, g.document('python'));
+  expect(mocks.servers[0].profile.configuration).toMatchObject({ python: { pythonPath: '/usr/bin/python3' } });
+  expect(warn).toHaveBeenCalledWith('Could not list Python environments', expect.any(Error));
+  warn.mockRestore(); failing.dispose();
+});
 
 test('C, C++ and headers share clangd while Python and other windows remain independent', async () => {
   const f = fixture();
@@ -593,4 +619,96 @@ test('a tool that cannot be prepared says why before the connection is refused',
     issue: { kind: 'download-failed', detail: 'error sending request: network is unreachable' }, server: expect.objectContaining({ id: 'fortls' }),
     documents: [{ id: 'fortran', generation: 'generation-fortran' }] }));
   expect(mocks.servers).toHaveLength(0); discovery.dispose();
+});
+
+/** Every tool a test names is installed as a program of that name. */
+function installed(...commands: string[]) {
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  vi.spyOn(discovery, 'find').mockImplementation(async command => {
+    const selected = commands.includes(command) ? { id: command, path: process.execPath, source: 'path' as const } : undefined;
+    return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
+  });
+  return discovery;
+}
+
+test('the HTML tool closes tags and quotes, clangd switches between source and header, and no other tool is asked for either', async () => {
+  const discovery = installed('vscode-html-language-server', 'clangd'), f = fixture(discovery);
+  const html = await f.invoke('open', f.first, f.document('page', 'index.html'));
+  expect(html).toMatchObject({ server: 'html-lsp', autoInsert: { method: 'html/autoInsert', close: true, quote: true } });
+  expect(html.companion).toBeUndefined();
+  const source = await f.invoke('open', f.first, f.document('source', 'main.cpp'));
+  expect(source).toMatchObject({ server: 'clangd', companion: true });
+  expect(source.autoInsert).toBeUndefined();
+  const [htmlServer, clangd] = mocks.servers;
+  mocks.answer = method => method === 'html/autoInsert' ? '$0</p>' : method === 'textDocument/switchSourceHeader' ? 'file:///project/main.h' : null;
+  expect(await f.invoke('request', f.first, 'page', 1, 'r1', 'html/autoInsert', { kind: 'autoClose', position: { line: 0, character: 3 } })).toBe('$0</p>');
+  expect(htmlServer.request.mock.lastCall!.slice(0, 2)).toEqual(['html/autoInsert', { kind: 'autoClose', position: { line: 0, character: 3 }, textDocument: { uri: html.uri } }]);
+  expect(await f.invoke('request', f.first, 'source', 1, 'r2', 'textDocument/switchSourceHeader', {})).toBe('file:///project/main.h');
+  // clangd takes the document itself as the parameter.
+  expect(clangd.request.mock.lastCall!.slice(0, 2)).toEqual(['textDocument/switchSourceHeader', { uri: source.uri }]);
+  await expect(f.invoke('request', f.first, 'page', 1, 'r3', 'textDocument/switchSourceHeader', {})).rejects.toThrow('does not answer');
+  await expect(f.invoke('request', f.first, 'source', 1, 'r4', 'html/autoInsert', { kind: 'autoClose', position: { line: 0, character: 3 } })).rejects.toThrow('does not answer');
+  await expect(f.invoke('request', f.first, 'page', 1, 'r5', 'html/tag', { position: { line: 0, character: 3 } })).rejects.toThrow('does not answer');
+  // A person turns either kind off in the tool's settings, by the names VS Code uses.
+  await f.invoke('configure', f.first, 'html-lsp', { settings: { html: { autoClosingTags: false } }, initializationOptions: {} });
+  expect((await f.invoke('open', f.first, f.document('page-again', 'index.html'))).autoInsert).toEqual({ method: 'html/autoInsert', close: false, quote: true });
+  discovery.dispose();
+});
+
+test('the JSON tool asks Setdown for a schema it does not read itself, and the document shows its schemas', async () => {
+  const discovery = installed('vscode-json-language-server'), f = fixture(discovery);
+  mocks.answer = method => method === 'json/languageStatus' ? { schemas: ['https://json.schemastore.org/package.json'] } : null;
+  const opened = await f.invoke('open', f.first, f.document('one', 'main.json'));
+  const [server] = mocks.servers;
+  expect(server.profile.initializationOptions).toMatchObject({ handledSchemaProtocols: ['file'] });
+  // One string is the whole parameter: vscode-jsonrpc sends it as a list of one.
+  expect(server.request).toHaveBeenCalledWith('json/languageStatus', opened.uri, undefined, 3000);
+  expect(opened.context).toContain('Schema: https://json.schemastore.org/package.json');
+  // Refusals need no network: a domain that is not trusted, and downloads the person turned off.
+  await expect(server.hooks.schemaContent('https://schemas.example.org/unknown.json')).rejects.toMatchObject({ code: 2, message: 'Location https://schemas.example.org/unknown.json is untrusted' });
+  await f.invoke('configure', f.first, 'json-lsp', { settings: { json: { schemaDownload: { enable: false } } }, initializationOptions: {} });
+  const again = await f.invoke('open', f.first, f.document('two', 'main.json'));
+  expect(again.server).toBe('json-lsp');
+  await expect(mocks.servers.at(-1)!.hooks.schemaContent('https://json.schemastore.org/package.json')).rejects.toMatchObject({ code: 4 });
+  discovery.dispose();
+});
+
+test('the Svelte tool starts trusted with its settings, hears unsaved TypeScript changes, and restarts when its configuration file changes', async () => {
+  const discovery = installed('svelteserver', 'vtsls'), f = fixture(discovery);
+  await f.invoke('set-enabled', f.first, 'typescript-language-server', false);
+  const page = await f.invoke('open', f.first, f.document('page', 'App.svelte'));
+  expect(page).toMatchObject({ autoInsert: { method: 'html/tag', close: true, quote: false } });
+  const svelte = mocks.servers[0];
+  expect(svelte.profile.initializationOptions).toMatchObject({ isTrusted: true, dontFilterIncompleteCompletions: true });
+  const script = await f.invoke('open', f.first, f.document('script', 'main.ts'));
+  const changes = [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }, text: 'export const a = 1;' }];
+  await f.invoke('change', f.first, 'script', 2, changes);
+  expect(svelte.notify).toHaveBeenCalledWith('$/onDidChangeTsOrJsFile', { uri: script.uri, changes });
+  // The Svelte file's own changes are the Svelte tool's already.
+  svelte.notify.mockClear();
+  await f.invoke('change', f.first, 'page', 2, changes);
+  expect(svelte.notify).not.toHaveBeenCalledWith('$/onDidChangeTsOrJsFile', expect.anything());
+  // extension.ts restarts the server when a file it reads once changes.
+  f.first.sender.send.mockClear();
+  svelte.hooks.filesChanged([path.join(svelte.root, 'src', 'other.ts')]);
+  expect(svelte.stop).not.toHaveBeenCalled();
+  svelte.hooks.filesChanged([path.join(svelte.root, 'svelte.config.js')]);
+  await vi.waitFor(() => expect(svelte.stop).toHaveBeenCalled());
+  discovery.dispose();
+});
+
+test("JetBrains' Kotlin server is told the build settings its VS Code extension sends, and nothing malformed", async () => {
+  const root = path.join(mocks.directory, 'kotlin-project'); await mkdir(path.join(root, '.git'), { recursive: true }); await writeFile(path.join(root, '.git/HEAD'), 'ref: refs/heads/main\n');
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const prepare = vi.fn(async () => ({ executable: '/zed/kotlin-lsp/bin/intellij-server', args: ['--stdio'], settings: {}, initializationOptions: {} }));
+  const f = fixture(discovery, root, { ...noPackages, usesZed: async () => true, canPrepare: () => true, projectEnvironment: async () => ({}), prepare });
+  await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+  // With nothing set, this is what the extension sends; the Zed extension that starts the server sends nothing.
+  expect(mocks.servers[0].profile.initializationOptions).toEqual({ buildTools: {}, projects: [] });
+  await f.invoke('configure', f.first, 'kotlin-lsp', { settings: { 'intellij.buildTool': 'gradle', 'intellij.jdkForSymbolResolution': '/opt/jdk-21', 'intellij.projects': [{ type: 'maven', path: 'server' }, { path: 'no-type' }] }, initializationOptions: {} });
+  await f.invoke('open', f.first, f.document('two', 'Main.kt'));
+  const server = mocks.servers.at(-1)!;
+  expect(server.profile.initializationOptions).toEqual({ defaultSdk: '/opt/jdk-21', buildTools: { [pathToFileURL(server.root).href]: 'gradle' }, projects: [{ type: 'maven', path: 'server' }] });
+  expect(server.context.get('Settings not sent')).toBe('`intellij.projects` entry #1 requires "type" to be specified as a non-empty string');
+  discovery.dispose();
 });

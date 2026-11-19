@@ -5,6 +5,10 @@
 export const projects = {
   flask: { repo: 'pallets/flask', commit: '49943b5a94413a530761350f04e896f76e8d620e',
     setup: ['uv venv --clear .venv', 'uv pip install --python .venv/bin/python -e ".[async,dotenv]"'] },
+  // A Poetry project: `poetry install` puts its environment in Poetry's own folder under the
+  // home folder (~/.cache/pypoetry/virtualenvs/cleo-…), not in the project.
+  cleo: { repo: 'python-poetry/cleo', commit: '30df50748e7cf52195cf2f22262b432e6320fe21',
+    setup: ['uvx --from "poetry>=2,<3" poetry install --no-interaction --only test'] },
   'p-queue': { repo: 'sindresorhus/p-queue', commit: '7f272ab5ff2254c0dc2537b7977e88ede1cd55e8',
     setup: ['npm install --ignore-scripts --no-audit --no-fund'] },
   express: { repo: 'expressjs/express', commit: '43fca52d28a422c8be48fd489cbd4f2d6152bab6',

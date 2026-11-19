@@ -4,6 +4,8 @@ import type { LanguageServerDefinition } from '../../core/document/language-defi
 import type { ServerRegistry } from './server-registry';
 import { hasRepositoryMarker, languageRoot } from './language-root';
 import { isInside } from '../documents/file-system';
+import { isSvelteServer, isTypeScriptServer, jsonOptions, svelteOptions, typescriptOptions } from './extension-rules';
+import { mergeLanguageSettings } from './language-settings';
 
 /** The tools whose ordinary files Zed's project engine serves: Zed chooses the servers of a
  * file, starts them and keeps them informed of the text. A tool is added here once
@@ -62,8 +64,19 @@ export function plainLanguages(known: readonly string[], definition: (id: string
   return [...found].filter(([, suffixes]) => suffixes.size).map(([name, suffixes]) => ({ name, suffixes: [...suffixes] }));
 }
 
+/** What Setdown found out on this computer for a tool, by tool id, carried over from the
+ * tool's own editor extension (`extension-rules.ts`, `go-tools.ts`, `kotlin-options.ts`). */
+export type SetdownRules = {
+  /** Setdown answers the JSON server's requests for a schema (`json-schema-content.ts`). */
+  schemaDownloads?: boolean;
+  /** A program found where Zed does not look for it, and the environment it needs. */
+  programs?: Record<string, { path?: string; arguments?: string[]; env?: Record<string, string> }>;
+  /** What the tool is told at startup beyond what its Zed adapter tells it. */
+  options?: Record<string, Record<string, unknown>>;
+};
+
 /** What Setdown ships, in Zed's settings format. It sits below the person's own Zed settings. */
-export function setdownDefaults(names: ZedNames, definition: (id: string) => LanguageServerDefinition | undefined, bundled: Record<string, BundledProgram>): ZedSettings {
+export function setdownDefaults(names: ZedNames, definition: (id: string) => LanguageServerDefinition | undefined, bundled: Record<string, BundledProgram>, rules: SetdownRules = {}): ZedSettings {
   const languages: Record<string, { language_servers: string[] }> = {};
   for (const entry of supportedLanguages) {
     const tool = definition(entry.tool), server = tool && names.server(tool);
@@ -90,9 +103,20 @@ export function setdownDefaults(names: ZedNames, definition: (id: string) => Lan
   const schemas = ((json?.settings.json as { schemas?: { fileMatch: string[]; url: string }[] } | undefined)?.schemas ?? [])
     .map(schema => ({ ...schema, fileMatch: schema.fileMatch.filter(name => !zedSchemaFiles.has(name)) })).filter(schema => schema.fileMatch.length);
   if (jsonServer && schemas.length) lsp[jsonServer] = { ...lsp[jsonServer], settings: { json: { schemas } } };
-  // typescript-language-server downloads type packages for plain JavaScript projects unless told not to.
+  // What each tool's own editor extension tells it at startup. typescript-language-server
+  // downloads type packages for plain JavaScript projects unless told not to.
   const typescript = lsp['typescript-language-server'];
-  if (typescript) typescript.initialization_options = { disableAutomaticTypingAcquisition: true };
+  if (typescript) typescript.initialization_options = typescriptOptions(definition('typescript-language-server')?.settings, {});
+  // The JSON server downloads any schema a file names unless it is told to ask its editor.
+  if (jsonServer && rules.schemaDownloads) lsp[jsonServer] = { ...lsp[jsonServer], initialization_options: jsonOptions({}) };
+  for (const [id, program] of Object.entries(rules.programs ?? {})) {
+    const tool = definition(id), server = tool && names.server(tool);
+    if (server) lsp[server] = { ...lsp[server], binary: { ...lsp[server]?.binary as object | undefined, ...program } };
+  }
+  for (const [id, options] of Object.entries(rules.options ?? {})) {
+    const tool = definition(id), server = tool && names.server(tool);
+    if (server && Object.keys(options).length) lsp[server] = { ...lsp[server], initialization_options: mergeLanguageSettings(lsp[server]?.initialization_options as Record<string, unknown> | undefined, options) };
+  }
   return {
     // Zed's default formatter installs Prettier with npm the first time a file opens.
     // Formatting comes from the language's own tool, as it does everywhere else in Setdown.
@@ -114,6 +138,9 @@ export function setdownChoices(registry: Registry, names: ZedNames, defaults: Ze
     const entry: Record<string, unknown> = {};
     if (chosen.settings) entry.settings = chosen.settings;
     if (chosen.initializationOptions) entry.initialization_options = chosen.initializationOptions;
+    // Settings these tools read only at startup reach them as options, as their extensions send them.
+    if (chosen.settings && isTypeScriptServer(definition)) entry.initialization_options = typescriptOptions(chosen.settings, chosen.initializationOptions ?? {});
+    if (chosen.settings && isSvelteServer(definition)) entry.initialization_options = svelteOptions(chosen.settings, chosen.initializationOptions ?? {});
     // As in Zed: a named program runs with exactly these arguments, and arguments alone replace the adapter's.
     if (program && path.isAbsolute(program)) entry.binary = { path: program, arguments: chosen.args ?? definition.launch.args };
     else if (chosen.args && JSON.stringify(chosen.args) !== JSON.stringify(definition.launch.args)) entry.binary = { arguments: chosen.args };

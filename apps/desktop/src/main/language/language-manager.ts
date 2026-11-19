@@ -15,7 +15,7 @@ import { validateLanguageDefinition } from '../../core/document/language-definit
 import { languageRoot, type LanguageRoot } from './language-root';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
 import { ServerItems } from './server-items';
-import { featureNames, isDocumentMethod, resolveMethods } from '../../protocol/language-features';
+import { documentRequest, featureNames, resolveMethods } from '../../protocol/language-features';
 import { ServerSession } from './server-session';
 import { supportedTool } from '../../core/document/supported-languages';
 import { ServerDiscovery, type Discovery } from './server-discovery';
@@ -29,6 +29,9 @@ import { AnalysisPreparation } from './analysis-preparation';
 import { LanguageServiceSupervisor } from './language-supervisor';
 import { preparationIssue, runtimeHelp, sessionIssue } from './language-issue';
 import { isJdtls, javaPlan, javaSettings, jdtlsJava, toolRuntime, type JavaPlan, type ToolRuntime } from './tool-runtime';
+import { kotlinInitializationOptions } from './kotlin-options';
+import { answersRequest, autoInsertion, isClangd, isJsonServer, isKotlinServer, isSvelteServer, isTypeScriptServer, jsonLanguageStatus, restartsTool, schemaLines, svelteScriptChanged, svelteScriptLanguages, typescriptOptions } from './extension-rules';
+import { JsonSchemaContent, schemaDownloadSettings } from './json-schema-content';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
 import { AutomaticDownloadsDisabled, LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
@@ -41,11 +44,18 @@ import { ProjectLanguages } from './project-languages';
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
-export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment'>>;
+export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment' | 'pythonEnvironments'>>;
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 export class LanguageManager {
-  private readonly contexts = new AnalysisContextService();
+  /** Ordinary Python files see the environments Zed's search finds; a failed search leaves the ones
+   * Setdown finds itself. The search reads the environment the tools get (PYENV_ROOT, CONDA_*, PATH),
+   * so it waits for that environment as Setdown's own search does. */
+  private readonly contexts = new AnalysisContextService(async root => {
+    if (!this.provisioner.pythonEnvironments) return [];
+    try { return await this.provisioner.pythonEnvironments(root, (await this.discovery.environment.resolve()).env); }
+    catch (error) { console.warn('Could not list Python environments', error); return []; }
+  });
   private readonly supervisor = new LanguageServiceSupervisor();
   private readonly preparation = new AnalysisPreparation();
   private provisionerValue?: AutomaticLanguagePackages;
@@ -57,6 +67,9 @@ export class LanguageManager {
   private get hostExecutable(): string {
     return path.join(__dirname, 'language-host', process.platform === 'win32' ? 'setdown-language-host.exe' : 'setdown-language-host').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
   }
+  private schemasValue?: JsonSchemaContent;
+  /** The schemas the JSON server asks its editor for: checked against the trusted domains, downloaded and kept. */
+  private get schemas(): JsonSchemaContent { return this.schemasValue ??= new JsonSchemaContent({ directory: path.join(app.getPath('userData'), 'language-packages', 'json-schemas') }); }
   private projectsValue?: ProjectLanguages | null;
   /** Zed's project engine, for the ordinary files of the tools that have moved to it. */
   private get projects(): ProjectLanguages | undefined {
@@ -64,6 +77,7 @@ export class LanguageManager {
       // A stand-in for tool preparation (in tests) has no Zed host behind it.
       : this.packagePreparation ? null : new ProjectLanguages({ directory: path.join(app.getPath('userData'), 'language-packages'), executable: this.hostExecutable,
         home: app.getPath('home'), packaged: app.isPackaged, registry: () => this.registry, catalog: () => this.packageCatalog,
+        schemas: this.schemas, toolEnvironment: () => this.discovery.environment.peek().env,
         emit: (state, event) => { if (!state.window.isDestroyed() && !state.window.webContents.isDestroyed()) state.window.webContents.send('language:event', event); } });
     return this.projectsValue ?? undefined;
   }
@@ -277,6 +291,7 @@ export class LanguageManager {
         || changes.length > 10000 || JSON.stringify(changes).length > 32 * 1024 * 1024) throw new Error('Invalid language change.');
       binding.version = version;
       this.items.get(binding.server)?.forget(id, false);
+      this.scriptChanged(sender.webContentsId, binding, changes);
       if (textSynchronization(binding.capabilities).change === 0) return;
       return binding.server.notify('textDocument/didChange', { textDocument: { uri: binding.uri, version }, contentChanges: changes });
     });
@@ -289,12 +304,13 @@ export class LanguageManager {
       if (!owner || binding.version !== version || !languageMethods.includes(method)
         || typeof requestId !== 'string' || requestId.length > 128 || owner.requests.has(requestId)
         || owner.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw new Error('Invalid or stale language request.');
+      if (!answersRequest(this.registry.definitions().find(definition => definition.id === this.sessions.get(binding.server)?.id), method)) throw new Error('This tool does not answer that request.');
       const origin = { document: id, generation: binding.generation, version };
       const items = this.items.get(binding.server)!;
       const command = method === 'workspace/executeCommand';
       const itemMethod = method in resolveMethods || command;
       const requestParams = itemMethod ? items.resolve(method, params, origin)
-        : isDocumentMethod(method) ? { ...params, textDocument: { uri: binding.uri } } : params;
+        : documentRequest(method, params, binding.uri);
       if (command && this.commands.has(binding.server)) throw Error('A language command is already running.');
       const token = new CancellationTokenSource();
       owner.requests.set(requestId, token);
@@ -670,8 +686,18 @@ export class LanguageManager {
       // starts from the runtimes the person wrote in either place.
       const written = (value: unknown) => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
       const runtimeSettings = java ? javaSettings(java, mergeLanguageSettings(written(preparedProfile.initializationOptions?.settings), preparedProfile.configuration)) : {};
-      const profile = java ? { ...preparedProfile, configuration: mergeLanguageSettings(preparedProfile.configuration, runtimeSettings),
+      const javaProfile = java ? { ...preparedProfile, configuration: mergeLanguageSettings(preparedProfile.configuration, runtimeSettings),
         initializationOptions: mergeLanguageSettings(preparedProfile.initializationOptions, { settings: runtimeSettings }) } : preparedProfile;
+      // tsserver loads the Svelte plugin when the person turned it on for the Svelte tool. It is
+      // looked for in the project, then where the Svelte tool was installed.
+      const svelteTool = isTypeScriptServer(definition) ? this.registry.definitions().find(isSvelteServer) : undefined;
+      const scriptProfile = isTypeScriptServer(definition) ? { ...javaProfile, initializationOptions: typescriptOptions(javaProfile.configuration, javaProfile.initializationOptions,
+        { svelte: svelteTool && (this.registry.options(svelteTool.id, file).settings ?? svelteTool.settings), places: [root, path.join(app.getPath('userData'), 'language-packages', 'extensions', 'work', 'svelte')] }) } : javaProfile;
+      // JetBrains' Kotlin server is told the JDK, the build tool and the projects when it starts,
+      // as its VS Code extension tells it. The Zed extension that starts it here sends nothing.
+      const kotlin = isKotlinServer(definition) ? kotlinInitializationOptions(scriptProfile.configuration, [pathToFileURL(root).href]) : undefined;
+      const profile = kotlin ? { ...scriptProfile, initializationOptions: mergeLanguageSettings(kotlin.options, scriptProfile.initializationOptions) } : scriptProfile;
+      const tool = definition;
       const recoveryKey = `${state.webContentsId}:${support.server}:${root}`;
       const pinned = prepared ? undefined : this.registry.options(support.server).executable;
       const repair = this.registry.canDetect(support.server) && !this.registry.isCustom(support.server);
@@ -705,7 +731,8 @@ export class LanguageManager {
         })();
       }, profile, {
         filesChanged: paths => {
-          if (!server || !this.sessions.has(server) || !plan?.inputs.some(input => paths.includes(input))) return;
+          // The project's own inputs, and the files a tool reads once when it starts.
+          if (!server || !this.sessions.has(server) || !(plan?.inputs.some(input => paths.includes(input)) || paths.some(changed => restartsTool(tool, changed)))) return;
           this.contexts.invalidate(root);
           void this.reconnect(owned, server);
         },
@@ -735,10 +762,12 @@ export class LanguageManager {
           }, 500);
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
+        schemaContent: address => this.schemas.content(address, schemaDownloadSettings(this.registry.options(tool.id, file).settings ?? tool.settings)),
       });
       for (const evidence of plan.context.evidence) server.context?.set(evidence.split(': ')[0], evidence.split(': ').slice(1).join(': '));
       const runtimeNote = runtime?.note ?? java?.note;
       if (runtimeNote) server.context?.set('Tool runtime', runtimeNote);
+      if (kotlin?.problems.length) server.context?.set('Settings not sent', kotlin.problems.join('; '));
       this.items.set(server, new ServerItems());
       this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
       owner.servers.set(key, server);
@@ -767,7 +796,24 @@ export class LanguageManager {
     if (textSynchronization(capabilities).openClose) await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: wireLanguage,
       version: document.version, text: document.text } });
     this.emit(owner, { type: 'status', state: 'ready', documents: [{ id: binding.id, generation: binding.generation }] });
-    return { messages: server.messages, analysis: this.observation(server), name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
+    const autoInsert = autoInsertion(definition, this.registry.options(support.server, file).settings ?? definition.settings);
+    // Which schemas the JSON server checks this file against, as its extension shows them.
+    const schemas = isJsonServer(definition) ? await server.request(jsonLanguageStatus, binding.uri, undefined, 3000).then(schemaLines, () => []) : [];
+    return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(definition) ? { companion: true } : {}),
+      messages: server.messages, analysis: this.observation(server), name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...schemas, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
+  }
+  /** The Svelte tool reads TypeScript and JavaScript files from disk. Its extension tells it
+   * each unsaved change of one, so a component is checked against the text in the editor. */
+  private scriptChanged(windowId: number, binding: Binding, changes: TextDocumentContentChangeEvent[]): void {
+    if (!svelteScriptLanguages.includes(binding.languageId)) return;
+    const owner = this.owners.get(windowId); if (!owner) return;
+    let file: string; try { file = canonicalPath(fileURLToPath(binding.uri)); } catch { return; }
+    for (const server of new Set(owner.servers.values())) {
+      const info = this.sessions.get(server);
+      const tool = info && this.registry.definitions().find(definition => definition.id === info.id);
+      if (!info || !tool || info.state !== 'ready' || server === binding.server || !isInside(info.root, file) || !isSvelteServer(tool)) continue;
+      void server.notify(svelteScriptChanged, { uri: binding.uri, changes }).catch(() => {});
+    }
   }
   private ownedFile(state: WindowState, file: string): string {
     if (typeof file !== 'string' || file.length > 4096 || file.includes('\0') || !path.isAbsolute(file)

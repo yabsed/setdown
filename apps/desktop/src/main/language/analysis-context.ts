@@ -11,6 +11,7 @@ import type { ServerLaunch } from './server-session';
 import { serverProfile, type ServerProfile } from './server-definitions';
 import { applyPythonProjectSettings, nativePythonConfiguration, pythonProjectSettings, pythonSettingsContext, withLibraryStubs } from './python-project-settings';
 import { libraryStubs } from './python-library-stubs';
+import { belongsToProject, declaredPython, pythonPrefix, pythonSource, type FoundPython } from './python-toolchains';
 
 function json(file: string): Record<string, any> | undefined {
   try { if (statSync(file).size <= 1024 * 1024) return parse(readFileSync(file, 'utf8')); } catch { /* Optional metadata. */ }
@@ -33,29 +34,50 @@ export type AnalysisPlan = { context: AnalysisContext; profile: ServerProfile; a
  * The plan used to explain the environment is also the plan used to start its server. */
 export class AnalysisContextService {
   private readonly cache = new Map<string, { expires: number; result: Promise<AnalysisPlan> }>();
+  /** `pythons` lists the Python environments of this computer for a project folder
+   * (`python-toolchains.ts`). Notebooks have a service of their own without it. */
+  constructor(private readonly pythons?: (root: string) => Promise<FoundPython[]>) {}
+  private readonly found = new Map<string, { expires: number; result: Promise<FoundPython[]> }>();
   invalidate(root?: string): void {
     for (const key of this.cache.keys()) if (!root || key.startsWith(root + '\0')) this.cache.delete(key);
+    if (root) this.found.delete(root); else this.found.clear();
+  }
+  /** One search serves every Python tool of a folder. A search that fails or takes longer than
+   * ten seconds leaves the environments Setdown finds itself; its answer serves the next plan. */
+  private async environments(root: string, refresh: boolean): Promise<FoundPython[]> {
+    if (!this.pythons) return [];
+    let search = this.found.get(root);
+    if (refresh || !search || search.expires <= Date.now()) {
+      search = { expires: Date.now() + 30_000, result: this.pythons(root).catch(() => []) };
+      if (this.found.size >= 32) this.found.delete(this.found.keys().next().value!);
+      this.found.set(root, search);
+    }
+    let timer: NodeJS.Timeout | undefined;
+    try { return await Promise.race([search.result, new Promise<FoundPython[]>(resolve => { timer = setTimeout(() => resolve([]), 10_000); })]); }
+    finally { clearTimeout(timer); }
   }
   async resolve(root: string, reason: string, definition: LanguageServerDefinition, options: Options = {}, refresh = false, notebookPythonOverride?: string): Promise<AnalysisPlan> {
     const preferences = analysisPreferences.get(root);
     const key = root + '\0' + digest([definition, options, preferences, notebookPythonOverride]);
     const existing = this.cache.get(key);
     if (!refresh && existing && existing.expires > Date.now()) return existing.result;
-    const result = this.build(root, reason, definition, options, notebookPythonOverride);
+    const result = this.build(root, reason, definition, options, notebookPythonOverride, refresh);
     if (this.cache.size >= 128) this.cache.delete(this.cache.keys().next().value!);
     this.cache.set(key, { expires: Date.now() + 30_000, result });
     try { return await result; } catch (error) { this.cache.delete(key); throw error; }
   }
-  private async build(root: string, reason: string, definition: LanguageServerDefinition, options: Options, notebookPythonOverride?: string): Promise<AnalysisPlan> {
+  private async build(root: string, reason: string, definition: LanguageServerDefinition, options: Options, notebookPythonOverride?: string, refresh = false): Promise<AnalysisPlan> {
     const preferences = analysisPreferences.get(root), profile = serverProfile(definition, options);
     const context: AnalysisContext = { id: '', root, rootReason: reason, environment: 'usable', choices: [], evidence: [], issues: [] };
     let configuration = (settings: Record<string, unknown>): Record<string, unknown> => settings;
     const inputs = new Set<string>(), args = [...(options.args ?? definition.launch.args)];
     const issue = (code: string, message: string, required = false) => { context.issues.push({ code, message }); if (required || context.environment !== 'action-needed') context.environment = required ? 'action-needed' : 'partial'; };
-    const choice = (file: string, source: string, name = path.basename(file), available = fileExists(file)): AnalysisChoice => {
+    // A change to a watched file starts the analysis again; a file only offered as a choice is not watched.
+    const choice = (file: string, source: string, name = path.basename(file), available = fileExists(file), watched = true): AnalysisChoice => {
       const item = { id: digest(file), path: file, source, name, available };
       if (!context.choices.some(c => c.id === item.id)) context.choices.push(item);
-      inputs.add(file); return item;
+      if (watched) inputs.add(file);
+      return item;
     };
     if (definition.languages.some(l => l.languageId === 'python')) {
       context.kind = 'python'; context.label = 'Python environment';
@@ -68,8 +90,27 @@ export class AnalysisContextService {
         projectConfiguration: native };
       for (const [key, value] of pythonSettingsContext(project, profile.configuration, server, native)) context.evidence.push(`${key}: ${value}`);
       for (const name of ['pyrightconfig.json', 'pyproject.toml', '.vscode/settings.json', '.venv', 'venv']) inputs.add(path.join(root, name));
-      const environments = await notebookPython.list(path.join(root, '__setdown_analysis__.py'), root, !!preferences.python);
-      for (const candidate of environments.candidates) choice(candidate.path, candidate.source, candidate.name, true);
+      const listed = await notebookPython.list(path.join(root, '__setdown_analysis__.py'), root, !!preferences.python);
+      for (const candidate of listed.candidates) choice(candidate.path, candidate.source, candidate.name, true);
+      // The environments Zed's search finds: those of pyenv, Poetry, Pipenv, Hatch, Pixi, Conda
+      // and uv lie outside the project or under names Setdown does not look for. All of them can
+      // be chosen. One that was made for this project counts as the project's own, and the rule
+      // stays what it was: one environment of the project is used, several are asked about.
+      const found = notebookPythonOverride ? [] : await this.environments(root, refresh);
+      // An environment is its folder: Setdown's `bin/python` and Zed's `bin/python3.12` are one row.
+      const rows = new Map<string, string>(), counted = new Set<string>();
+      for (const candidate of listed.candidates) { const prefix = pythonPrefix(candidate); if (!rows.has(prefix)) rows.set(prefix, candidate.path); if (candidate.source === 'Project') counted.add(prefix); }
+      const declared = declaredPython(root), projectOwn: { path: string; source: string }[] = [];
+      for (const python of found) {
+        const prefix = pythonPrefix(python), seen = rows.get(prefix) ?? listed.candidates.find(candidate => candidate.path === python.path)?.path;
+        if (!seen) { rows.set(prefix, python.path); choice(python.path, pythonSource(python), python.name, true, false); }
+        if (!counted.has(prefix) && belongsToProject(python, root, declared)) { counted.add(prefix); projectOwn.push({ path: seen ?? python.path, source: `${pythonSource(python)} environment` }); }
+      }
+      const explicit = listed.selectionSource === 'Notebook override' || listed.selectionSource === 'Project selection';
+      const local = listed.selectionNeeded ? 2 : listed.selectionSource === 'Project environment' ? 1 : 0;
+      const environments = explicit || !projectOwn.length ? listed
+        : local + projectOwn.length > 1 ? { ...listed, selected: undefined, selectionNeeded: true }
+        : { ...listed, selected: projectOwn[0].path, selectionSource: projectOwn[0].source, selectionNeeded: false };
       const configured = section(profile.configuration, 'python.pythonPath');
       const inherited = (typeof configured === 'string' && configured ? path.resolve(root, configured) : undefined) ?? environments.selected;
       context.selectionSource = notebookPythonOverride ? 'notebook' : preferences.python ? 'project' : configured ? 'connection' : 'automatic';

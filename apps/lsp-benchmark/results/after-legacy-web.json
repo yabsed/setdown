@@ -1,0 +1,295 @@
+{
+  "date": "2026-11-19T11:47:12.656Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "typescript",
+      "language": "TypeScript",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "source/index.ts",
+      "expectedTool": "typescript-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.241
+        },
+        {
+          "kind": "mistake",
+          "what": "const setdownMistake: number = 'three';",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type 'string' is not assignable to type 'number'.; error: 'setdownMistake' is declared but its value is never read.",
+          "seconds": 2.2
+        },
+        {
+          "kind": "hover",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "text matching /enqueue: \\(run: RunFunction/",
+          "observed": "```typescript (property) enqueue: (run: RunFunction, options?: Partial<EnqueueOptionsType> | undefined) => void ```",
+          "seconds": 2.212
+        },
+        {
+          "kind": "hover",
+          "what": "AbortSignal, callback",
+          "ok": true,
+          "expected": "text matching /AbortSignal/",
+          "observed": "```typescript interface AbortSignal ``` The **`AbortSignal`** interface represents a signal object that allows you to communicate with an asynchronous operatio…",
+          "seconds": 0.165
+        },
+        {
+          "kind": "completion",
+          "what": "this.#queue.deq|",
+          "ok": true,
+          "expected": "\"dequeue\" offered",
+          "observed": "6 offered, first: dequeue, enqueue, filter, remove, setPriority, size",
+          "seconds": 2.235
+        },
+        {
+          "kind": "definition",
+          "what": "PriorityQueue from './priority-queue.js'",
+          "ok": true,
+          "expected": "leads to source/priority-queue.ts",
+          "observed": "source/priority-queue.ts:11",
+          "seconds": 2.239
+        },
+        {
+          "kind": "definition",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "leads to source/queue.ts",
+          "observed": "source/queue.ts:7",
+          "seconds": 2.24
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.236,
+        "tool": "typescript-language-server",
+        "name": "TypeScript and JavaScript",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Project marker: tsconfig.json",
+          "TypeScript SDK: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue/node_modules/typescript/lib/tsserver.js",
+          "Project configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue/package.json"
+        ]
+      }
+    },
+    {
+      "id": "javascript",
+      "language": "JavaScript",
+      "project": "expressjs/express@43fca52d28",
+      "file": "lib/application.js",
+      "expectedTool": "typescript-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.255
+        },
+        {
+          "kind": "mistake",
+          "what": "var = ;",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Variable declaration expected.",
+          "seconds": 2.254
+        },
+        {
+          "kind": "hover",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "text matching /finalhandler/",
+          "observed": "```typescript import finalhandler ``` Module dependencies. *@private*",
+          "seconds": 0.14
+        },
+        {
+          "kind": "hover",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "text matching /compileETag/",
+          "observed": "```typescript import compileETag ```",
+          "seconds": 0.142
+        },
+        {
+          "kind": "completion",
+          "what": "this.router.rou|",
+          "ok": true,
+          "expected": "\"route\" offered",
+          "observed": "114 offered, first: _locals, all, app, apply, arg, args",
+          "seconds": 0.169
+        },
+        {
+          "kind": "definition",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "leads to lib/utils.js",
+          "observed": "lib/utils.js:130",
+          "seconds": 1.253
+        },
+        {
+          "kind": "definition",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "leads to /application\\.js$|node_modules\\/finalhandler\\/index\\.js$/",
+          "observed": "lib/application.js:16",
+          "seconds": 0.176
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.2,
+        "tool": "typescript-language-server",
+        "name": "TypeScript and JavaScript",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express",
+          "Root: Project marker: package.json",
+          "TypeScript SDK: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/tsserver.js",
+          "Project configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express/package.json"
+        ]
+      }
+    },
+    {
+      "id": "svelte",
+      "language": "Svelte",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "src/lib/ArticleList/ArticlePreview.svelte",
+      "expectedTool": "svelte-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.754
+        },
+        {
+          "kind": "mistake",
+          "what": "<img src=\"setdown-mistake.png\">",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: `<img>` element should have an alt attribute",
+          "seconds": 1.449
+        },
+        {
+          "kind": "hover",
+          "what": "enhance } from '$app/forms'",
+          "ok": true,
+          "expected": "text matching /function enhance/",
+          "observed": "```typescript (alias) function enhance<Success extends Record<string, unknown> | undefined, Failure extends Record<string, unknown> | undefined>(form_element: …",
+          "seconds": 1.475
+        },
+        {
+          "kind": "hover",
+          "what": "type",
+          "ok": true,
+          "expected": "text matching /\\(property\\) type: /",
+          "observed": "```typescript (property) type: \"success\" | \"redirect\" | \"error\" | \"failure\" ```",
+          "seconds": 1.479
+        },
+        {
+          "kind": "completion",
+          "what": "result.ty|",
+          "ok": true,
+          "expected": "\"type\" offered",
+          "observed": "54 offered, first: data?, error, location, status?, type, __sveltets_$$bindings",
+          "seconds": 1.542
+        },
+        {
+          "kind": "definition",
+          "what": "enhance } from '$app/forms'",
+          "ok": true,
+          "expected": "leads to /@sveltejs\\/kit\\//",
+          "observed": "node_modules/@sveltejs/kit/src/runtime/app/forms.js:80",
+          "seconds": 1.55
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.441,
+        "tool": "svelte-language-server",
+        "name": "svelte-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    },
+    {
+      "id": "svelte-page",
+      "language": "Svelte, a page",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "src/routes/article/[slug]/+page.svelte",
+      "expectedTool": "svelte-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.477
+        },
+        {
+          "kind": "mistake",
+          "what": "<img src=\"setdown-mistake.png\">",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: `<img>` element should have an alt attribute",
+          "seconds": 1.248
+        },
+        {
+          "kind": "hover",
+          "what": "ArticleMeta",
+          "ok": true,
+          "expected": "text matching /ArticleMeta/",
+          "observed": "```typescript (alias) const ArticleMeta: Component<$$ComponentProps, {}, \"\"> import ArticleMeta ```",
+          "seconds": 1.267
+        },
+        {
+          "kind": "hover",
+          "what": "data.article.title}</title>",
+          "ok": true,
+          "expected": "text matching /data/",
+          "observed": "```typescript const data: { user: any; article: any; comments: any; } ```",
+          "seconds": 1.27
+        },
+        {
+          "kind": "definition",
+          "what": "CommentContainer",
+          "ok": true,
+          "expected": "leads to CommentContainer.svelte",
+          "observed": "src/routes/article/[slug]/CommentContainer.svelte:1",
+          "seconds": 1.272
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.469,
+        "tool": "svelte-language-server",
+        "name": "svelte-language-server",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Repository boundary (.git)"
+        ]
+      }
+    }
+  ]
+}

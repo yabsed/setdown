@@ -1,5 +1,5 @@
 // The run as a table a person reads, and the list of expectations that were not met.
-const columns = [['clean', 'No false errors'], ['mistake', 'Marks a mistake'], ['hover', 'Hover'], ['completion', 'Completion'], ['definition', 'Go to definition']];
+const columns = [['clean', 'No false errors'], ['mistake', 'Marks a mistake'], ['hover', 'Hover'], ['completion', 'Completion'], ['definition', 'Go to definition'], ['faded', 'Fades left-out code']];
 
 /** Every unmet expectation of a run, as `case: what`. */
 export function failures(run) {

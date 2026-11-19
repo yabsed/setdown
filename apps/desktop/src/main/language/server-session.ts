@@ -4,9 +4,10 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import type { AsyncSubscription } from '@parcel/watcher';
 import { subscribeToFiles } from '../documents/native-watcher';
-import { CancellationTokenSource, createMessageConnection, StreamMessageReader, StreamMessageWriter,
+import { CancellationTokenSource, createMessageConnection, ResponseError, StreamMessageReader, StreamMessageWriter,
   type MessageConnection } from 'vscode-jsonrpc/node';
 import type { ServerProfile } from './server-definitions';
+import { InactiveRegions, inactiveRegionsMethod, reportsInactiveRegions, serverStatusMethod, statusMeaning, toolStatus } from './extension-rules';
 import { clientCapabilities, refreshMethods, type LanguageRefresh } from '../../protocol/language-features';
 import { ServerCapabilitiesState } from './server-capabilities';
 import type { ApplyWorkspaceEditParams, ApplyWorkspaceEditResult, Registration, InitializeResult, PublishDiagnosticsParams, ServerCapabilities } from 'vscode-languageserver-protocol';
@@ -18,6 +19,9 @@ export type SessionHooks = {
   capabilitiesChanged?(): void;
   activity?(): void;
   applyEdit?(params: ApplyWorkspaceEditParams): Promise<ApplyWorkspaceEditResult>;
+  /** The text of a schema the JSON server asks its editor for (`vscode/content`). A refusal
+   * is thrown with a numeric `code`, which the server reads. */
+  schemaContent?(uri: string): Promise<string>;
 };
 export type ServerLaunch = { executable: string; args: string[]; env?: NodeJS.ProcessEnv };
 const genericProfile: ServerProfile = { name: 'Language', configuration: {}, watches: () => false };
@@ -51,6 +55,8 @@ export class ServerSession {
   private readonly fail: (reason: string) => void;
   readonly capabilities: ServerCapabilitiesState;
   private readonly messageRequests = new Map<string, { value: LanguageServerMessage; finish(index?: number): void }>();
+  private readonly regions: InactiveRegions | undefined;
+  private status: { key: string; id?: string } | undefined;
   get messages(): LanguageServerMessage[] { return [...this.messageRequests.values()].map(entry => entry.value); }
   answerMessage(id: string, index?: number): void {
     const entry = this.messageRequests.get(id);
@@ -91,10 +97,29 @@ export class ServerSession {
     this.child.once('exit', (code, signal) => fail(`${profile.name} language server exited (${signal ?? code}).`));
     this.connection.onError(([error]) => fail(error.message));
     this.connection.onClose(() => fail(`${profile.name} language server disconnected.`));
+    this.regions = reportsInactiveRegions(profile.capabilities) ? new InactiveRegions() : undefined;
     this.connection.onNotification('textDocument/publishDiagnostics', (params: PublishDiagnosticsParams) => {
       this.analyzed = true;
       for (const ready of [...this.analysisWaiters]) ready();
-      diagnostics(params);
+      diagnostics(this.regions?.published(params) ?? params);
+    });
+    // clangd: the lines the preprocessor leaves out, shown faded beside its own diagnostics (`extension-rules.ts`).
+    this.connection.onNotification(inactiveRegionsMethod, (params: unknown) => { const merged = this.regions?.inactive(params); if (merged) diagnostics(merged); });
+    // rust-analyzer: how far its answers can be trusted right now. A standing status, not an
+    // event: each one replaces the last, and one the person dismissed returns only when it changes.
+    this.connection.onNotification(serverStatusMethod, (params: unknown) => {
+      const status = toolStatus(params); if (!status) return;
+      const meaning = statusMeaning(status, profile.name), key = `${status.health}\0${status.message ?? ''}`;
+      if (meaning.line) this.context.set('Server status', meaning.line.replace(/\s+/g, ' ').slice(0, 1000)); else this.context.delete('Server status');
+      if (meaning.working) this.progress.set(serverStatusMethod, meaning.working); else this.progress.delete(serverStatusMethod);
+      if (key !== this.status?.key) {
+        if (this.status?.id) this.messageRequests.delete(this.status.id);
+        const id = meaning.notice && randomUUID();
+        if (id) this.messageRequests.set(id, { value: { id, message: meaning.notice!.message, actions: [], severity: meaning.notice!.severity }, finish: () => { this.messageRequests.delete(id); hooks.activity?.(); } });
+        this.status = { key, id: id || undefined };
+        if (status.message) this.log(`Server status (${status.health}): ${status.message}`);
+      }
+      hooks.activity?.();
     });
     this.connection.onNotification('$/typescriptVersion', (params: { version?: unknown; source?: unknown }) => {
       if (typeof params.version !== 'string' || typeof params.source !== 'string') return;
@@ -106,6 +131,15 @@ export class ServerSession {
     this.connection.onRequest('workspace/configuration', (params: { items: { section?: string; scopeUri?: string }[] }) =>
       params.items.map(item => configurationSection(hooks.configuration?.(item.scopeUri) ?? profile.configuration, item.section)));
     this.connection.onRequest('workspace/workspaceFolders', () => [{ uri: pathToFileURL(root).href, name: root }]);
+    this.connection.onRequest('vscode/content', async (uri: unknown) => {
+      try {
+        if (typeof uri !== 'string' || !hooks.schemaContent) throw Error('This editor loads no schema of that kind.');
+        return await hooks.schemaContent(uri);
+      } catch (error) {
+        const code = (error as { code?: unknown } | null)?.code;
+        throw new ResponseError(typeof code === 'number' ? code : 5, String(error instanceof Error ? error.message : error));
+      }
+    });
     this.connection.onRequest('workspace/applyEdit', async (params: ApplyWorkspaceEditParams): Promise<ApplyWorkspaceEditResult> => hooks.applyEdit?.(params)
       ?? { applied: false, failureReason: 'No active user command accepts edits.' });
     this.connection.onRequest('client/registerCapability', (params: { registrations: Registration[] }) => {
@@ -243,6 +277,7 @@ export class ServerSession {
   async notify(method: string, params: unknown): Promise<void> {
     if (this.stopped) throw new Error(`${this.profile.name} language server is stopped. Use Restart Language Servers.`);
     await this.connection.sendNotification(method, params);
+    if (method === 'textDocument/didClose') this.regions?.closed((params as { textDocument: { uri: string } }).textDocument.uri);
   }
   watch(root: string): void {
     this.watcher = subscribeToFiles(root, (error, events) => {

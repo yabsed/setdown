@@ -48,6 +48,9 @@ export const languageMethods = [
   'textDocument/willSaveWaitUntil', 'textDocument/diagnostic', 'workspace/symbol', 'workspaceSymbol/resolve', 'workspace/executeCommand',
   'textDocument/prepareCallHierarchy', 'callHierarchy/incomingCalls', 'callHierarchy/outgoingCalls',
   'textDocument/prepareTypeHierarchy', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes',
+  // Outside the protocol: what one tool's own editor extension asks it. Each is sent only to
+  // the tool it belongs to (`LanguageConnection.autoInsert`, `LanguageConnection.companion`).
+  'html/autoInsert', 'html/tag', 'textDocument/switchSourceHeader',
 ] as const;
 export type LanguageMethod = typeof languageMethods[number];
 export type LanguageCell = { id: string; version: number; text: string };
@@ -66,7 +69,11 @@ export type LanguageIssue =
   | { kind: 'runtime'; runtime: string; required: string; found?: string }
   | { kind: 'startup'; detail?: string }
   | { kind: 'crashed' };
-export type LanguageConnection = { messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
+/** Text a markup tool writes after a keystroke: a closing tag after `>` or `/`, and with
+ * `html/autoInsert` the quotes of an attribute after `=`. The main process names the request
+ * of the document's tool and whether the person left each kind on. */
+export type LanguageAutoInsert = { method: 'html/autoInsert' | 'html/tag'; close: boolean; quote: boolean };
+export type LanguageConnection = { autoInsert?: LanguageAutoInsert; /** The tool answers `textDocument/switchSourceHeader` (clangd). */ companion?: boolean; messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing'; message?: string; issue?: LanguageIssue; server?: { id: string; name: string } };
 export type LanguageEvent =
   | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[]; retainedDocuments?: { id: string; generation: string }[] }

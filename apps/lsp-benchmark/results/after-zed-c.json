@@ -1,0 +1,161 @@
+{
+  "date": "2026-11-19T12:16:29.671Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "c",
+      "language": "C",
+      "project": "DaveGamble/cJSON@6d9f2443ab",
+      "file": "cJSON_Utils.c",
+      "expectedTool": "clangd",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.021
+        },
+        {
+          "kind": "mistake",
+          "what": "int setdown_mistake(void) { return missing_name; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: No previous prototype for function 'setdown_mistake' (fix available); error: Use of undeclared identifier 'missing_name'",
+          "seconds": 0
+        },
+        {
+          "kind": "hover",
+          "what": "cJSON_IsArray(object)",
+          "ok": true,
+          "expected": "text matching /cJSON_IsArray/",
+          "observed": "### function `cJSON_IsArray` provided by `\"cJSON.h\"` --- → `cJSON_bool (aka int)` Parameters: - `const cJSON *const item (aka const struct cJSON *const)` --- `…",
+          "seconds": 0.01
+        },
+        {
+          "kind": "hover",
+          "what": "strlen((const char*)string)",
+          "ok": true,
+          "expected": "text matching /strlen/",
+          "observed": "### function `strlen` provided by `<string.h>` --- → `__size_t (aka unsigned long)` Parameters: - `const char * __s` Return the length of S. --- ```cpp extern …",
+          "seconds": 0.012
+        },
+        {
+          "kind": "completion",
+          "what": "cJSON_IsArr|",
+          "ok": true,
+          "expected": "\"cJSON_IsArray\" offered",
+          "observed": "1 offered, first: •cJSON_IsArray",
+          "seconds": 0.019
+        },
+        {
+          "kind": "faded",
+          "what": "#pragma warning (disable : 4001)",
+          "ok": true,
+          "expected": "the line is marked as left out",
+          "observed": "7 regions left out: lines 25-25, 29-29, 32-34, 47-47, 50-50, 57-57, 62-62",
+          "seconds": 0.019
+        },
+        {
+          "kind": "definition",
+          "what": "cJSON_IsArray(object)",
+          "ok": true,
+          "expected": "leads to /cJSON\\.[ch]$/",
+          "observed": "cJSON.c:3042",
+          "seconds": 0.02
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.176,
+        "tool": "clangd",
+        "name": "clangd",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "cpp",
+      "language": "C++",
+      "project": "fmtlib/fmt@14ac0d5a9d",
+      "file": "src/os.cc",
+      "expectedTool": "clangd",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.012
+        },
+        {
+          "kind": "mistake",
+          "what": "int setdown_mistake() { return missing_name; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "hint: Use a trailing return type for this function (fix available); error: Use of undeclared identifier 'missing_name'",
+          "seconds": 1.012
+        },
+        {
+          "kind": "hover",
+          "what": "error_code",
+          "ok": true,
+          "expected": "text matching /error_code/",
+          "observed": "### class `error_code` provided by `<system_error>` --- @addtogroup diagnostics @{ --- ```cpp // In namespace std class error_code {} ```",
+          "seconds": 0.002
+        },
+        {
+          "kind": "hover",
+          "what": "close",
+          "ok": true,
+          "expected": "text matching /close/",
+          "observed": "### instance-method `buffered_file::close` provided by `\"fmt/os.h\"` --- → `void` Closes the file. --- ```cpp // In buffered_file public: void buffered_file::cl…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "completion",
+          "what": "std::generic_cat|",
+          "ok": true,
+          "expected": "\"generic_category\" offered",
+          "observed": "1 offered, first: •generic_category",
+          "seconds": 0.01
+        },
+        {
+          "kind": "faded",
+          "what": "#    define S_IRUSR _S_IREAD",
+          "ok": true,
+          "expected": "the line is marked as left out",
+          "observed": "16 regions left out: lines 10-10, 22-22, 28-31, 36-38, 43-60, 65-121, 135-167, 193-199",
+          "seconds": 0.01
+        },
+        {
+          "kind": "definition",
+          "what": "close",
+          "ok": true,
+          "expected": "leads to include/fmt/os.h",
+          "observed": "include/fmt/os.h:201",
+          "seconds": 0.012
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.876,
+        "tool": "clangd",
+        "name": "clangd",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/fmt",
+          "Root: Open folder"
+        ]
+      }
+    }
+  ]
+}

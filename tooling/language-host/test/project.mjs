@@ -162,6 +162,59 @@ async function serverEdit(host, folder) {
   await host.call('project.close', { workspace, path: file });
 }
 
+/** The JSON server asks its editor for a schema on the web (`vscode/content`). The host passes
+ * the question on and the answer, or the refusal with its code, back; a schema Zed has itself
+ * never leaves the host. */
+async function schemaRequests(host, folder) {
+  const workspace = 'window-schemas', address = 'https://schemas.setdown.invalid/thing.json', refused = 'https://schemas.setdown.invalid/refused.json';
+  const reported = file => host.events.filter(event => event.event === 'project.diagnostics' && event.workspace === workspace && event.path === file);
+  /** The first report for `file` with a diagnostic that `matches`; a timeout says what was reported instead. */
+  const marked = (label, file, matches) => host.event(label, event => reported(file).includes(event) && event.diagnostics.some(matches), 60)
+    .catch(error => { throw Error(`${error.message}\nReported for ${path.basename(file)}: ${JSON.stringify(reported(file).map(event => event.diagnostics.map(d => d.message)))}`); });
+  const open = async (name, value) => {
+    const file = path.join(folder, name), text = JSON.stringify(value, null, 2) + '\n';
+    await writeFile(file, text);
+    await host.call('project.open', { workspace, path: file, text, revision: 1 });
+    return file;
+  };
+  await host.call('project.folder', { workspace, root: folder });
+  const file = await open('thing.json', { $schema: address, count: 'three' });
+  const { server } = await waitForServer(host, workspace, file, 'json-language-server', 180);
+  const asked = await host.event('the schema to be asked for', event => event.event === 'project.schemaContent' && event.workspace === workspace && event.uri === address, 60);
+  assert.equal(asked.server, server.server);
+  assert.deepEqual(await host.call('project.schemaContentResult', { request: asked.request, content: JSON.stringify({ type: 'object', properties: { count: { type: 'number' } } }) }), { delivered: true });
+  const checked = await marked('the file to be checked against the schema', file, d => /Expected "number"/.test(d.message));
+  // An answer is used once.
+  await assert.rejects(host.call('project.schemaContentResult', { request: asked.request, content: '{}' }), /Unknown schema request/);
+  // Which schemas check the file, asked the way VS Code's status item asks.
+  assert.deepEqual(await host.call('project.request', { workspace, path: file, server: server.server, method: 'json/languageStatus', params: [pathToFileURL(file).href] }), { schemas: [address] });
+  // A refusal reaches the server with its message, and is shown where the file names the schema.
+  const other = await open('refused.json', { $schema: refused });
+  const again = await host.event('the refused schema to be asked for', event => event.event === 'project.schemaContent' && event.uri === refused, 60);
+  await host.call('project.schemaContentResult', { request: again.request, error: `Location ${refused} is untrusted`, code: 2 });
+  const told = await marked('the refusal to be shown', other, d => /untrusted/.test(d.message));
+  // Zed's own schema for a file it knows, which the host answers itself. That schema points at
+  // others on the web for single sections; those are the editor's to answer, here with a schema
+  // that accepts anything. (The server checks nothing in a file while one of them is missing.)
+  const answered = new Set([asked.request, again.request]);
+  const answer = () => {
+    for (const event of host.events) if (event.event === 'project.schemaContent' && !answered.has(event.request)) {
+      answered.add(event.request);
+      host.call('project.schemaContentResult', { request: event.request, content: '{}' }).catch(() => {});
+    }
+  };
+  host.listeners.add(answer);
+  const manifest = await open('package.json', { name: 3 });
+  const known = await marked('package.json to be checked against Zed\'s schema', manifest, d => /Incorrect type/.test(d.message)).finally(() => host.listeners.delete(answer));
+  const passed = host.events.filter(event => event.event === 'project.schemaContent').map(event => event.uri);
+  assert.deepEqual(passed.slice(0, 2), [address, refused]);
+  assert.deepEqual(passed.filter(uri => !/^https?:\/\//.test(uri)), [], 'a schema of Zed\'s own was passed to the editor');
+  for (const each of [file, other, manifest]) await host.call('project.close', { workspace, path: each });
+  const refusal = told.diagnostics.find(d => /untrusted/.test(d.message));
+  return { checked: checked.diagnostics.find(d => /Expected "number"/.test(d.message)).message, refusal: `${refusal.code}: ${refusal.message.slice(0, 120)}`,
+    known: known.diagnostics.find(d => /Incorrect type/.test(d.message)).message, passed: passed.length };
+}
+
 const work = await mkdtemp(path.join(os.tmpdir(), 'setdown zed project '));
 const data = process.env.SETDOWN_PROJECT_DATA ?? path.join(work, 'data');
 const host = new Host(data);
@@ -180,22 +233,32 @@ try {
     // rust-analyzer is 40 MB: reuse the benchmark's copy when it has one, otherwise Zed downloads it.
     if (!process.env.SETDOWN_PROJECT_DATA && existsSync(path.join(prepared, 'rust-analyzer'))) await cp(path.join(prepared, 'rust-analyzer'), path.join(data, 'servers/rust-analyzer'), { recursive: true });
     const node = process.execPath, modules = path.join(repo, 'node_modules');
+    // The JSON server Zed installed for the benchmark, when there is one; otherwise Zed installs it.
+    const jsonServer = path.join(prepared, 'json-language-server/node_modules/vscode-langservers-extracted/bin/vscode-json-language-server');
     // Setdown's choices as Zed settings: its tools for Python and TypeScript, at the copies
     // the app ships, and a stand-in for the YAML server.
     await host.call('project.settings', { defaults: JSON.stringify({
       // Zed installs Prettier for its own formatting and lets TypeScript fetch typings; Setdown downloads neither.
       formatter: 'language_server',
-      languages: { Python: { language_servers: ['pyright'] }, TypeScript: { language_servers: ['typescript-language-server'] }, YAML: { language_servers: ['yaml-language-server'] } },
+      // One tool for a language: Zed's own list for JSON also downloads a helper for package.json.
+      languages: { Python: { language_servers: ['pyright'] }, TypeScript: { language_servers: ['typescript-language-server'] }, YAML: { language_servers: ['yaml-language-server'] }, JSON: { language_servers: ['json-language-server'] } },
       lsp: {
         pyright: { binary: { path: node, arguments: [path.join(modules, 'pyright/langserver.index.js'), '--stdio'] } },
         'typescript-language-server': { binary: { path: node, arguments: [path.join(modules, 'typescript-language-server/lib/cli.mjs'), '--stdio'] },
           initialization_options: { disableAutomaticTypingAcquisition: true } },
         'yaml-language-server': { binary: { path: node, arguments: [fileURLToPath(new URL('edit-server.mjs', import.meta.url))] } },
+        // As Setdown sets it: the server reads files itself and asks its editor for every other schema.
+        'json-language-server': { ...(existsSync(jsonServer) ? { binary: { path: node, arguments: [jsonServer, '--stdio'] } } : {}), initialization_options: { handledSchemaProtocols: ['file'] } },
       },
     }) });
     const folder = path.join(work, 'edit'); await mkdir(folder);
     await serverEdit(host, folder);
     console.log('PASS: a server edit reaches the editor, changes neither the copy nor the disk, and saving stays the editor\'s.');
+    if (!process.env.SETDOWN_PROJECT_ONLY || /schemas/.test(process.env.SETDOWN_PROJECT_ONLY)) {
+      const schemas = path.join(work, 'schemas'); await mkdir(schemas);
+      const found = await schemaRequests(host, schemas);
+      console.log(`PASS schemas: the editor answered the web schema ("${found.checked}"), its refusal was shown (${found.refusal}), and Zed's own schema checked package.json ("${found.known}"); ${found.passed} schemas were asked of the editor, none of Zed's own.`);
+    }
     const results = [];
     for (const each of [
       { name: 'typescript', project: 'p-queue', file: 'source/index.ts', server: 'typescript-language-server', mistake: "const setdownMistake: number = 'three';",

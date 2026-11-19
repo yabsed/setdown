@@ -77,6 +77,11 @@ export class LanguageServices {
     return Object.assign({}, ...[...this.clients.values()].map(client => Object.fromEntries(
       Object.entries(client.capabilitiesFor(model)).filter(([, value]) => !!value))));
   }
+  hasCompanion(model: M.editor.ITextModel | null) { return [...this.clients.values()].some(client => client.hasCompanion(model)); }
+  /** False when the tool found no file that belongs with this one. */
+  async openCompanion(model: M.editor.ITextModel): Promise<boolean> {
+    return await [...this.clients.values()].find(client => client.hasCompanion(model))?.openCompanion(model) ?? false;
+  }
   async documentSymbols(model: M.editor.ITextModel) {
     const client = [...this.clients.values()].find(client => client.capabilitiesFor(model).documentSymbolProvider);
     return client ? client.documentSymbols(model) : [];

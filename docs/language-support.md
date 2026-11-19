@@ -341,6 +341,21 @@ checks. Re-enable its primary provider from the same chooser.
   kernels are offered without executing the discovered candidates. A project
   interpreter is selected automatically when the nearest `.venv`/`venv` is unique,
   or explicitly when ambiguous, and passed to the analyzer as `python.pythonPath`.
+  For ordinary files Setdown also asks the search Zed uses (PET, the locator of
+  the VS Code Python extensions) through the language host. It finds
+  environments that lie outside the project or under other names: Poetry,
+  Pipenv, Hatch, Pixi, pyenv, uv, virtualenvwrapper and Conda. All of them are
+  offered. One that was made for this project counts as the project's own: the
+  tool recorded the project folder (Poetry, Pipenv, Hatch), or it is a
+  virtualenv, a Pixi environment or an unnamed Conda environment inside the
+  project, or the project's `.venv` file names it. The rule is unchanged: one
+  environment of the project is used, several are asked about, and a person's
+  choice or `python.pythonPath` wins. An interpreter installed for the whole
+  computer and a named Conda environment are never the project's own, so
+  opening the home folder selects nothing new. A search that fails or takes
+  longer than ten seconds leaves what Setdown finds itself. Notebooks keep
+  their own search. `python-toolchains.ts` holds the rule and its tests compare
+  it with `vendor/zed/crates/languages/src/python.rs`.
   The bundled language server and the project interpreter are separate choices.
   Ordinary files and notebooks share the project default; a saved notebook-specific
   choice wins. A stopped notebook refreshes its default when the project changes.
@@ -548,6 +563,34 @@ file retains the last valid settings until it is fixed.
 
 This example declares the two `!Sub` forms. It does not disable validation or
 declare other custom tags such as `!Ref` and `!GetAtt`.
+
+## What each tool's own editor tells it
+
+A tool's VS Code extension does more than start it. It tells the tool things at
+startup, asks it things the protocol has no name for, and checks what it
+downloads. Setdown runs no extension. It carries these rules over from the
+extension sources under `vendor/`, and each rule names the file it came from
+(`extension-rules.ts`, `json-schema-content.ts`, `go-tools.ts`,
+`kotlin-download.ts`, `kotlin-options.ts`, `python-toolchains.ts`). Their tests
+compare the copied values with `vendor/`, so an updated submodule that changes
+a rule fails a test. The settings below are read by their VS Code names from a
+tool's connection settings and from Zed's `lsp.<server>.settings`.
+
+| Language | What Setdown does | Settings |
+| --- | --- | --- |
+| HTML | Typing `>` or `/` closes the tag and typing `=` writes the attribute's quotes (`html/autoInsert`). | `html.autoClosingTags`, `html.autoCreateQuotes` (both on) |
+| Svelte | The server starts with the settings sections its extension sends, is told when an open TypeScript or JavaScript file changes, restarts when a `svelte.config.*`, `vite.config.*` or Prettier configuration file changes, and closes tags (`html/tag`). `isTrusted` is `true`: Setdown has no workspace trust, and opening a file is the consent. | `svelte.enable-ts-plugin` (off) loads `typescript-svelte-plugin` into tsserver when the project has it |
+| TypeScript, JavaScript | tsserver gets the memory limit of the TypeScript extension. It downloads no type packages on its own: VS Code lets it, and Setdown downloads nothing a person did not ask for. npm location and display language follow the extension's settings. | `typescript.tsserver.maxTsServerMemory` (3072 MB), `typescript.disableAutomaticTypeAcquisition` (write `false` to let tsserver download types), `typescript.npm`, `typescript.locale` |
+| JSON | The editor, not the server, downloads a schema (`vscode/content`). An address outside the trusted domains is refused and the file says so. Downloaded schemas are kept in `language-packages/json-schemas` and checked again with their ETag. The document panel lists the schemas a file was checked with (`json/languageStatus`). | `json.schemaDownload.enable` (on), `json.schemaDownload.trustedDomains` (the extension's list; add a domain with `"https://example.com/": true`) |
+| Go | `gopls` is looked for where the Go extension looks, with the project's Go environment: `GOBIN`, each `GOPATH/bin`, `GOROOT/bin`, then `PATH`. When none is found and downloads are on, Setdown installs it with `go install` into its own folder. An install that fails is shown; nothing else is started in its place. | A program named in settings is used as written |
+| Kotlin | The server archive is downloaded by Setdown and started only after its checksum matches the one JetBrains publishes. The server starts with the options its extension sends. An option the server would reject is left out and named in the document panel. | `intellij.jdkForSymbolResolution`, `intellij.buildTool`, `intellij.projects` |
+| C, C++ | **Switch Between Source/Header** (Alt+O, ⌥⌘O on macOS) opens the other file (`textDocument/switchSourceHeader`). Lines an `#if` leaves out of the build are faded (`textDocument/inactiveRegions`), always for the same version of the text as clangd's own diagnostics. | none |
+| Rust | rust-analyzer's standing status is shown (`experimental/serverStatus`): a warning means some results may be wrong, an error that most are incomplete or wrong. It appears as one notice that the next status replaces and as a line in the document panel. While background work is pending the file shows as still being analyzed. | none |
+
+Changed behaviour to know about: a JSON schema from a domain outside the
+trusted list is no longer downloaded, as in VS Code, and TypeScript no longer
+downloads type packages for JavaScript projects on its own, unlike VS Code.
+Each has the setting above.
 
 ## Finding an installation
 

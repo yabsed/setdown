@@ -92,6 +92,7 @@ when a case names text that its file does not contain.
 | Hover | Hovering a name returns its description: one name from a library, one from the project |
 | Completion | Behind the first letters of a member that the code uses, that member is offered |
 | Go to definition | A name leads to the file that declares it: another file of the project, or a library |
+| Fades left-out code | C and C++: a line inside an `#if` that does not hold for this build is reported as left out, so the editor shows it faded |
 
 "No false errors" is "unknown" when the tool reported nothing at all, the added
 mistake included: a silent tool has not found the code correct. Where a tool

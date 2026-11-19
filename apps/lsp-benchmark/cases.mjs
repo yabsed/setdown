@@ -8,6 +8,7 @@
 //   hover       `expect` matches the answer
 //   completion  `expect` is among the offers
 //   definition  `to` ends the path of the file it leads to (or matches it)
+//   faded       the line is shown as left out of the build (C and C++: an `#if` that does not hold)
 // `answer` is what a person replies when the tool asks them something first.
 // Every case also asks the question nobody writes down: the project's own code, which
 // builds, must not be marked as an error. `accept` names a line where the tool disagrees
@@ -20,6 +21,15 @@ export const cases = [
     hover: [{ at: 'MapAdapter | None:', expect: /\(class\) MapAdapter|class MapAdapter/ }, { at: 'get_debug_flag()', expect: /get_debug_flag\(\) -> bool/ }],
     completion: [{ after: 'self.url_map.bind_to_env', expect: 'bind_to_environ' }],
     definition: [{ at: 'get_debug_flag()', to: 'src/flask/helpers.py' }, { at: 'MapAdapter | None:', to: /werkzeug\/routing\/map\.pyi?$/ }] },
+
+  // The environment is outside the project, where only the search Zed uses (PET) finds it: the
+  // library the test imports must be read from Poetry's environment, not from any other Python.
+  { id: 'python-poetry', language: 'Python', languageId: 'python', project: 'cleo', file: 'tests/conftest.py', patience: 120,
+    mistake: 'setdown_mistake: int = "three"',
+    hover: [{ at: 'BufferedIO(input_)', expect: /class BufferedIO/ }, { at: 'MockerFixture', expect: /MockerFixture/ }],
+    completion: [{ after: 'input_.set_str', expect: 'set_stream' }],
+    definition: [{ at: 'BufferedIO(input_)', to: 'src/cleo/io/buffered_io.py' },
+      { at: 'MockerFixture', to: /pypoetry\/virtualenvs\/cleo-[^/]+\/lib\/python[\d.]+\/site-packages\/pytest_mock\/plugin\.pyi?$/ }] },
 
   { id: 'typescript', language: 'TypeScript', languageId: 'typescript', project: 'p-queue', file: 'source/index.ts',
     mistake: "const setdownMistake: number = 'three';",
@@ -48,11 +58,13 @@ export const cases = [
     mistake: 'int setdown_mistake(void) { return missing_name; }',
     hover: [{ at: 'cJSON_IsArray(object)', expect: /cJSON_IsArray/ }, { at: 'strlen((const char*)string)', expect: /strlen/ }],
     completion: [{ after: 'cJSON_IsArr', expect: 'cJSON_IsArray' }],
+    faded: [{ at: '#pragma warning (disable : 4001)' }],
     definition: [{ at: 'cJSON_IsArray(object)', to: /cJSON\.[ch]$/ }] },
   { id: 'cpp', language: 'C++', languageId: 'cpp', project: 'fmt', file: 'src/os.cc', patience: 120,
     mistake: 'int setdown_mistake() { return missing_name; }',
     hover: [{ at: 'std::error_code(errno, std::generic_category())', on: 'error_code', expect: /error_code/ }, { at: 'buffered_file::close()', on: 'close', expect: /close/ }],
     completion: [{ after: 'std::generic_cat', expect: 'generic_category' }],
+    faded: [{ at: '#    define S_IRUSR _S_IREAD' }],
     definition: [{ at: 'buffered_file::close()', on: 'close', to: 'include/fmt/os.h' }] },
 
   // A first start reads the project's libraries and builds an index; the lighter tools answer within seconds.

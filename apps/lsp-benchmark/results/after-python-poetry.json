@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-19T12:06:08.097Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "python-poetry",
+      "language": "Python",
+      "project": "python-poetry/cleo@30df50748e",
+      "file": "tests/conftest.py",
+      "expectedTool": "pyright",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.218
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type \"Literal['three']\" is not assignable to declared type \"int\"",
+          "seconds": 1.217
+        },
+        {
+          "kind": "hover",
+          "what": "BufferedIO(input_)",
+          "ok": true,
+          "expected": "text matching /class BufferedIO/",
+          "observed": "```python class BufferedIO( input: Input | None = None, decorated: bool = False, supports_utf8: bool = True ) ```",
+          "seconds": 0.199
+        },
+        {
+          "kind": "hover",
+          "what": "MockerFixture",
+          "ok": true,
+          "expected": "text matching /MockerFixture/",
+          "observed": "```python class MockerFixture(config: Any) ``` --- Fixture that provides the same interface to functions in the mock module, ensuring that they are uninstalled…",
+          "seconds": 0.203
+        },
+        {
+          "kind": "completion",
+          "what": "input_.set_str|",
+          "ok": true,
+          "expected": "\"set_stream\" offered",
+          "observed": "1 offered, first: set_stream",
+          "seconds": 0.212
+        },
+        {
+          "kind": "definition",
+          "what": "BufferedIO(input_)",
+          "ok": true,
+          "expected": "leads to src/cleo/io/buffered_io.py",
+          "observed": "src/cleo/io/buffered_io.py:15",
+          "seconds": 0.214
+        },
+        {
+          "kind": "definition",
+          "what": "MockerFixture",
+          "ok": true,
+          "expected": "leads to /pypoetry\\/virtualenvs\\/cleo-[^/]+\\/lib\\/python[\\d.]+\\/site-packages\\/pytest_mock\\/plugin\\.pyi?$/",
+          "observed": "../../../../../../../../../../.cache/pypoetry/virtualenvs/cleo-UXhin33b-py3.13/lib/python3.13/site-packages/pytest_mock/plugin.py:80",
+          "seconds": 0.215
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.828,
+        "tool": "pyright",
+        "name": "Pyright",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cleo",
+          "Root: Project marker: pyproject.toml",
+          "Python interpreter: /home/yabsed/.cache/pypoetry/virtualenvs/cleo-UXhin33b-py3.13/bin/python (configured)",
+          "Type checking: basic (client policy)",
+          "Analysis paths: [] (client configuration; project configuration may override)",
+          "Analysis path source: Server defaults",
+          "Project analysis configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cleo/pyproject.toml (detected; interpreted by server, including executionEnvironments)"
+        ]
+      }
+    }
+  ]
+}

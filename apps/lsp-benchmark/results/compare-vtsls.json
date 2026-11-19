@@ -1,0 +1,164 @@
+{
+  "date": "2026-11-19T12:16:53.615Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "tool": "vtsls",
+  "outcomes": [
+    {
+      "id": "typescript",
+      "language": "TypeScript",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "source/index.ts",
+      "expectedTool": "vtsls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.203
+        },
+        {
+          "kind": "mistake",
+          "what": "const setdownMistake: number = 'three';",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type 'string' is not assignable to type 'number'.; warning: 'setdownMistake' is declared but its value is never read.",
+          "seconds": 2.161
+        },
+        {
+          "kind": "hover",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "text matching /enqueue: \\(run: RunFunction/",
+          "observed": "```typescript (property) enqueue: (run: RunFunction, options?: Partial<EnqueueOptionsType> | undefined) => void ```",
+          "seconds": 2.174
+        },
+        {
+          "kind": "hover",
+          "what": "AbortSignal, callback",
+          "ok": true,
+          "expected": "text matching /AbortSignal/",
+          "observed": "```typescript (loading...) interface AbortSignal ``` The **`AbortSignal`** interface represents a signal object that allows you to communicate with an asynchro…",
+          "seconds": 0.123
+        },
+        {
+          "kind": "completion",
+          "what": "this.#queue.deq|",
+          "ok": true,
+          "expected": "\"dequeue\" offered",
+          "observed": "6 offered, first: dequeue, enqueue, filter, remove, setPriority, size",
+          "seconds": 2.197
+        },
+        {
+          "kind": "definition",
+          "what": "PriorityQueue from './priority-queue.js'",
+          "ok": true,
+          "expected": "leads to source/priority-queue.ts",
+          "observed": "source/priority-queue.ts:11",
+          "seconds": 2.201
+        },
+        {
+          "kind": "definition",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "leads to source/queue.ts",
+          "observed": "source/queue.ts:7",
+          "seconds": 2.202
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 5.961,
+        "tool": "vtsls",
+        "name": "vtsls",
+        "source": "installed by Setdown",
+        "downloaded": true,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Project marker: tsconfig.json",
+          "Server: vtsls 0.3.0"
+        ]
+      }
+    },
+    {
+      "id": "javascript",
+      "language": "JavaScript",
+      "project": "expressjs/express@43fca52d28",
+      "file": "lib/application.js",
+      "expectedTool": "vtsls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.341
+        },
+        {
+          "kind": "mistake",
+          "what": "var = ;",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Variable declaration expected.",
+          "seconds": 2.324
+        },
+        {
+          "kind": "hover",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "text matching /finalhandler/",
+          "observed": "```typescript (loading...) import finalhandler ``` Module dependencies. *@private*",
+          "seconds": 0.27
+        },
+        {
+          "kind": "hover",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "text matching /compileETag/",
+          "observed": "```typescript (loading...) import compileETag ```",
+          "seconds": 0.275
+        },
+        {
+          "kind": "completion",
+          "what": "this.router.rou|",
+          "ok": true,
+          "expected": "\"route\" offered",
+          "observed": "114 offered, first: _locals, all, app, apply, arg, args",
+          "seconds": 0.312
+        },
+        {
+          "kind": "definition",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "leads to lib/utils.js",
+          "observed": "lib/utils.js:130",
+          "seconds": 2.341
+        },
+        {
+          "kind": "definition",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "leads to /application\\.js$|node_modules\\/finalhandler\\/index\\.js$/",
+          "observed": "lib/application.js:16",
+          "seconds": 0.321
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.216,
+        "tool": "vtsls",
+        "name": "vtsls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express",
+          "Root: Project marker: package.json",
+          "Server: vtsls 0.3.0"
+        ]
+      }
+    }
+  ]
+}

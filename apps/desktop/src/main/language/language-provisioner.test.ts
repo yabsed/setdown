@@ -11,6 +11,13 @@ vi.mock('./zed-language-host', async importOriginal => ({
   ...await importOriginal<typeof import('./zed-language-host')>(),
   ZedLanguageHost: class { request = host.request; prepare = host.prepare; dispose() {} },
 }));
+const kotlin = vi.hoisted(() => ({ kotlinServerForRun: vi.fn(), forgetKotlinServer: vi.fn() }));
+vi.mock('./kotlin-download', async importOriginal => ({ ...await importOriginal<typeof import('./kotlin-download')>(), ...kotlin }));
+const packages = vi.hoisted(() => ({ ensure: vi.fn() }));
+vi.mock('./language-package-store', async importOriginal => ({
+  ...await importOriginal<typeof import('./language-package-store')>(),
+  LanguagePackageStore: class { ensure = packages.ensure; },
+}));
 const roots: string[] = [];
 afterEach(async () => { vi.resetAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
 const definition = builtinLanguageServers.find(server => server.id === 'gopls')!;
@@ -68,4 +75,43 @@ test('explicit arguments survive Zed resolution and project environment caches a
   await f.installer.projectEnvironment(f.project, {}); expect(host.request).toHaveBeenCalledTimes(calls);
   f.installer.resetEnvironment(); await f.installer.projectEnvironment(f.project, {});
   expect(host.request).toHaveBeenCalledTimes(calls + 1); f.installer.dispose();
+});
+
+test('Python environments are asked of Zed for the project folder with the tools\' environment', async () => {
+  const f = await fixture();
+  host.request.mockResolvedValue({ toolchains: [
+    { name: 'Python 3.12.3 (app-x-py3.12; Poetry)', path: '/cache/pypoetry/virtualenvs/app-x-py3.12/bin/python', data: { kind: 'Poetry', project: f.project, prefix: '/cache/pypoetry/virtualenvs/app-x-py3.12', name: 'app-x-py3.12' } },
+    { name: 'not an interpreter', path: 'relative/python' }] });
+  expect(await f.installer.pythonEnvironments(f.project, { PATH: '/usr/bin', PYENV_ROOT: '/pyenv' })).toEqual([
+    { name: 'Python 3.12.3 (app-x-py3.12; Poetry)', path: '/cache/pypoetry/virtualenvs/app-x-py3.12/bin/python', kind: 'Poetry', project: f.project, prefix: '/cache/pypoetry/virtualenvs/app-x-py3.12', environment: 'app-x-py3.12' }]);
+  expect(host.request).toHaveBeenLastCalledWith('toolchains', { root: f.project, language: 'Python', env: { PATH: '/usr/bin', PYENV_ROOT: '/pyenv' } });
+  host.request.mockRejectedValue(Error('Zed lists no environments for Python'));
+  await expect(f.installer.pythonEnvironments(f.project, {})).rejects.toThrow('Zed lists no environments');
+  f.installer.dispose();
+});
+
+test("JetBrains' Kotlin server is verified and in place before its Zed extension is asked for it", async () => {
+  const f = await fixture(), server = builtinLanguageServers.find(server => server.id === 'kotlin-lsp')!, work = path.join(f.directory, 'extensions', 'work', 'kotlin');
+  const order: string[] = [], told: string[] = [];
+  kotlin.kotlinServerForRun.mockImplementation(async (options: { progress?(received: number, total?: number): void }) => { order.push('verified download'); options.progress?.(5e7, 2e8); options.progress?.(7e6, undefined); return { folder: path.join(work, 'kotlin-lsp-1.0'), version: '1.0', downloaded: true }; });
+  host.prepare.mockImplementation(async () => { order.push('extension'); return binary(f.executable); });
+  await f.installer.prepare(server, 'kotlin', f.project, {}, { automaticInstall: true }, message => told.push(message));
+  expect(order).toEqual(['verified download', 'extension']);
+  expect(kotlin.kotlinServerForRun).toHaveBeenCalledWith(expect.objectContaining({ work, fetch: f.download }));
+  expect(told).toEqual([`Downloading ${server.name}… 25%`, `Downloading ${server.name}… 7 MB`]);
+  // A download that fails its checksum is the person's to read; the extension is not asked, so nothing unverified starts.
+  host.prepare.mockClear();
+  kotlin.kotlinServerForRun.mockRejectedValue(Error('Could not verify the language server download: expected SHA-256 a, got b. The downloaded file was deleted.'));
+  await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'other'), {}, { automaticInstall: true })).rejects.toThrow('Could not verify the language server download');
+  expect(host.prepare).not.toHaveBeenCalled();
+  // The extension read a newer list than Setdown did and was refused its own download: the next start reads the list again.
+  kotlin.kotlinServerForRun.mockResolvedValue({ folder: path.join(work, 'kotlin-lsp-1.0'), version: '1.0', downloaded: false });
+  host.prepare.mockRejectedValue(Error('This download reads no checksum and was refused.'));
+  await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'third'), {}, { automaticInstall: true })).rejects.toThrow('was refused');
+  expect(kotlin.forgetKotlinServer).toHaveBeenCalledWith(work);
+  // Without download permission nothing is fetched, and other tools never touch the Kotlin download.
+  kotlin.kotlinServerForRun.mockClear(); host.prepare.mockResolvedValue(binary(f.executable));
+  await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'fourth'), {}, { automaticInstall: false })).rejects.toThrow('Automatic downloads are disabled');
+  await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: true });
+  expect(kotlin.kotlinServerForRun).not.toHaveBeenCalled(); f.installer.dispose();
 });

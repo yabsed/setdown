@@ -14,6 +14,9 @@ import type { RuntimeLanguageCatalog, ZedAdapterBinding } from './runtime-langua
 import type { LanguageCatalogEntry } from '../../protocol/language';
 
 import { mergeLanguageSettings } from './language-settings';
+import { isKotlinServer } from './extension-rules';
+import { forgetKotlinServer, kotlinServerForRun } from './kotlin-download';
+import { foundPythons, type FoundPython } from './python-toolchains';
 export { mergeLanguageSettings } from './language-settings';
 
 export class AutomaticDownloadsDisabled extends Error {}
@@ -33,7 +36,7 @@ export class LanguageProvisioner {
   private inventory?: Promise<{ servers: string[]; languages: string[] }>;
   private loading: Promise<unknown> = Promise.resolve();
   private readonly environments = new Map<string, Promise<NodeJS.ProcessEnv>>();
-  constructor(private readonly directory: string, executable: string, download: typeof fetch = fetch, private readonly catalog?: RuntimeLanguageCatalog) {
+  constructor(private readonly directory: string, executable: string, private readonly download: typeof fetch = fetch, private readonly catalog?: RuntimeLanguageCatalog) {
     this.host = new ZedLanguageHost(directory, executable);
     this.offlineHost = new ZedLanguageHost(directory, executable, { ...process.env, SETDOWN_LANGUAGE_HOST_OFFLINE: '1' });
     this.packages = new LanguagePackageStore(path.join(directory, 'extensions'), download);
@@ -64,6 +67,10 @@ export class LanguageProvisioner {
     return pending;
   }
   resetEnvironment(): void { this.environments.clear(); }
+  /** The Python environments on this computer, as Zed finds and orders them for this folder (`python-toolchains.ts`). */
+  async pythonEnvironments(root: string, inherited: NodeJS.ProcessEnv): Promise<FoundPython[]> {
+    return foundPythons(await this.host.request('toolchains', { root, language: 'Python', env: orderedEnvironment(inherited) }));
+  }
   rank(definition: LanguageServerDefinition, languageId: string): number {
     if (supportedTool(languageId) === definition.id) return -1;
     const order = (this.catalog?.definition(languageId)??languageDefinition(languageId))?.servers ?? [];
@@ -164,6 +171,12 @@ export class LanguageProvisioner {
       this.loading = load; await load; server = binding.server;
     }
     const language = this.catalog?.definition(languageId)??languageDefinition(languageId);
+    // The Zed Kotlin extension downloads JetBrains' server without reading its checksum. Setdown
+    // puts a verified one where the extension looks first (`kotlin-download.ts`); the host
+    // refuses the extension's own download. A failure is the person's to read: nothing unverified is started.
+    const kotlin = server && binding && downloads && isKotlinServer(definition) ? path.join(this.directory, 'extensions', 'work', binding.extension) : undefined;
+    if (kotlin) await kotlinServerForRun({ work: kotlin, fetch: this.download,
+      progress: (received, total) => progress?.(`Downloading ${definition.name}… ${total ? `${Math.floor(received / total * 100)}%` : `${Math.round(received / 1e6)} MB`}`) });
     if (server) {
       const name = binding?.languages[languageId as keyof typeof binding.languages]
         ?? inventory.languages.find(name => [language?.zedName,language?.name,language?.grammar,language?.label,languageId].some(candidate=>candidate?.toLowerCase()===name.toLowerCase()))
@@ -171,6 +184,8 @@ export class LanguageProvisioner {
       const prepared = await (downloads ? this.host : this.offlineHost).prepare({server,language:name,root,allowBinaryDownload:downloads,env:Object.fromEntries(Object.entries(env).filter((e): e is [string,string] => typeof e[1] === 'string')),
         settings:{[server]:{settings:options.settings??definition.settings,initialization_options:options.initializationOptions??definition.initializationOptions}}},progress).catch(error => {
           if (!downloads && /downloading language servers disabled/i.test(String(error))) throw disabled();
+          // The extension may have read a newer release list than Setdown did; the next start reads it again.
+          if (kotlin) forgetKotlinServer(kotlin);
           throw error;
         });
       // Adapter arguments can contain the server script or transport switches.

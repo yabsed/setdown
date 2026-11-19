@@ -2,12 +2,13 @@ import type { AnalysisObservation } from '../../core/document/analysis-context';
 import type * as M from 'monaco-editor';
 import type * as L from 'vscode-languageserver-protocol';
 import type { DocumentContent as DocumentTab } from '../../core/workspace/document-store';
-import type { LanguageApi, LanguageCapabilities, LanguageConnection, LanguageUnavailable, LanguageMethod } from '../../protocol/language';
+import type { LanguageApi, LanguageAutoInsert, LanguageCapabilities, LanguageConnection, LanguageUnavailable, LanguageMethod } from '../../protocol/language';
 import { textSynchronization } from '../../protocol/language';
 import { languageSupport } from '../../core/document/language-support';
 import { installNavigationFeatures } from './language-navigation-features';
 import { installSemanticFeatures } from './language-semantic-features';
 import { installEditFeatures } from './language-edit-features';
+import { installAutoInsertion } from './language-auto-insert';
 import { installPullDiagnostics, type DiagnosticCache } from './language-diagnostics';
 import { noCancellation, type LanguageFeatureContext } from './language-feature-context';
 import type { LanguageRefresh } from '../../protocol/language-features';
@@ -20,7 +21,7 @@ import { documentSupport, type ProviderSupport } from './document-support';
 import { problemsEmpty } from './document-presentation';
 import { featureNames } from '../../protocol/language-features';
 
-type Binding = { issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { autoInsert?: LanguageAutoInsert; companion?: boolean; issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -146,6 +147,7 @@ export class LanguageClient {
         binding.listener.dispose(); this.publishStatus(); return;
       }
       binding.uri = connection.uri; binding.state = 'ready'; binding.issue = undefined; binding.preparing = false; binding.context = connection.context; binding.analysis = connection.analysis; binding.messages = connection.messages; binding.serverName = connection.name;
+      binding.autoInsert = connection.autoInsert; binding.companion = connection.companion;
       this.setServer(binding, connection.server ?? binding.serverId);
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
@@ -267,6 +269,19 @@ export class LanguageClient {
   }
   capabilitiesFor(model: M.editor.ITextModel | null): L.ServerCapabilities {
     const binding = model && this.bindings.get(model); return binding && !binding.failed ? binding.capabilities : {};
+  }
+  /** The document's tool can name the file that belongs with it: a header's source, a source's header. */
+  hasCompanion(model: M.editor.ITextModel | null): boolean {
+    const binding = model && this.bindings.get(model); return !!binding && !binding.failed && binding.state === 'ready' && !!binding.companion;
+  }
+  /** Opens that file. `vendor/vscode-clangd/src/switch-source-header.ts`: the tool answers
+   * with an address, or with nothing when it found none. */
+  async openCompanion(model: M.editor.ITextModel): Promise<boolean> {
+    if (!this.hasCompanion(model)) return false;
+    const found = await this.request<string>(model, 'textDocument/switchSourceHeader', {}, noCancellation);
+    if (!found || typeof found !== 'string') return false;
+    await this.options.open(this.uri(found).fsPath, undefined);
+    return true;
   }
   async documentSymbols(model: M.editor.ITextModel): Promise<Array<{ name: string; line: number; column: number; kind: number }>> {
     if (!this.capabilitiesFor(model).documentSymbolProvider) return [];
@@ -412,6 +427,7 @@ export class LanguageClient {
       }),
     };
     installNavigationFeatures(context); installSemanticFeatures(context); installEditFeatures(context);
+    if (owner.autoInsert) installAutoInsertion(context, owner.autoInsert);
     installPullDiagnostics(context, diagnostics => this.diagnostics(owner, diagnostics, 'pull', owner.model.getVersionId()), owner.diagnosticCache);
     this.publishStatus();
     if (capabilities.completionProvider) owner.providers.push(api.languages.registerCompletionItemProvider(language, scoped({

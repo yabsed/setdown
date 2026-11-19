@@ -242,7 +242,8 @@ git -C vendor/vscode-java diff HEAD FETCH_HEAD -- src/requirements.ts src/jdkUti
 | 1 | 됨 | JDK 탐색(jdk-utils 0.6.0), 도구를 돌릴 JDK 선택(`requirements.ts`), 프로젝트용 JDK 목록과 기본값(`utils.ts`의 `getJavaConfig`, `addAutoDetectedJdks`) | `apps/desktop/src/main/language/tool-runtime.ts`, `language-manager.ts` |
 | 2 | 됨 | Zed Java 확장의 두 실패 문구("require at least Java version 25", "Could not find Java executable") | `language-issue.ts` |
 | 11 | 됨 | Intelephense 라이선스 표기(`proprietary`), 서버가 보낸 알림을 패널에 남기기 | `catalog/mason.json`과 그 생성 스크립트, `server-session.ts`, `document-presentation.ts` |
-| 5의 `isTrusted` | 보류 | 아래 "정할 것" | |
+| 5의 `isTrusted` | 됨 (8.1절) | `true`를 보낸다 | `extension-rules.ts` |
+| 3–10 | 됨 (8.1절) | 아래 8.1절의 표 | |
 
 **Java가 이제 하는 일.** jdt.ls를 띄우기 전에 이 컴퓨터의 JDK를 찾는다. 찾는 곳은 `JDK_HOME`, `JAVA_HOME`, PATH, SDKMAN, jEnv, jabba, JBang, asdf, Gradle이 받은 JDK, Homebrew, OS의 표준 폴더다. 도구는 25 이상인 것 가운데 "환경 변수가 가리킨 것, 버전 관리 도구의 것, 시스템 폴더의 것" 순서로, 같은 순위에서는 최신으로 돌린다. 찾은 JDK는 전부 `JavaSE-N` 이름으로 jdt.ls에 알려 주고, 어느 것이 프로젝트에 맞는지는 jdt.ls가 빌드 파일을 보고 고른다. 사람이 `java_home`이나 `java.configuration.runtimes`를 직접 적었으면 그 값이 남는다.
 
@@ -269,6 +270,60 @@ jdt.ls의 자체 기록에도 `JavaSE-25`와 `JavaSE-17` 두 런타임을 받아
 - 서버 알림 표시는 가짜 서버로 한 단위 테스트까지다. 실제 Intelephense가 보내는 알림을 앱 화면에서 보지는 않았다.
 
 **정할 것: Svelte의 `isTrusted`.** Svelte 서버는 이 값을 받지 못하면 신뢰한다고 보고 프로젝트의 `svelte.config.js`를 실행한다. VS Code는 작업 영역 신뢰 여부를 넘긴다. Setdown에는 신뢰 개념이 없고, "파일을 연 것이 동의"라는 입장이다(`tooling/language-host/src/project_host.rs:198`). 그래서 `true`를 보내는 것은 지금과 같고, 뜻 있는 변화는 "처음 여는 폴더는 묻는다" 같은 신뢰 개념을 들이는 것이다. 이것은 Svelte만의 일이 아니라 제품 결정이라 손대지 않았다.
+
+### 8.1 나머지 여덟 항목 (2026-11-19 밤)
+
+5절의 3–10번을 옮겼다. 규칙마다 가져온 `vendor/` 파일을 코드에 적었고, 옮겨 적은 값은 단위 테스트가 `vendor/`의 원문과 비교한다.
+
+| 5절 | 옮긴 규칙 | 옮긴 곳 | 도구가 도는 경로 |
+| --- | --- | --- | --- |
+| 3 Python | Zed의 환경 탐색(PET)을 Rust 호스트에 물어 pyenv·Poetry·Pipenv·Hatch·Pixi·uv·Conda 환경을 찾는다. 이 프로젝트를 위해 만든 환경이 하나면 쓰고 여럿이면 묻는다 | 호스트 연산 `toolchains`(`tooling/language-host/src/main.rs`), `python-toolchains.ts`, `analysis-context.ts` | 기존 경로 |
+| 4 Go | Go 확장의 `gopls` 탐색 순서(`GOBIN`, `GOPATH/bin`, `GOROOT/bin`, PATH)와 `go install` 설치 | `go-tools.ts`, `project-languages.ts` | Zed 엔진 |
+| 5 Svelte | 시작 옵션(설정 묶음, `isTrusted: true`), 열린 `.ts`/`.js` 변경 알림, 설정 파일이 바뀌면 재시작, 태그 닫기 | `extension-rules.ts`, `language-manager.ts` | 기존 경로 |
+| 6 Kotlin | 서버 꾸러미를 Setdown이 받아 JetBrains가 공개한 체크섬과 맞을 때만 시작한다. 확장이 보내는 시작 옵션을 보낸다. Zed 확장이 검증 없이 받으려는 요청은 호스트가 거절한다 | `kotlin-download.ts`, `kotlin-options.ts`, `main.rs` | 양쪽 |
+| 7 JSON | 스키마를 서버가 아니라 편집기가 받는다. 신뢰 도메인 검사, 디스크 캐시와 ETag 재확인, 쓰인 스키마 목록 표시 | `json-schema-content.ts`, `project_host.rs`의 `project.schemaContent` | Zed 엔진 |
+| 8 HTML | `>`, `/`, `=`를 치면 닫는 태그와 따옴표를 넣는다 | `language-auto-insert.ts`, `extension-rules.ts` | Zed 엔진 |
+| 9 C/C++·Rust | 소스/헤더 전환(Alt+O), `#if`로 빠진 줄을 흐리게 표시, rust-analyzer의 상태 알림(일부 결과가 틀릴 수 있음, 대부분 틀림, 아직 작업 중) | `extension-rules.ts`, `server-session.ts`, `monaco-editor.ts` | 기존 경로 |
+| 10 TS/JS | tsserver 메모리 한도 3072 MB, 타입 꾸러미 자동 내려받기 끔, npm 위치와 표시 언어, Svelte tsserver 플러그인 전달 | `extension-rules.ts`, `server-definitions.ts` | 기존 경로 |
+
+**확인한 것.** 실제 GitHub 프로젝트의 고정 커밋에서 제품의 언어 관리자를 그대로 돌렸다(`apps/lsp-benchmark`, 결과는 `results/`의 `after-*`와 `compare-*`). 묻는 것은 거짓 오류 없음, 틀린 줄 표시, 호버, 자동완성, 정의로 이동이고, C/C++에는 "빠진 줄을 흐리게 표시"를 더했다.
+
+| 언어 | 프로젝트 | 결과 |
+| --- | --- | --- |
+| Python | pallets/flask | 전부 충족 |
+| Python, Poetry 환경 | python-poetry/cleo | 전부 충족. `poetry install`이 `~/.cache/pypoetry/virtualenvs/cleo-…`에 만든 환경이 자동으로 선택되어, `pytest_mock`의 정의가 그 환경 안의 파일로 이어졌다 |
+| Go, go.mod | spf13/cobra | 전부 충족 |
+| JSON 5종, HTML | p-queue, html5-boilerplate, realworld | 전부 충족. 스키마 캐시가 Setdown의 내려받기로 채워졌다 |
+| TypeScript, JavaScript, Svelte 2종 | p-queue, express, realworld | 전부 충족 |
+| C, C++ | DaveGamble/cJSON, fmtlib/fmt | 전부 충족. 빠진 영역 7개와 16개가 표시됐다 |
+| Rust | BurntSushi/walkdir | 전부 충족 |
+
+rust-analyzer의 상태 알림은 없는 의존성을 적은 `Cargo.toml`로 실제 서버를 띄워 확인했다. "일부 결과가 틀릴 수 있다"는 알림에 `cargo metadata`의 실패 원인이 붙어 나왔다.
+
+**5절의 계획과 다르게 한 것.**
+
+- **Python은 Zed 엔진 경로로 옮기지 않았다.** 엔진 경로에서 flask를 열면 프로젝트의 올바른 줄 하나가 오류로 표시됐다(`after-zed-python`: 243행). Zed의 Pyright는 Setdown의 검사 수준 기본값을 받지 못한다. 검사 수준, 스텁, 환경 선택은 폴더마다 정하는 값인데 Zed 설정에는 그 자리가 없다. 그래서 탐색만 Zed의 것을 쓰고 선택 규칙은 기존 경로에 두었다. Zed는 묻지 않고 목록의 첫 환경을 쓴다. Setdown은 프로젝트의 환경이 여럿이면 묻는다.
+- **clangd와 rust-analyzer도 옮기지 않았다.** 벤치마크의 답은 두 경로가 같다. 시작은 엔진 경로가 느리다(C 1.2초 대 0.3초, Rust 3.3초 대 0.4초). 엔진 경로에는 빌드 폴더가 여럿일 때 묻는 화면과 `compile_commands.json` 선택이 없고, Rust의 잠금 파일 경합도 풀지 않았다. 그래서 Zed가 다루는 두 기능을 Zed의 규칙대로 기존 경로에 옮겼다. 이것은 "Zed의 코드를 쓰고 자체 구현을 줄인다"는 방침에서 벗어난 자리다. 위 두 가지가 풀리면 `zed-settings.ts`의 `projectEngineTools`에 두 도구를 넣어 옮길 수 있다. 그때 엔진 경로에는 rust-analyzer 상태를 화면에 내는 코드가 따로 필요하다. 호스트는 이미 그 상태를 전달하지만 화면에 쓰는 곳이 없다.
+- **`vtsls`로 바꾸지 않았다.** 같은 두 프로젝트에서 둘 다 전부 충족했다. 포함된 `typescript-language-server`는 0.3초에 시작했고 TypeScript의 첫 답이 1.2초였다. `vtsls`는 내려받기가 필요했고 2.2초였다. 바꿀 이유가 없어 서버 설정만 옮겼다.
+
+**바뀐 기존 동작.**
+
+- 신뢰 목록 밖 도메인의 JSON 스키마는 받지 않고, 파일에 그 사실을 표시한다. VS Code와 같다. `json.schemaDownload.trustedDomains`에 도메인을 더하면 받는다.
+- tsserver가 타입 꾸러미를 스스로 내려받지 않는다. VS Code는 받는다. Setdown은 사람이 요청하지 않은 것을 받지 않는다는 원칙을 따랐다. `"typescript.disableAutomaticTypeAcquisition": false`로 켠다.
+- rust-analyzer의 문제는 한 번 지나가는 알림 대신 유지되는 상태로 보인다. 같은 상태는 한 번만 보이고, 상태가 바뀌면 바뀐다.
+- `gopls`가 없고 내려받기가 켜져 있으면 Zed의 내려받기 대신 `go install`로 Setdown의 폴더에 설치한다. 설치가 실패하면 그 사실을 보여 주고 다른 것을 대신 띄우지 않는다.
+- Python 파일을 열 때 프로젝트 밖에 있는 그 프로젝트의 환경이 자동으로 선택될 수 있다. 전에는 호스트 Python이 쓰였다.
+
+**정한 것.** Svelte의 `isTrusted`는 `true`를 보낸다. Setdown에는 작업 영역 신뢰가 없고 파일을 연 것이 동의다. Kotlin은 검증된 내려받기가 실패하면 서버를 시작하지 않는다. 이전 판의 폴더는 앱을 띄운 뒤 Kotlin을 처음 쓸 때만 지운다.
+
+**하지 않은 것.**
+
+- Pipenv, Hatch, Pixi, pyenv 환경은 실제 도구로 만들어 보지 않았다. PET 소스에서 프로젝트 폴더나 환경 폴더를 기록하는 것을 읽었고, 규칙은 단위 테스트로만 확인했다. 실제로 돌린 것은 Poetry와 uv와 Conda다.
+- 실제 `go install`과 실제 Kotlin 꾸러미 내려받기는 돌리지 않았다. 가짜 실행과 가짜 응답으로 한 단위 테스트까지다. 이 컴퓨터에는 `gopls`와 Kotlin 서버가 이미 있다.
+- Kotlin 벤치마크는 다시 돌리지 않았다. JVM 도구를 띄울 메모리(약 5.5 GiB)가 남지 않았다.
+- macOS와 Windows. 전부 이 컴퓨터(Linux)에서만 돌렸다.
+- HTML 자동 닫기, Alt+O, 흐리게 표시된 줄, rust-analyzer 알림을 앱 화면에서 눈으로 보지는 않았다. 서버와 주고받는 내용까지 확인했다.
+- 미리보기 성능 벤치마크(`bench:preview`)는 돌리지 않았다. 미리보기 준비·표시·전환·테마 코드와 의존성을 바꾸지 않았다.
 
 ## 부록 A. 기준 소스
 

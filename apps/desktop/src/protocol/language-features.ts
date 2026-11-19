@@ -29,7 +29,14 @@ export const resolveMethods = {
   'typeHierarchy/supertypes': 'textDocument/prepareTypeHierarchy',
   'typeHierarchy/subtypes': 'textDocument/prepareTypeHierarchy',
 } as const;
-export const isDocumentMethod = (method: string) => method.startsWith('textDocument/');
+/** Requests about one document: the main process fills in the document's address. */
+export const isDocumentMethod = (method: string) => method.startsWith('textDocument/') || method === 'html/autoInsert' || method === 'html/tag';
+/** What a request is sent with. The editor names no document: the main process knows which one a channel is for. */
+export function documentRequest(method: string, params: object, uri: string): unknown {
+  // clangd takes the document itself as the parameter (vendor/vscode-clangd/src/switch-source-header.ts).
+  if (method === 'textDocument/switchSourceHeader') return { uri };
+  return isDocumentMethod(method) ? { ...params, textDocument: { uri } } : params;
+}
 
 export function clientCapabilities(): ClientCapabilities {
   const formats: ('markdown' | 'plaintext')[] = ['markdown', 'plaintext'];

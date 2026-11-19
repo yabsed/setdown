@@ -31,6 +31,18 @@ use crate::emit;
 /// A server's own edit request waits this long for Setdown to apply or refuse it.
 const EDIT_ANSWER_TIMEOUT: Duration = Duration::from_secs(120);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
+/// `SchemaRequestServiceErrors.HTTPError` of VS Code's JSON extension: a download that failed.
+const SCHEMA_REQUEST_FAILED: i64 = 5;
+/// A schema the JSON server asked for waits this long for Setdown to download or refuse it.
+const SCHEMA_ANSWER_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// `vscode/content`: the JSON server asks its editor for a schema it does not read itself.
+enum SchemaContent {}
+impl lsp::request::Request for SchemaContent {
+    type Params = Vec<String>;
+    type Result = String;
+    const METHOD: &'static str = "vscode/content";
+}
 const SHUTDOWN_LIMIT: Duration = Duration::from_secs(3);
 
 /// The requests Setdown may send to a server Zed runs. They cross unchanged in both
@@ -84,6 +96,11 @@ raw_requests!(
     Supertypes = "typeHierarchy/supertypes", Subtypes = "typeHierarchy/subtypes",
     WillCreateFiles = "workspace/willCreateFiles", WillRenameFiles = "workspace/willRenameFiles",
     WillDeleteFiles = "workspace/willDeleteFiles",
+    // Outside the protocol: what one tool's own editor extension asks it. Setdown sends each
+    // only to the tool it belongs to (`apps/desktop/src/main/language/extension-rules.ts`).
+    HtmlAutoInsert = "html/autoInsert", HtmlTag = "html/tag",
+    SwitchSourceHeader = "textDocument/switchSourceHeader",
+    JsonLanguageStatus = "json/languageStatus",
 );
 
 /// What Setdown tells a server itself: a save it is about to make, and the files it created,
@@ -108,6 +125,8 @@ macro_rules! raw_notifications {
 raw_notifications!(
     WillSave = "textDocument/willSave", DidCreateFiles = "workspace/didCreateFiles",
     DidRenameFiles = "workspace/didRenameFiles", DidDeleteFiles = "workspace/didDeleteFiles",
+    // The Svelte server reads TypeScript and JavaScript files from disk unless told of a change.
+    SvelteScriptChanged = "$/onDidChangeTsOrJsFile",
 );
 
 struct Document {
@@ -141,6 +160,9 @@ pub struct ProjectHost {
     requests: HashMap<u64, Task<()>>,
     edits: HashMap<u64, oneshot::Sender<(bool, Option<String>)>>,
     next_edit: u64,
+    /// Schemas Setdown was asked to download: the text, or the refusal's code and message.
+    schemas: HashMap<u64, oneshot::Sender<std::result::Result<String, (i64, String)>>>,
+    next_schema: u64,
 }
 
 /// Zed reports how it is used to its makers. This process is not Zed in a person's hands,
@@ -188,6 +210,8 @@ impl ProjectHost {
             requests: HashMap::default(),
             edits: HashMap::default(),
             next_edit: 0,
+            schemas: HashMap::default(),
+            next_schema: 0,
         })
     }
 
@@ -231,6 +255,7 @@ impl ProjectHost {
             LspStoreEvent::LanguageServerAdded(id, name, _) => {
                 if let Some(server) = lsp_store.read(cx).language_server_for_id(*id) {
                     self.own_server_edits(workspace, &server, cx);
+                    self.own_schema_downloads(workspace, lsp_store, &server, cx);
                 }
                 emit(json!({"event": "project.server", "workspace": workspace, "state": "added", "server": id.0, "name": name.0}));
             }
@@ -336,6 +361,50 @@ impl ProjectHost {
                     };
                     this.update(&mut cx, |this, _| this.edits.remove(&edit)).ok();
                     Ok(lsp::ApplyWorkspaceEditResponse { applied, failure_reason, failed_change: None })
+                }
+            })
+            .detach();
+    }
+
+    /// Zed answers `vscode/content` for its own `zed://` schemas, and its JSON server downloads
+    /// every other schema by itself. VS Code's JSON extension has the editor download them, so
+    /// that an address is checked against the trusted domains and the schema is kept on disk.
+    /// Setdown starts the server the way that extension does (`handledSchemaProtocols`), so an
+    /// http(s) address arrives here and goes on to Setdown, which answers as that extension would.
+    fn own_schema_downloads(&mut self, workspace: &str, lsp_store: &Entity<project::LspStore>, server: &Arc<LanguageServer>, cx: &mut Context<Self>) {
+        let this = cx.weak_entity();
+        let lsp_store = lsp_store.downgrade();
+        let workspace = workspace.to_string();
+        let server_id = server.server_id().0;
+        server.remove_request_handler::<SchemaContent>();
+        server
+            .on_request::<SchemaContent, _, _>(move |mut params, cx| {
+                let this = this.clone();
+                let lsp_store = lsp_store.clone();
+                let workspace = workspace.clone();
+                let mut cx = cx.clone();
+                async move {
+                    let uri = params.pop().context("No URI")?;
+                    if !(uri.starts_with("http://") || uri.starts_with("https://")) {
+                        let lsp_store = lsp_store.upgrade().context("LSP store has been dropped")?;
+                        return json_schema_store::handle_schema_request(lsp_store, uri, &mut cx).await;
+                    }
+                    let (request, answer) = this.update(&mut cx, |this, _| {
+                        let (send, receive) = oneshot::channel();
+                        this.next_schema += 1;
+                        this.schemas.insert(this.next_schema, send);
+                        (this.next_schema, receive)
+                    })?;
+                    emit(json!({"event": "project.schemaContent", "workspace": workspace, "server": server_id, "request": request, "uri": uri}));
+                    let mut timeout = cx.background_executor().timer(SCHEMA_ANSWER_TIMEOUT).fuse();
+                    let mut answer = answer.fuse();
+                    let answer = futures::select_biased! {
+                        answer = answer => answer.unwrap_or_else(|_| Err((SCHEMA_REQUEST_FAILED, "The editor closed before answering.".into()))),
+                        _ = timeout => Err((SCHEMA_REQUEST_FAILED, "The editor did not answer in time.".into())),
+                    };
+                    this.update(&mut cx, |this, _| this.schemas.remove(&request)).ok();
+                    // The server reads the refusal's code: it tells an untrusted address from a failed download.
+                    answer.map_err(|(code, message)| anyhow::Error::new(lsp::ResponseError { code: code.into(), message, data: None }))
                 }
             })
             .detach();
@@ -762,6 +831,15 @@ impl ProjectHost {
                     let edit = request["edit"].as_u64().context("Missing `edit`")?;
                     let answer = (request["applied"].as_bool().unwrap_or(false), request["failureReason"].as_str().map(str::to_string));
                     let sender = this.update(cx, |this, _| this.edits.remove(&edit)).ok_or_else(|| anyhow!("Unknown edit"))?;
+                    json!({"delivered": sender.send(answer).is_ok()})
+                }
+                "project.schemaContentResult" => {
+                    let schema = request["request"].as_u64().context("Missing `request`")?;
+                    let answer = match request["content"].as_str() {
+                        Some(content) => Ok(content.to_string()),
+                        None => Err((request["code"].as_i64().unwrap_or(SCHEMA_REQUEST_FAILED), request["error"].as_str().unwrap_or("The schema could not be loaded.").to_string())),
+                    };
+                    let sender = this.update(cx, |this, _| this.schemas.remove(&schema)).ok_or_else(|| anyhow!("Unknown schema request"))?;
                     json!({"delivered": sender.send(answer).is_ok()})
                 }
                 other => bail!("Unknown operation {other}"),

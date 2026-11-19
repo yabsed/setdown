@@ -298,6 +298,106 @@ test('a notice the server shows stays until it is dismissed, without repeats and
   await server.stop(); expect(server.messages).toEqual([]);
 });
 
+test('rust-analyzer\'s standing status is shown as it stands: one notice replaced by the next, a line of facts, and work still going on', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-status-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    let asked;
+    c.onRequest('initialize', params => { asked = params.capabilities.experimental; return {capabilities:{}}; });
+    c.onRequest('asked', () => asked ?? null);
+    c.onRequest('status', params => { c.sendNotification('experimental/serverStatus', params); return null; });
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  let activity = 0;
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, serverProfiles['rust-analyzer'], { activity: () => { activity++; } });
+  sessions.push(server); await server.ready;
+  // The tool reports its status only to an editor that asks for it.
+  expect(await server.request('asked', {})).toEqual({ serverStatusNotification: true });
+  const notices = () => server.messages.map(({ message, severity, actions }) => ({ message, severity, actions }));
+  await server.request('status', { health: 'ok', quiescent: false });
+  await expect.poll(() => server.progress.size).toBe(1);
+  expect([...server.progress.values()]).toEqual(['rust-analyzer is still working: results may change']);
+  expect(notices()).toEqual([]); expect(server.context.has('Server status')).toBe(false);
+  await server.request('status', { health: 'warning', quiescent: true, message: 'Failed to load workspaces.' });
+  await expect.poll(() => server.messages.length).toBe(1);
+  expect(notices()).toEqual([{ severity: 'warning', actions: [], message: 'rust-analyzer is only partly working: some results may be wrong.\n\nFailed to load workspaces.' }]);
+  expect(server.context.get('Server status')).toBe('rust-analyzer is only partly working: some results may be wrong. Failed to load workspaces.');
+  expect(server.progress.size).toBe(0);
+  expect(server.logs.join('\n')).toContain('Server status (warning): Failed to load workspaces.');
+  // The same status again is the same notice; dismissed, it does not come back until the status changes.
+  const first = server.messages[0].id, before = activity;
+  await server.request('status', { health: 'warning', quiescent: true, message: 'Failed to load workspaces.' });
+  await expect.poll(() => activity).toBeGreaterThan(before);
+  expect(server.messages.map(entry => entry.id)).toEqual([first]);
+  server.answerMessage(first);
+  await server.request('status', { health: 'warning', quiescent: false, message: 'Failed to load workspaces.' });
+  await expect.poll(() => server.progress.size).toBe(1);
+  expect(notices()).toEqual([]);
+  expect(server.context.get('Server status')).toContain('some results may be wrong');
+  // A worse status replaces it, and a good one takes it away.
+  await server.request('status', { health: 'error', quiescent: true });
+  await expect.poll(() => server.messages.length).toBe(1);
+  expect(notices()).toEqual([{ severity: 'error', actions: [], message: 'rust-analyzer is not working: most results will be incomplete or wrong.' }]);
+  await server.request('status', { health: 'warning', quiescent: true, message: 'proc-macro server failed' });
+  await expect.poll(() => server.messages[0]?.severity).toBe('warning');
+  expect(server.messages).toHaveLength(1);
+  await server.request('status', { health: 'ok', quiescent: true });
+  await expect.poll(() => server.messages.length).toBe(0);
+  expect(server.context.has('Server status')).toBe(false); expect(server.progress.size).toBe(0);
+  // What is not a status changes nothing.
+  await server.request('status', { health: 'fine' });
+  await server.request('status', { health: 'ok', quiescent: true, message: 'Ready' });
+  await expect.poll(() => server.context.get('Server status')).toBe('Ready');
+  expect(notices()).toEqual([]);
+});
+
+test('clangd\'s inactive regions reach the editor with its diagnostics of the same version, and only for a tool that was asked for them', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-regions-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    let asked;
+    c.onRequest('initialize', params => { asked = params.capabilities.textDocument.inactiveRegionsCapabilities; return {capabilities:{}}; });
+    c.onRequest('asked', () => asked ?? null);
+    c.onRequest('send', params => { for (const [method, value] of params) c.sendNotification(method, value); return null; });
+    c.onNotification('textDocument/didClose', () => {});
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  const uri = pathToFileURL(path.join(root, 'main.c')).href, region = { start: { line: 4, character: 0 }, end: { line: 9, character: 6 } };
+  const error = { range: { start: { line: 1, character: 2 }, end: { line: 1, character: 5 } }, severity: 1, message: 'unknown type name' };
+  const faded = { range: region, severity: 4, source: 'clangd', message: 'Inactive region: the preprocessor leaves these lines out of this build', tags: [1] };
+  const seen: PublishDiagnosticsParams[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, params => seen.push(params), () => {}, serverProfiles.clangd);
+  sessions.push(server); await server.ready;
+  expect(await server.request('asked', {})).toEqual({ inactiveRegions: true });
+  // Regions before the diagnostics of that version say nothing yet; with them, both are given.
+  await server.request('send', [['textDocument/inactiveRegions', { textDocument: { uri, version: 1 }, regions: [region] }]]);
+  await server.request('send', [['textDocument/publishDiagnostics', { uri, version: 1, diagnostics: [error] }]]);
+  await expect.poll(() => seen.length).toBe(1);
+  expect(seen[0]).toEqual({ uri, version: 1, diagnostics: [error, faded] });
+  // New diagnostics for a changed text are given without the old regions, then with the new ones.
+  await server.request('send', [['textDocument/publishDiagnostics', { uri, version: 2, diagnostics: [] }], ['textDocument/inactiveRegions', { textDocument: { uri, version: 2 }, regions: [region, region] }]]);
+  await expect.poll(() => seen.length).toBe(3);
+  expect(seen.slice(1)).toEqual([{ uri, version: 2, diagnostics: [] }, { uri, version: 2, diagnostics: [faded, faded] }]);
+  // A closed file keeps nothing.
+  await server.notify('textDocument/didClose', { textDocument: { uri } });
+  await server.request('send', [['textDocument/publishDiagnostics', { uri, version: 2, diagnostics: [error] }]]);
+  await expect.poll(() => seen.length).toBe(4);
+  expect(seen[3]).toEqual({ uri, version: 2, diagnostics: [error] });
+  // A tool that was not asked for regions has its diagnostics passed on as they are, whatever else it sends.
+  const plain: PublishDiagnosticsParams[] = [];
+  const other = new ServerSession({ executable: process.execPath, args: [fixture] }, root, params => plain.push(params), () => {});
+  sessions.push(other); await other.ready;
+  expect(await other.request('asked', {})).toBeNull();
+  await other.request('send', [['textDocument/publishDiagnostics', { uri, version: 1, diagnostics: [error] }], ['textDocument/inactiveRegions', { textDocument: { uri, version: 1 }, regions: [region] }],
+    ['textDocument/publishDiagnostics', { uri, version: 1, diagnostics: [] }]]);
+  await expect.poll(() => plain.length).toBe(2);
+  expect(plain).toEqual([{ uri, version: 1, diagnostics: [error] }, { uri, version: 1, diagnostics: [] }]);
+});
+
 test('a server that registers configuration or unknown capabilities stays connected', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-registration-'));
   roots.push(root);
@@ -356,3 +456,35 @@ test('real basedpyright reads %%time bodies and IPython help only through the no
   const real = published.filter(batch => batch.uri === analyzed[4].uri).at(-1)!.diagnostics.filter(d => d.code === 'reportUndefinedVariable');
   expect(real.map(d => [d.severity, d.range.start.character, d.range.end.character])).toEqual([[2, 13, 25]]);
 }, 60_000);
+
+test('the JSON server gets a schema from its editor, or the refusal with its code, and is asked a document\'s schemas by its address alone', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-schemas-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  // As vendor/vscode/extensions/json-language-features/server/src/jsonServer.ts asks and is asked.
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter, RequestType} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    const content = new RequestType('vscode/content');
+    c.onRequest('initialize', () => ({capabilities:{}}));
+    c.onRequest('fetch', ({uri}) => c.sendRequest(content, uri).then(text => ({text}), error => ({code: error.code, message: error.message})));
+    c.onRequest('json/languageStatus', uri => ({schemas: [typeof uri === 'string' ? 'asked for ' + uri : 'not an address']}));
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  const asked: string[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, undefined, { schemaContent: async uri => {
+    asked.push(uri);
+    if (uri.includes('untrusted')) throw Object.assign(Error(`Location ${uri} is untrusted`), { code: 2 });
+    if (uri.includes('broken')) throw Error('socket hang up');
+    return '{"type":"object"}';
+  } });
+  sessions.push(server); await server.ready;
+  expect(await server.request('fetch', { uri: 'https://json.schemastore.org/package.json' })).toEqual({ text: '{"type":"object"}' });
+  expect(await server.request('fetch', { uri: 'https://untrusted.example/s.json' })).toEqual({ code: 2, message: 'Location https://untrusted.example/s.json is untrusted' });
+  // A failure without a code of its own is the extension's "could not load" (5).
+  expect(await server.request('fetch', { uri: 'https://broken.example/s.json' })).toEqual({ code: 5, message: 'socket hang up' });
+  expect(asked).toEqual(['https://json.schemastore.org/package.json', 'https://untrusted.example/s.json', 'https://broken.example/s.json']);
+  expect(await server.request('json/languageStatus', 'file:///project/package.json')).toEqual({ schemas: ['asked for file:///project/package.json'] });
+  const plain = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {});
+  sessions.push(plain); await plain.ready;
+  expect(await plain.request('fetch', { uri: 'https://json.schemastore.org/package.json' })).toMatchObject({ code: 5 });
+});

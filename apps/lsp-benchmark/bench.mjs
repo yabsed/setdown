@@ -119,6 +119,12 @@ for (const item of selected) {
       return { ok: offers(answer, check.expect), expected: `"${check.expect}" offered`,
         observed: labels.length ? `${labels.length} offered, first: ${labels.slice(0, 6).join(', ')}` : 'nothing offered' };
     } })),
+    // Code the build leaves out is shown faded, so that it is not read as code that runs.
+    ...(item.faded ?? []).map(check => ({ kind: 'faded', what: check.at, async ask() {
+      const { line } = at(text, check.at), all = (await diagnostics()).filter(d => d.tags?.includes(1));
+      return { ok: all.some(d => d.range.start.line <= line && d.range.end.line >= line), expected: 'the line is marked as left out',
+        observed: all.length ? `${all.length} region${all.length === 1 ? '' : 's'} left out: lines ${all.slice(0, 8).map(d => `${d.range.start.line + 1}-${d.range.end.line + 1}`).join(', ')}` : 'nothing marked as left out' };
+    } })),
     ...(item.definition ?? []).map(check => ({ kind: 'definition', what: check.on ?? check.at, async ask() {
       const targets = definitionTargets(await request('textDocument/definition', { position: at(text, check.at, check.on) }));
       return { ok: leadsTo(targets, check.to), expected: `leads to ${check.to}`,

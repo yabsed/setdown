@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-19T12:15:27.426Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "rust",
+      "language": "Rust",
+      "project": "BurntSushi/walkdir@6fd031c82b",
+      "file": "src/lib.rs",
+      "expectedTool": "rust-analyzer",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.2
+        },
+        {
+          "kind": "mistake",
+          "what": "fn setdown_mistake() { setdown_mistake(1); }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: expected 0 arguments, found 1",
+          "seconds": 2.196
+        },
+        {
+          "kind": "hover",
+          "what": "from_path",
+          "ok": true,
+          "expected": "text matching /fn from_path/",
+          "observed": "```rust same_file::Handle ``` ```rust pub fn from_path<P>(p: P) -> io::Result<Handle> where P: AsRef<Path>, ``` --- `P` = `&P` --- Construct a handle from a pa…",
+          "seconds": 2.198
+        },
+        {
+          "kind": "hover",
+          "what": "read_dir",
+          "ok": true,
+          "expected": "text matching /fn read_dir/",
+          "observed": "```rust std::fs ``` ```rust pub fn read_dir<P>(path: P) -> io::Result<ReadDir> where P: AsRef<Path>, ``` --- `P` = `&Path` --- Returns an iterator over the ent…",
+          "seconds": 1.154
+        },
+        {
+          "kind": "completion",
+          "what": "Handle::from_pa|",
+          "ok": true,
+          "expected": "\"from_path\" offered",
+          "observed": "13 offered, first: from_path, from_file, stdin, stdout, stderr, as_file",
+          "seconds": 1.161
+        },
+        {
+          "kind": "definition",
+          "what": "from_path",
+          "ok": true,
+          "expected": "leads to src/dent.rs",
+          "observed": "src/dent.rs:252",
+          "seconds": 1.164
+        },
+        {
+          "kind": "definition",
+          "what": "Handle",
+          "ok": true,
+          "expected": "leads to /same-file[^/]*\\/src\\/lib\\.rs$/",
+          "observed": "../../../../../../../../../../.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/same-file-1.0.6/src/lib.rs:109",
+          "seconds": 1.165
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.371,
+        "tool": "rust-analyzer",
+        "name": "rust-analyzer",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/walkdir",
+          "Root: Project marker: Cargo.toml (workspace)",
+          "Toolchain configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/walkdir/Cargo.lock",
+          "The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.: ",
+          "Server: rust-analyzer 0.3.3121-standalone"
+        ]
+      }
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { unwatchFile, watchFile } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { ApplyWorkspaceEditResult, Diagnostic, FileOperationRegistrationOptions, ServerCapabilities, TextDocumentContentChangeEvent, WorkspaceEdit } from 'vscode-languageserver-protocol';
 import { languageMethods, type LanguageCapabilities, type LanguageCatalogEntry, type LanguageConnection, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod, type LanguageUnavailable } from '../../protocol/language';
-import { featureNames, isDocumentMethod, resolveMethods, type LanguageRefresh } from '../../protocol/language-features';
+import { documentRequest, featureNames, resolveMethods, type LanguageRefresh } from '../../protocol/language-features';
 import { languageFailure } from '../../protocol/language-request';
 import type { AnalysisObservation } from '../../core/document/analysis-context';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
@@ -13,12 +13,17 @@ import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
 import { failureLine, runtimeIssue } from './language-issue';
+import { answersRequest, autoInsertion, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, jsonLanguageStatus, schemaLines, svelteScriptChanged, svelteScriptLanguages } from './extension-rules';
+import { findGoTool, goEnvironment, installGoTool } from './go-tools';
+import { forgetKotlinServer, kotlinServerForRun } from './kotlin-download';
+import { kotlinInitializationOptions } from './kotlin-options';
+import { schemaContentErrors, schemaDownloadSettings, SchemaContentError, type JsonSchemaContent } from './json-schema-content';
 import { LanguagePackageStore, type ExtensionPackage } from './language-package-store';
 import { LanguageServiceSupervisor } from './language-supervisor';
 import type { ServerRegistry } from './server-registry';
 import { ServerItems } from './server-items';
 import { ZedLanguageHost, type HostEvent } from './zed-language-host';
-import { plainLanguages, projectEngineTools, projectFolder, setdownChoices, setdownDefaults, zedLanguage, zedNames, type BundledProgram, type ZedNames } from './zed-settings';
+import { plainLanguages, projectEngineTools, projectFolder, setdownChoices, setdownDefaults, zedLanguage, zedNames, type BundledProgram, type SetdownRules, type ZedNames } from './zed-settings';
 
 /** The tool a channel of the editor asked for, and the server Zed runs for it. */
 export type ProjectTarget = { tool: string; toolName: string; server: string; primary: boolean; languageId: string };
@@ -26,6 +31,8 @@ type Channel = { id: string; generation: string; version: number; target: Projec
   capabilities: LanguageCapabilities; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue;
   /** Zed said it is fetching the tool, which can take many minutes. */
   preparing?: boolean;
+  /** What the tool said about this file once, shown with the project in the document panel. */
+  notes?: string[];
   waiting?: { changed(): void; failed(error: Error): void } };
 /** One file of one window. Every channel of the editor (the language's own tool and each
  * helper tool) reads the same text, so Zed holds one copy and each change is applied once. */
@@ -43,6 +50,10 @@ export type ProjectLanguagesOptions = {
   registry(): ServerRegistry; catalog(): Catalog; packaged: boolean;
   emit(state: WindowState, event: LanguageEvent): void;
   download?: typeof fetch; environment?: NodeJS.ProcessEnv;
+  /** Downloads the schemas the JSON server asks for. Without it the server downloads them itself. */
+  schemas?: JsonSchemaContent;
+  /** The environment tools are looked for in: the person's login shell, where it is known. */
+  toolEnvironment?(): NodeJS.ProcessEnv;
 };
 
 /** What the editor is told about a server Zed runs. Zed keeps the server's copy of the text
@@ -97,6 +108,9 @@ export class ProjectLanguages {
   private readonly packages: LanguagePackageStore;
   private readonly userSettings: string;
   private watching = false;
+  /** What was found out for single tools on this computer; part of Setdown's settings layer. */
+  private rules: SetdownRules = {};
+  private readonly prepared = new Map<string, Promise<void>>();
   private applying: Promise<unknown> = Promise.resolve();
   private disposed = false;
   constructor(private readonly options: ProjectLanguagesOptions) {
@@ -141,7 +155,7 @@ export class ProjectLanguages {
     const apply = this.applying.catch(() => {}).then(async () => {
       const registry = this.options.registry();
       const definition = (id: string) => { try { return registry.definition(id); } catch { return undefined; } };
-      const defaults = setdownDefaults(session.names, definition, this.bundled());
+      const defaults = setdownDefaults(session.names, definition, this.bundled(), { schemaDownloads: !!this.options.schemas, ...this.rules });
       const user = await readFile(this.userSettings, 'utf8').catch(() => '{}');
       const result = await session.host.request<{ user?: string | null }>('project.settings',
         { defaults: JSON.stringify(defaults), user: user.trim() ? user : '{}', choices: JSON.stringify(setdownChoices(registry, session.names, defaults)),
@@ -155,11 +169,18 @@ export class ProjectLanguages {
     if (!this.session) return;
     const session = await this.session.catch(() => undefined); if (!session) return;
     if (session.offline === this.options.registry().automaticInstall()) { await this.restartHost('Download settings changed.'); return; }
+    // What was found out for a tool is made from its settings too, so it is found out again.
+    const again = [...this.prepared.keys()].map(key => key.split('\0')), tools = this.options.registry().definitions();
+    this.prepared.clear();
+    for (const [id, folder] of again) {
+      const tool = tools.find(other => other.id === id);
+      if (tool) await this.prepareTool(session, tool, folder, () => {}).catch(error => console.warn(`Could not prepare ${tool.name}`, error));
+    }
     await this.applySettings(session);
   }
   private async restartHost(reason: string): Promise<void> {
     const session = await this.session?.catch(() => undefined);
-    this.session = undefined;
+    this.session = undefined; this.prepared.clear();
     if (session) { session.stop(); session.host.dispose(); }
     this.lost(reason, false);
   }
@@ -212,6 +233,9 @@ export class ProjectLanguages {
     if (!opened) {
       const folder = projectFolder(file, { ...definition, languages: definition.languages.filter(language => language.languageId === target.languageId) },
         state.projectRoot ? canonicalPath(state.projectRoot) : undefined, this.options.registry().options(target.tool, file).root);
+      // Zed starts the tool as soon as it has the file, so what the tool needs first is done first.
+      const prepared = this.prepareTool(session, definition, folder.path, this.preparing(state, { id: target.tool, name: target.toolName }, [{ id: document.id, generation: document.generation }]));
+      prepared.catch(() => {});
       if (!folder.single && !window.folders.has(folder.path)) {
         window.folders.add(folder.path);
         void host.request('project.folder', { workspace, root: folder.path }).catch(() => window.folders.delete(folder.path));
@@ -219,7 +243,8 @@ export class ProjectLanguages {
       const created: OpenFile = { path: file, uri: pathToFileURL(file).href, owner, root: folder.path, rootReason: folder.reason, revision: document.version, channels: new Map(),
         // The document's language is Setdown's: the one the person sees and can change, and the
         // one that led to this tool. Zed is told it where it has a name for it.
-        opened: host.request('project.open', { workspace, path: file, text: document.text, revision: document.version, language: zedLanguage(target.languageId) }) };
+        opened: prepared.then(() => host.request('project.open', { workspace, path: file, text: document.text, revision: document.version, language: zedLanguage(target.languageId) })) };
+      created.opened.catch(() => {});
       opened = created; window.files.set(file, created);
     } else if (document.version > opened.revision) {
       // This channel was bound later and already holds newer text than the other channels have sent.
@@ -248,13 +273,19 @@ export class ProjectLanguages {
       this.options.emit(state, { type: 'status', state: 'ready', documents: [{ id: channel.id, generation: channel.generation }] });
       // What Zed already knows about this file reaches a channel that was bound after it was said.
       void host.request('project.diagnostics', { workspace, path: file }).catch(() => {});
-      return { messages: [], analysis: this.observation(current, channel, running), name: channel.target.toolName, uri: current.uri, capabilities: channel.capabilities,
-        server: channel.target.tool, context: [`Project: ${current.root}`, `Root: ${current.rootReason}`] };
+      const registry = this.options.registry(), tool = registry.definitions().find(other => other.id === channel.target.tool) ?? definition;
+      const autoInsert = autoInsertion(tool, registry.options(tool.id, file).settings ?? tool.settings);
+      channel.notes = await this.schemas(session, window, current, channel, tool);
+      if (!alive()) throw Error('Language document closed during initialization.');
+      return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(tool) ? { companion: true } : {}),
+        messages: [], analysis: this.observation(current, channel, running), name: channel.target.toolName, uri: current.uri, capabilities: channel.capabilities,
+        server: channel.target.tool, context: [`Project: ${current.root}`, `Root: ${current.rootReason}`, ...channel.notes] };
     } catch (error) {
       if (!alive()) throw error;
       const message = String(error instanceof Error ? error.message : error);
       channel.state = 'failed'; channel.message = message; channel.issue = failureIssue(message, session.offline);
       window.failed.add(channel.target.server);
+      this.unprepare(channel.target.tool, current.root);
       const repeats = channel.issue.kind === 'runtime' || channel.issue.kind === 'downloads-off';
       const recovering = repeats ? undefined : this.supervisor.schedule(this.recoveryKey(window, channel.target.server), () => this.rebind(window, current, channel.target.tool));
       channel.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : repeats ? 'It will not start until its setup changes.' : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
@@ -262,6 +293,73 @@ export class ProjectLanguages {
         recovery: { retrying: !!recovering, attempt: recovering?.attempt }, documents: [{ id: channel.id, generation: channel.generation }] });
       throw Error(channel.message);
     }
+  }
+  /** What a tool's own editor extension does before it starts the tool, done before Zed starts
+   * it. gopls is looked for where `go install` puts it and installed in a cleaned environment
+   * (`go-tools.ts`). JetBrains' Kotlin server is downloaded with its checksum verified and is
+   * told its build settings (`kotlin-download.ts`, `kotlin-options.ts`). What was found becomes
+   * part of Setdown's settings layer, so Zed starts the tool with it. It is found out once for
+   * a tool and a folder, and again after a restart, a change of settings or a failure. */
+  private prepareTool(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<void> {
+    if (!isGopls(tool) && !isKotlinServer(tool)) return Promise.resolve();
+    const key = `${tool.id}\0${folder}`;
+    let prepared = this.prepared.get(key);
+    if (!prepared) {
+      const started = prepared = (async () => {
+        const program = isGopls(tool) ? await this.gopls(session, tool, folder, report) : undefined;
+        const options = isKotlinServer(tool) ? await this.kotlin(session, tool, folder, report) : undefined;
+        // Read and replaced without a pause between: another tool may have been prepared meanwhile.
+        if (JSON.stringify([this.rules.programs?.[tool.id], this.rules.options?.[tool.id]]) === JSON.stringify([program, options])) return;
+        const { [tool.id]: _program, ...programs } = this.rules.programs ?? {}, { [tool.id]: _options, ...rest } = this.rules.options ?? {};
+        this.rules = { programs: { ...programs, ...(program ? { [tool.id]: program } : {}) }, options: { ...rest, ...(options ? { [tool.id]: options } : {}) } };
+        await this.applySettings(session);
+      })();
+      this.prepared.set(key, started);
+      started.catch(() => { if (this.prepared.get(key) === started) this.prepared.delete(key); });
+    }
+    return prepared;
+  }
+  /** The next file of this tool finds out again what the tool needs. */
+  private unprepare(tool: string, folder?: string): void {
+    for (const key of [...this.prepared.keys()]) if (folder === undefined ? key.startsWith(`${tool}\0`) : key === `${tool}\0${folder}`) this.prepared.delete(key);
+    const definition = this.options.registry().definitions().find(other => other.id === tool);
+    if (definition && isKotlinServer(definition)) forgetKotlinServer(this.kotlinWork(tool));
+  }
+  private kotlinWork(tool: string) { return path.join(this.options.directory, 'extensions', 'work', this.options.catalog().binding(tool)?.extension ?? 'kotlin'); }
+  private preparing(state: WindowState, tool: { id: string; name: string }, documents: { id: string; generation: string }[]) {
+    return (message: string) => this.options.emit(state, { type: 'status', state: 'starting', preparing: true, message, server: tool, documents });
+  }
+  private async gopls(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<NonNullable<SetdownRules['programs']>[string] | undefined> {
+    // A program the person named in Language Support is used as it is.
+    if (path.isAbsolute(this.options.registry().executable(tool.id))) return undefined;
+    const env = this.options.toolEnvironment?.() ?? this.options.environment ?? process.env;
+    const isFile = (file: string) => stat(file).then(found => found.isFile(), () => false);
+    const go = await goEnvironment(env, undefined, { toolchain: 'local' });
+    const found = await findGoTool('gopls', env, go);
+    const own = path.join(this.options.directory, 'go', 'bin'), installed = path.join(own, process.platform === 'win32' ? 'gopls.exe' : 'gopls');
+    // Zed finds a gopls on PATH itself, and keeps one it installed earlier in its own folder.
+    let program = found && found.source !== 'PATH' ? found.path : undefined;
+    if (!found && await isFile(installed)) program = installed;
+    else if (!found && go && !session.offline && !(await readdir(path.join(this.options.directory, 'servers', 'gopls')).catch(() => [])).some(name => name.startsWith('gopls_'))) {
+      report('Installing gopls…');
+      // The Go the project is built with decides the toolchain gopls is built with (`go-tools.ts`).
+      const project = await goEnvironment(env, undefined, { cwd: folder });
+      program = await installGoTool({ go, env, destination: own, projectGoVersion: project?.GOVERSION, cwd: folder });
+    }
+    // gopls runs `go` by name. vscode-go puts Go's own folder in front of PATH when `go` was
+    // found somewhere else (goInstallTools.ts `updateGoVarsFromConfig`).
+    const goFolder = go && go.source !== 'PATH' ? go.GOROOT ? path.join(go.GOROOT, 'bin') : path.dirname(go.executable) : undefined;
+    const added = goFolder ? { env: { PATH: [goFolder, env.PATH ?? env.Path ?? ''].filter(Boolean).join(path.delimiter) } } : {};
+    return program || goFolder ? { ...(program ? { path: program, arguments: ['-mode=stdio'] } : {}), ...added } : undefined;
+  }
+  private async kotlin(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<Record<string, unknown>> {
+    // The host refuses the Zed extension's own download of the server, which reads no checksum.
+    if (!session.offline) await kotlinServerForRun({ work: this.kotlinWork(tool.id), fetch: this.options.download,
+      progress: (received, total) => report(`Downloading ${tool.name}… ${total ? `${Math.floor(received / total * 100)}%` : `${Math.round(received / 1e6)} MB`}`) });
+    const folders = new Set([...this.windows.values()].flatMap(window => [...window.folders])).add(folder);
+    const { options, problems } = kotlinInitializationOptions(this.options.registry().options(tool.id).settings ?? tool.settings, [...folders].map(open => pathToFileURL(open).href));
+    for (const problem of problems) console.warn(`${tool.name}: ${problem} and was not sent.`);
+    return options;
   }
   private revisions(window: Window) { return new Map([...window.files].map(([file, opened]) => [file, opened.revision])); }
   private recoveryKey(window: Window, server: string) { return `${window.state.webContentsId}:${server}`; }
@@ -356,7 +454,7 @@ export class ProjectLanguages {
           this.options.emit(window.state, { type: 'activity' });
           for (const { file, channel } of bound(undefined)) { const active = window.servers.get(channel.server!);
             this.options.emit(window.state, { type: 'context', id: channel.id, generation: channel.generation, messages: [], analysis: this.observation(file, channel, active),
-              context: [`Project: ${file.root}`, `Root: ${file.rootReason}`, ...active?.progress.values() ?? []] }); }
+              context: [`Project: ${file.root}`, `Root: ${file.rootReason}`, ...channel.notes ?? [], ...active?.progress.values() ?? []] }); }
         }, 500);
         break;
       }
@@ -368,6 +466,13 @@ export class ProjectLanguages {
           .then(result => host.request('project.applyEditResult', { edit: event.edit, applied: result.applied, failureReason: result.failureReason })).catch(() => {});
         break;
       }
+      case 'project.schemaContent':
+        // The JSON server asked for a schema it does not read itself. The answer, or the
+        // refusal with its code, is what VS Code's JSON extension would give.
+        void this.schemaContent(String(event.uri)).then(content => ({ content }), error => ({ error: String(error instanceof Error ? error.message : error),
+          code: error instanceof SchemaContentError ? error.code : schemaContentErrors.http }))
+          .then(answer => host.request('project.schemaContentResult', { request: event.request, ...answer })).catch(() => {});
+        break;
       case 'project.diverged': {
         // Zed changed its copy by itself, usually by reading the file again after it changed on
         // disk. The editor normally sends the same text a moment later; if it does not, the
@@ -377,6 +482,17 @@ export class ProjectLanguages {
         break;
       }
     }
+  }
+  private async schemaContent(uri: string): Promise<string> {
+    const registry = this.options.registry(), tool = registry.definitions().find(isJsonServer);
+    if (!this.options.schemas || !tool) throw new SchemaContentError(schemaContentErrors.http, 'This editor downloads no schemas.');
+    return this.options.schemas.content(uri, schemaDownloadSettings(registry.options(tool.id).settings ?? tool.settings));
+  }
+  /** Which schemas the JSON server checks this file against, as lines of the document panel. */
+  private async schemas(session: Session, window: Window, file: OpenFile, channel: Channel, tool: LanguageServerDefinition): Promise<string[]> {
+    if (!isJsonServer(tool) || channel.server === undefined) return [];
+    try { return schemaLines(await session.host.request('project.request', { workspace: window.workspace, server: channel.server, method: jsonLanguageStatus, params: [file.uri] })); }
+    catch { return []; }
   }
   private async capabilitiesChanged(host: ZedLanguageHost, window: Window, server: number): Promise<void> {
     for (const file of window.files.values()) {
@@ -434,6 +550,13 @@ export class ProjectLanguages {
       console.warn('Zed could not apply a document change; sending the document again.', String(error));
       this.resync(window, file);
     });
+    // The Svelte tool is told each unsaved change of a TypeScript or JavaScript file, as its
+    // extension tells it: Zed informs a server only of the files of its own languages.
+    if (!svelteScriptLanguages.includes(channel.target.languageId)) return;
+    const tools = this.options.registry().definitions();
+    const servers = new Set([...window.files.values()].flatMap(other => [...other.channels.values()]).filter(other => other.state === 'ready' && other.server !== undefined
+      && other.server !== channel.server && tools.some(tool => tool.id === other.target.tool && isSvelteServer(tool))).map(other => other.server!));
+    for (const server of servers) void session.host.request('project.notify', { workspace: window.workspace, server, method: svelteScriptChanged, params: { uri: file.uri, changes } }).catch(() => {});
   }
   async request(windowId: number, id: string, version: number, requestId: string, method: LanguageMethod, params: unknown): Promise<unknown> {
     const { window, file, channel } = this.channel(windowId, id);
@@ -441,10 +564,11 @@ export class ProjectLanguages {
     if (!running || channel.state !== 'ready' || channel.version !== version || !languageMethods.includes(method) || method === 'textDocument/diagnostic'
       || typeof requestId !== 'string' || requestId.length > 128 || window.requests.has(requestId)
       || window.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw Error('Invalid or stale language request.');
+    if (!answersRequest(this.options.registry().definitions().find(tool => tool.id === channel.target.tool), method)) throw Error('This tool does not answer that request.');
     const origin = { document: id, generation: channel.generation, version };
     const command = method === 'workspace/executeCommand';
     const requestParams = method in resolveMethods || command ? running.items.resolve(method, params, origin)
-      : isDocumentMethod(method) ? { ...params, textDocument: { uri: file.uri } } : params;
+      : documentRequest(method, params, file.uri);
     if (command && running.command) throw Error('A language command is already running.');
     const controller = new AbortController();
     window.requests.set(requestId, controller);
@@ -565,6 +689,14 @@ export class ProjectLanguages {
     const names = [...new Set(channels.map(channel => channel.target.server))];
     for (const name of names) window.failed.delete(name);
     const waiting = channels.filter(channel => channel.state !== 'ready');
+    // A restart is how a person says that something outside changed: a Go or a gopls was installed.
+    for (const id of new Set(channels.map(channel => channel.target.tool))) {
+      const definition = this.options.registry().definitions().find(other => other.id === id);
+      if (!definition) continue;
+      this.unprepare(id);
+      await this.prepareTool(session, definition, opened.root, this.preparing(window.state, { id, name: definition.name }, this.documents(opened, channel => channel.target.tool === id)))
+        .catch(error => console.warn(`Could not prepare ${definition.name}`, error));
+    }
     if (names.length) await session.host.request('project.restart', { workspace: window.workspace, path: file, names });
     // A running server announces its own end, which binds its documents again.
     if (waiting.length) this.rebind(window, opened, tool);

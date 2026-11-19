@@ -1,0 +1,421 @@
+{
+  "date": "2026-11-19T11:46:34.361Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "go",
+      "language": "Go",
+      "project": "spf13/cobra@adbc881390",
+      "file": "command.go",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.054
+        },
+        {
+          "kind": "mistake",
+          "what": "var setdownMistake string = 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: cannot use 1 (untyped int constant) as string value in variable declaration",
+          "seconds": 1.052
+        },
+        {
+          "kind": "hover",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "text matching /func \\(.*FlagSet\\) GetBool/",
+          "observed": "```go func (f *flag.FlagSet) GetBool(name string) (bool, error) ``` --- GetBool return the bool value of a flag with the given name --- [`(pflag.FlagSet).GetBo…",
+          "seconds": 0.045
+        },
+        {
+          "kind": "hover",
+          "what": "ExecuteC",
+          "ok": true,
+          "expected": "text matching /func \\(c \\*Command\\) ExecuteC/",
+          "observed": "```go func (c *Command) ExecuteC() (cmd *Command, err error) ``` --- ExecuteC executes the command. --- [`(cobra.Command).ExecuteC` on pkg.go.dev](https://pkg.…",
+          "seconds": 0.046
+        },
+        {
+          "kind": "completion",
+          "what": "c.Flags().ArgsLenAt|",
+          "ok": true,
+          "expected": "\"ArgsLenAtDash\" offered",
+          "observed": "1 offered, first: ArgsLenAtDash",
+          "seconds": 0.049
+        },
+        {
+          "kind": "definition",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "leads to /spf13\\/pflag@[^/]+\\/bool\\.go$/",
+          "observed": "../../../../../../../../../../go/pkg/mod/github.com/spf13/pflag@v1.0.9/bool.go:39",
+          "seconds": 0.05
+        },
+        {
+          "kind": "definition",
+          "what": "Root",
+          "ok": true,
+          "expected": "leads to command.go",
+          "observed": "command.go:892",
+          "seconds": 0.051
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.171,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "gomod",
+      "language": "Go module file",
+      "project": "spf13/cobra@adbc881390",
+      "file": "go.mod",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.013
+        },
+        {
+          "kind": "hover",
+          "what": "github.com/spf13/pflag",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### github.com/spf13/pflag This module is necessary because [github.com/spf13/pflag](https://pkg.go.dev/github.com/spf13/pflag@v1.0.9) is imported in `github.…",
+          "seconds": 0.013
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.899,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "json",
+      "language": "JSON",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "package.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.235
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.234
+        },
+        {
+          "kind": "hover",
+          "what": "\"scripts\"",
+          "ok": true,
+          "expected": "text matching /script/i",
+          "observed": "The 'scripts' member is an object hash of script commands that are run at various times in the lifecycle of your package\\. The key is the lifecycle event, and …",
+          "seconds": 0.226
+        },
+        {
+          "kind": "completion",
+          "what": "\"scr|",
+          "ok": true,
+          "expected": "\"scripts\" offered",
+          "observed": "48 offered, first: homepage, bugs, licenses, author, contributors, maintainers",
+          "seconds": 0.234
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.681,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Open folder",
+          "Schema: zed://schemas/package_json"
+        ]
+      }
+    },
+    {
+      "id": "jsonc",
+      "language": "JSON with comments",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "tsconfig.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.02
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.019
+        },
+        {
+          "kind": "hover",
+          "what": "\"outDir\"",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "If specified, `.js` (as well as `.d.ts`, `.js.map`, etc.) files will be emitted into this directory. The directory structure of the original source files is pr…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "completion",
+          "what": "\"rootD|",
+          "ok": true,
+          "expected": "\"rootDir\" offered",
+          "observed": "117 offered, first: allowArbitraryExtensions, allowImportingTsExtensions, charset, composite, customConditions, declaration",
+          "seconds": 0.018
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.352,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Open folder",
+          "Schema: zed://schemas/tsconfig",
+          "Schema: zed://schemas/jsonc"
+        ]
+      }
+    },
+    {
+      "id": "json-manifest",
+      "language": "JSON, a web manifest",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": "src/site.webmanifest",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.001
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.952,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Open folder",
+          "Schema: none configured for this file"
+        ]
+      }
+    },
+    {
+      "id": "json-prettier",
+      "language": "JSON, a Prettier file",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": ".prettierrc.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.015
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.014
+        },
+        {
+          "kind": "hover",
+          "what": "\"singleQuote\"",
+          "ok": true,
+          "expected": "text matching /quote/i",
+          "observed": "Use single quotes instead of double quotes\\.",
+          "seconds": 0.008
+        },
+        {
+          "kind": "completion",
+          "what": "\"bracketSameL|",
+          "ok": true,
+          "expected": "\"bracketSameLine\" offered",
+          "observed": "27 offered, first: arrowParens, bracketSameLine, bracketSpacing, checkIgnorePragma, cursorOffset, endOfLine",
+          "seconds": 0.013
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.964,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Open folder",
+          "Schema: https://www.schemastore.org/prettierrc.json"
+        ]
+      }
+    },
+    {
+      "id": "jsonc-jsconfig",
+      "language": "JSON with comments, a jsconfig",
+      "project": "sveltejs/realworld@df79670804",
+      "file": "jsconfig.json",
+      "expectedTool": "json-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.347
+        },
+        {
+          "kind": "mistake",
+          "what": "{}",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: End of file expected.",
+          "seconds": 1.345
+        },
+        {
+          "kind": "hover",
+          "what": "\"extends\"",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "Path to base configuration file to inherit from \\(requires TypeScript version 2\\.1 or later\\), or array of base files, with the rightmost files having the grea…",
+          "seconds": 0.345
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.943,
+        "tool": "json-lsp",
+        "name": "json-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/realworld",
+          "Root: Open folder",
+          "Schema: https://www.schemastore.org/jsconfig.json"
+        ]
+      }
+    },
+    {
+      "id": "html",
+      "language": "HTML",
+      "project": "h5bp/html5-boilerplate@7fa0bd6c9e",
+      "file": "src/index.html",
+      "expectedTool": "html-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.02
+        },
+        {
+          "kind": "mistake",
+          "what": "<style>.setdown-mistake { colr: red; }</style>",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "warning: Unknown property: 'colr'",
+          "seconds": 1.019
+        },
+        {
+          "kind": "hover",
+          "what": "meta charset",
+          "ok": true,
+          "expected": "text matching /meta/i",
+          "observed": "The meta element represents various kinds of metadata that cannot be expressed using the title, base, link, style, and script elements. ![Baseline icon](data:i…",
+          "seconds": 0.005
+        },
+        {
+          "kind": "completion",
+          "what": "<scr|",
+          "ok": true,
+          "expected": "\"script\" offered",
+          "observed": "116 offered, first: html, head, title, base, link, meta",
+          "seconds": 0.018
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 2.729,
+        "tool": "html-lsp",
+        "name": "html-lsp",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/boilerplate",
+          "Root: Open folder"
+        ]
+      }
+    }
+  ]
+}

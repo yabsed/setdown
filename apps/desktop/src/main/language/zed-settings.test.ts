@@ -96,3 +96,27 @@ test('the folder Zed opens is the window\'s folder, else the repository, else th
   expect(projectFolder(path.join(home, 'module/main.go'), go)).toMatchObject({ path: path.join(home, 'module') });
   expect(projectFolder(path.join(home, 'loose/main.go'), go)).toEqual({ path: path.join(home, 'loose'), reason: 'Single file', single: true });
 });
+
+test('what Setdown found out for a tool is part of its own layer, under everything a person writes', async () => {
+  const { registry, definition } = await fixture();
+  const plain = setdownDefaults(names, definition, {}) as { lsp: Record<string, Record<string, unknown>> };
+  // Without a schema downloader the JSON server keeps downloading by itself, as it did.
+  expect(plain.lsp['json-language-server']?.initialization_options).toBeUndefined();
+  expect(plain.lsp.gopls).toBeUndefined();
+  const defaults = setdownDefaults(names, definition, { 'typescript-language-server': { path: '/app/node', arguments: ['/app/tsserver.js', '--stdio'] } }, { schemaDownloads: true,
+    programs: { gopls: { path: '/home/person/go/bin/gopls', arguments: ['-mode=stdio'], env: { PATH: '/usr/local/go/bin:/usr/bin' } }, 'typescript-language-server': { env: { EXTRA: '1' } }, 'no-such-tool': { path: '/nowhere' } },
+    options: { 'kotlin-lsp': { buildTools: {}, projects: [] }, 'typescript-language-server': { locale: 'ko' }, gopls: {} } }) as { lsp: Record<string, Record<string, unknown>> };
+  expect(defaults.lsp['json-language-server'].initialization_options).toEqual({ handledSchemaProtocols: ['file'] });
+  // Zed's own schema list for the server stays beside it.
+  expect(defaults.lsp['json-language-server'].settings).toEqual(plain.lsp['json-language-server'].settings);
+  expect(defaults.lsp.gopls).toEqual({ binary: { path: '/home/person/go/bin/gopls', arguments: ['-mode=stdio'], env: { PATH: '/usr/local/go/bin:/usr/bin' } } });
+  expect(defaults.lsp['kotlin-lsp'].initialization_options).toEqual({ buildTools: {}, projects: [] });
+  // A bundled program keeps its path, and the options of the tool's extension keep their defaults.
+  expect(defaults.lsp['typescript-language-server']).toEqual({ binary: { path: '/app/node', arguments: ['/app/tsserver.js', '--stdio'], env: { EXTRA: '1' } },
+    initialization_options: { maxTsServerMemory: 3072, disableAutomaticTypingAcquisition: true, locale: 'ko' } });
+  expect(Object.keys(defaults.lsp)).not.toContain('no-such-tool');
+  // A person's settings for the tool become the startup options its extension would send.
+  registry.configure('typescript-language-server', { settings: { typescript: { tsserver: { maxTsServerMemory: 8192 }, disableAutomaticTypeAcquisition: false } } });
+  expect((setdownChoices(registry, names, defaults).lsp as Record<string, { initialization_options: unknown }>)['typescript-language-server'].initialization_options)
+    .toEqual({ maxTsServerMemory: 8192, disableAutomaticTypingAcquisition: false });
+});

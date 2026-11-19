@@ -1,0 +1,165 @@
+{
+  "date": "2026-11-19T12:17:09.937Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "typescript",
+      "language": "TypeScript",
+      "project": "sindresorhus/p-queue@7f272ab5ff",
+      "file": "source/index.ts",
+      "expectedTool": "typescript-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.203
+        },
+        {
+          "kind": "mistake",
+          "what": "const setdownMistake: number = 'three';",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type 'string' is not assignable to type 'number'.; error: 'setdownMistake' is declared but its value is never read.",
+          "seconds": 1.158
+        },
+        {
+          "kind": "hover",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "text matching /enqueue: \\(run: RunFunction/",
+          "observed": "```typescript (property) enqueue: (run: RunFunction, options?: Partial<EnqueueOptionsType> | undefined) => void ```",
+          "seconds": 1.172
+        },
+        {
+          "kind": "hover",
+          "what": "AbortSignal, callback",
+          "ok": true,
+          "expected": "text matching /AbortSignal/",
+          "observed": "```typescript interface AbortSignal ``` The **`AbortSignal`** interface represents a signal object that allows you to communicate with an asynchronous operatio…",
+          "seconds": 0.136
+        },
+        {
+          "kind": "completion",
+          "what": "this.#queue.deq|",
+          "ok": true,
+          "expected": "\"dequeue\" offered",
+          "observed": "6 offered, first: dequeue, enqueue, filter, remove, setPriority, size",
+          "seconds": 1.196
+        },
+        {
+          "kind": "definition",
+          "what": "PriorityQueue from './priority-queue.js'",
+          "ok": true,
+          "expected": "leads to source/priority-queue.ts",
+          "observed": "source/priority-queue.ts:11",
+          "seconds": 1.201
+        },
+        {
+          "kind": "definition",
+          "what": "enqueue",
+          "ok": true,
+          "expected": "leads to source/queue.ts",
+          "observed": "source/queue.ts:7",
+          "seconds": 1.202
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.261,
+        "tool": "typescript-language-server",
+        "name": "TypeScript and JavaScript",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue",
+          "Root: Project marker: tsconfig.json",
+          "TypeScript SDK: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue/node_modules/typescript/lib/tsserver.js",
+          "Project configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/p-queue/package.json"
+        ]
+      }
+    },
+    {
+      "id": "javascript",
+      "language": "JavaScript",
+      "project": "expressjs/express@43fca52d28",
+      "file": "lib/application.js",
+      "expectedTool": "typescript-language-server",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 5.17
+        },
+        {
+          "kind": "mistake",
+          "what": "var = ;",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Variable declaration expected.",
+          "seconds": 2.163
+        },
+        {
+          "kind": "hover",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "text matching /finalhandler/",
+          "observed": "```typescript import finalhandler ``` Module dependencies. *@private*",
+          "seconds": 0.114
+        },
+        {
+          "kind": "hover",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "text matching /compileETag/",
+          "observed": "```typescript import compileETag ```",
+          "seconds": 0.117
+        },
+        {
+          "kind": "completion",
+          "what": "this.router.rou|",
+          "ok": true,
+          "expected": "\"route\" offered",
+          "observed": "114 offered, first: _locals, all, app, apply, arg, args",
+          "seconds": 0.148
+        },
+        {
+          "kind": "definition",
+          "what": "compileETag(val)",
+          "ok": true,
+          "expected": "leads to lib/utils.js",
+          "observed": "lib/utils.js:130",
+          "seconds": 2.168
+        },
+        {
+          "kind": "definition",
+          "what": "finalhandler(req, res, {",
+          "ok": true,
+          "expected": "leads to /application\\.js$|node_modules\\/finalhandler\\/index\\.js$/",
+          "observed": "lib/application.js:16",
+          "seconds": 0.158
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.198,
+        "tool": "typescript-language-server",
+        "name": "TypeScript and JavaScript",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express",
+          "Root: Project marker: package.json",
+          "TypeScript SDK: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/node_modules/typescript/lib/tsserver.js",
+          "Project configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/express/package.json"
+        ]
+      }
+    }
+  ]
+}
