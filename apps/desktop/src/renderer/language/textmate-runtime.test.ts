@@ -2,7 +2,12 @@ import { beforeAll, expect, test, vi } from 'vitest';
 import type * as M from 'monaco-editor';
 import { createTextMateRuntime, type TextMateRuntime } from './textmate-runtime';
 import { syntaxScope, syntaxThemeRules, syntaxThemes } from './syntax-themes';
+import { THEME_PROFILES } from '../../core/theme/theme-catalog';
+import { vscodeDark2026Token } from '../../core/theme/vscode-dark-2026';
 
+// Read before the engine exists, to compare with what the app's other theme adapters read after it.
+const loadedRules = structuredClone(THEME_PROFILES.map(profile => profile.vscodeTheme?.tokenColors));
+const loadedComment = vscodeDark2026Token('comment').foreground;
 const providers = new Map<string, M.languages.TokensProvider>();
 const api = { editor: { create: vi.fn(), setTheme: vi.fn(), defineTheme: vi.fn() }, languages: {
   setTokensProvider: vi.fn((id: string, provider: M.languages.TokensProvider) => { providers.set(id, provider); return { dispose: vi.fn() }; }),
@@ -51,6 +56,16 @@ test('theme changes use current TextMate rules without replacing existing Monaco
   expect(new Set(api.languages.setTokensProvider.mock.calls.map(([id]) => id))).toEqual(new Set(['svelte']));
   const light = tokenize(['<script lang="ts">', 'const message = "hello";'])[1];
   expect(light.color('const')).toBe('cf222e');
+});
+
+test('the engine leaves the theme catalog as loaded, so a web reader opened after a code file still gets its theme', async () => {
+  expect(THEME_PROFILES.map(profile => profile.vscodeTheme?.tokenColors)).toEqual(loadedRules);
+  expect(loadedComment).toBeTruthy();
+  expect(vscodeDark2026Token('comment').foreground).toBe(loadedComment);
+  // The reader's theme module is first evaluated here, after the engine: the order that failed.
+  const { vscodePreviewThemeCss } = await import('../../core/theme/preview-theme-css');
+  expect(vscodePreviewThemeCss('vscode-dark-2026')).toContain(`.token.prolog { color: ${loadedComment};`);
+  expect(vscodePreviewThemeCss('night-owl')).toContain('.markdown-preview .token.keyword');
 });
 
 test('equivalent multiline grammar states stop invalidation; comments and long lines preserve the correct state', () => {

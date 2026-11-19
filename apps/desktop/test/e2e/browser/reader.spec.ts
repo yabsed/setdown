@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, findOverlay } from '../../support/browser/browser-fixture';
@@ -652,6 +652,34 @@ test('a reader whose theme cannot be loaded shows the plain article and reports 
     await expect(reader).toHaveAttribute('data-reader-theme', 'solarized-light');
     await expect(reader.getByText('Break paragraph 0')).toBeVisible();
     await expect(report).toHaveCount(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('a reader first opened after a code file was highlighted still gets its theme', async () => {
+  // The grammar engine and the reader theme read the same theme catalog, and here the engine comes
+  // first. Every language server is off, so only the bundled grammar colors the script.
+  const f = await fixture(false, undefined, { prepare: async root => {
+    const settings = path.join(root, 'config/Setdown'); await mkdir(settings, { recursive: true });
+    const profiles = (await Promise.all(['profiles.json', 'zed-profiles.json'].map(async name =>
+      JSON.parse(await readFile(path.resolve('src/main/language/catalog', name), 'utf8')).profiles as { id: string }[]))).flat();
+    await writeFile(path.join(settings, 'language-servers.json'), JSON.stringify({ version: 1, preferred: {}, custom: [],
+      servers: Object.fromEntries(profiles.map(profile => [profile.id, { enabled: false }])) }));
+    await writeFile(path.join(root, 'deploy.sh'), '#!/usr/bin/env bash\naws sts get-caller-identity --query Account\n');
+  } });
+  try {
+    await f.page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), path.join(f.root, 'deploy.sh'));
+    await expect(f.page.getByRole('tab', { name: /deploy\.sh/ })).toHaveAttribute('aria-selected', 'true');
+    // Monaco's own shell tokenizer leaves a command name in the plain foreground: this color is the engine's.
+    await expect(f.page.locator('.editor-surface .view-line > span > span').filter({ hasText: /^aws\s*$/ }))
+      .toHaveCSS('color', 'rgb(9, 105, 218)');
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article-breaks`);
+    await expect(f.page.getByRole('tab', { name: /Newsletter article/ })).toHaveAttribute('aria-selected', 'true');
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    const reader = f.page.locator('.web-reader');
+    await expect(reader.getByText('Break paragraph 0')).toBeVisible();
+    await expect(reader).toHaveAttribute('data-reader-theme', 'github-light');
+    await expect(f.page.getByRole('alert').filter({ hasText: 'Reader theme could not be loaded' })).toHaveCount(0);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

@@ -9,7 +9,9 @@ export const syntaxScope = (scope: string) => `setdown.syntax${scope ? `.${scope
 export const syntaxThemes: ThemeRegistration[] = THEME_PROFILES.map(({ id, appearance, palette, syntax, vscodeTheme }) => ({
   name: `setdown-${id}`, type: appearance,
   colors: { 'editor.foreground': syntax.foreground, 'editor.background': palette.editorBackground },
-  tokenColors: vscodeTheme?.tokenColors ?? (id === 'vscode-dark-2026' ? vscode.tokenColors : [
+  // A copy: Shiki inserts a global rule into the array it is given, and the catalog's own rules
+  // are read again by the Monaco, preview and web-reader adapters after the engine exists.
+  tokenColors: [...(vscodeTheme?.tokenColors ?? (id === 'vscode-dark-2026' ? vscode.tokenColors : [
     { scope: 'comment', settings: { foreground: syntax.comment, fontStyle: 'italic' } },
     { scope: ['keyword', 'storage'], settings: { foreground: syntax.keyword } },
     { scope: ['string', 'constant.other.symbol'], settings: { foreground: syntax.string } },
@@ -20,7 +22,7 @@ export const syntaxThemes: ThemeRegistration[] = THEME_PROFILES.map(({ id, appea
     { scope: ['variable', 'meta.object-literal.key'], settings: { foreground: syntax.foreground } },
     { scope: ['punctuation', 'keyword.operator'], settings: { foreground: syntax.punctuation } },
     { scope: 'constant.character.escape', settings: { foreground: syntax.number } },
-  ]),
+  ]))],
 }));
 
 /** No engine import: registering the app's themes must stay cheap for Markdown. */
