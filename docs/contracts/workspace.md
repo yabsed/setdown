@@ -428,9 +428,14 @@ badge like Source Control's: downloads still running plus those that started or
 changed while the Downloads list was not on screen (`downloadBadgeCount`). The
 Downloads section button shows the same count, a badged icon opens the Browser
 view on Downloads, showing that list clears the unseen part, and records stored
-by an earlier session are never counted. `test/e2e/browser/*.spec.ts` checks deletion persistence, native download controls and the badge;
-`browser-downloads.test.ts` checks interrupted restoration, duplicate file paths
-and progress/completion ordering.
+by an earlier session are never counted. A download that starts while the side
+panel is closed (hidden, or collapsed to its icons) opens the panel on that list,
+in the window whose page asked for it; a download no page asked for goes to the
+focused window. The keyboard stays where it was. A panel that is already open is
+not switched: there the badge reports the download. `test/e2e/browser/*.spec.ts`
+checks deletion persistence, native download controls, the badge and the opening panel;
+`browser-downloads.test.ts` checks interrupted restoration, duplicate file paths,
+progress/completion ordering and the one start report per transfer.
 
 Web Store installs reuse the existing extension session and registry. The store
 downloader is imported only on an explicit install/update request, and staging

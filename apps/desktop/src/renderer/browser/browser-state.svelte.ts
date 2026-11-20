@@ -10,6 +10,8 @@ export const browser = $state({ revision: 0, error: '', findId: null as string |
   downloads: [] as BrowserDownload[],
   /** Downloads that started or changed while the Downloads list was not on screen. */
   unseenDownloads: [] as string[],
+  /** The Browser side view is asked to show its Downloads list; the view clears this when it does. */
+  downloadsRequested: false,
   permissions: {} as Record<string, BrowserPermissionRequest[]>,
   auth: {} as Record<string, BrowserAuthRequest>, authId: null as string | null,
   /** Per web tab: a login offered for saving and how many saved logins fit the page. */

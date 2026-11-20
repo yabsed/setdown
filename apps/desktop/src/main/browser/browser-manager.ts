@@ -67,7 +67,11 @@ export class BrowserManager {
   readonly views = new Map<string, Entry>();
   private readonly places = new BrowserPlaces();
   private readonly favicons = new BrowserFavicons((url, init) => this.session.fetch(url, init), (bytes, type) => this.places.favicon(bytes, type));
-  private readonly downloads = new BrowserDownloads(event => { this.extensions?.downloads?.publish(event); this.broadcast(event); });
+  private readonly downloads = new BrowserDownloads(event => { this.extensions?.downloads?.publish(event); this.broadcast(event); }, (id, owner) => {
+    // The window that asked shows the download. One no page asked for (an extension's) belongs to the window in use.
+    const target = owner ?? Array.from(this.options.states()).find(state => state.window.isFocused())?.webContentsId;
+    if (target !== undefined) this.send(target, { type: 'download-started', id });
+  });
   private profile?: Session;
   private extensions?: BrowserExtensions;
   private ready?: Promise<void>;
@@ -181,7 +185,7 @@ export class BrowserManager {
           }
           catch { item.setSaveDialogOptions({ title: 'Save download', defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) }); }
         }
-        this.downloads.track(item);
+        this.downloads.track(item, entry?.owner);
       });
     }
     return this.profile;

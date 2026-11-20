@@ -16,7 +16,9 @@ export class BrowserDownloads {
   private loaded = false;
   private timer?: ReturnType<typeof setTimeout>;
   private saving = Promise.resolve();
-  constructor(private readonly broadcast: (event: BrowserEvent) => void) {}
+  constructor(private readonly broadcast: (event: BrowserEvent) => void,
+    /** A transfer began. `owner` is the window whose page asked for it, when a page did. */
+    private readonly started: (id: string, owner?: number) => void = () => {}) {}
   private get file() { return path.join(app.getPath('userData'), 'browser-downloads.json'); }
   private load(): Promise<void> {
     return this.ready ??= fs.readFile(this.file, 'utf8').then(JSON.parse).catch(() => []).then((rows: unknown) => {
@@ -38,7 +40,7 @@ export class BrowserDownloads {
   private snapshot() {
     return [...this.records.values()].sort((a, b) => b.startedAt - a.startedAt).map(record => ({ ...record }));
   }
-  track(item: DownloadItem): string {
+  track(item: DownloadItem, owner?: number): string {
     void this.load();
     const id = randomUUID();
     const live: LiveDownload = { item };
@@ -65,6 +67,7 @@ export class BrowserDownloads {
       this.trim();
     });
     publish();
+    this.started(id, owner);
     return id;
   }
   private trim() {

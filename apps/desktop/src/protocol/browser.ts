@@ -44,6 +44,8 @@ export type BrowserEvent =
   | { type: 'extensions' }
   | { type: 'theme-settings' }
   | { type: 'download'; download: BrowserDownload }
+  /** A transfer began. Unlike `download`, only the window it began in receives this. */
+  | { type: 'download-started'; id: string }
   | { type: 'download-removed'; id: string }
   | { type: 'permissions'; id: string; requests: BrowserPermissionRequest[] }
   | { type: 'auth'; id: string; request: BrowserAuthRequest | null }

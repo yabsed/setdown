@@ -34,7 +34,7 @@
     <button type="button" class:is-active={project.open && project.activeView === 'explorer'}
       aria-label="Explorer" aria-expanded={project.open && project.activeView === 'explorer'}
       title="Explorer" onclick={() => select('explorer')}>
-      <svg viewBox="0 0 24 24"><path d="M4.5 3.5h9l3 3v12h-12v-15Zm9 0v3h3M4.5 7h-2v13.5h11v-2"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M9.5 3h6l4 4v9a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM15.5 3v4h4M4.5 7.5V19a2 2 0 0 0 2 2h9"/></svg>
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'search'}
       aria-label="Search" aria-expanded={project.open && project.activeView === 'search'}
@@ -45,7 +45,7 @@
       aria-label="Source Control" aria-describedby="source-control-status"
       aria-expanded={project.open && project.activeView === 'git'}
       title={`Source Control — ${gitStatus}`} onclick={() => select('git')}>
-      <svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M8 6.5c4.5 0 2.5 5.5 8 3"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="6.5" cy="5.5" r="2.5"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="7.5" r="2.5"/><path d="M6.5 8v8M17.5 10a8.5 8.5 0 0 1-8.5 8.5"/></svg>
       {#if gitCount > 0 || project.git?.countIncomplete}<span class="activity-badge scm-activity-badge" aria-hidden="true">{gitCount}{project.git?.countIncomplete ? "+" : ""}</span>{/if}
       <span id="source-control-status" class="activity-status-description">{gitStatus}</span>
     </button>
@@ -53,21 +53,21 @@
       aria-label="Browser" aria-describedby={downloadCount ? 'browser-download-status' : undefined}
       aria-expanded={project.open && project.activeView === 'browser'}
       title={downloadCount ? `Browser — ${downloadStatus}` : 'Browser'} onclick={() => select('browser')}>
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.5" ry="8.5"/><path d="M3.5 12h17"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3.6 3.6-3.6 14.4 0 18M12 3c3.6 3.6 3.6 14.4 0 18"/></svg>
       {#if downloadCount}<span class="activity-badge download-activity-badge" aria-hidden="true">{downloadCount > 99 ? '99+' : downloadCount}</span>
         <span id="browser-download-status" class="activity-status-description">{downloadStatus}</span>{/if}
     </button>
     <button type="button" class:is-active={project.open && project.activeView === 'language'}
       aria-label="Language Support" aria-expanded={project.open && project.activeView === 'language'} title="Language Support" onclick={() => select('language')}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 3.5h6v6h-6zM3.5 14.5h6v6h-6zM14.5 14.5h6v6h-6zM17.5 2l4.5 4.5-4.5 4.5L13 6.5z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="14.4" y="3.4" width="6.2" height="6.2" rx="1.5" transform="rotate(45 17.5 6.5)"/></svg>
     </button>
     <button type="button" class="terminal-activity" class:is-active={project.open && project.activeView === 'terminal'}
       aria-label="Terminal" aria-expanded={project.open && project.activeView === 'terminal'} title="Terminal sessions (Ctrl+`)" onclick={() => select('terminal')}>
-      <svg viewBox="0 0 24 24"><path d="m5 6 6 6-6 6M13 18h6"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM7 9l3.5 3L7 15M13 15h4"/></svg>
     </button>
     <button type="button" class="files-activity" class:is-active={project.open && project.activeView === 'files'}
       aria-label="Files" aria-expanded={project.open && project.activeView === 'files'} title="File manager tabs" onclick={() => select('files')}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v10.5h-17z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4.1a1 1 0 0 1 .8.4l1.6 2.1H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
     </button>
   </nav>
 

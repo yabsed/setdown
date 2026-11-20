@@ -68,6 +68,19 @@ describe('native browser download library', () => {
     expect((await store.list())[0].state).toBe('cancelled');
     expect((await store.list())[1].state).toBe('progressing');
   });
+  it('reports each transfer once, when it begins, with the window that asked for it', () => {
+    const started: Array<{ id: string; owner?: number; listed: boolean }> = [];
+    const library = new BrowserDownloads(event => events.push(event), (id, owner) => started.push({ id, owner,
+      // A window told to show the new download has already received its record.
+      listed: events.some(event => event.type === 'download' && event.download.id === id) }));
+    const item = new Item(path.join(root, 'report.txt'));
+    const first = library.track(item as unknown as DownloadItem, 7);
+    item.received = 50; item.emit('updated', {}, 'progressing'); vi.advanceTimersByTime(200);
+    item.state = 'completed'; item.emit('done', {}, 'completed');
+    const second = library.track(new Item(path.join(root, 'other.txt')) as unknown as DownloadItem);
+    expect(started).toEqual([{ id: first, owner: 7, listed: true }, { id: second, owner: undefined, listed: true }]);
+    library.flushOnExit();
+  });
   it('retains finished records and marks previous-process transfers interrupted without claiming resumability', async () => {
     const item = new Item(path.join(root, 'report.txt'));
     store.track(item as unknown as DownloadItem); item.received = 11;

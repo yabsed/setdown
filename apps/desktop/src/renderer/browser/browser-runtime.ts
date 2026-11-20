@@ -7,7 +7,7 @@ import { browser } from './browser-state.svelte';
 
 export function createBrowserRuntime(workspace: WorkspaceState, desktop: DesktopPort, tabs: TabController,
   activate: (id: string) => void, navigate: (id: string, direction: -1 | 1) => void,
-  reader: (id: string) => void) {
+  reader: (id: string) => void, downloadStarted: () => void) {
   let depth = 0, generation = 0, frozen = false;
   let lastLayout = '';
   const area = document.querySelector<HTMLElement>('.editor-area')!;
@@ -92,7 +92,8 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       if (index < 0) browser.downloads.unshift(event.download); else browser.downloads[index] = event.download;
       // Only live transfers publish events; the stored list loaded below is never news.
       if (!browser.unseenDownloads.includes(event.download.id)) browser.unseenDownloads.push(event.download.id);
-    } else if (event.type === 'download-removed') {
+    } else if (event.type === 'download-started') downloadStarted();
+    else if (event.type === 'download-removed') {
       if (!downloadsLoaded) changedDownloads.add(event.id);
       browser.downloads = browser.downloads.filter(item => item.id !== event.id);
       browser.unseenDownloads = browser.unseenDownloads.filter(id => id !== event.id);

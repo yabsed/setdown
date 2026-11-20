@@ -28,6 +28,8 @@
     finally { deleting = false; }
   }
   function select(value: typeof section) { section = value; query = ''; error = ''; confirming = false; }
+  // A panel opened by a starting download shows that download, whichever section it was left on.
+  $effect(() => { if (browser.downloadsRequested) { browser.downloadsRequested = false; select('downloads'); } });
 </script>
 
 <div class="browser-sidebar">

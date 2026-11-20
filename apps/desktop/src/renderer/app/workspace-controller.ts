@@ -406,7 +406,12 @@ export function startWorkspace(desktop: DesktopPort) {
   window.addEventListener('beforeunload', () => { picker.dispose(); stopFileCommands(); stopFolderRequests(); }, { once: true });
   groups = createGroupRuntime({ workspace, desktop, editor, reader, changed: () => tabs.render(), layoutChanged: syncGroupLayout, activate: id => actions.activateTab(id) });
   browsers = createBrowserRuntime(workspace, desktop, tabs, actions.activateTab, actions.navigateHistory,
-    id => actions.browserReaderEnter(id));
+    id => actions.browserReaderEnter(id), () => {
+      // A download that starts while the side panel is closed opens its Downloads list. An open panel
+      // stays on what the user is reading; there the Browser icon counts the download.
+      if (project.visible && project.open) return;
+      browser.clearingData = false; browser.downloadsRequested = true; projects.select('browser');
+    });
   /** Open shell menus/dialogs own Escape first (they close on it); reader
    * entry is the last stop for an unconsumed Esc. */
   const popupOwnsEscape = () => [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="alertdialog"], dialog[open]')]
