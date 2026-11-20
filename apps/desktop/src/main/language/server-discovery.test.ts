@@ -86,18 +86,54 @@ test('metadata subprocesses have output limits and a real cancellation deadline'
 });
 
 
-test('reset cancels an in-flight discovery instead of caching or returning its stale result', async () => {
+test('a lookup that "check again" interrupts answers from the new scan: never its stale result, and never a failure', async () => {
   const f = await fixture();
   await f.create(f.env.PATH, 'python3');
-  let finish!: (value: string) => void;
-  const query = vi.fn(() => new Promise<string>(resolve => { finish = resolve; }));
+  const finish: ((value: string) => void)[] = [];
+  const query = vi.fn(() => new Promise<string>(resolve => { finish.push(resolve); }));
   const discovery = new ServerDiscovery(new ServerEnvironment(f.env), query);
+  const stale = path.join(f.home, 'stale-scripts');
+  await f.create(stale);
   const finding = discovery.find('fortls', { python: true, resolveEnvironment: true });
-  const rejected = expect(finding).rejects.toThrow(/cancelled/);
   await vi.waitFor(() => expect(query).toHaveBeenCalledOnce());
-  discovery.reset(); finish('[]'); await rejected;
+  // The tool is installed while the first lookup waits for Python, and the person asks to check again.
   const server = await f.create(f.env.PATH);
+  discovery.reset(); finish[0](JSON.stringify([stale]));
+  const found = await finding;
+  // The lookup under way neither fails nor answers with what it was told before the reset.
+  expect(found.selected?.path).toBe(server);
+  expect(found.candidates.map(candidate => candidate.path)).toEqual([server]);
+  expect(found.searched).not.toContain(stale);
   expect((await discovery.find('fortls', { resolveEnvironment: true })).selected?.path).toBe(server);
+  // Quitting is the one thing that ends a lookup without an answer, then and afterwards.
+  const last = discovery.find('absent-tool', { python: true, resolveEnvironment: true });
+  const rejected = expect(last).rejects.toThrow('Server discovery cancelled.');
+  await vi.waitFor(() => expect(query).toHaveBeenCalledTimes(2));
+  discovery.dispose(); finish[1]('[]'); await rejected;
+  await expect(discovery.find('fortls')).rejects.toThrow('Server discovery cancelled.');
+  f.discovery.dispose();
+});
+
+test('a reset while node is looked up does not leave an empty npm answer for the next scan', async () => {
+  const f = await fixture();
+  // node on PATH, npm's own program beside it, and a global package only `npm root --global` names.
+  const prefix = path.join(f.home, 'node'), bin = path.join(prefix, 'bin'), global = path.join(f.home, 'global-modules');
+  const env = { ...f.env, PATH: bin };
+  await f.create(bin, 'node');
+  await mkdir(path.join(prefix, 'lib/node_modules/npm/bin'), { recursive: true }); await writeFile(path.join(prefix, 'lib/node_modules/npm/bin/npm-cli.js'), '');
+  await mkdir(path.join(global, 'demo-server/bin'), { recursive: true });
+  await writeFile(path.join(global, 'demo-server/package.json'), JSON.stringify({ name: 'demo-server', bin: { 'demo-server': 'bin/server.js' } }));
+  await writeFile(path.join(global, 'demo-server/bin/server.js'), '');
+  const query = vi.fn(async () => global);
+  const environment = new ServerEnvironment(env);
+  const discovery = new ServerDiscovery(environment, query);
+  // The reset lands exactly while the lookup of the package waits for its lookup of node.
+  const resolve = environment.resolve.bind(environment);
+  let calls = 0;
+  environment.resolve = () => { const value = resolve(); if (++calls === 2) discovery.reset(); return value; };
+  const found = await discovery.find('demo-server', { npmPackage: 'demo-server', resolveEnvironment: true });
+  expect(found.selected).toMatchObject({ path: path.join(global, 'demo-server/bin/server.js'), source: 'npm' });
+  expect((await discovery.find('demo-server', { npmPackage: 'demo-server', resolveEnvironment: true })).selected?.source).toBe('npm');
   discovery.dispose(); f.discovery.dispose();
 });
 

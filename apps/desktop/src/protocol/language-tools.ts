@@ -7,6 +7,22 @@
 export const toolFamilies = ['rust-analyzer', 'clangd', 'svelte', 'typescript', 'gopls', 'jdtls', 'kotlin', 'intelephense', 'pyright', 'json', 'yaml', 'html', 'css'] as const;
 export type ToolFamily = typeof toolFamilies[number];
 
+/** How a tool says that it could not find what a file brings in. Until the tool says so, nothing on
+ * the screen claims that the project needs setting up: a missing configuration file is not a symptom.
+ *   clangd: the name of clang's diagnostic (`pp_file_not_found`), checked against clangd 22.
+ *   Pyright: vendor/pyright/packages/pyright-internal/src/common/diagnosticRules.ts
+ *   TypeScript: diagnosticMessages 2307 and 2792 ("Cannot find module …"). */
+export const unresolvedSymptoms: Partial<Record<ToolFamily, { noun: 'include' | 'import'; codes: readonly (string | number)[] }>> = {
+  clangd: { noun: 'include', codes: ['pp_file_not_found'] },
+  pyright: { noun: 'import', codes: ['reportMissingImports', 'reportMissingModuleSource'] },
+  typescript: { noun: 'import', codes: [2307, 2792] },
+};
+/** Whether this diagnostic of the tool is such a symptom. */
+export function isUnresolvedSymptom(tool: ToolFamily | undefined, code: unknown): boolean {
+  const value = code && typeof code === 'object' ? (code as { value?: unknown }).value : code;
+  return !!tool && !!unresolvedSymptoms[tool]?.codes.some(known => known === value || String(known) === String(value));
+}
+
 /** How the parameter is made from the object the editor sends:
  *  `document`    the object with `textDocument: { uri }` added
  *  `identifier`  `{ uri }` alone (a `TextDocumentIdentifier`)

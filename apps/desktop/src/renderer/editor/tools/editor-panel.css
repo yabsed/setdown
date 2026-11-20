@@ -11,6 +11,8 @@
 .editor-tool-row[aria-disabled=true] { opacity: .65; }
 .editor-tool-row small, .editor-tool-count { color: var(--app-muted-text); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .editor-tool-count { margin: 5px 0; }
+.editor-tool-section { margin: 10px 9px 2px; color: var(--app-muted-text); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.editor-tool-section:first-child { margin-top: 2px; }
 .editor-tool-dialog form { display: grid; gap: 12px; }
 .monaco-editor .setdown-edit-feedback { background: color-mix(in srgb, var(--app-accent) 28%, transparent); outline: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent); }
 .monaco-editor .setdown-search-highlight { background: color-mix(in srgb, var(--app-accent) 24%, transparent); }

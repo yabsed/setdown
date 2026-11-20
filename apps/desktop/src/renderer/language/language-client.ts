@@ -7,7 +7,7 @@ import { textSynchronization } from '../../protocol/language';
 import { languageSupport } from '../../core/document/language-support';
 import { installNavigationFeatures } from './language-navigation-features';
 import { installSemanticFeatures } from './language-semantic-features';
-import { installEditFeatures } from './language-edit-features';
+import { codeActionRunner, installEditFeatures } from './language-edit-features';
 import { installAutoInsertion } from './language-auto-insert';
 import { installPullDiagnostics, type DiagnosticCache } from './language-diagnostics';
 import { noCancellation, type LanguageFeatureContext } from './language-feature-context';
@@ -17,14 +17,18 @@ import { requestLanguageResult, LanguageRequestError, languageItemHandles } from
 import { completionContext as toCompletionContext } from '../../protocol/language-completion';
 import { ownLanguageDiagnostics } from './builtin-diagnostics';
 import { diagnosticsFor, type DiagnosticStore } from './diagnostic-store';
-import { documentSupport, type ProviderSupport } from './document-support';
-import { problemsEmpty } from './document-presentation';
+import { documentSupport, type ProviderSupport, type ToolAction, type ToolEnvironment } from './document-support';
+import { environmentAction, problemsEmpty } from './document-presentation';
 import { featureNames } from '../../protocol/language-features';
-import { mayEdit, type ToolFamily } from '../../protocol/language-tools';
-import { clientCommandHandlers, commandLine, plainSnippet, toolCommands, type ToolCommandContext } from './tool-commands';
+import { isUnresolvedSymptom, mayEdit, unresolvedSymptoms, type ToolFamily } from '../../protocol/language-tools';
+import { clientCommandHandlers, commandLine, goChoice, goEnvironment, plainSnippet, toolCommands, toolEnvironmentRows, yamlEnvironment, type ToolCommandContext } from './tool-commands';
 import { toolCommandList } from './tool-command-list';
+import { hereProbes } from './language-here';
+import type { HereItem } from './here-menu';
 
-type Binding = { autoInsert?: LanguageAutoInsert; companion?: boolean; tool?: ToolFamily; issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { /** How many of the tool's diagnostics say that something the file brings in was not found. Kept
+   * from one report of the tool to its next, so the status does not blink while a person types. */
+  unresolved?: number; runCodeAction?: ReturnType<typeof codeActionRunner>; autoInsert?: LanguageAutoInsert; companion?: boolean; tool?: ToolFamily; issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -39,6 +43,10 @@ export type LanguageOptions = {
   runProgram?(commandLine: string, cwd?: string): Promise<void>;
   /** Opens a page a tool points to (documentation). */
   openLink?(href: string): Promise<void>;
+  /** Opens a document that a tool's answer was kept as, beside the code. */
+  openAnswer?(file: string): Promise<void>;
+  /** Opens the panel behind the language name, on the page where a choice is made. */
+  inspect?(model: M.editor.ITextModel, page: 'environment' | 'tool-environment', item?: string): void;
   status(state: string, message?: string): void;
 };
 
@@ -54,6 +62,7 @@ export class LanguageClient {
   private applying = false;
   private resultsView?: M.IDisposable;
   private readonly commandEdits = new Map<Binding, Map<M.editor.ITextModel, number>>();
+  private messageTurn = 0;
   constructor(private readonly api: typeof M, private readonly options: LanguageOptions) {
     this.disposables.push({ dispose: options.port.onEvent(event => {
       if (event.type === 'context') {
@@ -105,7 +114,7 @@ export class LanguageClient {
         }
         this.publishStatus();
         if (event.state === 'failed') for (const binding of affected) {
-          binding.failed = true; binding.diagnostics = []; binding.diagnosticChannels.clear(); binding.lease.clear();
+          binding.failed = true; binding.diagnostics = []; binding.unresolved = undefined; binding.diagnosticChannels.clear(); binding.lease.clear();
           for (const provider of binding.providers) provider.dispose(); binding.providers = [];
         }
         this.publishStatus(); return;
@@ -267,6 +276,8 @@ export class LanguageClient {
       id: binding.serverId, name: binding.serverName ?? binding.serverId, kind: 'server', state: binding.state === 'unavailable' ? binding.unavailable ?? 'missing' : binding.state,
       features: binding.failed ? [] : featureNames(binding.capabilities), checks: !binding.failed && binding.state === 'ready' && (binding.capabilities.diagnosticProvider || binding.hasDiagnostics) ? 'Server diagnostics' : 'none',
       recovery: binding.recovery, issue: binding.issue, preparing: binding.preparing, message: binding.message, context: binding.context, analysis: binding.analysis, messages: binding.messages, diagnosticCount: binding.diagnostics.length,
+      tool: !binding.failed && binding.state === 'ready' ? binding.tool : undefined,
+      unresolved: !binding.failed && binding.state === 'ready' && binding.tool && binding.unresolved ? { count: binding.unresolved, noun: unresolvedSymptoms[binding.tool]!.noun } : undefined,
     });
     const current = bindings.find(binding => binding.state === 'failed') ?? bindings.find(binding => binding.state === 'starting');
     this.options.status(current?.state ?? (bindings.some(b => b.state === 'ready') ? 'ready' : 'unavailable'), current?.message);
@@ -323,8 +334,14 @@ export class LanguageClient {
     const restore = () => { if (!model.isDisposed() && editor.getModel() === model) editor.focus(); };
     const selections = (editor.getSelections() ?? []).map(selection => toRange(selection));
     const position = toPosition(editor.getPosition() ?? { lineNumber: 1, column: 1 });
-    const message = (text: string) => { const at = editor.getPosition();
-      if (at) (editor.getContribution('editor.contrib.messageController') as unknown as { showMessage?(message: string, position: M.IPosition): void } | null)?.showMessage?.(text.slice(0, 500), at); };
+    // A sentence at the cursor that leaves by itself: nothing a tool says stays over the text.
+    const message = (text: string) => {
+      const at = editor.getPosition(), controller = editor.getContribution('editor.contrib.messageController') as unknown as { showMessage?(message: string, position: M.IPosition): void; closeMessage?(): void } | null;
+      if (!at || !controller?.showMessage) return;
+      controller.showMessage(text.slice(0, 500), at);
+      const turn = ++this.messageTurn;
+      setTimeout(() => { if (turn === this.messageTurn) controller.closeMessage?.(); }, 6000);
+    };
     const open = async (uri: string, range?: L.Range) => { await this.options.open(this.uri(uri).fsPath, range && fromRange(range)); };
     const show = async (view: Promise<M.IDisposable>) => { this.resultsView?.dispose(); this.resultsView = await view; if (this.bindings.get(model) !== binding) this.resultsView.dispose(); else binding.providers.push(this.resultsView); };
     return {
@@ -332,7 +349,12 @@ export class LanguageClient {
       formatting: { tabSize: model.getOptions().tabSize, insertSpaces: model.getOptions().insertSpaces },
       line: model.getLineContent(Math.min(position.line + 1, model.getLineCount())),
       request: (method, params, strict) => this.request(model, method, params, noCancellation, strict),
-      showText: async source => { if (host) await show(import('./language-text').then(({ showLanguageText }) => showLanguageText(api, host, source, restore))); },
+      // The answer becomes a file of the app, which opens beside the code like any document.
+      showText: async source => {
+        const { port, openAnswer } = this.options;
+        if (!port.answer || !openAnswer) throw Error('This window cannot open the answer as a document.');
+        await openAnswer(await port.answer(binding.path, source));
+      },
       showLocations: async (title, found, empty) => {
         const places = found.flatMap(place => { const uri = 'targetUri' in place ? place.targetUri : place.uri, range = 'targetUri' in place ? place.targetSelectionRange : place.range;
           try { return [{ uri, range, path: this.uri(uri).fsPath }]; } catch { return []; } });
@@ -380,9 +402,62 @@ export class LanguageClient {
       copy: async text => { await navigator.clipboard.writeText(text); },
       link: async href => { await this.options.openLink?.(href); },
       message,
+      inspect: (page, item) => { this.options.inspect?.(model, page, item); },
       editorAction: async id => { editor.focus(); const action = editor.getAction(id); if (action) await action.run(); else editor.trigger('setdown.language', id, {}); },
       type: text => { editor.trigger('keyboard', 'type', { text }); },
     };
+  }
+  /** The commands of the tool's own extension that act on the project or on the tool. */
+  toolActions(model: M.editor.ITextModel | null): ToolAction[] {
+    const binding = model && this.bindings.get(model), tool = this.toolFor(model);
+    return !binding || !tool ? [] : toolCommandList.flatMap(command => command.tool === tool && (command.place === 'project' || command.place === 'settings')
+      ? [{ id: command.id, server: binding.serverId, title: command.short ?? command.title, place: command.place }] : []);
+  }
+  /** The row of a choice the document's tool keeps itself, known without asking it. */
+  toolEnvironmentRow(model: M.editor.ITextModel | null): { id: string; label: string } | undefined {
+    const tool = this.toolFor(model); return tool && toolEnvironmentRows[tool];
+  }
+  /** Asks the tool for that choice. A refusal of the tool is the row's own sentence. */
+  async toolEnvironment(model: M.editor.ITextModel, id: string): Promise<ToolEnvironment | undefined> {
+    const row = this.toolEnvironmentRow(model);
+    if (row?.id !== id) return undefined;
+    try {
+      return id === 'go' ? goEnvironment(await this.request(model, 'setdown/go.versions', {}, noCancellation, true))
+        : yamlEnvironment(await this.request(model, 'yaml/get/all/jsonSchemas', {}, noCancellation, true));
+    } catch (error) { return { ...row, value: '', choices: [], refusal: String(error instanceof Error ? error.message : error).slice(0, 500) }; }
+  }
+  /** Makes the choice. The answer is what to tell the person, or `false` when the row is not this tool's. */
+  async chooseToolEnvironment(model: M.editor.ITextModel, id: string, choice: string): Promise<string | undefined | false> {
+    if (this.toolEnvironmentRow(model)?.id !== id) return false;
+    if (id === 'go') {
+      const picked = goChoice(choice);
+      if (!picked) throw Error('This Go is no longer in the list.');
+      return await this.request(model, 'setdown/go.chooseVersion', picked, noCancellation, true) ? ('clear' in picked ? 'Using the Go of the environment again.' : 'Go changed; gopls is starting again.') : undefined;
+    }
+    await this.request(model, 'setdown/yaml.selectSchemas', { selected: choice ? [choice] : [] }, noCancellation, true);
+    return undefined;
+  }
+  /** What can be done with the thing under the cursor: the questions are sent now, and each
+   * resolves with the entries its answer makes (`language-here.ts`). */
+  hereProbes(editor: M.editor.IStandaloneCodeEditor): Promise<HereItem[]>[] {
+    const model = editor.getModel(), binding = model && this.bindings.get(model);
+    if (!model || !binding || binding.failed || binding.state !== 'ready') return [];
+    const command = this.commandContext(binding, editor), version = model.getVersionId(), versions = this.snapshot();
+    const report = (error: unknown) => command.message(String(error instanceof Error ? error.message : error));
+    return hereProbes({ capabilities: binding.capabilities, tool: binding.tool, position: command.position, selection: command.selection, uri: binding.uri ?? '',
+      readOnly: editor.getOption(this.api.editor.EditorOption.readOnly), diagnostics: binding.diagnostics, environment: binding.analysis?.context.kind,
+      // A tool that refuses a question at this position has simply answered no.
+      request: <T>(method: LanguageMethod, params: object) => this.request<T>(model, method, params, noCancellation, true).catch(() => null),
+      runs: name => !!binding.tool && !!clientCommandHandlers[binding.tool]?.[name] && !/\.(?:showReferences|gotoLocation|triggerParameterHints|rename)$/.test(name)
+        || !!binding.capabilities.executeCommandProvider?.commands?.includes(name),
+      editorAction: id => { void command.editorAction(id).catch(report); },
+      hierarchy: kind => { void this.showNavigation(kind, editor); },
+      codeAction: async action => { try { await binding.runCodeAction?.(action, version, versions); } catch (error) { report(error); } },
+      execute: async lens => { try { await this.execute(binding, lens); } catch (error) { report(error); } },
+      toolCommand: async id => { await this.runToolCommand(id, editor); },
+      showText: source => command.showText(source).catch(report), showLocations: command.showLocations, link: command.link, edit: command.edit,
+      inspectEnvironment: () => { this.options.inspect?.(model, 'environment'); },
+    });
   }
   async documentSymbols(model: M.editor.ITextModel): Promise<Array<{ name: string; line: number; column: number; kind: number }>> {
     if (!this.capabilitiesFor(model).documentSymbolProvider) return [];
@@ -470,6 +545,7 @@ export class LanguageClient {
     if (!binding.hasDiagnostics) { binding.hasDiagnostics = true; binding.providers.push(ownLanguageDiagnostics(this.api, binding.model, binding.serverId)); this.publishStatus(); }
     binding.diagnosticChannels.set(channel, diagnostics);
     binding.diagnostics = [...binding.diagnosticChannels.values()].flat();
+    binding.unresolved = binding.tool && unresolvedSymptoms[binding.tool] ? binding.diagnostics.filter(diagnostic => isUnresolvedSymptom(binding.tool, diagnostic.code)).length : undefined;
     binding.lease.publish(channel, diagnostics.map(d => marker(this.api, d)), version, { diagnostics, context: binding.analysis?.context });
     if (binding.analysis) binding.analysis = { ...binding.analysis, analysis: 'observed', freshness: version === undefined ? 'best-effort' : 'current' };
     this.publishStatus();
@@ -530,6 +606,21 @@ export class LanguageClient {
       execute: command => this.execute(owner, command),
     };
     installNavigationFeatures(context); installSemanticFeatures(context); installEditFeatures(context);
+    owner.runCodeAction = codeActionRunner(context);
+    // The repair sits where it hurts: on the line the tool marked as bringing in something it did
+    // not find, the choice of what the analysis is based on is offered as a fix.
+    if (owner.tool && unresolvedSymptoms[owner.tool] && this.options.inspect && api.editor.registerCommand) {
+      const chooseId = `setdown.language.environment.${crypto.randomUUID()}`;
+      owner.providers.push(api.editor.registerCommand(chooseId, () => { if (this.bindings.get(owner.model) === owner) this.options.inspect!(owner.model, 'environment'); }),
+        api.languages.registerCodeActionProvider(language, scoped({
+          provideCodeActions: (_model: M.editor.ITextModel, _range: M.Range, found: M.languages.CodeActionContext) => {
+            const kind = owner.analysis?.context.kind, hit = kind && found.markers.find(marker => isUnresolvedSymptom(owner.tool, marker.code));
+            if (!kind || !hit || found.only && !found.only.startsWith('quickfix')) return { actions: [], dispose() {} };
+            const title = environmentAction(kind).label;
+            return { actions: [{ title, kind: 'quickfix', diagnostics: [hit], command: { id: chooseId, title } }], dispose() {} };
+          },
+        }), { providedCodeActionKinds: ['quickfix'] }));
+    }
     if (owner.autoInsert) installAutoInsertion(context, owner.autoInsert);
     installPullDiagnostics(context, diagnostics => this.diagnostics(owner, diagnostics, 'pull', owner.model.getVersionId()), owner.diagnosticCache);
     this.publishStatus();

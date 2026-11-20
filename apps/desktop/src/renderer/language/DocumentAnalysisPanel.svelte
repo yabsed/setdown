@@ -1,14 +1,15 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { documentSupport, featureLabels, type DocumentSupportTarget, type AnalysisPage } from './document-support';
+  import { documentSupport, featureLabels, type DocumentSupportTarget, type AnalysisPage, type ToolEnvironment } from './document-support';
   import { DocumentAnalysisController, type AnalysisState } from './document-analysis-controller';
   import { presentSupport, providerStatus, analysisResult, projectLabel, type SupportAction } from './document-presentation';
   import AnalysisEnvironment from './AnalysisEnvironment.svelte';
+  import ChoiceList from './ChoiceList.svelte';
   import DocumentProviderDetails from './DocumentProviderDetails.svelte';
   import { isComposingInput } from '../editor/composition-guard';
   import type { AnalysisSelection } from '../../core/document/analysis-context';
-  let { target, initialPage = 'summary', onclose, onpagechange }: {
-    target: DocumentSupportTarget; initialPage?: AnalysisPage; onclose(): void; onpagechange(page: AnalysisPage): void;
+  let { target, initialPage = 'summary', initialItem, onclose, onpagechange }: {
+    target: DocumentSupportTarget; initialPage?: AnalysisPage; initialItem?: string; onclose(): void; onpagechange(page: AnalysisPage): void;
   } = $props();
   let selectedServer = $state('');
   let page = $state<AnalysisPage>('summary'), revision = $state(0), error = $state('');
@@ -18,12 +19,35 @@
   const support = $derived.by(() => { revision; return documentSupport.current(target); });
   const provider = $derived(support?.providers.find(item => item.id === selectedServer));
   const context = $derived(analysis.context);
+  // The same providers the name in the location bar is made from: the two cannot disagree.
   const summary = $derived(presentSupport(support?.providers ?? [], context, support?.name));
+  // The choices a tool keeps itself (the Go in use, a YAML file's schema) are rows like the
+  // others. The tool is asked once the panel is open; until it answers the row shows no value.
+  let toolRows = $state<Record<string, ToolEnvironment>>({}), toolRow = $state(''), toolBusy = $state(false), toolNote = $state('');
+  const toolRowIds = $derived(support?.toolEnvironments.map(row => row.id).join('|') ?? '');
+  async function loadToolRows() {
+    for (const row of documentSupport.current(target)?.toolEnvironments ?? []) {
+      try { const found = await documentSupport.current(target)?.toolEnvironment(row.id); if (found) toolRows = { ...toolRows, [row.id]: found }; }
+      catch (reason) { toolRows = { ...toolRows, [row.id]: { ...row, value: '', choices: [], refusal: String(reason instanceof Error ? reason.message : reason) } }; }
+    }
+  }
+  $effect(() => { if (toolRowIds) void loadToolRows(); });
+  async function chooseTool(id: string, choice: string) {
+    if (toolBusy) return;
+    toolBusy = true; toolNote = ''; error = '';
+    try { toolNote = await documentSupport.current(target)?.chooseToolEnvironment(id, choice) ?? ''; await loadToolRows(); }
+    catch (reason) { error = String(reason instanceof Error ? reason.message : reason); }
+    finally { toolBusy = false; }
+  }
+  /** A command of the tool that acts on the project. Its answer, when it has one, is a document
+   * beside the code, so the panel gets out of the way. */
+  function runTool(id: string) { const current = documentSupport.current(target); onclose(); void current?.runToolAction(id).catch(reason => console.warn('Language tool action:', String(reason))); }
   const hasPrimary = $derived(context?.servers.some(server => server.role === 'primary'));
   const environment = $derived(context?.choices.find(choice => choice.id === context.selected));
-  const title = $derived(({ summary: support?.name ?? 'Code support', details: 'Document analysis', language: 'Document language', environment: context?.label ?? 'Project environment', provider: 'Choose analysis tool', tool: provider?.name ?? 'Analysis tool', settings: 'Project connection settings', output: 'Server output' })[page]);
+  const title = $derived(({ summary: support?.name ?? 'Code support', details: 'Document analysis', language: 'Document language', environment: context?.label ?? 'Project environment',
+    'tool-environment': support?.toolEnvironments.find(row => row.id === toolRow)?.label ?? 'Environment', provider: 'Choose analysis tool', tool: provider?.name ?? 'Analysis tool', settings: 'Project connection settings', output: 'Server output' })[page]);
   onMount(() => {
-    page = initialPage; onpagechange(page);
+    page = initialPage; toolRow = initialItem ?? ''; onpagechange(page);
     controller = new DocumentAnalysisController(target, value => analysis = value);
     let observed = '';
     const off = documentSupport.subscribe(() => {
@@ -55,6 +79,7 @@
     else if (action.kind === 'log' && server) { selectedServer = server; direct = page === 'summary'; void navigate('output'); }
     else if (action.kind === 'details' && server) inspectProvider(server, page === 'summary');
     else if (action.kind === 'environment' || action.kind === 'provider') void navigate(action.kind);
+    else if (action.kind === 'problems') { current()?.problems(); onclose(); }
     else if (action.kind === 'details') void navigate(context?.kind ? 'environment' : 'details');
   }
   // Between a repair and the tool's next status the document briefly has no tool at all.
@@ -94,6 +119,16 @@
     </select></label>
   {:else if page === 'environment'}
     <AnalysisEnvironment state={analysis} {select} refresh={() => void controller.refresh()} prepare={() => void controller.prepare()} cancel={() => void controller.cancel()} />
+  {:else if page === 'tool-environment'}
+    {@const row = toolRows[toolRow]}
+    {#if !row}<p class="muted" role="status">Asking the tool…</p>
+    {:else if row.refusal}<p>{row.refusal}</p>{#if row.value}<p class="muted">In use: {row.value}</p>{/if}
+    {:else}
+      <ChoiceList label={row.label} choices={row.choices} busy={toolBusy} choose={choice => void chooseTool(row.id, choice)} />
+      {#if row.note}<p class="muted">{row.note}</p>{/if}
+    {/if}
+    {#if toolBusy}<p class="muted" role="status">Applying…</p>{/if}
+    {#if toolNote}<p role="status">{toolNote}</p>{/if}
   {:else if page === 'provider'}
     <p class="muted">Project · {context ? projectLabel(context.root) : 'Loading…'}</p>
     {#if context?.servers.some(server => server.role === 'primary')}
@@ -133,7 +168,15 @@
           <button onclick={() => { logParent = 'tool'; void navigate('output'); }}>Show log</button>
           {#if hasPrimary && provider.role !== 'supplementary'}<button onclick={() => navigate('provider')}>Choose analysis tool…</button>{/if}
           <button onclick={() => navigate('settings')}>Project connection settings…</button>
+          {#each support.toolActions.filter(action => action.server === provider.id && action.place === 'settings') as action (action.id)}<button onclick={() => runTool(action.id)}>{action.title}</button>{/each}
         </div>
+        <!-- What the tool's own extension offers for the project as a whole: named plainly here, under the tool's name. -->
+        {#if support.toolActions.some(action => action.server === provider.id && action.place === 'project')}
+          <h4 class="section">Project</h4>
+          <div class="actions">
+            {#each support.toolActions.filter(action => action.server === provider.id && action.place === 'project') as action (action.id)}<button onclick={() => runTool(action.id)}>{action.title}</button>{/each}
+          </div>
+        {/if}
       {/if}
     {:else}<p>This tool is no longer attached to the document.</p>{/if}
   {:else}
@@ -147,13 +190,17 @@
         </div>
       </div>
     {:else if page === 'summary'}
-      <p class="result">{#if summary.working}<span aria-hidden="true">✓</span> Working{:else if repairing || summary.tone === 'busy'}Starting…{:else}{summary.description}{/if}{#if summary.action && !repairing} <button class="link" disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}</p>
+      <!-- Not ready yet (starting, or still reading the project): the ring that turns beside the name turns here too. -->
+      <p class="result">{#if repairing || summary.tone === 'busy'}<span class="turning" aria-hidden="true"></span>{summary.working && !repairing ? 'Analyzing…' : 'Starting…'}{:else if summary.working}<span aria-hidden="true">✓</span> Working{:else}{summary.description}{/if}{#if summary.action && !repairing} <button class="link" disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}</p>
     {/if}
     <div class="rows">
       <button class="analysis-row" onclick={() => navigate('language')}><span>Language</span><strong>{support.name} <span aria-hidden="true">›</span></strong></button>
       {#if context}
-        {#if context.kind}<button class="analysis-row" onclick={() => navigate('environment')}><span>{context.label}</span><strong>{environment?.name ?? 'Choose…'} <span aria-hidden="true">›</span></strong></button>{/if}
+        {#if context.kind}<button class="analysis-row" onclick={() => navigate('environment')}><span>{context.label}</span><strong>{environment?.name ?? context.unselected ?? 'Choose…'} <span aria-hidden="true">›</span></strong></button>{/if}
       {/if}
+      {#each support.toolEnvironments as row (row.id)}
+        <button class="analysis-row" onclick={() => { toolRow = row.id; toolNote = ''; void navigate('tool-environment'); }}><span>{row.label}</span><strong>{toolRows[row.id]?.value ?? ''} <span aria-hidden="true">›</span></strong></button>
+      {/each}
     </div>
     {#if page === 'details'}
       <!-- One block per tool: its name, what it reported, and the two things a person does to it. -->
@@ -186,6 +233,7 @@
   header, .provider-title { display: flex; align-items: center; gap: 8px; }
   header { margin-bottom: 10px; } h3 { margin: 0; flex: 1; font-size: 13px; } h3:focus { outline: none; }
   h4 { margin: 0; font-size: 12px; } .provider-title { justify-content: space-between; }
+  h4.section { margin-top: 16px; color: var(--app-muted-text); font-weight: 600; }
   button { background: transparent; color: inherit; font: inherit; border: 1px solid var(--app-border); border-radius: 4px; padding: 5px 8px; cursor: pointer; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .6; cursor: default; }
   button:focus-visible, select:focus-visible, summary:focus-visible { outline: 1px solid var(--app-focus-ring); }

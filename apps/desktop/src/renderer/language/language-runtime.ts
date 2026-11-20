@@ -2,7 +2,10 @@
 export { builtinSupport, onBuiltinSupport, retargetBuiltin, installBuiltinDiagnostics } from './builtin-diagnostics';
 export { documentSupport, languageCatalogRequest, openLanguageSupport } from './document-support';
 // The commands of each tool's own extension, as plain data: the editor lists them without loading the project client.
-export { toolCommandList, toolContextKey } from './tool-command-list';
+export { toolCommandList, toolContextKey, toolActionId, documentCommandIds, documentCommandNames, unlistedCommandIds } from './tool-command-list';
+// The menu at the cursor: its rules are plain data, and its view loads when a person first asks for it.
+export { gatherHere, arrangeHere, type HereItem, type HereMenuSource } from './here-menu';
+export const openHereMenu = (source: import('./here-menu').HereMenuSource): Promise<void> => import('./here-menu-view').then(view => view.openHereMenu(source));
 
 export function createLanguageWorker(label: string): Promise<Worker> | undefined {
   switch (label) {

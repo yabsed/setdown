@@ -7,7 +7,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { watchFile, unwatchFile } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
-import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod } from '../../protocol/language';
+import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod, type LanguageAnswer } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { ServerRegistry, findExecutable } from './server-registry';
@@ -19,6 +19,7 @@ import { documentRequest, featureNames, resolveMethods } from '../../protocol/la
 import { ServerSession } from './server-session';
 import { supportedTool } from '../../core/document/supported-languages';
 import { ServerDiscovery, type Discovery } from './server-discovery';
+import { writeLanguageAnswer } from './language-answers';
 import { languageCatalog, packageDiscovery, profileSource } from './catalog/profiles';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import { NotebookLanguageHost } from './notebook-language-host';
@@ -61,6 +62,9 @@ type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map
 export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment' | 'pythonEnvironments'>>;
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
+/** How long quitting waits for language tools to shut down: above the 3 s the project host gives
+ * its servers (`SHUTDOWN_LIMIT`) and the 1.5 s after which a session's process is killed. */
+const quitDrainLimit = 6000;
 export class LanguageManager {
   /** Ordinary Python files see the environments Zed's search finds; a failed search leaves the ones
    * Setdown finds itself. The search reads the environment the tools get (PYENV_ROOT, CONDA_*, PATH),
@@ -436,6 +440,7 @@ export class LanguageManager {
       return this.catalogFor(state(event), file, inspect);
     });
     ipcMain.handle('language:rescan', event => { this.subscribe(state(event)); return this.rescan(); });
+    ipcMain.handle('language:answer', (event, file: string, answer: LanguageAnswer) => { this.ownedFile(state(event), file); return writeLanguageAnswer(app.getPath('userData'), answer); });
     ipcMain.handle('language:automatic', (event, id: string) => { state(event); return this.changed(() => this.registry.useAutomatic(id)); });
     ipcMain.handle('language:set-enabled', (event, id: string, enabled: boolean) => {
       state(event); return this.changed(() => this.registry.setEnabled(id, enabled));
@@ -482,8 +487,13 @@ export class LanguageManager {
       this.discovery.dispose(); this.preparation.dispose(); this.supervisor.dispose(); this.provisionerValue?.dispose(); this.catalogValue?.dispose(); this.zedSettingsValue?.dispose();
       if (drained || (!this.owners.size && !this.draining.size && !this.notebooks.running && !this.projectsValue)) return;
       event.preventDefault();
-      void Promise.all([this.notebooks.dispose(), this.projectsValue?.dispose(), ...[...this.owners.keys()].map(id => this.dispose(id))])
-        .then(() => Promise.all([...this.draining])).finally(() => { drained = true; app.quit(); });
+      const left = Promise.all([this.notebooks.dispose(), this.projectsValue?.dispose(), ...[...this.owners.keys()].map(id => this.dispose(id))])
+        .then(() => Promise.all([...this.draining])).catch(() => {});
+      // The tools have a bounded time to leave. A tool or a host that never answers must not keep
+      // a process without windows alive: it would hold the app's single-instance lock, and every
+      // later start of the app would be handed to a process whose services are gone.
+      const limit = new Promise<void>(resolve => { setTimeout(resolve, quitDrainLimit); });
+      void Promise.race([left, limit]).finally(() => { drained = true; app.quit(); });
     });
   }
   private emit(owner: Owner, event: LanguageEvent): void {

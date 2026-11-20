@@ -13,6 +13,13 @@ declare module 'monaco-editor/editor/standalone/browser/standaloneServices' {
 declare module 'monaco-editor/platform/contextview/browser/contextView' {
   export const IContextMenuService: unknown;
 }
+// The key of an editor action as the editor itself writes it, for the app's own menu and command list.
+declare module 'monaco-editor/platform/keybinding/common/keybinding' {
+  export const IKeybindingService: unknown;
+}
+declare module 'monaco-editor/platform/contextkey/common/contextkey' {
+  export const IContextKeyService: unknown;
+}
 
 // Register the ported VS Code action with the real contribution registry so it
 // participates in keybindings, getAction() and Monaco's command palette.

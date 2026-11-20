@@ -5,7 +5,8 @@ import type { DocumentAnalysis } from '../../core/document/analysis-context';
 const context: DocumentAnalysis = { id: 'env', root: '/a', rootReason: 'marker', environment: 'usable', choices: [], evidence: [], issues: [], servers: [] };
 function document(id: string, resource = id): DocumentSupport {
   return { id, resource, path: '/' + id, language: 'python', name: 'Python', choices: [], providers: [], setLanguage: vi.fn(), restart: vi.fn(), problems: vi.fn(), answerMessage: vi.fn(), useAutomatic: vi.fn(), allowDownload: vi.fn(), chooseExecutable: vi.fn(), openHelp: vi.fn(),
-    environment: vi.fn(async () => context), selectEnvironment: vi.fn(async () => context), prepareEnvironment: vi.fn(async () => ({ output: '' })), cancelPreparation: vi.fn(), inspectProvider: vi.fn(), configureProvider: vi.fn() };
+    environment: vi.fn(async () => context), selectEnvironment: vi.fn(async () => context), prepareEnvironment: vi.fn(async () => ({ output: '' })), cancelPreparation: vi.fn(), inspectProvider: vi.fn(), configureProvider: vi.fn(),
+    toolEnvironments: [], toolEnvironment: vi.fn(), chooseToolEnvironment: vi.fn(), toolActions: [], runToolAction: vi.fn() };
 }
 afterEach(() => { for (const item of documentSupport.all()) documentSupport.remove(item.id); });
 test('selection keeps the inspected document and expected project root across another tab becoming active', async () => {

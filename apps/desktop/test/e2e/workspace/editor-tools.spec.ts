@@ -83,6 +83,39 @@ test('editor commands preserve Unicode targets, repeat intent, copy shape, Undo 
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
 
+test('F1 and the menu at the cursor open the app’s command list in the editor of a group made later, never the editor’s own list', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-later-group-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-later-group-config-'));
+  const file = path.join(root, 'notes.txt'); await writeFile(file, 'first\nsecond\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    await expect(page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' })).toBeVisible();
+    await command(page, 'Split editor right'); await expect(page.locator('.editor-group')).toHaveCount(2);
+    const list = page.getByRole('dialog', { name: 'Commands', exact: true }), own = page.locator('.quick-input-widget');
+    await expect(list).toBeHidden();
+    // Every editor of the window, the first and the one the split made, answers with the same list.
+    const groups = page.locator('.editor-group');
+    await expect(page.locator('.group-monaco-instance')).toHaveCount(2);
+    for (const index of [1, 0]) {
+      // A person goes to a group's text with the pointer.
+      const box = (await groups.nth(index).boundingBox())!;
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await expect(groups.nth(index)).toHaveClass(/focused/);
+      await expect(page.locator('.group-monaco-instance [aria-label="Editor content"]:focus')).toHaveCount(1);
+      await page.keyboard.press('F1');
+      await expect(list).toBeVisible();
+      await expect(own.filter({ visible: true })).toHaveCount(0);
+      await list.getByRole('searchbox').press('Escape'); await expect(list).toBeHidden();
+      await page.keyboard.press('Shift+F10');
+      const menu = page.getByRole('dialog', { name: 'Actions here', exact: true });
+      await menu.getByRole('option', { name: /All Commands…/ }).click();
+      await expect(list).toBeVisible();
+      await list.getByRole('searchbox').press('Escape'); await expect(list).toBeHidden();
+    }
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
 test('explicit session restore recovers changed-disk text separately and restores independent groups', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-session-e2e-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-session-config-'));
   const file = path.join(root, 'notes.txt'); await writeFile(file, 'saved\n');

@@ -2,7 +2,7 @@ import type { AnalysisContext, DocumentAnalysis } from '../../core/document/anal
 import type { LanguageIssue } from '../../protocol/language';
 import type { ProviderSupport } from './document-support';
 
-export type SupportAction = { kind: 'environment' | 'provider' | 'details' | 'restart' | 'automatic' | 'install' | 'locate' | 'help' | 'log';
+export type SupportAction = { kind: 'environment' | 'provider' | 'details' | 'restart' | 'automatic' | 'install' | 'locate' | 'help' | 'log' | 'problems';
   label: string; server?: string; runtime?: string };
 /** `label` is the short status beside the language name; `title` is the one sentence
  * that says what is wrong, and `action` the one control that addresses its cause. */
@@ -13,6 +13,16 @@ export type SupportPresentation = { label: string; tone: 'neutral' | 'warning' |
 export function shortPath(file: string): string {
   const parts = file.replaceAll('\\', '/').split('/').filter(Boolean);
   return parts.length > 3 ? `…/${parts.slice(-3).join('/')}` : file;
+}
+
+/** What a failed call says, without the wrappers each layer put around it. */
+export function plainReason(message: string | undefined): string | undefined {
+  const line = message?.split('\n').find(text => text.trim())?.replace(/^(?:\s*(?:\w*Error|Error invoking remote method '[^']*'):\s*)+/, '').trim();
+  return line ? line.slice(0, 300) : undefined;
+}
+/** The one control that opens the choice of what the analysis is based on. */
+export function environmentAction(kind: AnalysisContext['kind']): SupportAction {
+  return { kind: 'environment', label: kind === 'compilation' ? 'Choose build configuration…' : kind === 'python' ? 'Choose Python environment…' : kind === 'typescript' ? 'Choose TypeScript…' : 'Choose environment…' };
 }
 
 /** One cause, one sentence, one action. `subject` is what the person lost, such as
@@ -44,33 +54,51 @@ export function presentIssue(issue: LanguageIssue | undefined, subject: string, 
   }
 }
 
-/** Builder keeps syntax, project configuration and process details at separate UI
- * boundaries. The summary states a cause and its repair; the underlying observations
- * stay intact one step further in. */
-export function presentSupport(providers: ProviderSupport[], context?: DocumentAnalysis | AnalysisContext, language = 'Code'): SupportPresentation {
+/** The one sentence beside the language name, and the one action that addresses its cause.
+ *
+ * Every sentence here is something that was observed: a tool that did not start or stopped, a
+ * choice a person made that names something missing, a symptom the tool itself reported. What
+ * Setdown merely infers from the project's files (no build configuration was found) is never a
+ * status: it appears as the explanation beside a symptom, and nowhere while there is none.
+ *
+ * The facts come from `providers` alone, so the name in the location bar and the panel behind it
+ * cannot disagree: both are given the same providers. `policy` adds only what a person chose for
+ * the project (analysis turned off, which tool), which no provider can report about itself. */
+export function presentSupport(providers: ProviderSupport[], policy?: DocumentAnalysis | AnalysisContext, language = 'Code'): SupportPresentation {
   const servers = providers.filter(p => p.kind === 'server');
   const active = servers.filter(p => p.state === 'ready');
-  const policy = context && 'analysisSelection' in context ? context.analysisSelection : undefined;
-  const projectOff = policy?.mode === 'off';
-  const offDescription = policy?.source === 'project' ? 'Analysis is turned off for this project.' : 'Analysis is turned off by the app default.';
+  const chosen = policy && 'analysisSelection' in policy ? policy.analysisSelection : undefined;
+  const projectOff = chosen?.mode === 'off';
+  const offDescription = chosen?.source === 'project' ? 'Analysis is turned off for this project.' : 'Analysis is turned off by the app default.';
   // What stops is the language's support, unless another tool still serves the document.
   const subject = (provider: ProviderSupport) => active.some(p => p.id !== provider.id) ? provider.name : `${language} support`;
   const remaining = (provider: ProviderSupport) => { const names = active.filter(p => p.id !== provider.id).map(p => p.name); return names.length ? `${names.join(', ')} still works.` : undefined; };
   const failed = servers.find(p => p.state === 'failed' && !p.recovery?.retrying);
   const stopped = () => {
     const partial = remaining(failed!), shown = presentIssue(failed!.issue, subject(failed!), failed!.id, !failed!.recovery);
+    // Without a known cause the tool's own words are the only explanation there is.
+    const reason = shown.description ?? (failed!.issue ? undefined : plainReason(failed!.message));
     return { label: partial ? 'Limited' : failed!.issue?.kind === 'no-installer' || failed!.issue?.kind === 'downloads-off' ? 'Needs setup' : 'Not working', tone: 'warning' as const,
-      ...shown, description: [shown.description, partial].filter(Boolean).join(' ') || undefined };
+      ...shown, description: [reason, partial].filter(Boolean).join(' ') || undefined };
   };
+  const contexts = servers.flatMap(p => p.analysis ? [p.analysis.context] : []);
   // A tool that cannot start at all comes first: no environment choice can start it. A tool
   // that stopped, or failed for an unknown reason, may have stopped because of its environment.
   if (failed?.issue && failed.issue.kind !== 'crashed' && failed.issue.kind !== 'startup') return stopped();
-  const environment = !projectOff && (context?.environment === 'action-needed' ? context : servers.find(p => p.analysis?.context.environment === 'action-needed')?.analysis?.context);
-  if (environment) return { label: 'Needs setup', tone: 'warning', title: environment.issues[0]?.message ?? 'Choose an environment for this project.',
-    action: { kind: 'environment', label: environment.kind === 'compilation' ? 'Choose build configuration…' : 'Choose environment…' } };
+  const environment = contexts.find(context => context.environment === 'action-needed');
+  if (environment) return { label: 'Needs setup', tone: 'warning', title: environment.issues[0]?.message ?? 'Choose an environment for this project.', action: environmentAction(environment.kind) };
   if (failed) return stopped();
-  const limited = !projectOff && (context?.environment === 'partial' ? context : servers.find(p => p.analysis?.context.environment === 'partial')?.analysis?.context);
+  const limited = contexts.find(context => context.environment === 'partial');
   if (limited) return { label: 'Limited', tone: 'warning', title: limited.issues[0]?.message ?? 'The project environment has limitations.', action: { kind: 'details', label: 'Review environment…' } };
+  // The tool answered, and said itself that something this file brings in was not found. Only now
+  // does what Setdown inferred about the project become worth saying, as the likely reason.
+  const symptom = active.find(p => p.unresolved?.count);
+  if (symptom) {
+    const { count, noun } = symptom.unresolved!, context = symptom.analysis?.context;
+    const problems: SupportAction = { kind: 'problems', label: 'Show problems' };
+    return { label: 'Limited', tone: 'warning', title: `${count} ${noun}${count === 1 ? ' was' : 's were'} not found, so results here are incomplete.`,
+      description: context?.hints?.[0]?.message, ...(context?.kind ? { action: environmentAction(context.kind), secondary: problems } : { action: problems }) };
+  }
   const missing = servers.find(p => p.state === 'missing');
   if (missing && (missing.issue || missing.message)) {
     const partial = remaining(missing);
@@ -101,9 +129,9 @@ export function presentSupport(providers: ProviderSupport[], context?: DocumentA
   if (starting) return { label: '', tone: 'busy', description: 'Starting…' };
   if (active.some(p => p.analysis?.analysis === 'working' && p.analysis.progress.length)) return { label: '', tone: 'busy', working: true };
   if (active.length) return { label: '', tone: 'neutral', working: true };
-  const change: SupportAction | undefined = projectOff && context && 'servers' in context && context.servers.some(s => s.role === 'primary') ? { kind: 'provider', label: 'Change…' } : undefined;
+  const change: SupportAction | undefined = projectOff && policy && 'servers' in policy && policy.servers.some(s => s.role === 'primary') ? { kind: 'provider', label: 'Change…' } : undefined;
   if (providers.some(p => p.state === 'ready' && p.checks !== 'none')) return { label: '', tone: 'neutral', description: projectOff ? `${offDescription} Local checks remain available.` : 'Only local checks are active.', action: change };
-  if (!projectOff && context && 'servers' in context && !context.servers.some(s => s.role === 'primary'))
+  if (!projectOff && policy && 'servers' in policy && !policy.servers.some(s => s.role === 'primary'))
     return { label: '', tone: 'neutral', description: 'Syntax highlighting and editing support are available. The default support for this language does not include project analysis.' };
   return { label: '', tone: 'neutral', description: projectOff ? offDescription : 'No project checks are active for this document.', action: change };
 }

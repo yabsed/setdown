@@ -89,6 +89,18 @@ export class LanguageServices {
     const tool = toolCommandList.find(command => command.id === id)?.tool;
     return await [...this.clients.values()].find(client => !!tool && client.toolFor(editor.getModel()) === tool)?.runToolCommand(id, editor) ?? false;
   }
+  /** The questions the menu at the cursor asks, of every tool of the document at once. */
+  hereProbes(editor: M.editor.IStandaloneCodeEditor) { return [...this.clients.values()].flatMap(client => client.hereProbes(editor)); }
+  toolActions(model: M.editor.ITextModel | null) { return [...this.clients.values()].flatMap(client => client.toolActions(model)); }
+  toolEnvironmentRows(model: M.editor.ITextModel | null) { return [...this.clients.values()].flatMap(client => client.toolEnvironmentRow(model) ?? []); }
+  async toolEnvironment(model: M.editor.ITextModel, id: string) {
+    for (const client of this.clients.values()) { const found = await client.toolEnvironment(model, id); if (found) return found; }
+    throw Error('This choice is no longer offered for the document.');
+  }
+  async chooseToolEnvironment(model: M.editor.ITextModel, id: string, choice: string): Promise<string | undefined> {
+    for (const client of this.clients.values()) { const answer = await client.chooseToolEnvironment(model, id, choice); if (answer !== false) return answer; }
+    throw Error('This choice is no longer offered for the document.');
+  }
   async documentSymbols(model: M.editor.ITextModel) {
     const client = [...this.clients.values()].find(client => client.capabilitiesFor(model).documentSymbolProvider);
     return client ? client.documentSymbols(model) : [];

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { runCommand } from '../../support/editor/commands';
 const require = createRequire(import.meta.url);
 
 async function openFile(application: Awaited<ReturnType<typeof electron.launch>>, file: string) {
@@ -125,8 +126,7 @@ test('project analysis, a supplementary formatter and local validation share one
     await expect(problems).toContainText('Value expected');
     await problems.getByRole('button', { name: 'Close language results' }).click();
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Format Document');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Format Document');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'format').map(m => m.name)).toEqual(['companion']);
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
     await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click(); await panel.getByRole('button', { name: 'Problems', exact: true }).click();
@@ -134,17 +134,17 @@ test('project analysis, a supplementary formatter and local validation share one
     await expect(problems).not.toContainText('Value expected');
     await page.screenshot({ path: testInfo.outputPath('multiple-providers.png') });
     await problems.getByRole('button', { name: 'Close language results' }).click();
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Go to Workspace Symbol');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Go to Workspace Symbol');
     const symbols = page.getByRole('dialog', { name: 'Workspace Symbols' });
     await expect(symbols).toContainText('companion symbol');
     expect([...new Set((await messages()).filter(m => m.method === 'symbols').map(m => m.name))]).toEqual(['companion']);
     await symbols.getByRole('button', { name: 'Close language results' }).click();
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Show Incoming Calls');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Show Incoming Calls');
     const calls = page.getByRole('dialog', { name: 'Incoming Calls' });
     await expect(calls).toBeVisible();
-    await expect.poll(async () => (await messages()).filter(m => m.method === 'calls').map(m => m.name)).toEqual(['analysis']);
+    // The command list also asks what applies at the cursor each time it opens, so the question is
+    // put more than once. Every time it goes to the analysis tool and never to the supplementary one.
+    await expect.poll(async () => [...new Set((await messages()).filter(m => m.method === 'calls').map(m => m.name))]).toEqual(['analysis']);
     await calls.getByRole('button', { name: 'Close language results' }).click();
     await editor.press('Control+s');
     await expect.poll(async () => (await messages()).filter(m => m.method === 'saved').map(m => m.name).sort()).toEqual(['analysis', 'companion']);

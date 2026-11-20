@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { runCommand } from '../../support/editor/commands';
 const exec = promisify(execFile);
 
 // These are real clangd tests: install clangd on PATH or set SETDOWN_CLANGD_PATH.
@@ -139,8 +140,7 @@ test('clangd honors compile commands and .clangd, with completion, rename, Undo 
     expect(await readFile(file, 'utf8')).not.toContain('welcome');
     // Real clangd formatting uses project style and remains one ordinary Undo step.
     const beforeFormat = await readFile(file, 'utf8');
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Format Document');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Format Document');
     await expect(page.locator('.monaco-editor .view-lines')).toContainText('    int count = 4;');
     // String matchers normalize indentation, and count already has four spaces.
     // Wait for a line whose indentation actually changes before saving.
@@ -185,10 +185,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     await application.evaluate(({ dialog }, executable) => {
       dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [executable] })) as typeof dialog.showOpenDialog;
     }, executable);
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Language Support');
-    await expect(page.locator('.quick-input-widget')).toContainText('Language Support');
-    await page.locator('.quick-input-box input').press('Enter');
-    await expect(page.locator('.quick-input-widget')).toBeHidden();
+    await runCommand(page, editor, 'Language Support');
     const inspection = page.getByRole('dialog', { name: 'Current file language support' });
     await expect(inspection).toBeVisible();
     await inspection.getByRole('button', { name: 'Close language status' }).click();
@@ -204,10 +201,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     await page.getByRole('button', { name: 'Close language support' }).click();
     const settingsPath = path.join(await application.evaluate(({ app }) => app.getPath('userData')), 'language-servers.json');
     expect(JSON.parse(await readFile(settingsPath, 'utf8')).servers.clangd.executable).toBe(executable);
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Restart Language Servers');
-    await expect(page.locator('.quick-input-widget')).toContainText('Restart Language Servers');
-    await page.locator('.quick-input-box input').press('Enter');
-    await expect(page.locator('.quick-input-widget')).toBeHidden();
+    await runCommand(page, editor, 'Restart Language Servers');
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }

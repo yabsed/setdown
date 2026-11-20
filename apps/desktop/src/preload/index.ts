@@ -88,6 +88,7 @@ const api: MarkTexApi = {
     editApplied: (id, applied, reason) => ipcRenderer.send('language:edit-applied', id, applied, reason),
     cancel: id => ipcRenderer.send('language:cancel', id),
     restart: (file, server) => ipcRenderer.invoke('language:restart', file, server),
+    answer: (file, answer) => ipcRenderer.invoke('language:answer', file, answer),
     answerMessage: (file, server, request, action) => ipcRenderer.invoke('language:answer-message', file, server, request, action),
     environment: (file, language) => ipcRenderer.invoke('language:environment', file, language),
     selectEnvironment: (file, language, selection) => ipcRenderer.invoke('language:select-environment', file, language, selection),

@@ -1,12 +1,18 @@
 <script lang="ts">
   import type { AnalysisState } from './document-analysis-controller';
   import type { AnalysisSelection } from '../../core/document/analysis-context';
-  import { projectLabel, selectionSource } from './document-presentation';
+  import { projectLabel, selectionSource, shortPath } from './document-presentation';
+  import type { EnvironmentChoice } from './document-support';
+  import ChoiceList from './ChoiceList.svelte';
   import PythonCheckingLevel from './PythonCheckingLevel.svelte';
   let { state, select, refresh, prepare, cancel }: {
     state: AnalysisState; select(value: AnalysisSelection): void; refresh(): void; prepare(): void; cancel(): void;
   } = $props();
   const context = $derived(state.context);
+  // What would be in effect without the project's own choice is the recommended one.
+  const automatic = $derived(context?.selectionSource === 'project' ? context.inherited?.id : context?.selectionSource === 'automatic' ? context.selected : undefined);
+  const choices = $derived<EnvironmentChoice[]>((context?.choices ?? []).map(choice => ({ id: choice.id, name: choice.name, detail: `${choice.source} · ${shortPath(choice.path)}`,
+    current: choice.id === context?.selected, recommended: choice.id === automatic, unavailable: !choice.available })));
 </script>
 
 {#if context}
@@ -15,13 +21,9 @@
     <p class="scope">Applies to files using this analysis root, including other tabs and windows.</p>
     {#each context.issues as issue}<p class="issue">{issue.message}</p>{/each}
     {#if context.kind}
-      <label>{context.label}
-        <select aria-label={context.label} disabled={state.busy} value={context.selected ?? ''}
-          onchange={event => context?.kind && select({ kind: context.kind, value: event.currentTarget.value })}>
-          {#if !context.selected}<option value="" disabled>Choose an environment…</option>{/if}
-          {#each context.choices as choice}<option value={choice.id} disabled={!choice.available}>{choice.name} · {choice.source}{choice.available ? '' : ' · missing'}</option>{/each}
-        </select>
-      </label>
+      {#if !context.selected}<p class="scope">In use: {context.unselected ?? 'nothing chosen'}</p>{/if}
+      {#each context.hints ?? [] as hint}<p class="scope">{hint.message}</p>{/each}
+      <ChoiceList label={context.label ?? 'Environment'} {choices} busy={state.busy} choose={value => context?.kind && select({ kind: context.kind, value })} />
       {@const selected = context.choices.find(choice => choice.id === context?.selected)}
       <p class="scope">{selectionSource(context)}</p>
       {#if selected}<p class="path">{selected.path}</p>{/if}
@@ -53,11 +55,9 @@
   .scope { color: var(--app-muted-text); font-size: 11px; }
   .path { overflow-wrap: anywhere; font-size: 11px; }
   .issue { color: var(--app-warning-text); }
-  label { display: grid; gap: 6px; margin: 12px 0; }
-  select { width: 100%; min-width: 0; padding: 6px; color: inherit; background: var(--app-canvas); border: 1px solid var(--app-border); font: inherit; }
   button { color: inherit; font: inherit; padding: 5px 8px; border: 1px solid var(--app-border); border-radius: 4px; background: transparent; cursor: pointer; }
-  button:hover { background: var(--app-hover); } button:disabled, select:disabled { opacity: .6; cursor: default; }
-  button:focus-visible, select:focus-visible, summary:focus-visible { outline: 1px solid var(--app-focus-ring); }
+  button:hover { background: var(--app-hover); } button:disabled { opacity: .6; cursor: default; }
+  button:focus-visible, summary:focus-visible { outline: 1px solid var(--app-focus-ring); }
   .actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
   p { overflow-wrap: anywhere; margin: 8px 0; }
   details { margin: 12px 0; } summary { cursor: pointer; }

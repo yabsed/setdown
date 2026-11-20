@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -95,6 +97,8 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
   const projects = [path.join(root, 'alpha'), path.join(root, 'beta')], files = projects.map(p => path.join(p, 'main.py'));
   for (const [index, project] of projects.entries()) {
     await markRepositoryRoot(project);
+    // A real environment of the first project, so that there is more than one to choose from.
+    if (!index) await promisify(execFile)(process.env.SETDOWN_PYTHON_PATH || 'python3', ['-m', 'venv', '--without-pip', path.join(project, '.venv')]);
     await writeFile(path.join(project, 'pyproject.toml'), `[project]\nname = "fixture${index}"\nversion = "0.0.0"\n`);
     await writeFile(files[index], `value = ${index}\n`);
   }
@@ -144,8 +148,10 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
     await expect(popup).toBeVisible(); await expect(popup).not.toContainText(files[1]);
     await popup.getByRole('button', { name: /^Python environment/ }).click();
     await expect(popup).toContainText('including other tabs and windows');
-    const select = popup.getByRole('combobox', { name: 'Python environment' });
-    const selected = await select.inputValue(); expect(selected).toBeTruthy(); await select.selectOption(selected);
+    // The project's own environment is in use without a choice. Another one is chosen for this project.
+    const environments = popup.getByRole('radiogroup', { name: 'Python environment' });
+    await expect(environments.getByRole('radio', { checked: true })).toContainText('.venv');
+    await environments.getByRole('radio', { checked: false, disabled: false }).first().click();
     await expect(popup.getByRole('heading', { name: 'Python', exact: true })).toBeVisible();
     const preferences = JSON.parse(await readFile(path.join(config, 'Setdown/project-analysis.json'), 'utf8'));
     expect(Object.keys(preferences.projects)).toEqual([projects[0]]);
@@ -197,14 +203,14 @@ test('a missing environment exposes the repair first and retains an issue indica
     await expect(status.locator('.indicator')).toHaveText('!');
     await status.click();
     const popup = page.getByRole('dialog', { name: 'Current file language support' });
-    const action = popup.getByRole('button', { name: 'Choose environment…', exact: true });
+    const action = popup.getByRole('button', { name: 'Choose Python environment…', exact: true });
     await expect(action).toBeVisible();
     expect(await popup.evaluate(el => el.scrollTop)).toBe(0);
     expect(await popup.evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
     expect((await action.boundingBox())!.y).toBeLessThan((await popup.getByRole('button', { name: /^Language/ }).boundingBox())!.y);
     await expect(popup.getByRole('button', { name: /^Restart/ })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('compact-missing.png') });
-    await action.click(); await expect(popup.getByRole('combobox', { name: 'Python environment' })).toBeVisible();
+    await action.click(); await expect(popup.getByRole('radiogroup', { name: 'Python environment' })).toBeVisible();
     await expect(popup).toContainText('Remove project override');
     await expect(popup).toContainText('Falls back to');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }

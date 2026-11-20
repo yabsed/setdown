@@ -7,6 +7,7 @@ import path from 'node:path';
 import { disposeApplication, electron, focusApplication } from '../../support/electron/electron-app';
 import { launchPlain } from '../../support/electron/plain-app';
 import { pngFixture } from '../../support/media/png-fixture';
+import { pdfFixture } from '../../support/media/pdf-fixture';
 
 /** A square of one colour in the classic icon format; sites serve it or a PNG. */
 function ico(size: number, [red, green, blue]: number[]): Buffer {
@@ -30,6 +31,7 @@ async function site() {
     if (name === 'held') { held.push(response); return; }
     if (icon) { response.writeHead(200, { 'content-type': ICONS[icon].type }).end(ICONS[icon].bytes); return; }
     if (name === 'ico' || name === 'png') { response.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Bitmap ${name}</title><link rel="icon" href="/icon.${name}"><p>${name}</p>`); return; }
+    if (name === 'paper.pdf') { response.writeHead(200, { 'content-type': 'application/pdf' }).end(pdfFixture(2)); return; }
     if (name === 'plain') { response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><title>Plain site</title><p>No icon.</p>'); return; }
     response.writeHead(404).end();
   });
@@ -118,6 +120,14 @@ test('every tab leads with an icon: the file type, a terminal, a folder, the web
     await expect(site.locator('img.tab-favicon')).toBeVisible();
     await expect(site.locator('svg')).toHaveCount(0);
 
+    // A PDF read from the web is a document, not a site's page: its tab wears the file type's icon,
+    // the one the same file has when it is opened from a folder.
+    await page.evaluate(url => window.marktex.openLink(url), `${web.origin}/paper.pdf`);
+    const paper = tab(page, /paper\.pdf/), paperIcon = paper.locator('.file-type-icon');
+    await expect(paperIcon).toHaveAttribute('data-file-icon', seti.extensions.pdf, { timeout: 30_000 });
+    await expect(paperIcon).toHaveText(seti.icons[seti.extensions.pdf].character);
+    await expect(paper.locator('svg, img.tab-favicon')).toHaveCount(0);
+
     // While a page loads, a turning spinner stands where its icon will be; the title carries no marker.
     await page.evaluate(url => window.marktex.openLink(url), `${web.origin}/slow`);
     const slow = tab(page, /Slow site/), spinner = slow.locator('svg[data-tab-icon="loading"]');
@@ -132,12 +142,12 @@ test('every tab leads with an icon: the file type, a terminal, a folder, the web
     await expect(slow).not.toHaveAttribute('aria-busy');
 
     // One icon per tab, 16px wide, left of the title, and the strip keeps its height.
-    await expect(page.locator('.document-tab')).toHaveCount(8);
+    await expect(page.locator('.document-tab')).toHaveCount(9);
     expect(await page.locator('.document-tab').evaluateAll(tabs => tabs.map(tab => {
       const icons = [...tab.querySelectorAll('.file-type-icon, .tab-glyph, .tab-favicon')], name = tab.querySelector('.tab-name')!.getBoundingClientRect();
       const box = icons[0]?.getBoundingClientRect();
       return { icons: icons.length, width: box && Math.round(box.width), before: !!box && box.right <= name.left && box.left >= tab.getBoundingClientRect().left };
-    }))).toEqual(Array.from({ length: 8 }, () => ({ icons: 1, width: 16, before: true })));
+    }))).toEqual(Array.from({ length: 9 }, () => ({ icons: 1, width: 16, before: true })));
     expect((await strip.boundingBox())!.height).toBe(height);
     await page.screenshot({ path: test.info().outputPath('tab-icons.png'), clip: { x: 0, y: 0, width: 1280, height: 80 } });
   } finally { await disposeApplication(app); await web.close(); await rm(root, { recursive: true, force: true }); }

@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
+import { runCommand } from '../support/editor/commands';
 
 test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, navigation and restart through the common registry', async () => {
   const executable = process.env.SETDOWN_RUST_ANALYZER_PATH;
@@ -51,8 +52,7 @@ test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, n
     await editor.press('Escape'); await editor.press('Home'); await editor.press('Shift+End'); await editor.pressSequentially('    let _answer = greeting(3);');
     await editor.press('Control+Home'); await editor.press('ArrowDown'); await editor.press('Home');
     for (let i = 0; i < 4; i++) await editor.press('ArrowRight');
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Show or Focus Hover');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Show or Focus Hover');
     await expect(page.locator('.monaco-hover:visible')).toContainText('greeting', { timeout: 15_000 });
     await editor.press('Escape'); await editor.press('F2');
     const rename = page.locator('.rename-input'); await expect(rename).toBeVisible();
@@ -66,8 +66,7 @@ test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, n
     for (let i = 0; i < definition.indexOf('double') + 2; i++) await editor.press('ArrowRight');
     await editor.press('F12');
     await expect(page.getByRole('tab', { name: /helper\.rs/ })).toHaveAttribute('aria-selected', 'true', { timeout: 15_000 });
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Restart Language Servers');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Restart Language Servers');
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
     await expect(page.locator('.squiggly-error')).toHaveCount(0);
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }

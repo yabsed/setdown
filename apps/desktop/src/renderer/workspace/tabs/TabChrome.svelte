@@ -44,6 +44,8 @@ import type { AppActions } from '../../ports/ui-actions';
         {#if tab.kind === 'web'}
           <!-- While a page loads, a spinner takes its icon's place, as in a browser's tab. -->
           {#if tab.page?.loading && !tab.page.sleeping}<svg class="tab-glyph" data-tab-icon="loading" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/></svg>
+          <!-- A PDF read from the web is a document, not a site's page: it wears the file type's icon, as the same file opened from a folder does. -->
+          {:else if tab.page?.pdf}<FileIcon path="document.pdf" />
           {:else if tab.page?.favicon}<img class="tab-favicon" src={tab.page.favicon} alt="" draggable="false" />
           {:else}<svg class="tab-glyph" data-tab-icon="web" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 8 1.8ZM1.8 8h12.4M8 1.8c-2.3 2.2-2.3 10.2 0 12.4M8 1.8c2.3 2.2 2.3 10.2 0 12.4"/></svg>{/if}
         {:else if tab.kind === 'terminal'}

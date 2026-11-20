@@ -89,6 +89,12 @@ export type LanguageEvent =
   | { type: 'activity' }
   | { type: 'apply-edit'; id: string; generation: string; requestId: string; versions?: { id: string; generation: string; version: number }[]; edit: import('vscode-languageserver-protocol').WorkspaceEdit }
   | { type: 'status'; documents: { id: string; generation: string }[]; state: 'starting' | 'ready' | 'failed'; message?: string; recovery?: LanguageRecovery; issue?: LanguageIssue; preparing?: boolean; server?: { id: string; name: string } };
+/** Text a tool made for reading. It becomes a read-only document beside the code (`language-answers.ts`).
+ * `image`: an SVG the tool drew. */
+export type LanguageAnswer = { title: string; text: string; languageId?: string; image?: boolean };
+/** The folder of the app that holds such documents; its name is the mark the editor knows them by. */
+export const languageAnswerFolder = 'setdown-language-answers';
+export const isLanguageAnswer = (file: string): boolean => file.replaceAll('\\', '/').includes(`/${languageAnswerFolder}/`);
 export type LanguageApi = {
   open(document: LanguageDocument): Promise<LanguageConnection | LanguageUnavailable>;
   highlight?(file: string, languageId: string, text: string): Promise<Array<[number, number, string]>>;
@@ -102,6 +108,8 @@ export type LanguageApi = {
   cancel(requestId: string): void;
   editApplied(requestId: string, applied: boolean, failureReason?: string): void;
   restart(file?: string, server?: string): Promise<void>;
+  /** Keeps a tool's answer as a document and gives its path. `file` is the document that asked. */
+  answer?(file: string, answer: LanguageAnswer): Promise<string>;
   answerMessage(file: string, server: string, request: string, action?: number): Promise<void>;
   environment(file: string, language: string): Promise<DocumentAnalysis>;
   selectEnvironment(file: string, language: string, selection: AnalysisSelection): Promise<DocumentAnalysis>;

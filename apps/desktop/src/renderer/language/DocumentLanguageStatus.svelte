@@ -6,9 +6,12 @@
   import LanguageStatusButton from './LanguageStatusButton.svelte';
   let { tabId }: { tabId: string } = $props();
   let revision = $state(0), target = $state<DocumentSupportTarget>(), narrow = $state(false);
-  let initialPage = $state<AnalysisPage>('summary'), expanded = $state(false), availableHeight = $state(540);
+  let initialPage = $state<AnalysisPage>('summary'), initialItem = $state<string>(), expanded = $state(false), availableHeight = $state(540);
   let button = $state<HTMLButtonElement>(), panel = $state<HTMLDivElement>();
+  // A request for a page while the panel is already open shows that page, not the one it was on.
+  let opened = $state(0);
   const support = $derived.by(() => { revision; return documentSupport.get(tabId); });
+  // What the tools reported, and nothing else: the panel behind the name is given these same providers.
   const status = $derived(presentSupport(support?.providers ?? [], undefined, support?.name));
   // Workspace snapshots also refresh on group focus. Only a different view or
   // document incarnation ends this inspection, not an unchanged prop refresh.
@@ -17,8 +20,8 @@
     const off = documentSupport.subscribe(() => revision++);
     const outside = (event: PointerEvent) => { if (target && !expanded && event.target instanceof Node && !panel?.contains(event.target) && !button?.contains(event.target)) target = undefined; };
     const inspect = (event: Event) => {
-      const request = (event as CustomEvent<{ target: DocumentSupportTarget; page: AnalysisPage }>).detail;
-      if (request?.target.id === tabId && documentSupport.current(request.target)) { event.preventDefault(); initialPage = request.page; target = request.target; }
+      const request = (event as CustomEvent<{ target: DocumentSupportTarget; page: AnalysisPage; item?: string }>).detail;
+      if (request?.target.id === tabId && documentSupport.current(request.target)) { event.preventDefault(); initialPage = request.page; initialItem = request.item; opened++; target = request.target; }
     };
     window.addEventListener('setdown:document-language-support', inspect);
     window.addEventListener('pointerdown', outside);
@@ -36,7 +39,7 @@
     if (target) { close(); return; }
     if (!support) return;
     const current = { id: support.id, resource: support.resource };
-    initialPage = 'summary'; expanded = false; target = current;
+    initialPage = 'summary'; initialItem = undefined; expanded = false; opened++; target = current;
   }
 </script>
 
@@ -44,8 +47,8 @@
   <LanguageStatusButton bind:element={button} name={support.name} label={status.label} tone={status.tone} expanded={!!target} {narrow} onclick={toggle} />
   {#if target}
     <div bind:this={panel} class="document-language-status" class:expanded style:max-height={`${availableHeight}px`} role="dialog" aria-label="Current file language support" tabindex="-1">
-      {#key target.resource}
-        <DocumentAnalysisPanel {target} {initialPage} onpagechange={page => { expanded = ['details', 'tool', 'settings', 'output'].includes(page); if (panel) panel.scrollTop = 0; }} onclose={close} />
+      {#key `${target.resource}\0${opened}`}
+        <DocumentAnalysisPanel {target} {initialPage} {initialItem} onpagechange={page => { expanded = ['details', 'tool', 'settings', 'output'].includes(page); if (panel) panel.scrollTop = 0; }} onclose={close} />
       {/key}
     </div>
   {/if}

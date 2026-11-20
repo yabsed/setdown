@@ -73,6 +73,9 @@ export class AnalysisContextService {
     let configuration = (settings: Record<string, unknown>): Record<string, unknown> => settings;
     const inputs = new Set<string>(), args = [...(options.args ?? definition.launch.args)];
     const issue = (code: string, message: string, required = false) => { context.issues.push({ code, message }); if (required || context.environment !== 'action-needed') context.environment = required ? 'action-needed' : 'partial'; };
+    // An inference from the project's files. The tool has not said that anything is wrong, so it
+    // changes no status; it is shown beside a symptom once the tool reports one.
+    const hint = (code: string, message: string) => { (context.hints ??= []).push({ code, message }); };
     // A change to a watched file starts the analysis again; a file only offered as a choice is not watched.
     const choice = (file: string, source: string, name = path.basename(file), available = fileExists(file), watched = true): AnalysisChoice => {
       const item = { id: digest(file), path: file, source, name, available };
@@ -123,7 +126,10 @@ export class AnalysisContextService {
         if (!item.available) issue('python-missing', `The selected Python environment is missing: ${selected}. Choose an environment to restore imports.`, true);
         // Retain even a missing explicit choice; never silently substitute a different interpreter.
         profile.configuration = setPython(profile.configuration, selected);
-      } else issue('python-unknown', 'Choose a Python environment so imports can use the project dependencies.', true);
+      } else {
+        context.unselected = 'None selected';
+        if (!environments.selectionNeeded) hint('python-unknown', 'No Python environment is selected for this project, so its dependencies may not be found.');
+      }
       // The folders the project's `.env` file adds to `PYTHONPATH`. Microsoft's Python extension
       // reads the file and tells its server; Pyright is told through its analysis paths, after
       // the person's own (`python-env-file.ts`). The file is watched: a change starts the analysis again.
@@ -143,7 +149,7 @@ export class AnalysisContextService {
         return selected && (notebookPythonOverride || preferences.python || section(scoped, 'python.pythonPath') === undefined) ? setPython(scoped, selected) : scoped;
       };
       if (!notebookPythonOverride && !preferences.python && !configured && environments.selectionNeeded)
-        issue('python-project-environment', 'Multiple project Python environments are available. Select the environment for this project.', true);
+        hint('python-project-environment', 'This project has several Python environments and none is selected.');
       for (const message of project.errors) issue('python-settings', message);
     } else if (definition.id === 'typescript-language-server') {
       context.kind = 'typescript'; context.label = 'TypeScript SDK';
@@ -182,7 +188,7 @@ export class AnalysisContextService {
       }
       const pkg = json(path.join(root, 'package.json'));
       if ((pkg?.dependencies || pkg?.devDependencies) && !existsSync(path.join(root, 'node_modules')) && directory === root)
-        issue('typescript-dependencies', 'No node_modules directory was found here. If imports are unresolved, install this project’s dependencies with its package manager.');
+        hint('typescript-dependencies', 'This project lists dependencies but has no node_modules folder. Install them with its package manager.');
     } else if (definition.id === 'clangd') {
       context.kind = 'compilation'; context.label = 'C / C++ build configuration';
       const index = args.findIndex(arg => arg === '--compile-commands-dir' || arg.startsWith('--compile-commands-dir='));
@@ -217,10 +223,15 @@ export class AnalysisContextService {
         if (index >= 0) args.splice(index, args[index] === '--compile-commands-dir' ? 2 : 1);
         args.push(`--compile-commands-dir=${path.dirname(selected.path)}`);
         context.evidence.push(`Compilation database: ${selected.path}`);
-      } else if (context.choices.length > 1) issue('compilation-choice', 'Several build configurations are available. Choose the one used for this project.', true);
-      else if (fileExists(path.join(root, 'compile_flags.txt')) || fileExists(path.join(root, '.clangd')))
-        context.evidence.push('clangd project flags are configured; the server interprets them.');
-      else issue('compilation-unknown', 'Choose a build folder or configure this project to resolve include paths, defines and the C++ standard.', true);
+      } else {
+        // clangd also reads `.clangd` and `compile_flags.txt` from every folder above the file, and
+        // answers without any of them. Whether it found what a file includes is its to say.
+        context.unselected = 'None · clangd defaults';
+        if (context.choices.length > 1) hint('compilation-choice', 'Several build configurations were found and none is selected.');
+        else if (fileExists(path.join(root, 'compile_flags.txt')) || fileExists(path.join(root, '.clangd')))
+          context.evidence.push('clangd project flags are configured; the server interprets them.');
+        else hint('compilation-unknown', 'No build configuration was found in this project, so clangd is using its default flags.');
+      }
       for (const name of ['.clangd', 'compile_flags.txt', 'CMakeLists.txt', 'meson.build']) inputs.add(path.join(root, name));
       if (fileExists(path.join(root, 'CMakeLists.txt'))) context.preparation = 'cmake';
       else if (fileExists(path.join(root, 'meson.build'))) context.preparation = 'meson';
@@ -229,7 +240,7 @@ export class AnalysisContextService {
       for (const name of names) { const file = path.join(root, name); inputs.add(file); if (fileExists(file)) context.evidence.push(`Toolchain configuration: ${file}`); }
       context.evidence.push('The language server resolves the project toolchain and dependencies. Connection alone does not mean analysis has completed.');
     }
-    context.id = digest([root, definition.id, context.selected, context.issues, options, preferences]);
+    context.id = digest([root, definition.id, context.selected, context.issues, context.hints, options, preferences]);
     return { context, profile, args, inputs: [...inputs], configuration };
   }
   launch(plan: AnalysisPlan, launch: ServerLaunch, definition: LanguageServerDefinition): ServerLaunch {

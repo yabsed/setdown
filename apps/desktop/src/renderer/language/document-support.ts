@@ -1,5 +1,6 @@
 import type { LanguageCatalogEntry, LanguageIssue, LanguageRecovery, LanguageServerMessage, LanguageServerOptions } from '../../protocol/language';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
+import type { ToolFamily } from '../../protocol/language-tools';
 /** Small renderer store shared by editor groups. It has no Monaco/runtime imports. */
 export type ProviderSupport = {
   id: string; name: string; kind: 'builtin' | 'server';
@@ -8,7 +9,19 @@ export type ProviderSupport = {
   /** Why the tool is not working, and whether it is being set up for the first time. */
   issue?: LanguageIssue; preparing?: boolean;
   messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; diagnosticCount?: number; features: string[]; checks: string; message?: string; context?: string[];
+  /** The extension whose commands the tool is offered with, once it is ready. */
+  tool?: ToolFamily;
+  /** What the tool itself reported it could not find in this document: the one sign that results
+   * here are incomplete (`protocol/language-tools.ts` `unresolvedSymptoms`). */
+  unresolved?: { count: number; noun: 'include' | 'import' };
 };
+/** One way of choosing what the analysis is based on, whichever language it belongs to: the
+ * current one first, the one that is in effect without a choice marked as recommended. */
+export type EnvironmentChoice = { id: string; name: string; detail?: string; current?: boolean; recommended?: boolean; unavailable?: boolean };
+/** A choice the tool itself keeps (the Go in use, a YAML file's schema), in that same form. */
+export type ToolEnvironment = { id: string; label: string; value: string; choices: EnvironmentChoice[]; refusal?: string; note?: string };
+/** A command of the tool's own extension that acts on the project or on the tool. */
+export type ToolAction = { id: string; server: string; title: string; place: 'project' | 'settings' };
 export type DocumentSupport = {
   id: string; resource: string; language: string; name: string; path: string;
   providers: ProviderSupport[]; choices: { id: string; name: string }[];
@@ -21,6 +34,14 @@ export type DocumentSupport = {
   prepareEnvironment(): Promise<{ output: string }>; cancelPreparation(): Promise<void>;
   inspectProvider(server: string): Promise<LanguageCatalogEntry | undefined>;
   configureProvider(server: string, options: LanguageServerOptions): Promise<void>;
+  /** The rows of tool-kept choices this document has, known without asking the tool. */
+  toolEnvironments: { id: string; label: string }[];
+  /** Asks the tool for one of them. */
+  toolEnvironment(id: string): Promise<ToolEnvironment>;
+  /** Makes the choice. The answer is a sentence to show, when there is one. */
+  chooseToolEnvironment(id: string, choice: string): Promise<string | undefined>;
+  toolActions: ToolAction[];
+  runToolAction(id: string): Promise<void>;
 };
 const documents = new Map<string, DocumentSupport>();
 const listeners = new Set<() => void>();
@@ -36,7 +57,7 @@ export const documentSupport = {
   subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
 };
 export type DocumentSupportTarget = Pick<DocumentSupport, 'id' | 'resource'>;
-export type AnalysisPage = 'summary' | 'language' | 'environment' | 'provider' | 'details' | 'tool' | 'settings' | 'output';
+export type AnalysisPage = 'summary' | 'language' | 'environment' | 'tool-environment' | 'provider' | 'details' | 'tool' | 'settings' | 'output';
 export type LanguageCatalogRequest = { language?: string; server?: string };
 let catalogRequest: LanguageCatalogRequest = {};
 const catalogListeners = new Set<() => void>();
@@ -46,9 +67,9 @@ export const languageCatalogRequest = {
   subscribe(listener: () => void) { catalogListeners.add(listener); return () => { catalogListeners.delete(listener); }; },
 };
 /** Document commands are handled only by the owning tab's location bar. */
-export function openLanguageSupport(target?: DocumentSupportTarget, page: AnalysisPage = 'details'): void {
+export function openLanguageSupport(target?: DocumentSupportTarget, page: AnalysisPage = 'details', item?: string): void {
   if (!target) { openLanguageCatalog(); return; }
-  const event = new CustomEvent('setdown:document-language-support', { cancelable: true, detail: { target: { id: target.id, resource: target.resource }, page } });
+  const event = new CustomEvent('setdown:document-language-support', { cancelable: true, detail: { target: { id: target.id, resource: target.resource }, page, item } });
   if (window.dispatchEvent(event)) openLanguageCatalog(documentSupport.current(target)?.language);
 }
 export function openLanguageCatalog(language?: string, server?: string): void {

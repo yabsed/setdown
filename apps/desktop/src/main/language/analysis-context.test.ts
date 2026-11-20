@@ -112,15 +112,18 @@ test('Python asks when the project has several environments of its own, counting
   // A second environment of the project that only Zed's search finds: asked, as two folders in the project always were.
   answer = [found.local, found.poetry];
   const two = await resolve();
-  expect(two.context.issues.map(issue => issue.code)).toContain('python-project-environment');
-  expect(two.context.environment).toBe('action-needed');
+  // Several environments and none chosen is an inference, not a fault the tool reported: it
+  // changes no status and waits beside the first import the tool cannot find.
+  expect(two.context.hints?.map(hint => hint.code)).toEqual(['python-project-environment']);
+  expect(two.context.issues).toEqual([]);
+  expect(two.context.environment).toBe('usable');
   expect(two.context.selected).toBeUndefined();
   expect(pythonPath(two)).toBeNull();
   expect(two.context.choices.map(choice => choice.path)).toEqual([local, process.execPath, poetry]);
   // Two that only Zed's search finds.
   state.listed = { selected: process.execPath, selectionSource: 'Host environment', selectionNeeded: false, candidates: [host] };
   answer = [found.pixi, found.poetry];
-  expect((await resolve()).context.issues.map(issue => issue.code)).toContain('python-project-environment');
+  expect((await resolve()).context.hints?.map(hint => hint.code)).toContain('python-project-environment');
   // Reported twice, an environment is still one.
   answer = [found.pixi, { ...found.pixi, path: path.join(path.dirname(pixi), 'python3') }];
   const twice = await resolve();
@@ -136,7 +139,7 @@ test('Python asks when the project has several environments of its own, counting
   // Setdown's two folders stay a question whatever Zed's search adds.
   state.listed = { selected: undefined, selectionSource: 'Host environment', selectionNeeded: true, candidates: [{ path: local, source: 'Project', name: '.venv' }, { path: path.join(root, 'venv/bin/python'), source: 'Project', name: 'venv' }] };
   answer = [found.poetry];
-  expect((await resolve()).context.issues.map(issue => issue.code)).toContain('python-project-environment');
+  expect((await resolve()).context.hints?.map(hint => hint.code)).toContain('python-project-environment');
   // The person's choice ends the question.
   analysisPreferences.set(root, 'python', pixi); state.listed = { selected: pixi, selectionSource: 'Project selection', selectionNeeded: false, candidates: [{ path: pixi, source: 'Project selection', name: 'default' }] };
   answer = [found.pixi, found.poetry];
@@ -172,15 +175,24 @@ test('Python keeps what Setdown finds itself when Zed\'s search fails, finds not
   expect(search).not.toHaveBeenCalled();
 });
 
-test('clangd selects a unique build database, requires a choice for competing builds, and applies an external selection to argv', async () => {
+test('clangd selects a unique build database, only hints at competing or absent builds, and applies an external selection to argv', async () => {
   const root = state.directory, service = new AnalysisContextService();
+  // No configuration file at all: clangd answers with its defaults (and reads `.clangd` from the
+  // folders above the project, which Setdown does not look at). Nothing is wrong until it says so.
+  const bare = await service.resolve(root, 'fixture', definition('clangd'));
+  expect(bare.context.environment).toBe('usable');
+  expect(bare.context.issues).toEqual([]);
+  expect(bare.context.hints?.map(hint => hint.code)).toEqual(['compilation-unknown']);
   for (const name of ['build', 'builddir', 'external']) await mkdir(path.join(root, name));
   await writeFile(path.join(root, 'build/compile_commands.json'), '[]');
-  const initial = await service.resolve(root, 'fixture', definition('clangd'));
+  const initial = await service.resolve(root, 'fixture', definition('clangd'), {}, true);
   expect(initial.args).toContain(`--compile-commands-dir=${path.join(root, 'build')}`);
+  expect(initial.context.hints).toBeUndefined();
   await writeFile(path.join(root, 'builddir/compile_commands.json'), '[]');
   const ambiguous = await service.resolve(root, 'fixture', definition('clangd'), {}, true);
-  expect(ambiguous.context.issues[0].code).toBe('compilation-choice');
+  expect(ambiguous.context.hints?.map(hint => hint.code)).toEqual(['compilation-choice']);
+  expect(ambiguous.context.environment).toBe('usable');
+  expect(ambiguous.context.unselected).toBe('None · clangd defaults');
   expect(ambiguous.args.some(arg => arg.startsWith('--compile-commands-dir'))).toBe(false);
   const database = path.join(root, 'external/compile_commands.json'); await writeFile(database, '[]');
   analysisPreferences.set(root, 'compilation', database);

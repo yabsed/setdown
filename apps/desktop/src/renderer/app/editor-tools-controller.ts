@@ -68,6 +68,7 @@ export function installWorkspaceTools(options: { desktop: DesktopPort; workspace
     policy: path => desktop.editorTools.policy(path),
     spelling: words => desktop.editorTools.spelling(words), learnWord: word => desktop.editorTools.learnWord(word),
     symbols: model => editor.documentSymbols(model),
+    places: codeEditor => editor.commandsHere(codeEditor),
     bindings: async () => {
       const entries = await Promise.all(['application-menu-file', 'application-menu-edit', 'application-menu-view', 'application-menu-window'].map(id => desktop.getApplicationMenu(id)));
       const flatten = (items: typeof entries[number]): string[] => items.flatMap(item => [

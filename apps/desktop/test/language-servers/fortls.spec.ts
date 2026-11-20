@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
+import { runCommand } from '../support/editor/commands';
 
 test('installed fortls connects without registration and supplies hover and completion after rescan', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-fortls-'));
@@ -16,8 +17,7 @@ test('installed fortls connects without registration and supplies hover and comp
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+Home'); for (let i = 0; i < 3; i++) await editor.press('ArrowDown');
     await editor.press('Home'); for (let i = 0; i < 14; i++) await editor.press('ArrowRight');
-    await editor.press('F1'); await page.locator('.quick-input-box input').fill('>Show or Focus Hover');
-    await page.locator('.quick-input-box input').press('Enter');
+    await runCommand(page, editor, 'Show or Focus Hover');
     await expect(page.locator('.monaco-hover:visible')).toContainText(/square/i, { timeout: 15_000 });
     await editor.press('Escape');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();

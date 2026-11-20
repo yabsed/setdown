@@ -6,6 +6,7 @@ import { changeInteger, sortLines, reflowParagraph } from '../../../core/editor/
 import { EditorCommandRegistry, type CommandContext, type EditorCommand } from './command-registry';
 import { NavigationHistory, type EditorLocation } from './navigation-history';
 import { choose, ask, explain } from './editor-panel';
+import { actionCommandId, commandRows, hereValue, recentCommands, recordRecentCommand, type HereCommand, type ListedCommand } from './command-list';
 import { isComposingInput } from '../composition-guard';
 import { liveDocumentModels } from '../live-document-model';
 import type { EditorPolicy } from '../../../protocol/editor-tools';
@@ -26,6 +27,9 @@ export type EditorToolsOptions = {
   learnWord?(word: string): Promise<void>;
   symbols?(model: Monaco.editor.ITextModel): Promise<Array<{ name: string; line: number; column: number; kind: number }>>;
   bindings?(): Promise<string[]>;
+  /** What applies where this editor's cursor is, which commands concern the document as a
+   * whole, and which are behaviours of a key that are never listed (`command-list.ts`). */
+  places?(editor: Monaco.editor.ICodeEditor | null): Promise<{ here: readonly (HereCommand & { run(): void | Promise<void> })[]; document: readonly string[]; never: readonly string[]; plain?: Readonly<Record<string, string>> }>;
 };
 type Recipe = { title: string; apply(context: CommandContext): void };
 export class EditorTools {
@@ -90,8 +94,18 @@ export class EditorTools {
       }), editor.onDidPaste(event => this.flash(editor, [event.range])),
       editor.onDidDispose(() => { if (this.focused === editor) this.focused = null; for (const listener of listeners) listener.dispose(); }));
     this.watch(this.context(editor)); if (editor.hasTextFocus()) focus();
-    editor.addAction?.({ id: 'setdown.commands', label: 'Setdown: Search Commands…', contextMenuGroupId: 'navigation', contextMenuOrder: 20,
-      run: () => this.palette(editor) });
+    // F1 opens this list in every editor: one list of commands, with one order. The key is the
+    // action's own, so it opens the list of the editor it was pressed in (a key added with
+    // `addCommand` is shared by every editor of the window, and the last one to register answers).
+    // An editor made later is announced while it is still being built, before it can take an
+    // action: asked then, it would silently keep the editor's own list on F1. So the action is
+    // added once the editor exists.
+    let disposed = false;
+    listeners.push({ dispose: () => { disposed = true; } });
+    queueMicrotask(() => {
+      if (!disposed) editor.addAction?.({ id: 'setdown.commands', label: 'Setdown: Search Commands…', keybindings: [this.api.KeyCode.F1], contextMenuGroupId: 'navigation', contextMenuOrder: 20,
+        run: () => this.palette(editor) });
+    });
   }
   private watch(context: CommandContext): void {
     const model = context.model; if (!model || this.watched.has(model)) return;
@@ -157,16 +171,26 @@ export class EditorTools {
   async palette(editor = this.focused): Promise<void> {
     if (isComposingInput()) return;
     const context = this.context(editor);
-    const commands = this.registry.list();
-    const known = new Set(commands.map(command => command.id));
-    const rows = commands.map(command => ({ label: command.title, detail: `${command.category} · ${command.detail}${command.key ? ` · ${command.key}` : ''}`,
-      value: command.id, disabled: this.registry.disabled(command, context) }));
-    for (const action of editor?.getSupportedActions() ?? []) if (!known.has(action.id) && action.id !== 'setdown.commands') rows.push({
-      label: action.label, detail: `Monaco · ${action.id}`, value: action.id, disabled: action.isSupported() ? undefined : 'Unavailable for the current editor.' });
-    const id = await choose('Commands', rows, 'Search commands…'); if (!id) return;
+    const registered = this.registry.list();
+    const known = new Set(registered.map(command => command.id));
+    const [places, keys] = await Promise.all([
+      this.options.places?.(editor).catch(() => undefined),
+      import('../monaco-keys').then(module => module.actionKeys(editor?.getDomNode()), () => undefined)]);
+    const commands: ListedCommand[] = registered.map(command => ({ id: command.id, label: command.title, detail: `${command.category} · ${command.detail}${command.key ? ` · ${command.key}` : ''}`,
+      disabled: this.registry.disabled(command, context) }));
+    for (const action of editor?.getSupportedActions() ?? []) {
+      const id = actionCommandId(action.id, editor?.getId());
+      if (!known.has(id) && id !== 'setdown.commands') commands.push({ id, label: action.label, detail: keys?.(action.id), keywords: id, disabled: action.isSupported() ? undefined : 'Unavailable for the current editor.' });
+    }
+    const here = places?.here ?? [];
+    const { rows, total } = commandRows(commands, { here, document: places?.document ?? [], never: places?.never ?? [], plain: places?.plain }, recentCommands());
+    const id = await choose('Commands', rows, 'Search commands…', undefined, `Type to search all ${total} commands`); if (!id) return;
     try {
+      const entry = here.find(item => hereValue(item.id) === id);
+      if (entry) { this.valid(context, false); await entry.run(); if (entry.action) recordRecentCommand(entry.action); return; }
       if (known.has(id)) await this.registry.execute(id, context);
       else { this.valid(context, false); const action = context.editor?.getAction(id); if (!action?.isSupported()) throw Error('This action is no longer available.'); await action.run(); }
+      recordRecentCommand(id);
     } catch (error) { await explain('Command could not run', [error instanceof Error ? error.message : String(error)]); }
   }
   private valid(context: CommandContext, editing = true): void {

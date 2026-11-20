@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { hereMenu, runCommand } from '../../support/editor/commands';
 const exec = promisify(execFile);
 
 test('Python diagnostics, completion, rename and Undo use the ordinary document', async () => {
@@ -73,14 +74,54 @@ test('definition opens the existing Setdown tab and Python diagnostics survive r
     await editor.pressSequentially('\nunknown_name');
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
     // Use the real Monaco command palette to exercise the restart action.
-    await editor.press('F1');
-    await page.locator('.quick-input-box input').fill('>Restart Language Servers');
-    await expect(page.locator('.quick-input-widget')).toContainText('Restart Language Servers');
-    await page.locator('.quick-input-box input').press('Enter');
-    await expect(page.locator('.quick-input-widget')).toBeHidden();
+    await runCommand(page, editor, 'Restart Language Servers');
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 15_000 });
     expect(await readFile(path.join(root, 'helpers.py'), 'utf8')).not.toContain('unknown_name');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
+test('a definition far away in the same file is shown where it is, by the key the menu names and from the menu', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-far-definition-'));
+  const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-far-definition-config-'));
+  const file = path.join(root, 'main.py'), filler = (from: number) => Array.from({ length: 200 }, (_, index) => `# note ${from + index}`).join('\n');
+  // Neither the top of the file nor the place it is used from shows the definition.
+  await writeFile(file, `${filler(1)}\ndef greeting(name: str) -> str:\n    return name.upper()\n${filler(203)}\nprint(greeting("Setdown"))\n`);
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await application.firstWindow();
+    await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' }), lines = page.locator('.editor-surface .view-lines');
+    const use = async () => {
+      await editor.press('Control+End'); await editor.press('ArrowUp'); await editor.press('Home');
+      for (let i = 0; i < 8; i++) await editor.press('ArrowRight');
+      await expect(lines).toContainText('print(greeting("Setdown"))');
+      await expect(lines).not.toContainText('def greeting(');
+    };
+    await use();
+    const menu = hereMenu(page);
+    await editor.press('Shift+F10');
+    const entry = menu.getByRole('option', { name: /Go to Definition/ });
+    await expect(entry).toBeVisible({ timeout: 15_000 });
+    // The key beside the entry is the one that does the same here: the editor also binds
+    // Ctrl+F12 to this action, and gives that key to "Go to Implementations".
+    await expect(entry.locator('kbd')).toHaveText('F12');
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await editor.press('F12');
+    await expect(lines).toContainText('def greeting(name: str)', { timeout: 15_000 });
+    await expect(lines).not.toContainText('print(greeting("Setdown"))');
+    await use();
+    await editor.press('Shift+F10');
+    await expect(entry).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.type('defin');
+    await expect(menu.getByRole('option')).toHaveCount(1);
+    await page.keyboard.press('Enter');
+    await expect(menu).toBeHidden();
+    await expect(lines).toContainText('def greeting(name: str)', { timeout: 15_000 });
+    await expect(lines).not.toContainText('print(greeting("Setdown"))');
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
 

@@ -4,13 +4,9 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { runCommand } from '../../support/editor/commands';
 const require = createRequire(import.meta.url);
-async function command(page: Page, label: string) {
-  await page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' }).press('F1');
-  const input = page.locator('.quick-input-box input');
-  await input.fill(`>${label}`);
-  await page.locator('.quick-input-list .monaco-list-row').filter({ hasText: label }).first().click();
-}
+const command = (page: Page, label: string) => runCommand(page, page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' }), label);
 
 test('negotiated semantic colors, formatting Undo, quick-fix command edits, workspace navigation and versionless diagnostics use real Monaco', async ({}, testInfo) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-features-'));

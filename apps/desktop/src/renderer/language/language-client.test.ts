@@ -6,7 +6,7 @@ import { LanguageClient } from './language-client';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import { fromRange, markdown, toRange } from './language-conversion';
 
-function fixture(file = '/project/main.py', capabilities: import('vscode-languageserver-protocol').ServerCapabilities = { hoverProvider: true, textDocumentSync: 2 }, routes?: LanguageRoute[]) {
+function fixture(file = '/project/main.py', capabilities: import('vscode-languageserver-protocol').ServerCapabilities = { hoverProvider: true, textDocumentSync: 2 }, routes?: LanguageRoute[], more: Partial<import('./language-client').LanguageOptions> = {}) {
   let version = 1;
   const listeners = new Set<(event: M.editor.IModelContentChangedEvent) => void>();
   let event: (event: LanguageEvent) => void = () => {};
@@ -39,7 +39,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
     importDefinition: vi.fn(async () => false), remove: vi.fn(async () => {}), openHomepage: vi.fn(async () => {}), allowDownload: vi.fn(async () => {}),
     request: vi.fn(async () => null), onEvent: callback => { event = callback; return () => {}; },
   };
-  const client = new LanguageClient(api, { port, route: file => languageSupport(file, routes), prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn() });
+  const client = new LanguageClient(api, { port, route: file => languageSupport(file, routes), prepare: async () => ({ tab, model }), open: async () => {}, status: vi.fn(), ...more });
   const change = (changes: Partial<M.editor.IModelContentChange>[]) => {
     version++;
     for (const listener of listeners) listener({ changes, versionId: version, isFlush: false, isEolChange: false } as M.editor.IModelContentChangedEvent);
@@ -226,4 +226,54 @@ test('global settings retain only the exact document incarnation acknowledged by
   expect(f.port.close).not.toHaveBeenCalled();
   f.client.invalidate(['pyright'], undefined, undefined, [{ ...retained, generation: 'an-old-incarnation' }]);
   expect(f.port.close).toHaveBeenCalledWith(f.tab.id); f.client.dispose();
+});
+
+test('what the tool itself says was not found is counted, and typing does not take the count away', async () => {
+  const seen: Array<import('./document-support').ProviderSupport> = [];
+  const f = fixture('/project/main.cpp', { textDocumentSync: 2 }, undefined, { documentStatus: (_model, status) => { if (status) seen.push(status); } });
+  vi.mocked(f.port.open).mockImplementation(async document => { f.opened.push(document); return { uri: 'file:///project/main.cpp', capabilities: { textDocumentSync: 2 }, tool: 'clangd' as const }; });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(seen.at(-1)?.state).toBe('ready'));
+  // A tool that answers and reports nothing of the kind: no symptom, whatever is inferred about the project.
+  expect(seen.at(-1)).toMatchObject({ tool: 'clangd', unresolved: undefined });
+  const missing = { range: { start: { line: 0, character: 9 }, end: { line: 0, character: 28 } }, message: "'torch/extension.h' file not found", code: 'pp_file_not_found' };
+  const other = { range: { start: { line: 3, character: 0 }, end: { line: 3, character: 4 } }, message: 'unused variable', code: 'unused-variable' };
+  f.event({ type: 'diagnostics', id: f.opened[0].id, generation: f.opened[0].generation, version: 1, diagnostics: [missing, other] });
+  expect(seen.at(-1)).toMatchObject({ unresolved: { count: 1, noun: 'include' }, diagnosticCount: 2 });
+  // While a person types the tool has not said anything new: the sentence stays as it was.
+  f.change([{ range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: ' ', rangeOffset: 0 }]);
+  await vi.waitFor(() => expect(f.port.change).toHaveBeenCalled());
+  expect(seen.at(-1)?.unresolved).toEqual({ count: 1, noun: 'include' });
+  // The tool's next answer is the next fact.
+  f.event({ type: 'diagnostics', id: f.opened[0].id, generation: f.opened[0].generation, version: 2, diagnostics: [other] });
+  expect(seen.at(-1)?.unresolved).toBeUndefined();
+  f.client.dispose();
+});
+
+test('text a tool made for reading opens as a document beside the code, never over it', async () => {
+  const openAnswer = vi.fn(async () => {});
+  const f = fixture('/project/main.rs', { textDocumentSync: 2 }, [{ extensions: ['.rs'], languageId: 'rust', server: 'rust-analyzer' } as never], { openAnswer });
+  vi.mocked(f.port.open).mockImplementation(async document => { f.opened.push(document); return { uri: 'file:///project/main.rs', capabilities: { textDocumentSync: 2 }, tool: 'rust-analyzer' as const }; });
+  f.port.answer = vi.fn(async () => '/user/setdown-language-answers/a/rust-analyzer status.txt');
+  vi.mocked(f.port.request).mockResolvedValue('Workspaces: 1' as never);
+  const shown = vi.fn();
+  const editor = { getModel: () => f.model, getDomNode: () => null, getSelections: () => [], getPosition: () => ({ lineNumber: 1, column: 1 }), focus: vi.fn(), hasTextFocus: () => true,
+    getContribution: () => ({ showMessage: shown, closeMessage: vi.fn() }) } as unknown as M.editor.IStandaloneCodeEditor;
+  Object.assign(f.model, { getOptions: () => ({ tabSize: 4, insertSpaces: true }), getLineContent: () => 'fn main() {}', getLineCount: () => 1 });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.client.toolFor(f.model)).toBe('rust-analyzer'));
+  expect(await f.client.runToolCommand('rust-analyzer.analyzerStatus', editor)).toBe(true);
+  expect(f.port.answer).toHaveBeenCalledWith('/project/main.rs', { title: 'rust-analyzer status', text: 'Workspaces: 1', languageId: undefined });
+  expect(openAnswer).toHaveBeenCalledWith('/user/setdown-language-answers/a/rust-analyzer status.txt');
+  expect(shown).not.toHaveBeenCalled();
+  // A window that cannot open documents says so at the cursor instead of drawing the text over the code.
+  const bare = fixture('/project/main.rs', { textDocumentSync: 2 }, [{ extensions: ['.rs'], languageId: 'rust', server: 'rust-analyzer' } as never]);
+  vi.mocked(bare.port.open).mockImplementation(async document => { bare.opened.push(document); return { uri: 'file:///project/main.rs', capabilities: { textDocumentSync: 2 }, tool: 'rust-analyzer' as const }; });
+  vi.mocked(bare.port.request).mockResolvedValue('Workspaces: 1' as never);
+  Object.assign(bare.model, { getOptions: () => ({ tabSize: 4, insertSpaces: true }), getLineContent: () => 'fn main() {}', getLineCount: () => 1 });
+  bare.client.bind(bare.tab, bare.model);
+  await vi.waitFor(() => expect(bare.client.toolFor(bare.model)).toBe('rust-analyzer'));
+  await bare.client.runToolCommand('rust-analyzer.analyzerStatus', { ...editor, getModel: () => bare.model } as M.editor.IStandaloneCodeEditor);
+  expect(shown).toHaveBeenCalledWith('This window cannot open the answer as a document.', { lineNumber: 1, column: 1 });
+  f.client.dispose(); bare.client.dispose();
 });

@@ -1,6 +1,9 @@
 import { isComposingInput } from '../composition-guard';
 import './editor-panel.css';
-export type PanelItem<T> = { label: string; detail?: string; value: T; disabled?: string; keywords?: string };
+/** `section`: once any row has one, the rows with a section are what the list shows while nothing
+ * is typed, under that heading; the others wait to be searched for. `only` keeps a row to the
+ * empty list or to a search. */
+export type PanelItem<T> = { label: string; detail?: string; value: T; disabled?: string; keywords?: string; section?: string; only?: 'empty' | 'typed' };
 let active: (() => void) | undefined;
 export type CommandInputs = Record<string, string | number | boolean>;
 let commandInputs: { previous: CommandInputs; current: CommandInputs } | undefined;
@@ -31,14 +34,20 @@ function frame(title: string) {
   dialog.showModal();
   return { dialog, dispose, canceled(callback: () => void) { canceled = callback; } };
 }
-export function choose<T>(title: string, items: PanelItem<T>[], placeholder = 'Search…', description?: string): Promise<T | null> {
+/** `emptyNote`: what a sectioned list says while nothing is typed, in place of a count. */
+export function choose<T>(title: string, items: PanelItem<T>[], placeholder = 'Search…', description?: string, emptyNote?: string): Promise<T | null> {
   return new Promise(resolve => {
     const ui = frame(title); ui.canceled(() => resolve(null));
     if (description) { const metadata = document.createElement('p'); metadata.className = 'editor-tool-count'; metadata.textContent = description; ui.dialog.append(metadata); }
     const input = document.createElement('input'); input.type = 'search'; input.placeholder = placeholder; input.setAttribute('aria-label', placeholder);
     const list = document.createElement('div'); list.className = 'editor-tool-list'; list.setAttribute('role', 'listbox');
     const count = document.createElement('p'); count.className = 'editor-tool-count'; count.setAttribute('aria-live', 'polite');
-    ui.dialog.append(input, count, list); let selected = Math.max(0, items.findIndex(item => item.value === commandInputs?.previous[title])), filtered = items;
+    const sectioned = items.some(item => item.section);
+    // The empty list of a sectioned panel: its sections in the order they first appear.
+    const opening = () => { const sections = [...new Set(items.flatMap(item => item.section && item.only !== 'typed' ? [item.section] : []))];
+      return sections.flatMap(section => items.filter(item => item.section === section && item.only !== 'typed')); };
+    let filtered = sectioned ? opening() : items, headed = sectioned;
+    ui.dialog.append(input, count, list); let selected = Math.max(0, filtered.findIndex(item => item.value === commandInputs?.previous[title]));
     const accept = (item: PanelItem<T>) => {
       if (item.disabled) { count.textContent = item.disabled; return; }
       if (commandInputs && ['string', 'number', 'boolean'].includes(typeof item.value)) commandInputs.current[title] = item.value as string | number | boolean;
@@ -46,8 +55,10 @@ export function choose<T>(title: string, items: PanelItem<T>[], placeholder = 'S
     };
     const render = () => {
       list.replaceChildren();
-      count.textContent = `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`;
+      count.textContent = headed ? emptyNote ?? '' : `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`;
+      let section: string | undefined;
       filtered.slice(0, 1000).forEach((item, index) => {
+        if (headed && item.section !== section) { section = item.section; const heading = document.createElement('p'); heading.className = 'editor-tool-section'; heading.textContent = section ?? ''; list.append(heading); }
         const row = document.createElement('button'); row.type = 'button'; row.className = 'editor-tool-row'; row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', String(index === selected)); row.setAttribute('aria-disabled', String(!!item.disabled));
         const label = document.createElement('span'); label.textContent = item.label;
@@ -57,20 +68,22 @@ export function choose<T>(title: string, items: PanelItem<T>[], placeholder = 'S
     };
     input.oninput = () => {
       const query = input.value.toLocaleLowerCase().trim();
+      if (sectioned && !query) { filtered = opening(); headed = true; selected = 0; render(); return; }
+      headed = false;
       const score = (item: PanelItem<T>) => {
         const label = item.label.toLocaleLowerCase(), haystack = `${label} ${item.keywords ?? ''} ${item.detail ?? ''}`.toLocaleLowerCase();
         if (label.startsWith(query)) return 0;
         if (haystack.includes(query)) return 1;
         let at = 0; for (const character of query) { at = haystack.indexOf(character, at); if (at < 0) return Infinity; at++; } return 2;
       };
-      filtered = items.map((item, index) => ({ item, index, score: score(item) })).filter(row => Number.isFinite(row.score))
+      filtered = items.filter(item => item.only !== 'empty').map((item, index) => ({ item, index, score: score(item) })).filter(row => Number.isFinite(row.score))
         .sort((a, b) => a.score - b.score || a.index - b.index).map(row => row.item);
       selected = 0; render();
     };
     input.addEventListener('keydown', event => {
       if (isComposingInput(event)) return;
       if (event.key === 'Enter') { event.preventDefault(); if (filtered[selected]) accept(filtered[selected]); }
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); selected = Math.max(0, Math.min(Math.min(999, filtered.length - 1), selected + (event.key === 'ArrowDown' ? 1 : -1))); render(); list.children[selected]?.scrollIntoView({ block: 'nearest' }); }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); selected = Math.max(0, Math.min(Math.min(999, filtered.length - 1), selected + (event.key === 'ArrowDown' ? 1 : -1))); render(); list.querySelectorAll('.editor-tool-row')[selected]?.scrollIntoView({ block: 'nearest' }); }
     });
     render(); input.focus();
   });

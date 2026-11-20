@@ -1,8 +1,10 @@
 import { expect, test } from 'vitest';
 import type { AnalysisContext } from '../../core/document/analysis-context';
 import type { ProviderSupport } from './document-support';
-import { analysisResult, presentIssue, presentSupport, problemsEmpty, shortPath } from './document-presentation';
+import { analysisResult, environmentAction, plainReason, presentIssue, presentSupport, problemsEmpty, shortPath } from './document-presentation';
 const context: AnalysisContext = { id: 'env', root: '/project', rootReason: 'marker', environment: 'usable', choices: [], evidence: [], issues: [] };
+/** A tool that carries what the main process established about the project it runs in. */
+const within = (project: Partial<AnalysisContext>, patch: Partial<ProviderSupport> = {}): ProviderSupport => server({ ...patch, analysis: { context: { ...context, ...project }, analysis: 'observed', scope: 'open-files', freshness: 'current', progress: [] } });
 const server = (patch: Partial<ProviderSupport> = {}): ProviderSupport => ({ id: 'primary', name: 'Primary', kind: 'server', state: 'ready', features: [], checks: 'Server diagnostics',
   analysis: { context, analysis: 'waiting', scope: 'open-files', freshness: 'none', progress: [] }, ...patch });
 test('a connected server is quiet without claiming that checks completed', () => {
@@ -17,14 +19,15 @@ test('known environment repair precedes restart; supplementary failure retains t
   const failed = server({ id: 'linter', name: 'Linter', role: 'supplementary', state: 'failed' });
   // The language still works, so the tool is named and the status says limited, not broken.
   expect(presentSupport([server(), failed], undefined, 'Python')).toMatchObject({ label: 'Limited', title: "Linter can't start.", description: 'Primary still works.', action: { kind: 'restart', server: 'linter' } });
-  const missingPython = { ...context, environment: 'action-needed' as const, issues: [{ code: 'python-missing', message: 'Missing Python' }] };
-  expect(presentSupport([failed], missingPython)).toMatchObject({ title: 'Missing Python', action: { kind: 'environment' } });
+  // A choice that names a missing Python is a fact the tool's own context carries.
+  const missingPython = { kind: 'python' as const, environment: 'action-needed' as const, issues: [{ code: 'python-missing', message: 'Missing Python' }] };
+  expect(presentSupport([within(missingPython, { ...failed })])).toMatchObject({ title: 'Missing Python', action: { kind: 'environment', label: 'Choose Python environment…' } });
   // A tool that stopped may have stopped because of its environment, so the environment still comes first.
-  expect(presentSupport([server({ state: 'failed', recovery: { retrying: false }, issue: { kind: 'crashed' } })], missingPython)).toMatchObject({ title: 'Missing Python', action: { kind: 'environment' } });
+  expect(presentSupport([within(missingPython, { state: 'failed', recovery: { retrying: false }, issue: { kind: 'crashed' } })])).toMatchObject({ title: 'Missing Python', action: { kind: 'environment' } });
   // A tool that cannot start at all comes before it: no environment choice can start the wrong program.
-  expect(presentSupport([server({ state: 'failed', recovery: { retrying: false }, issue: { kind: 'executable', path: '/usr/bin/java', automatic: true } })], missingPython, 'Python'))
+  expect(presentSupport([within(missingPython, { state: 'failed', recovery: { retrying: false }, issue: { kind: 'executable', path: '/usr/bin/java', automatic: true } })], undefined, 'Python'))
     .toMatchObject({ label: 'Not working', title: "Python support can't start.", action: { kind: 'automatic' } });
-  expect(presentSupport([server({ state: 'failed', recovery: { retrying: false }, issue: { kind: 'runtime', runtime: 'Java', required: '21' } })], missingPython, 'Java'))
+  expect(presentSupport([within(missingPython, { state: 'failed', recovery: { retrying: false }, issue: { kind: 'runtime', runtime: 'Java', required: '21' } })], undefined, 'Java'))
     .toMatchObject({ title: 'Java support needs Java 21 or newer.', action: { kind: 'help' } });
 });
 test('intentional project-off suppresses irrelevant environment repair but preserves local checks', () => {
@@ -36,7 +39,7 @@ test('recovery, stopped recovery and partial/local failure remain actionable and
   expect(presentSupport([server({ state: 'failed', recovery: { retrying: true, attempt: 2 } })])).toMatchObject({ label: 'Reconnecting…', tone: 'busy', description: 'Attempt 2 of 3.' });
   expect(presentSupport([server({ state: 'failed', recovery: { retrying: false } })]).action?.kind).toBe('restart');
   expect(presentSupport([server({ kind: 'builtin', state: 'failed', message: 'Unable to load schema' })])).toMatchObject({ tone: 'warning', title: 'Unable to load schema', action: { kind: 'details' } });
-  expect(presentSupport([server()], { ...context, environment: 'partial' }).label).toBe('Limited');
+  expect(presentSupport([within({ environment: 'partial' })]).label).toBe('Limited');
 });
 test('Problems distinguishes unknown coverage, pending results and observed results without claiming full coverage', () => {
   expect(problemsEmpty([])).toContain('Check code support');
@@ -106,4 +109,47 @@ test('a tool outside the supported languages waits to be asked for, without a wa
   // An offer never hides a warning about the file itself.
   expect(presentSupport([waiting, server({ id: 'builtin', kind: 'builtin', state: 'failed', message: 'Unable to load schema' })], undefined, 'Zig'))
     .toMatchObject({ label: 'Limited', tone: 'warning', title: 'Unable to load schema' });
+});
+
+test('what Setdown infers about a project is never a status; what the tool reports is', () => {
+  // The case of a C++ file whose project has no compilation database: clangd answers, and nothing
+  // it reported says anything is wrong. The inference waits; the status is the language's name alone.
+  const inferred = { kind: 'compilation' as const, label: 'Build configuration', unselected: 'None · clangd defaults',
+    hints: [{ code: 'compilation-unknown', message: 'No build configuration was found in this project, so clangd is using its default flags.' }] };
+  expect(presentSupport([within(inferred, { tool: 'clangd' })], undefined, 'C++')).toEqual({ label: '', tone: 'neutral', working: true });
+  // clangd itself says an include was not found. Now the status says what was seen, the
+  // inference explains it, and the one action opens the choice that addresses it.
+  expect(presentSupport([within(inferred, { tool: 'clangd', unresolved: { count: 1, noun: 'include' } })], undefined, 'C++')).toEqual({ label: 'Limited', tone: 'warning',
+    title: '1 include was not found, so results here are incomplete.', description: 'No build configuration was found in this project, so clangd is using its default flags.',
+    action: { kind: 'environment', label: 'Choose build configuration…' }, secondary: { kind: 'problems', label: 'Show problems' } });
+  expect(presentSupport([within({ kind: 'python' }, { tool: 'pyright', unresolved: { count: 3, noun: 'import' } })], undefined, 'Python')).toMatchObject({ label: 'Limited',
+    title: '3 imports were not found, so results here are incomplete.', description: undefined, action: { kind: 'environment', label: 'Choose Python environment…' } });
+  // A tool with no choice to make still says what it saw, and shows where.
+  expect(presentSupport([within({}, { tool: 'typescript', unresolved: { count: 2, noun: 'import' } })])).toMatchObject({ label: 'Limited', action: { kind: 'problems', label: 'Show problems' } });
+  expect(presentSupport([within({}, { tool: 'typescript', unresolved: { count: 2, noun: 'import' } })]).secondary).toBeUndefined();
+  // A tool that is not answering is the status; its last diagnostics are not.
+  expect(presentSupport([within(inferred, { state: 'failed', recovery: { retrying: false }, unresolved: { count: 1, noun: 'include' } })], undefined, 'C++').label).toBe('Not working');
+  expect(environmentAction('typescript').label).toBe('Choose TypeScript…');
+});
+
+test('the name in the location bar and the panel behind it say the same thing', () => {
+  // The panel also knows what a person chose for the project. That never changes a fact a tool
+  // reported: the same providers give the same label, sentence and action with and without it.
+  const policy = { ...context, environment: 'action-needed' as const, issues: [{ code: 'compilation-missing', message: 'A sentence only the panel was given' }],
+    analysisSelection: { mode: 'automatic' as const, source: 'default' as const }, servers: [{ id: 'primary', name: 'Primary', enabled: true, selected: true, role: 'primary' as const }] };
+  const cases: ProviderSupport[][] = [
+    [server()], [within({ environment: 'action-needed', kind: 'compilation', issues: [{ code: 'compilation-missing', message: 'The chosen build folder is missing.' }] })],
+    [within({ kind: 'compilation' }, { unresolved: { count: 2, noun: 'include' }, tool: 'clangd' })], [server({ state: 'failed', recovery: { retrying: false }, message: 'Error: boom' })],
+    [server({ state: 'starting' })], [server({ state: 'missing', issue: { kind: 'downloads-off' } })], [within({ environment: 'partial' })]];
+  for (const providers of cases) expect(presentSupport(providers, policy, 'C++')).toEqual(presentSupport(providers, undefined, 'C++'));
+});
+
+test('a tool that failed without a known cause is explained in its own words', () => {
+  const wrapped = "Error: Error invoking remote method 'language:open': Error: spawn /usr/bin/clangd EACCES";
+  expect(plainReason(wrapped)).toBe('spawn /usr/bin/clangd EACCES');
+  expect(plainReason('TypeError: x is not a function\n    at stack')).toBe('x is not a function');
+  expect([plainReason(undefined), plainReason('  \n ')]).toEqual([undefined, undefined]);
+  expect(presentSupport([server({ state: 'failed', message: wrapped })], undefined, 'C++')).toMatchObject({ label: 'Not working', title: "C++ support can't start.", description: 'spawn /usr/bin/clangd EACCES', action: { kind: 'restart', label: 'Try again' } });
+  // A known cause has its own sentence; the raw message is not repeated beside it.
+  expect(presentSupport([server({ state: 'failed', recovery: { retrying: false }, issue: { kind: 'crashed' }, message: wrapped })], undefined, 'C++').description).toBeUndefined();
 });

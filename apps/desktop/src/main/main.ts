@@ -12,7 +12,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { AppCommand, DocumentSnapshot } from '../protocol/desktop-api';
 import { isMarkdownDocument, isVideoDocument, videoMimeType } from '../core/document/document-profile';
-import { documentPathFromArgs } from './documents/document-args';
+import { documentPathFromArgs, relaunchOptions } from './documents/document-args';
 import { webURLsFromArgs } from '../core/browser/web-launch';
 import { chooseDefaultBrowser } from './browser/default-browser';
 import { canonicalPath, isInside } from './documents/file-system';
@@ -225,7 +225,16 @@ else {
     if (state) void documents.open(state, filePath).catch(openError);
     else queuedOpenFiles.push(filePath);
   });
+  // Quitting is final. After the last window closes the language tools get a few seconds to
+  // leave, and for that time this process still exists without its services: tool discovery,
+  // terminals and previews are already disposed. A start of the app in that time must not get a
+  // window here. Nothing would work in it ("Server discovery cancelled." for every language), and
+  // it would close again when the tools have left. The start is repeated by a new process
+  // once this one is gone.
+  let quitting = false;
+  app.on('will-quit', () => { quitting = true; });
   app.on('second-instance', (_event, argv) => {
+    if (quitting) { app.relaunch(relaunchOptions(argv)); return; }
     const filePath = documentPathFromArgs(argv, app.isPackaged);
     const state = registry.focused();
     if (filePath && state) void documents.open(state, filePath).catch(openError);
@@ -354,5 +363,5 @@ else {
   app.on('will-quit', () => { void browsers.flush(); windows.disposeWatchers(); void projects.dispose(); });
   app.on('will-quit', () => { browsers.dispose(); try { browsers.flushOnExit(); } catch (error) { console.error('Could not save browser tabs', error); } });
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) windows.create(); });
+  app.on('activate', () => { if (!quitting && BrowserWindow.getAllWindows().length === 0) windows.create(); });
 }

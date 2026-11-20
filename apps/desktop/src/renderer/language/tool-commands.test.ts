@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, vi } from 'vitest';
 import { clientCommands, mayEdit, toolFamilies, toolRequest } from '../../protocol/language-tools';
-import { toolCommandList, toolContextKey } from './tool-command-list';
-import { astText, clientCommandHandlers, commandLine, goVersionItems, javaBuildResult, kotlinNoRelatedTests, memoryLayout, memoryText, plainSnippet, runnable, toolCommands, yamlSchemaItems, type ToolCommandContext } from './tool-commands';
+import { documentCommandIds, documentCommandNames, toolActionId, toolCommandList, toolContextKey, unlistedCommandIds } from './tool-command-list';
+import { astText, clientCommandHandlers, commandLine, goChoice, goEnvironment, goVersionItems, javaBuildResult, kotlinNoRelatedTests, memoryLayout, memoryText, plainSnippet, runnable, syntaxTreeText, toolCommands, toolEnvironmentRows, yamlEnvironment, yamlSchemaItems, type ToolCommandContext } from './tool-commands';
 
 const vendor = path.resolve(__dirname, '../../../../../vendor');
 const source = (file: string) => readFileSync(path.join(vendor, file), 'utf8');
@@ -11,7 +11,7 @@ const position = { line: 4, character: 7 }, selection = { start: position, end: 
 function context(answers: Record<string, unknown> = {}, more: Partial<ToolCommandContext> = {}) {
   const mocks = { request: vi.fn(async (method: string) => answers[method] ?? null), showText: vi.fn(async () => {}), showLocations: vi.fn(async () => {}), open: vi.fn(async () => {}),
     ask: vi.fn(async () => undefined), pick: vi.fn(async (_title: string, items: { value: unknown }[]) => items[0]?.value), edit: vi.fn(), workspaceEdit: vi.fn(async () => {}), select: vi.fn(),
-    run: vi.fn(async () => true), copy: vi.fn(async () => {}), link: vi.fn(async () => {}), message: vi.fn(), editorAction: vi.fn(async () => {}), type: vi.fn(),
+    run: vi.fn(async () => true), copy: vi.fn(async () => {}), link: vi.fn(async () => {}), message: vi.fn(), inspect: vi.fn(), editorAction: vi.fn(async () => {}), type: vi.fn(),
     formatting: { tabSize: 2, insertSpaces: true } };
   return { position, selection, selections: [selection], uri: 'file:///p/src/main.rs', line: '    let x = 1;', ...mocks, ...more } as unknown as ToolCommandContext & typeof mocks;
 }
@@ -231,12 +231,17 @@ test('the commands of the Java, Kotlin, PHP, JSON and YAML extensions', async ()
   // YAML: the file's own schemas are marked, and the choice goes to the main process as addresses.
   const all = [{ uri: 'https://json.schemastore.org/github-workflow.json', name: 'GitHub Workflow', description: 'A workflow', usedForCurrentFile: true }, { uri: 'https://example.com/b.json' }, { name: 'no address' }];
   expect(yamlSchemaItems(all)).toEqual([{ label: 'GitHub Workflow', detail: 'Used for this file. A workflow', value: all[0].uri }, { label: all[1].uri, detail: all[1].uri, value: all[1].uri }]);
-  c = context({ 'yaml/get/all/jsonSchemas': all }, { pick: vi.fn(async (_title: string, items: { value: unknown }[]) => items[2].value) as never });
+  // The choice is a row behind the language name, in the form every such choice has: what the
+  // file is checked against first and marked, then "no schema", then the rest.
+  expect(yamlEnvironment(all)).toEqual({ id: 'yaml-schema', label: 'Schema', value: 'GitHub Workflow', choices: [
+    { id: all[0].uri, name: 'GitHub Workflow', detail: 'A workflow', current: true },
+    { id: '', name: 'No schema', detail: 'This file is checked against no schema', current: false },
+    { id: all[1].uri, name: all[1].uri, detail: all[1].uri, current: false }] });
+  expect(yamlEnvironment([{ uri: 'https://example.com/b.json' }])).toMatchObject({ value: 'None', choices: [{ id: '', current: true }, { id: 'https://example.com/b.json', current: false }] });
+  // The extension's command opens that row; it asks nothing itself.
+  c = context({ 'yaml/get/all/jsonSchemas': all });
   await toolCommands['yaml.select.json.schema'](c);
-  expect(c.request).toHaveBeenLastCalledWith('setdown/yaml.selectSchemas', { selected: ['https://example.com/b.json'] }, true);
-  c = context({ 'yaml/get/all/jsonSchemas': all }, { pick: vi.fn(async (_title: string, items: { value: unknown }[]) => items[0].value) as never });
-  await toolCommands['yaml.select.json.schema'](c);
-  expect(c.request).toHaveBeenLastCalledWith('setdown/yaml.selectSchemas', { selected: [] }, true);
+  expect(c.inspect).toHaveBeenCalledWith('tool-environment', 'yaml-schema'); expect(c.request).not.toHaveBeenCalled(); expect(c.pick).not.toHaveBeenCalled();
 });
 
 test('the commands of the Go extension', async () => {
@@ -273,14 +278,21 @@ test('the commands of the Go extension', async () => {
   expect(goVersionItems(versions).items.map(item => [item.label, item.value])).toEqual([['Clear selection', { clear: true }], ['Go 1.21.0', { program: '/home/me/sdk/go1.21.0/bin/go' }], ['Go 1.23.4', { version: 'go1.23.4' }]]);
   expect(goVersionItems({ ...versions, chosen: false }).items).toHaveLength(2);
   expect(source('vscode-go/extension/src/goEnvironmentStatus.ts')).toContain("const CLEAR_SELECTION = '$(clear-all) Clear selection';");
-  c = context({ 'setdown/go.versions': versions, 'setdown/go.chooseVersion': true }, { pick: vi.fn(async (_title: string, items: { value: unknown }[]) => items[2].value) as never });
+  // The same list as a row behind the language name: the Go in use first, and the Go of the
+  // environment marked as what is in effect without a choice.
+  const row = goEnvironment({ ...versions, current: 'Go 1.21.0' });
+  expect(row).toMatchObject({ id: 'go', label: 'Go', value: 'Go 1.21.0' });
+  expect(row.choices.map(choice => [choice.name, choice.detail, !!choice.current, !!choice.recommended])).toEqual([
+    ['Go 1.21.0', '/home/me/sdk/go1.21.0/bin/go', true, false], ['Automatic', 'The Go of this environment', false, true], ['Go 1.23.4', 'Download', false, false]]);
+  expect(row.choices.map(choice => goChoice(choice.id))).toEqual([{ program: '/home/me/sdk/go1.21.0/bin/go' }, { clear: true }, { version: 'go1.23.4' }]);
+  // Without a choice the Go in use is the environment's own, so it is the recommended one and there is nothing to clear.
+  expect(goEnvironment({ ...versions, current: 'Go 1.21.0', chosen: false }).choices.map(choice => [choice.name, !!choice.current, !!choice.recommended])).toEqual([['Go 1.21.0', true, true], ['Go 1.23.4', false, false]]);
+  expect(goEnvironment({ refusal: 'Switching Go version when "go.goroot" is set is unsupported.', current: 'Go 1.22.3' })).toEqual({ id: 'go', label: 'Go', value: 'Go 1.22.3', choices: [], refusal: 'Switching Go version when "go.goroot" is set is unsupported.' });
+  expect([goChoice('{"program":7}'), goChoice('not json'), goChoice('{}')]).toEqual([undefined, undefined, undefined]);
+  expect(toolEnvironmentRows).toEqual({ gopls: { id: 'go', label: 'Go' }, yaml: { id: 'yaml-schema', label: 'Schema' } });
+  c = context({ 'setdown/go.versions': versions });
   await toolCommands['gopls.environment.choose'](c);
-  expect(c.pick.mock.calls[0][0]).toBe('Go: Choose Go Environment (in use: Go 1.22.3)');
-  expect(c.request).toHaveBeenLastCalledWith('setdown/go.chooseVersion', { version: 'go1.23.4' }, true);
-  expect(c.message.mock.calls.map(call => call[0])).toEqual(['Downloading go1.23.4…', 'Go changed; gopls is starting again.']);
-  c = context({ 'setdown/go.versions': { refusal: 'Switching Go version when "go.goroot" is set is unsupported.' } });
-  await toolCommands['gopls.environment.choose'](c);
-  expect(c.pick).not.toHaveBeenCalled(); expect(c.message).toHaveBeenCalledWith('Switching Go version when "go.goroot" is set is unsupported.');
+  expect(c.inspect).toHaveBeenCalledWith('tool-environment', 'go'); expect(c.request).not.toHaveBeenCalled(); expect(c.pick).not.toHaveBeenCalled();
 
   // A "run test" lens runs `go test` in the terminal, with the line and the environment the main process made.
   c = context({ 'setdown/go.testCommand': { cwd: '/p/pkg', program: 'go', args: ['test', '-test.fullpath=true', '-timeout', '30s', '-run', '^TestAdd$', '.'], label: 'go test TestAdd', env: { GOFLAGS: '-mod=mod', 'bad name': 'x', N: 3 } } });
@@ -290,4 +302,41 @@ test('the commands of the Go extension', async () => {
   c = context({ 'setdown/go.testCommand': null });
   await clientCommandHandlers.gopls!['gopls.run_tests'](c, [{}]);
   expect(c.run).not.toHaveBeenCalled(); expect(c.message).toHaveBeenCalledWith('The tool did not say how to run this.');
+});
+
+test('every command has one place, and no place is a fixed line of a menu', () => {
+  const at = (place: string) => toolCommandList.filter(command => command.place === place).map(command => command.id);
+  expect(toolCommandList.every(command => ['here', 'document', 'project', 'environment', 'settings', 'typed', 'key'].includes(command.place))).toBe(true);
+  expect(toolCommandList.some(command => 'menu' in command)).toBe(false);
+  // A choice of what the analysis is based on is made behind the language name, for every language alike.
+  expect(at('environment')).toEqual(['yaml.select.json.schema', 'gopls.environment.choose']);
+  // The only behaviour of a key: Enter. It keeps its key and is listed nowhere.
+  expect(at('key')).toEqual(['rust-analyzer.onEnter']);
+  expect(unlistedCommandIds).toEqual([toolActionId('rust-analyzer.onEnter')]);
+  // What acts on the project or the tool is named plainly on the tool's own page, without the tool's name.
+  for (const command of toolCommandList.filter(command => command.place === 'project' || command.place === 'settings')) {
+    expect(command.short, command.id).toBeTruthy();
+    expect(command.short, command.id).not.toMatch(/rust-analyzer|flycheck|proc macro|Java:|Kotlin:|Intelephense:/i);
+  }
+  expect(at('project')).toEqual(['rust-analyzer.openCargoToml', 'rust-analyzer.reloadWorkspace', 'rust-analyzer.rebuildProcMacros', 'rust-analyzer.runFlycheck', 'rust-analyzer.cancelFlycheck',
+    'rust-analyzer.clearFlycheck', 'rust-analyzer.analyzerStatus', 'rust-analyzer.viewFileText', 'jdtls.projectConfiguration.update', 'jdtls.project.import', 'jdtls.workspace.compile',
+    'kotlin.reloadWorkspace', 'intelephense.index.workspace', 'intelephense.cancel.indexing']);
+  // What concerns the file as a whole is offered in the command list while it is empty; nothing of a tool is.
+  expect(at('document')).toEqual(['svelte.typescript.findAllFileReferences', 'svelte.typescript.findComponentReferences', 'gopls.import.add']);
+  expect(documentCommandIds).toEqual(expect.arrayContaining(['editor.action.formatDocument', 'setdown.language-problems', ...at('document').map(toolActionId)]));
+  expect(documentCommandIds.some(id => at('typed').map(toolActionId).includes(id))).toBe(false);
+  // While the command list is empty a tool's command for the document carries no tool's name.
+  expect(documentCommandNames).toEqual({ [toolActionId('svelte.typescript.findAllFileReferences')]: 'Find File References', [toolActionId('svelte.typescript.findComponentReferences')]: 'Find Component References',
+    [toolActionId('gopls.import.add')]: 'Add Import' });
+  // Every command of a tool is still found under the name its extension gives it.
+  expect(toolCommandList.every(command => /^(rust-analyzer|clangd|Svelte|Java|Kotlin|Intelephense|JSON|YAML|Go): /.test(command.title))).toBe(true);
+});
+
+test('the syntax tree is a document with one node on a line', () => {
+  // syntax_tree_provider.ts: nodes and tokens with `[offset, line, column]` from zero.
+  const tree = JSON.stringify({ type: 'Node', kind: 'SOURCE_FILE', start: [0, 0, 0], end: [12, 0, 12], children: [
+    { type: 'Node', kind: 'FN', start: [0, 0, 0], end: [12, 0, 12], children: [{ type: 'Token', kind: 'FN_KW', start: [0, 0, 0], end: [2, 0, 2] }, { type: 'Token', kind: 'WHITESPACE', start: [2, 0, 2], end: [3, 1, 0] }] }] });
+  expect(syntaxTreeText(tree)).toBe('SOURCE_FILE  1:1-1:13\n  FN  1:1-1:13\n    FN_KW  1:1-1:3\n    WHITESPACE  1:3-2:1');
+  expect([syntaxTreeText('not json'), syntaxTreeText('{}'), syntaxTreeText(null)]).toEqual([undefined, undefined, undefined]);
+  expect(source('rust-analyzer/editors/code/src/syntax_tree_provider.ts')).toContain('const [startOffset, startLine, startCol] = value.start;');
 });

@@ -6,8 +6,9 @@
 
 <button bind:this={element} class="support-button" class:issue={tone === 'warning'} title={`${name}${label ? ` · ${label}` : ''}`}
   aria-label={`Language status: ${name}${label ? `, ${label}` : ''}`} aria-expanded={expanded} aria-haspopup="dialog" {onclick}>
-  <!-- A labelled wait (a tool being fetched, a reconnect) can last minutes: its ring turns. An ordinary start stays still. -->
-  {#if tone !== 'neutral'}<span class="indicator" class:turning={tone === 'busy' && !!label} aria-hidden="true">{tone === 'warning' ? '!' : label ? '' : '◌'}</span>{/if}
+  <!-- While the tool is not ready yet (starting, being fetched, reconnecting, still reading the project) a ring
+       turns beside the name, as it does in the panel behind it. Once the tool is ready there is only the name. -->
+  {#if tone !== 'neutral'}<span class="indicator" class:turning={tone === 'busy'} aria-hidden="true">{tone === 'warning' ? '!' : ''}</span>{/if}
   <span class="language-name">{name}</span>{#if label && !narrow}<span class="support-label"> · {label}</span>{/if}<span aria-hidden="true">⌄</span>
 </button>
 

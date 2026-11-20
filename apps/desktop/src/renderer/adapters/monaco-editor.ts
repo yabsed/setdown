@@ -21,7 +21,11 @@ import type { LanguageServices } from '../language/language-services';
 import { toolFamilies } from '../../protocol/language-tools';
 import { installSyntaxHighlighting } from '../language/syntax-runtime';
 import { updateLanguageDefinitions } from '../../core/document/language-catalog';
-import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin, toolCommandList, toolContextKey } from '../language/language-runtime';
+import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin, toolCommandList, toolContextKey, toolActionId, documentCommandIds, documentCommandNames, unlistedCommandIds,
+  openHereMenu, gatherHere, arrangeHere, type HereItem } from '../language/language-runtime';
+import { isLanguageAnswer } from '../../protocol/language';
+import { isComposingInput } from '../editor/composition-guard';
+import { recordRecentCommand } from '../editor/tools/command-list';
 import { recognizedLanguage } from '../../core/document/language-policy';
 import { loadMonaco } from '../editor/monaco-runtime';
 import { displayOptions, releaseDisplayOptions } from '../editor/tools/view-display';
@@ -184,6 +188,10 @@ export class MonacoEditor {
         // Group/surface containers clip their contents. Fixed widgets keep LSP
         // hovers and suggestions visible when Monaco places them beyond a pane.
         fixedOverflowWidgets: true,
+        // The menu at the cursor is the app's own (`openHere`): it holds the tools' answers for
+        // that position instead of the editor's fixed list. What a tool's lens offers is an entry
+        // of that menu, so lenses are not drawn between the lines.
+        contextmenu: false,
         automaticLayout: true, 'semanticHighlighting.enabled': true, codeLens: false, inlayHints: { enabled: 'offUnlessPressed' }, linkedEditing: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
         wordWrap: 'off', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: true },
         scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
@@ -245,7 +253,7 @@ export class MonacoEditor {
       const model = tab?.surface === 'editor' ? this.ensureModel(tab) : null;
       if (entry.editor.getModel() !== model) {
         entry.editor.setModel(model);
-        if (tab) entry.editor.updateOptions({ ...displayOptions(tab.id, tab.document.path), ...textZoomOptions(tab.id) });
+        if (tab) entry.editor.updateOptions({ ...displayOptions(tab.id, tab.document.path), ...textZoomOptions(tab.id), readOnly: isLanguageAnswer(tab.document.path) });
         const state = tab ? this.views.get(tab.id) : null;
         if (state) entry.editor.restoreViewState(state);
       }
@@ -264,7 +272,8 @@ export class MonacoEditor {
     if (entry.tabId && !sameView) this.views.set(entry.tabId, this.editorValue.saveViewState());
     entry.tabId = tab.id;
     const sameModel = this.editorValue.getModel() === model;
-    this.editorValue.updateOptions({ ...displayOptions(tab.id, tab.document.path), ...textZoomOptions(tab.id) });
+    // A tool's answer is a document to read: it is the tool's text, not the person's.
+    this.editorValue.updateOptions({ ...displayOptions(tab.id, tab.document.path), ...textZoomOptions(tab.id), readOnly: isLanguageAnswer(tab.document.path) });
     if (!sameModel) this.editorValue.setModel(model);
     this.owners.get(documentIdentity(tab))?.beginEditing(`document:${tab.id}`);
     this.publishLanguageSupport(tab, model);
@@ -391,8 +400,9 @@ export class MonacoEditor {
     window.setTimeout(() => {
       if (this.editorValue !== editor || editor.getModel() !== model) return;
       editor.layout();
-      const top = editor.getTopForLineNumber(line) - editor.getLayoutInfo().height * anchor.yRatio;
-      editor.setScrollTop(Math.max(0, top));
+      // A jump made since (a definition, a result) put the cursor and the view where it belongs:
+      // scrolling back to the anchor would leave the place it went to out of sight.
+      if (editor.getPosition()?.lineNumber === line) editor.setScrollTop(Math.max(0, editor.getTopForLineNumber(line) - editor.getLayoutInfo().height * anchor.yRatio));
       editor.focus();
     }, 0);
   }
@@ -486,6 +496,8 @@ export class MonacoEditor {
       api.editor.setModelLanguage(model, language);
     }
     this.publishLanguageSupport(tab, model);
+    // A tool's answer is coloured as its language and analysed by no tool: it belongs to no project.
+    if (isLanguageAnswer(tab.document.path)) return;
     if (this.languageClient) { this.languageClient.bind(tab, model); return; }
     // Markdown stays off the analysis import path unless a provider was explicitly enabled.
     if (language === 'markdown' && !languageSupport(tab.document.path, this.languageRoutes)) return;
@@ -497,6 +509,11 @@ export class MonacoEditor {
           for (const update of this.languageContexts.values()) update();
         },
         status: state => { this.options.host.dataset.languageServer = state; },
+        inspect: (target, page, item) => {
+          const views = this.options.tabs().filter(view => this.models.get(documentIdentity(view)) === target);
+          const view = views.find(view => view.id === this.options.active()?.id) ?? views[0];
+          if (view) openLanguageSupport(documentSupport.get(view.id), page, item);
+        },
       });
       for (const current of this.options.contents?.() ?? this.options.tabs()) {
         const currentModel = this.models.get(documentIdentity(current));
@@ -544,10 +561,61 @@ export class MonacoEditor {
         const editor = (editors.find(entry => entry.tabId === id && entry.editor.getModel() === model) ?? editors.find(entry => entry.editor.getModel() === model))?.editor;
         if (editor) void this.languageClient?.showNavigation('problems', editor);
       },
+      toolEnvironments: this.languageClient?.toolEnvironmentRows(model) ?? [],
+      toolEnvironment: async row => { requireCurrent(); return this.languageClient!.toolEnvironment(model, row); },
+      chooseToolEnvironment: async (row, choice) => { requireCurrent(); return this.languageClient!.chooseToolEnvironment(model, row, choice); },
+      toolActions: this.languageClient?.toolActions(model) ?? [],
+      runToolAction: async action => {
+        requireCurrent();
+        const editors = [...this.groupEditors.values()];
+        const editor = (editors.find(entry => entry.tabId === id && entry.editor.getModel() === model) ?? editors.find(entry => entry.editor.getModel() === model))?.editor;
+        if (!editor || !await this.languageClient?.runToolCommand(action, editor)) throw Error('The tool is not running for this document.');
+      },
     });
   }
+  /** For the command list: what applies at this editor's cursor, which commands concern the
+   * document as a whole, and which are behaviours of a key that are never listed. */
+  async commandsHere(target: Monaco.editor.ICodeEditor | null): Promise<{ here: HereItem[]; document: readonly string[]; never: readonly string[]; plain: Readonly<Record<string, string>> }> {
+    const places = { document: documentCommandIds, never: unlistedCommandIds, plain: documentCommandNames };
+    const entry = [...this.groupEditors.values()].find(entry => entry.editor === target);
+    if (!entry || !this.languageClient || !entry.editor.getModel()) return { here: [], ...places };
+    return { here: arrangeHere((await gatherHere(this.languageClient.hereProbes(entry.editor))).items), ...places };
+  }
+  /** The menu at the cursor (`here-menu.ts`): the tools' answers for this position, then the
+   * editing every text has. It opens at the pointer, or below the cursor when a key asked. */
+  private async openHere(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor, at?: { x: number; y: number }): Promise<void> {
+    const model = editor.getModel(), position = editor.getPosition();
+    if (!model || !position || isComposingInput()) return;
+    if (!at) {
+      const visible = editor.getScrolledVisiblePosition(position), box = editor.getDomNode()?.getBoundingClientRect();
+      if (!visible || !box) return;
+      at = { x: box.left + visible.left, y: box.top + visible.top + visible.height };
+    }
+    const version = model.getVersionId(), selection = editor.getSelection(), readOnly = editor.getOption(api.editor.EditorOption.readOnly);
+    const selected = !!selection && !selection.isEmpty();
+    // Asked before anything is drawn: the tools answer while the menu is being prepared.
+    const probes = this.languageClient?.hereProbes(editor) ?? [];
+    const key = (await import('../editor/monaco-keys')).actionKeys(editor.getDomNode());
+    const keyed = (items: HereItem[]) => items.map(item => ({ ...item, key: (item.action && key(item.action)) || item.key }));
+    const act = (id: string) => () => { editor.focus(); editor.trigger('setdown.here', id, {}); };
+    const own = (id: string, label: string): HereItem[] => { const action = editor.getAction(id); return action?.isSupported() ? [{ id, group: 'edit', label, action: id, run: () => { editor.focus(); return action.run(); } }] : []; };
+    const fixed: HereItem[] = [
+      ...(selected && !readOnly ? [{ id: 'cut', group: 'edit' as const, label: 'Cut', action: 'editor.action.clipboardCutAction', run: act('editor.action.clipboardCutAction') }] : []),
+      { id: 'copy', group: 'edit', label: 'Copy', action: 'editor.action.clipboardCopyAction', run: act('editor.action.clipboardCopyAction') },
+      ...(readOnly ? [] : [{ id: 'paste', group: 'edit' as const, label: 'Paste', action: 'editor.action.clipboardPasteAction', run: act('editor.action.clipboardPasteAction') }]),
+      ...own('setdown.insertLink', 'Insert URL'), ...own('setdown.insertTable', 'Insert Table'),
+      { id: 'commands', group: 'edit', label: 'All Commands…', key: 'F1', run: () => { editor.focus(); return editor.getAction('setdown.commands')?.run(); } }];
+    const tab = this.options.tabs().find(view => this.models.get(documentIdentity(view)) === model);
+    await openHereMenu({ at, fixed: keyed(fixed), probes: probes.map(probe => probe.then(keyed)),
+      subject: (selected ? model.getValueInRange(selection!).trim().split(/\r?\n/, 1)[0] : model.getWordAtPosition(position)?.word)?.slice(0, 80) || undefined,
+      language: tab && documentSupport.get(tab.id)?.name,
+      alive: () => editor.getModel() === model && !model.isDisposed() && model.getVersionId() === version,
+      restore: () => { if (editor.getModel() === model) editor.focus(); },
+      // What was done here by name is offered first the next time the command list opens.
+      chosen: item => { if (item.action && item.id !== 'commands') recordRecentCommand(item.action); } });
+  }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
-    if (this.options.pythonCells) editor.addAction({ id: 'setdown.python-cells', label: 'Open Python # %% cells as interactive notebook…', precondition: 'editorLangId == python', contextMenuGroupId: 'navigation', contextMenuOrder: 7, run: async () => {
+    if (this.options.pythonCells) editor.addAction({ id: 'setdown.python-cells', label: 'Open Python # %% cells as interactive notebook…', precondition: 'editorLangId == python', run: async () => {
       const tab = this.options.tabs().find(tab => this.models.get(documentIdentity(tab)) === editor.getModel()); const model = editor.getModel();
       if (tab?.document.path && model) await this.options.pythonCells!(tab.document.path, model.getValue());
     } });
@@ -567,22 +635,21 @@ export class MonacoEditor {
     editor.onDidChangeModel(updateLanguageContext);
     editor.onDidDispose(() => this.languageContexts.delete(editor));
     for (const [kind, label] of Object.entries({ symbols: 'Go to Workspace Symbol…', incoming: 'Show Incoming Calls', outgoing: 'Show Outgoing Calls', supertypes: 'Show Supertypes', subtypes: 'Show Subtypes', problems: 'Show Problems in Open Files' }) as ['symbols' | 'incoming' | 'outgoing' | 'supertypes' | 'subtypes' | 'problems', string][]) {
-      editor.addAction({ id: `setdown.language-${kind}`, label, precondition: kind === 'symbols' ? 'setdownLanguageSymbols' : kind === 'incoming' || kind === 'outgoing' ? 'setdownLanguageCalls' : kind === 'problems' ? 'setdownLanguageProblems' : 'setdownLanguageTypes', contextMenuGroupId: 'navigation', contextMenuOrder: 5,
+      editor.addAction({ id: `setdown.language-${kind}`, label, precondition: kind === 'symbols' ? 'setdownLanguageSymbols' : kind === 'incoming' || kind === 'outgoing' ? 'setdownLanguageCalls' : kind === 'problems' ? 'setdownLanguageProblems' : 'setdownLanguageTypes',
         run: () => this.languageClient?.showNavigation(kind, editor) });
     }
     // vendor/vscode-clangd/package.json: the command, its place in the menu and its key (Alt+O, ⌥⌘O on macOS).
-    editor.addAction({ id: 'setdown.language-companion', label: 'Switch Between Source/Header', precondition: 'setdownLanguageCompanion', contextMenuGroupId: 'navigation', contextMenuOrder: 5,
+    editor.addAction({ id: 'setdown.language-companion', label: 'Switch Between Source/Header', precondition: 'setdownLanguageCompanion',
       keybindings: [(/Mac/i.test(navigator.platform) ? api.KeyMod.Alt | api.KeyMod.CtrlCmd : api.KeyMod.Alt) | api.KeyCode.KeyO],
       run: async () => {
         const model = editor.getModel(), position = editor.getPosition();
         if (!model || await this.languageClient?.openCompanion(model) || editor.getModel() !== model || !position) return;
         (editor.getContribution('editor.contrib.messageController') as unknown as { showMessage?(message: string, position: Monaco.IPosition): void } | null)?.showMessage?.('Didn\'t find a corresponding file.', position);
       } });
-    // The commands each tool's own extension adds (`tool-command-list.ts`), with the extension's keys.
-    const toolKeys = { 'ctrl-shift-u': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyU, 'ctrl-shift-j': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyJ,
-      'ctrl-shift-m': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyM, enter: api.KeyCode.Enter };
-    for (const command of toolCommandList) editor.addAction({ id: `setdown.tool.${command.id}`, label: command.title, precondition: toolContextKey(command.tool),
-      ...(command.menu ? { contextMenuGroupId: 'navigation', contextMenuOrder: 6 } : {}),
+    // The commands each tool's own extension adds (`tool-command-list.ts`), with the extension's
+    // keys. They are found by name in the command list; none is a fixed line of a menu.
+    const toolKeys = { 'ctrl-shift-u': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyU, 'ctrl-shift-j': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyJ, enter: api.KeyCode.Enter };
+    for (const command of toolCommandList) editor.addAction({ id: toolActionId(command.id), label: command.title, precondition: toolContextKey(command.tool),
       ...(command.key ? { keybindings: [toolKeys[command.key]],
         // Enter stays the editor's own wherever it already means something else, and during composition.
         keybindingContext: command.key === 'enter' ? 'editorTextFocus && !editorReadonly && !suggestWidgetVisible && !renameInputVisible && !inSnippetMode && !parameterHintsVisible && !editorHasMultipleSelections && !compositionInProgress' : 'editorTextFocus' } : {}),
@@ -607,6 +674,17 @@ export class MonacoEditor {
       const tab = this.options.active();
       if (tab && editor.getModel() === this.models.get(documentIdentity(tab))) this.owners.get(documentIdentity(tab))?.beginEditing(`document:${tab.id}`);
     });
+    // Right-click, and the menu key or Shift+F10 at the cursor.
+    editor.onContextMenu(event => {
+      event.event.preventDefault(); event.event.stopPropagation();
+      const at = event.target.position;
+      if (at && !editor.getSelection()?.containsPosition(at)) editor.setPosition(at);
+      void this.openHere(api, editor, { x: event.event.posx, y: event.event.posy });
+    });
+    // An action, not `addCommand`: a key added with `addCommand` belongs to every editor of the
+    // window at once, and the editor that registered last would answer for the one in use.
+    editor.addAction({ id: 'setdown.here', label: 'Actions Here…', keybindings: [api.KeyMod.Shift | api.KeyCode.F10, api.KeyCode.ContextMenu],
+      keybindingContext: 'editorTextFocus && !compositionInProgress', run: () => this.openHere(api, editor) });
     editor.onDidChangeCursorSelection(() => this.options.viewChanged?.());
     editor.onDidScrollChange((event) => {
       if (event.scrollTopChanged || event.scrollLeftChanged) this.options.viewChanged?.();

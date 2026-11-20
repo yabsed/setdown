@@ -167,6 +167,32 @@ indicator even when the text is hidden. An ordinary start, local checks only and
 a language without a project analyzer show no text. The label never certifies
 that the document or project has been fully checked.
 
+A status is something that was observed, never something Setdown inferred
+(`presentSupport` in `document-presentation.ts`):
+
+- **Observed:** a tool that did not start or that stopped; a choice a person
+  made that names something missing; a symptom the tool itself reported. The
+  symptoms are the tool's own codes for "what this file brings in was not found":
+  clangd `pp_file_not_found`, Pyright `reportMissingImports` and
+  `reportMissingModuleSource`, TypeScript 2307 and 2792. They are counted and
+  give **Limited**, "3 includes were not found, so results here are incomplete."
+- **Inferred:** what Setdown reads from the project's files, such as "no build
+  configuration was found". It is never a status. It appears as the likely
+  reason beside a symptom and on the environment page, and nowhere while the
+  tool reports no symptom. A C++ file whose tool answers and reports nothing
+  missing therefore shows the language name alone, whatever build files exist.
+- **One source:** the name in the location bar and the status behind it are
+  both computed from the document's providers, so they cannot say different
+  things. What a person chose for the project (analysis off, which tool) is the
+  only addition, because no tool can report it about itself.
+- **Not a failure:** a start that Setdown itself interrupted, by checking again
+  for installed tools, is done again and is never shown as a tool that failed.
+
+While a tool is not ready yet (starting, being fetched, reconnecting, still
+reading the project) a ring turns beside the language name, and the same ring
+stands before **Starting…** or **Analyzing…** behind it. With reduced motion the
+ring is drawn and does not turn. Once the tool is ready there is only the name.
+
 The first step is titled with the language. When something is wrong it states
 one sentence naming what the person lost ("Java support can't start."), the one
 action that addresses the cause, and at most one secondary action. The action
@@ -613,35 +639,119 @@ project, and nowhere else; the setting above decides when it is written.
 
 ### Commands of a tool's own extension
 
-An extension also adds commands. The ones below are in the command list (F1)
-while the document's tool is the one they belong to, and the marked ones are in
-the editor's menu as well (`tool-command-list.ts`, `tool-commands.ts`). The
-editor names no server command and no document address: it sends a name from a
-fixed table (`protocol/language-tools.ts`), and the main process makes the
-request for the tool the document belongs to.
+An extension also adds commands, and puts all of them into one list. Here every
+command has one place, chosen by the question it answers
+(`tool-command-list.ts`; what each does is in `tool-commands.ts`). The editor
+names no server command and no document address: it sends a name from a fixed
+table (`protocol/language-tools.ts`), and the main process makes the request for
+the tool the document belongs to.
 
-| Tool | Commands |
-| --- | --- |
-| rust-analyzer | Run (menu), Copy Run Command Line, Peek Related Tests, Expand macro recursively (menu), Locate parent module, Locate child modules, Open Cargo.toml, Open Docs, Join lines, Find matching brace, Move Item Up and Down, Structural Search Replace, Reload workspace, Rebuild proc macros, Run, Cancel and Clear flycheck, Status, Memory Usage, the views of the syntax tree, HIR, MIR, item tree, file text, crate graph and memory layout, Interpret, Get Failed Obligations, and Enter inside a comment. The commands it hands back (run a test, show references, go to a location, rename) run in the editor; a lens that starts a debugger is not offered. |
-| clangd | Switch Between Source/Header, Show AST of the selection, Show memory usage |
-| Svelte | Show Compiled Code, Show Compiled CSS, Extract Component (menu), Find File References (menu), Find Component References (menu), Migrate Component to Svelte 5 Syntax. Renaming or moving a file updates the imports that point at it. |
-| Java | Reload Projects (menu), Import Java Projects into Workspace, Force Java Compilation |
-| Kotlin | Reload Workspace, Go to Test or Test Subject (menu) |
-| PHP | Index workspace, Cancel indexing, Enter licence key. The key is kept with the tool's settings for every project, and Intelephense activates it itself. |
-| JSON | Sort Document |
-| YAML | Select JSON Schema. The choice is written to `yaml.schemas` for every project, because it names the file by its full address. |
-| Go | Add Import (menu), Generate Unit Tests For Function (menu), Add Tags To Struct Fields (menu), Remove Tags From Struct Fields, Toggle compiler optimization details, Choose Go Environment. Tags come from `go.addTags` and `go.removeTags`; where they name none the person types them. The chosen Go is one for Setdown, not one for each project, because the project engine starts every gopls with one environment; a release that is not on the computer is downloaded with `go install golang.org/dl/…` when downloads are on. A project that sets `go.goroot`, or an environment that sets `GOROOT`, is left alone. |
+| Place | The question | Where it is found |
+| --- | --- | --- |
+| here | What can be done with the thing under the cursor? | The menu at the cursor, only where the tool said it applies. |
+| document | What can be done with this file as a whole? | Under **Here** in the command list while the list is empty. |
+| project | What is done to the project or the tool: reload, rebuild, check, a status report. | Behind the language name, on the tool's page. |
+| environment | A choice of what the analysis is based on. | A row behind the language name. |
+| settings | A setting of the tool. | The tool's page. |
+| typed | The tool's inner views and file-wide transformations. | By typing its name in the command list. |
+| key | An editing behaviour of a key (rust-analyzer's Enter in a comment). | Nowhere: it is not a command a person looks for. |
 
-A program a tool starts (rust-analyzer's Run, gopls' "run test" lens) runs in
-a new terminal tab of the window: the tab starts its shell and types the command
-line once the shell's first output has gone quiet (`terminal-start.ts`). Code
-lenses are hidden until **Toggle Code Lens** turns them on, unlike in VS Code;
-a lens of a tool is therefore one command away, not on screen from the start.
+Every place but `key` is also found by typing the command's name in the command
+list, under the name its extension gives it ("Go: Add Import"): that is the name
+a person who used the extension knows. Everywhere else a command carries no
+tool's name. The file already says which tool it is.
+
+| Tool | here | document | project, environment, settings | typed |
+| --- | --- | --- | --- | --- |
+| rust-analyzer | Run, Peek Related Tests, Expand macro, Open Docs, Move Item Up and Down | none | Open Cargo.toml, Reload project, Rebuild macros and build scripts, Check now, Cancel check, Clear check results, Status report, Text as the tool sees it | Copy Run Command Line, Locate parent and child modules, Find matching brace, Join lines, Structural Search Replace, Memory Usage, the views of the syntax tree, HIR, MIR, item tree, crate graph and memory layout, Interpret, Get Failed Obligations |
+| clangd | none | none | none | Show AST, Show memory usage. Switch Between Source/Header is the editor's own command for C and C++. |
+| Svelte | Extract Component | Find File References, Find Component References | none | Show Compiled Code, Show Compiled CSS, Migrate Component to Svelte 5 Syntax. Renaming or moving a file updates the imports that point at it. |
+| Java | none | none | Reload project, Import Java projects, Compile now… | none |
+| Kotlin | Go to Test or Test Subject | none | Reload project | none |
+| PHP | none | none | Index project again, Cancel indexing, Enter licence key… (the key is kept with the tool's settings for every project, and Intelephense activates it itself) | none |
+| JSON | none | none | none | Sort Document |
+| YAML | none | none | The schema row: the schemas this file is checked against first, then the ones to choose. The choice is written to `yaml.schemas` for every project, because it names the file by its full address. | none |
+| Go | What gopls offers at the cursor as an action or a lens: add a test, fill a struct, run a test. | Add Import | The Go row: the Go in use first and marked, then the ones on this computer and the releases to download. | Generate Unit Tests For Function, Add Tags To Struct Fields, Remove Tags From Struct Fields, Toggle compiler optimization details |
+
+The chosen Go is one for Setdown, not one for each project, because the project
+engine starts every gopls with one environment; a release that is not on the
+computer is downloaded with `go install golang.org/dl/…` when downloads are on.
+A project that sets `go.goroot`, or an environment that sets `GOROOT`, is left
+alone. Tags come from `go.addTags` and `go.removeTags`; where they name none the
+person types them. The Go row, the YAML schema row and the Python, TypeScript
+and C/C++ rows have one form: a list of choices with the one in use first and
+marked, and a line that says where the choice is stored.
+
+A program a tool starts (rust-analyzer's Run, gopls' "run test") runs in a new
+terminal tab of the window: the tab starts its shell and types the command line
+once the shell's first output has gone quiet (`terminal-start.ts`).
 
 Not carried over: debuggers and test explorers (a lens or command that starts
 one is not offered), the Java extension's import chooser and source-action
 prompts, the Kotlin extension's export, decompile and build commands, the Go
 extension's test coverage, playground and `go.testEnvFile`, and gopls' forms.
+
+### The menu at the cursor
+
+Right-click, Shift+F10 or the menu key opens Setdown's own menu, not the
+editor's fixed one (`here-menu.ts`, `language-here.ts`, `HereMenu.svelte`). It
+holds what can be done with the thing under the cursor, and nothing else:
+
+- **Every language entry is an answer.** When the menu is asked for, the tool is
+  asked about that very position: where it is defined, where it is used, whether
+  it can be renamed, which actions and lenses apply. An entry exists only because
+  the tool answered, so none ends in "not available here", and a word in a
+  comment gets no language entry at all. On the definition itself there is no
+  "Go to Definition".
+- **Fixed groups, no tool names.** Understand, Find, Change, Run, then Edit
+  (cut, copy, paste and **All Commands…**). A tool adds entries, never a group
+  and never its own name.
+- **Lenses are entries.** What a tool would draw above a line as a lens
+  ("run test", "3 references") is an entry of the menu inside that function.
+  Lenses are therefore not drawn between the lines; **Toggle Code Lens** still
+  turns them on.
+- **It opens complete.** The menu waits up to 250 ms for the tools; a tool that
+  is slower fills its entries in once, within 2.5 s, under "Asking Go…".
+- **Typing narrows it.** The keyboard is in the menu's field: each word typed
+  must be in the entry's name, Enter runs the first entry left, Escape gives the
+  keyboard back to the text. Composition is guarded.
+- **The key beside an entry is the one that works here.** It is the editor's own
+  answer for that key in that editor (`monaco-keys.ts`). The editor binds
+  Ctrl+F12 to both "definition" and "implementations" and gives it to the
+  second; the entry therefore names F12.
+
+Notebook cells keep the editor's own menu.
+
+### The command list
+
+F1 opens one list in every editor of the window, including editors of groups
+made later (`editor-tools.ts`, `command-list.ts`). Before anything is typed it
+shows two short things:
+
+- **Recently used:** what this person ran by name or chose in the menu at the
+  cursor, the latest first. A command that cannot run in this document is left
+  out. A choice of the menu that is the editor's own action ("Go to Definition")
+  is offered again only where the tool says it applies.
+- **Here:** the entries of the menu at the cursor, then the commands that
+  concern this file as a whole (Format Document, Go to Symbol, Show Problems in
+  Open Files, Language Support…, and a tool's `document` commands under a plain
+  name such as "Add Import").
+
+No line of the empty list starts with a tool's name, with one exception: a
+tool's inner view that this person ran by typing its name is remembered under
+that name. Everything else is one query away. A behaviour of a key is no row at
+all.
+
+### Answers as documents
+
+What a tool writes for reading (clangd's AST and memory usage, Svelte's compiled
+code, rust-analyzer's views and macro expansions) opens as a read-only document
+in a group beside the code, not as a text dialog over it. The main process
+writes it under `<userData>/setdown-language-answers/<time>/<Title>.<ext>`
+(`language-answers.ts`); the extension chooses the colouring, so compiled code is
+JavaScript. It is an ordinary tab: it can be searched, scrolled, moved and
+closed. The keyboard goes with it into its group, and what is typed there
+changes neither the answer nor the code beside it.
 
 ## Finding an installation
 
@@ -780,6 +890,20 @@ analysis root (`server-definitions.test.ts`). `.C` retains C++ matching before c
 exact filenames and path globs precede suffix matches, and longer suffixes such as
 `.custom.py` take precedence over `.py`. Imported shebang and syntax-grammar
 metadata are not used for LSP routing.
+
+A search for installed tools can be asked for again while one is running
+(**Check again**, a changed setting). A lookup the new search interrupts is done
+again against it and answers from the new search: never from the old one, and
+never as a failure (`ServerDiscovery.find`). Only quitting ends a lookup with
+"Server discovery cancelled.".
+
+Quitting is final. Closing the last window disposes the language services and
+then waits, for at most six seconds, for the tools to leave. A process in that
+state shows no window again: a second launch during it is answered by starting a
+new process once this one has gone (`relaunchOptions` in `document-args.ts`),
+because a window of the quitting process would have no working search and no
+tools. `quit-relaunch.spec.ts` holds a shutdown open and checks that the new
+process, not the old one, owns the profile and answers.
 
 ## Custom connection format
 
@@ -968,17 +1092,17 @@ capability cannot disable another provider's working command.
 | Feature | Where to use it |
 | --- | --- |
 | Semantic token colors (full, delta and range) | Automatically complements the existing syntax grammar and Setdown theme |
-| Declaration, type definition, implementation, references | Editor context menu / F1 navigation actions |
+| Definition, declaration, type definition, implementation, references | The menu at the cursor, where the tool has an answer; F12 and Shift+F12 |
 | Document highlights, semantic selection expansion, folding | Cursor highlighting, Expand Selection and the folding gutter |
 | Document links and color presentations | Ctrl/Cmd-click links; color swatches and the color picker |
 | Code actions, quick fixes, refactorings, organize imports | Lightbulb, Ctrl/Cmd+. and F1; only server-provided kinds appear |
-| Document / range formatting | Format Document / Format Selection in F1 and the context menu |
+| Document / range formatting | Format Document under **Here** in F1; Format Selection in the menu at the cursor while text is selected |
 | Formatting while typing | F1 → Toggle Format on Type; off by default |
 | Linked editing | Matching names supplied by the server, such as paired tags |
 | Inlay hints, including lazy tooltips, locations and edits | Hold Ctrl+Alt (Cmd+Option on macOS), or F1 → Toggle Inlay Hints |
-| Code Lens and lazy command resolution | F1 → Toggle Code Lens; off by default |
+| Code Lens and lazy command resolution | What a lens offers is an entry of the menu at the cursor; F1 → Toggle Code Lens draws the lenses, off by default |
 | Workspace symbols and lazy locations | F1 → Go to Workspace Symbol…; searches the active server's workspace |
-| Incoming/outgoing calls, super/subtypes | Corresponding F1/context-menu action; select a location or use › to explore its children |
+| Incoming/outgoing calls, super/subtypes | Callers, Callees, Supertypes and Subtypes in the menu at the cursor, where the tool has an answer; select a location or use › to explore its children |
 | Problems in open files | F1 → Show Problems in Open Files |
 | Server progress and bounded output | The existing Language Support server details |
 
@@ -1066,6 +1190,18 @@ installed program running without that question. `server-registry.test.ts` check
 that every supported language names a tool that exists and is its default.
 `language-registry.spec.ts` covers the tool list: what is listed without a search,
 the statuses of a supported and of another tool, import, and a missing program.
+`here-menu.test.ts` and `command-list.test.ts` hold the rules of the menu at the
+cursor and of the empty command list as plain data; `language-support.spec.ts`
+checks in the real editor that a definition far away in the same file is shown
+where it is, by the key the menu names and from the menu;
+`editor-tools.spec.ts` that F1 and **All Commands…** open the same list in the
+editor of a group made later; `project-environment.spec.ts` that a ring turns
+while a tool has not answered its first request and that only the name is left
+once it has. `test/language-servers/tool-commands.spec.ts` runs the same on real
+gopls (spf13/cobra), clangd (DaveGamble/cJSON) and the Svelte tools
+(sveltejs/realworld): the status at rest, the groups of the menu on a type, in a
+comment and on a definition, a lens as an entry that runs `go test`, the empty
+command list without a tool's name, and answers as documents beside the code.
 These are included in the preview contract; its GUI and performance gates still
 apply to changes in these surfaces.
 

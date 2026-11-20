@@ -1,7 +1,8 @@
 import type * as L from 'vscode-languageserver-protocol';
-import type { LanguageMethod } from '../../protocol/language';
+import type { LanguageAnswer, LanguageMethod } from '../../protocol/language';
 import type { ToolFamily } from '../../protocol/language-tools';
-import type { LanguageInputSource, LanguageTextSource } from './language-text';
+import type { EnvironmentChoice, ToolEnvironment } from './document-support';
+import type { LanguageInputSource } from './language-text';
 
 // What each command of `tool-command-list.ts` does, and what the editor does for the commands a
 // tool hands back to it (`protocol/language-tools.ts` `clientCommands`). Each is carried over
@@ -17,7 +18,8 @@ export type ToolCommandContext = {
   /** Null when the tool gave no answer: the document changed, the tool failed or the answer was
    * empty. With `strict` a refusal of the tool is thrown with its own words. */
   request<T>(method: LanguageMethod, params: object, strict?: boolean): Promise<T | null>;
-  showText(source: LanguageTextSource): Promise<void>;
+  /** Text the tool made for reading opens as a read-only document beside the code. */
+  showText(source: LanguageAnswer): Promise<void>;
   /** One place is opened; several are listed under the title. */
   showLocations(title: string, locations: (L.Location | L.LocationLink)[], empty: string): Promise<void>;
   open(uri: string, range?: L.Range): Promise<void>;
@@ -33,6 +35,8 @@ export type ToolCommandContext = {
   link(href: string): Promise<void>;
   /** A short message at the cursor. */
   message(text: string): void;
+  /** Opens the panel behind the language name on the page where a choice of the tool is made. */
+  inspect(page: 'environment' | 'tool-environment', item?: string): void;
   /** How the document is indented, for a tool that writes text itself. */
   formatting: { tabSize: number; insertSpaces: boolean };
   /** One of the editor's own actions (`editor.action.rename`). */
@@ -235,7 +239,12 @@ export const toolCommands: Record<string, ToolCommand> = {
   'rust-analyzer.clearFlycheck': async c => { await c.request('rust-analyzer/clearFlycheck', {}); },
   'rust-analyzer.analyzerStatus': rustText('rust-analyzer/analyzerStatus', 'rust-analyzer status', undefined, () => ({})),
   'rust-analyzer.memoryUsage': rustText('rust-analyzer/memoryUsage', 'Memory usage', undefined, () => ({})),
-  'rust-analyzer.viewSyntaxTree': rustText('rust-analyzer/viewSyntaxTree', 'Syntax tree', 'json', () => ({})),
+  // syntax_tree_provider.ts shows the tree as a view of nodes; here it is a document with one
+  // node on a line, indented by depth, each with the lines and columns it covers in the source.
+  'rust-analyzer.viewSyntaxTree': async c => {
+    const text = syntaxTreeText(await c.request<string>('rust-analyzer/viewSyntaxTree', {}, true));
+    if (text) await c.showText({ title: 'Syntax tree', text }); else c.message('rust-analyzer returned no syntax tree for this file.');
+  },
   'rust-analyzer.viewHir': rustText('rust-analyzer/viewHir', 'HIR', 'rust', atCursor),
   'rust-analyzer.viewMir': rustText('rust-analyzer/viewMir', 'MIR', 'rust', atCursor),
   'rust-analyzer.interpretFunction': rustText('rust-analyzer/interpretFunction', 'Interpretation', undefined, atCursor),
@@ -305,11 +314,8 @@ export const toolCommands: Record<string, ToolCommand> = {
   },
 
   // ---- YAML: vendor/vscode-yaml/src/schema-status-bar-item.ts `showSchemaSelection` ----
-  'yaml.select.json.schema': async c => {
-    const choices = yamlSchemaItems(await c.request<unknown>('yaml/get/all/jsonSchemas', {}));
-    const chosen = await c.pick('Select JSON Schema', [{ label: 'No JSON Schema', detail: 'This file is checked against no schema', value: '' }, ...choices]);
-    if (chosen !== undefined) await c.request('setdown/yaml.selectSchemas', { selected: chosen ? [chosen] : [] }, true);
-  },
+  // The schema is chosen behind the language name, where every such choice is made (`yamlEnvironment`).
+  'yaml.select.json.schema': async c => { c.inspect('tool-environment', 'yaml-schema'); },
 
   // ---- Go: vendor/vscode-go/extension/src/{goImport,goGenerateTests,goModifytags,goEnvironmentStatus}.ts, commands/toggleGCDetails.ts ----
   // goImport.ts `addImport`: the packages gopls knows and the file does not import yet; gopls adds the picked one.
@@ -325,14 +331,7 @@ export const toolCommands: Record<string, ToolCommand> = {
   'gopls.remove.tags': goTags('remove'),
   'gopls.toggle.gc_details': async c => { await c.request('workspace/executeCommand:gopls.gc_details', {}, true); },
   // goEnvironmentStatus.ts `chooseGoEnvironment`: the Go in use, the ones on this computer, and the releases that can be downloaded.
-  'gopls.environment.choose': async c => {
-    const list = goVersionItems(await c.request<unknown>('setdown/go.versions', {}, true));
-    if (list.refusal) { c.message(list.refusal); return; }
-    const chosen = await c.pick(list.current ? `Go: Choose Go Environment (in use: ${list.current})` : 'Go: Choose Go Environment', list.items);
-    if (!chosen) return;
-    if ('version' in chosen) c.message(`Downloading ${chosen.version}…`);
-    if (await c.request('setdown/go.chooseVersion', chosen, true)) c.message('clear' in chosen ? 'Using the Go of the environment again.' : 'Go changed; gopls is starting again.');
-  },
+  'gopls.environment.choose': async c => { c.inspect('tool-environment', 'go'); },
 };
 /** goModifytags.ts: the tags are the ones `go.addTags` or `go.removeTags` name. Where they name
  * none, gopls would ask through a form of its own; here the person types them. */
@@ -351,12 +350,64 @@ function goTags(modification: 'add' | 'remove'): ToolCommand {
 export type GoVersionChoice = { clear: true } | { program: string } | { version: string };
 export function goVersionItems(answer: unknown): { refusal?: string; current?: string; items: { label: string; detail: string; value: GoVersionChoice }[] } {
   const list = object(answer), rows = (value: unknown) => (Array.isArray(value) ? value : []).map(object).filter((row): row is Record<string, unknown> => !!row && typeof row.label === 'string').slice(0, 200);
-  if (typeof list?.refusal === 'string') return { refusal: list.refusal.slice(0, 500), items: [] };
-  return { current: typeof list?.current === 'string' ? list.current.slice(0, 100) : undefined, items: [
+  const current = typeof list?.current === 'string' ? list.current.slice(0, 100) : undefined;
+  // A refusal still names the Go in use: that is what the row behind the language name shows.
+  if (typeof list?.refusal === 'string') return { refusal: list.refusal.slice(0, 500), ...(current ? { current } : {}), items: [] };
+  return { current, items: [
     ...(list?.chosen === true ? [{ label: 'Clear selection', detail: 'Use the Go of the environment', value: { clear: true as const } }] : []),
     ...rows(list?.local).flatMap(row => typeof row.program === 'string' ? [{ label: String(row.label).slice(0, 100), detail: `Locally discovered: ${row.program}`.slice(0, 300), value: { program: row.program } }] : []),
     ...rows(list?.downloadable).flatMap(row => typeof row.version === 'string' ? [{ label: String(row.label).slice(0, 100), detail: 'Downloadable', value: { version: row.version } }] : []),
   ] };
+}
+/** The choices a tool keeps itself, as rows behind the language name. They are known from the
+ * tool alone, without asking it; the tool is asked when a row is shown. */
+export const toolEnvironmentRows: Partial<Record<ToolFamily, { id: string; label: string }>> = {
+  gopls: { id: 'go', label: 'Go' }, yaml: { id: 'yaml-schema', label: 'Schema' } };
+/** goEnvironmentStatus.ts `chooseGoEnvironment`, in the one form every environment choice has:
+ * the Go in use first, the Go of the environment marked as the one in effect without a choice. */
+export function goEnvironment(answer: unknown): ToolEnvironment {
+  const list = goVersionItems(answer);
+  const base = { id: 'go', label: 'Go', value: list.current ?? 'Not found' };
+  if (list.refusal) return { ...base, choices: [], refusal: list.refusal };
+  const chosen = object(answer)?.chosen === true;
+  const choices: EnvironmentChoice[] = list.items.map(item => 'clear' in item.value
+    ? { id: JSON.stringify(item.value), name: 'Automatic', detail: 'The Go of this environment', recommended: true }
+    : { id: JSON.stringify(item.value), name: item.label, detail: 'program' in item.value ? item.value.program : 'Download', current: item.label === list.current });
+  // Without a choice the Go in use is the environment's own.
+  const current = choices.find(choice => choice.current);
+  if (current && !chosen) current.recommended = true;
+  return { ...base, choices: [...choices.filter(choice => choice.current), ...choices.filter(choice => !choice.current)],
+    note: 'A downloaded release is installed with the Go in use. gopls starts again with the Go you choose.' };
+}
+/** The answer to a choice of `goEnvironment`. */
+export function goChoice(id: string): GoVersionChoice | undefined {
+  try { const value = object(JSON.parse(id)); return value?.clear === true ? { clear: true } : typeof value?.program === 'string' ? { program: value.program } : typeof value?.version === 'string' ? { version: value.version } : undefined; }
+  catch { return undefined; }
+}
+/** schema-status-bar-item.ts `showSchemaSelection`, in that same form: the schemas this file is
+ * checked against first. The empty id is "no schema". */
+export function yamlEnvironment(answer: unknown): ToolEnvironment {
+  const used = new Set((Array.isArray(answer) ? answer : []).flatMap(item => object(item)?.usedForCurrentFile === true && typeof object(item)!.uri === 'string' ? [object(item)!.uri as string] : []));
+  const rows = yamlSchemaItems(answer).map(item => ({ id: item.value, name: item.label, detail: item.detail.replace(/^Used for this file\. /, ''), current: used.has(item.value) }));
+  const current = rows.filter(row => row.current);
+  return { id: 'yaml-schema', label: 'Schema', value: current.length ? current.map(row => row.name).join(', ').slice(0, 120) : 'None',
+    choices: [...current, { id: '', name: 'No schema', detail: 'This file is checked against no schema', current: !current.length }, ...rows.filter(row => !row.current)] };
+}
+/** syntax_tree_provider.ts: rust-analyzer answers with the tree as JSON, every element a node or
+ * a token with where it starts and ends (`[offset, line, column]`, counted from zero). */
+export function syntaxTreeText(answer: unknown): string | undefined {
+  let root: unknown;
+  try { root = typeof answer === 'string' ? JSON.parse(answer) : answer; } catch { return undefined; }
+  const lines: string[] = [];
+  const at = (value: unknown) => Array.isArray(value) && value.length >= 3 && value.every(part => Number.isSafeInteger(part)) ? `${(value[1] as number) + 1}:${(value[2] as number) + 1}` : '?';
+  const visit = (value: unknown, depth: number) => {
+    const element = object(value);
+    if (!element || typeof element.kind !== 'string' || depth > 400 || lines.length >= 200_000) return;
+    lines.push(`${'  '.repeat(depth)}${element.kind}  ${at(element.start)}-${at(element.end)}`);
+    for (const child of Array.isArray(element.children) ? element.children : []) visit(child, depth + 1);
+  };
+  visit(root, 0);
+  return lines.length ? lines.join('\n') : undefined;
 }
 /** `relatedTestsModel.ts` `noResultsMessage`. */
 export function kotlinNoRelatedTests(isTest: boolean, sourceName?: string): string {

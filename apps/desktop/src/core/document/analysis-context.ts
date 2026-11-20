@@ -10,7 +10,13 @@ export type AnalysisContext = {
   selectionSource?: 'project' | 'connection' | 'automatic' | 'notebook';
   /** Effective choice after removing only the project override. */
   inherited?: AnalysisChoice;
+  /** Facts Setdown established itself: a choice a person made names something that is not there. */
   issues: { code: string; message: string }[];
+  /** What Setdown inferred from the project's files without the tool saying so. Never a status by
+   * itself: it is offered beside a symptom the tool reported (`document-presentation.ts`). */
+  hints?: { code: string; message: string }[];
+  /** What is in effect while nothing is chosen, in a few words. */
+  unselected?: string;
   /** `projectConfiguration` is the project file that decides the level instead of `mode`: the analyzer then ignores the client's choice. */
   checking?: { mode: PythonChecking; override?: PythonChecking; source: string; projectConfiguration?: string };
   preparation?: 'cmake' | 'meson';

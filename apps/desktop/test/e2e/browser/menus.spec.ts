@@ -1,11 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { nativeInput } from '../../support/electron/native-input';
+import { commandList } from '../../support/editor/commands';
 
 import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, pageContextMenu } from '../../support/browser/browser-fixture';
 
-for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} context menus stay above adjacent native browser panes`, async () => {
+// A code file's menu is the app's own ("Actions here": what the language tool says applies at the
+// cursor); a notebook cell still has the editor's. Both are drawn in the window and must cover the
+// native pane beside them.
+const cursorMenu = (page: Page, surface: 'text' | 'notebook') => surface === 'text' ? page.getByRole('dialog', { name: 'Actions here', exact: true }) : page.locator('.monaco-menu-container .monaco-menu');
+for (const surface of ['text', 'notebook'] as const) test(`the ${surface} editor's menu at the cursor stays above adjacent native browser panes`, async () => {
   const f = await fixture();
   try {
     await f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1400, 900));
@@ -39,7 +44,7 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} con
       return { x: (minimap?.width ? minimap.left : bounds.right) - bounds.left - 25, y: 40 };
     });
     await editor.click({ button: 'right', position: menuPoint });
-    const menu = f.page.locator('.monaco-menu-container .monaco-menu');
+    const menu = cursorMenu(f.page, surface);
     await expect(menu).toBeVisible();
     await expect.poll(nativeVisible).toBe(false);
     const frozen = f.page.locator('.group-body[data-browser-frozen="true"]');
@@ -49,7 +54,7 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} con
     await f.page.screenshot({ path: test.info().outputPath(`monaco-context-menu-${surface}.png`) });
     // OS input must hit the shell menu in the part previously covered by the
     // native browser. CDP locator clicks alone would bypass that hit testing.
-    const action = menu.getByRole('menuitem', { name: /Command Palette/ });
+    const action = surface === 'text' ? menu.getByRole('option', { name: /All Commands/ }) : menu.getByRole('menuitem', { name: /Command Palette/ });
     const actionBounds = (await action.boundingBox())!;
     const hit = { x: Math.max(webBounds.x + 15, actionBounds.x + actionBounds.width - 15), y: actionBounds.y + actionBounds.height / 2 };
     expect(hit.x).toBeLessThan(actionBounds.x + actionBounds.width);
@@ -59,9 +64,10 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} con
     }, hit);
     await nativeInput({ click: nativePoint });
     await expect(menu).toBeHidden();
-    await expect(f.page.locator('.quick-input-widget')).toBeVisible();
+    const commands = surface === 'text' ? commandList(f.page) : f.page.locator('.quick-input-widget');
+    await expect(commands).toBeVisible();
     await f.page.keyboard.press('Escape');
-    await expect(f.page.locator('.quick-input-widget')).toBeHidden();
+    await expect(commands).toBeHidden();
     await expect.poll(nativeVisible).toBe(true);
     await expect(frozen).toHaveCount(0);
     expect(await evaluatePage(f.app, f.origin, '({identity:window.__menuIdentity, draft:document.querySelector("#draft").value})')).toEqual({ identity, draft: 'Unsaved draft' });
@@ -136,7 +142,7 @@ for (const surface of ['text', 'notebook'] as const) test(`Monaco ${surface} hov
     // without leaving the web pane hidden when the last popup closes.
     await nativeInput({ pointer: [await toScreen({ x: headingBox.x + headingBox.width / 2, y: headingBox.y + headingBox.height / 2 })] }); await expect(hover).toBeVisible(); await expect.poll(nativeVisible).toBe(false);
     await heading.click({ button: 'right' });
-    const menu = f.page.locator('.monaco-menu-container .monaco-menu');
+    const menu = cursorMenu(f.page, surface);
     await expect(menu).toBeVisible(); await expect.poll(nativeVisible).toBe(false);
     await f.page.keyboard.press('Escape');
     await expect(menu).toBeHidden(); await expect.poll(nativeVisible).toBe(true); await expect(frozen).toHaveCount(0);

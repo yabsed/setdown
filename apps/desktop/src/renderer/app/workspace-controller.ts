@@ -351,7 +351,11 @@ export function startWorkspace(desktop: DesktopPort) {
         startWith(id, commandLine);
         await tabs.openTerminal(cwd ?? '', undefined, id);
       },
-      openLink: href => desktop.openLink(href) },
+      openLink: href => desktop.openLink(href),
+      // What a tool wrote for reading opens beside the code, as a document of its own. The
+      // keyboard goes with it: the group it opened in is the active one, and keys typed while
+      // looking at the answer must not land in the code beside it.
+      openAnswer: async file => { await projects.openFile(file, { pinned: true, side: true }); actions.focusLocationContent(workspace.groups.focusedId); } },
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
     viewChanged: () => positions?.schedule(),
     focusTab: (id) => actions.activateTab(id),

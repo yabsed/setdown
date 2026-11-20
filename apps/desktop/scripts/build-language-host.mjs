@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -35,7 +35,11 @@ try {
   });
 } finally {await rm(data,{recursive:true,force:true});}
 const destination=path.join(desktop,'dist-electron/language-host');await mkdir(destination,{recursive:true});
-await copyFile(binary,path.join(destination,name));
+// An app that is running (a dev session, a test) still executes the installed file, and writing
+// into a file that is being executed fails ("text file is busy"). The new one is written beside it
+// and takes its name: the running app keeps the file it started, the next start gets this one.
+const installed=path.join(destination,name),fresh=`${installed}.new`;
+await copyFile(binary,fresh);await rename(fresh,installed);
 await copyFile(path.join(root,'vendor/zed/LICENSE-GPL'),path.join(destination,'ZED-LICENSE-GPL'));
 await copyFile(path.join(root,'vendor/zed/LICENSE-APACHE'),path.join(destination,'ZED-LICENSE-APACHE'));
 await copyFile(path.join(project,'NOTICE'),path.join(destination,'NOTICE'));

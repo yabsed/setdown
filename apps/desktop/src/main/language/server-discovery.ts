@@ -32,18 +32,22 @@ export function searchDirectories(env: NodeJS.ProcessEnv): { path: string; sourc
 }
 
 /** Discovery never executes a candidate server. Only a document's ServerSession does that. */
+/** What a lookup ends with once the app is quitting. It says nothing about the tool, and nothing
+ * else ends a lookup this way: one that "Check again for installed tools" interrupted is made again. */
+export const discoveryCancelled = 'Server discovery cancelled.';
 export class ServerDiscovery {
   private readonly cache = new Map<string, { expires: number; value: Promise<Discovery> }>();
   private pythonPaths?: Promise<string[]>;
   private npmPaths?: Promise<string[]>;
   private controller = new AbortController();
   private revision = 0;
+  private disposed = false;
   private readonly directories = new Map<string, { expires: number; files: Promise<Set<string>> }>();
   private readonly packages = new Map<string, Promise<Record<string, unknown> | null>>();
   constructor(readonly environment = new ServerEnvironment(), private readonly query = capture) {}
   get generation(): number { return this.revision; }
   reset(): void { this.revision++; this.controller.abort(); this.controller = new AbortController(); this.cache.clear(); this.directories.clear(); this.packages.clear(); this.pythonPaths = undefined; this.npmPaths = undefined; this.environment.reset(); }
-  dispose(): void { this.controller.abort(); this.environment.dispose(); this.cache.clear(); this.directories.clear(); this.packages.clear(); }
+  dispose(): void { this.disposed = true; this.controller.abort(); this.environment.dispose(); this.cache.clear(); this.directories.clear(); this.packages.clear(); }
   private async listed(file: string): Promise<boolean> {
     const directory = path.dirname(file);
     let cached = this.directories.get(directory);
@@ -55,15 +59,23 @@ export class ServerDiscovery {
     const name = path.basename(file);
     return (await cached.files).has(process.platform === 'win32' ? name.toLowerCase() : name);
   }
+  /** Looks the program up. `reset` forgets what was found while a lookup is under way; that is a
+   * reason to look again at what is there now, not an answer, so the caller never sees it. */
   async find(command: string, options: FindOptions = {}): Promise<Discovery> {
-    const signal = this.controller.signal;
+    for (;;) {
+      const signal = this.controller.signal;
+      try { return await this.lookup(command, options, signal); }
+      catch (error) { if (this.disposed || !signal.aborted) throw error; }
+    }
+  }
+  private async lookup(command: string, options: FindOptions, signal: AbortSignal): Promise<Discovery> {
     const snapshot = options.resolveEnvironment ? await this.environment.resolve() : this.environment.peek();
-    if (signal.aborted) throw new Error('Server discovery cancelled.');
+    if (signal.aborted) throw new Error(discoveryCancelled);
     const key = JSON.stringify([command, snapshot.env, !!options.python, options.npmPackage, !!options.resolveEnvironment]);
     const cached = this.cache.get(key);
     if (cached && cached.expires > Date.now()) return cached.value;
     const value = this.collect(command, snapshot, options, signal).then(result => {
-      if (signal.aborted) throw new Error('Server discovery cancelled.');
+      if (signal.aborted) throw new Error(discoveryCancelled);
       if (options.resolveEnvironment)
         this.cache.delete(JSON.stringify([command, snapshot.env, !!options.python, options.npmPackage, false]));
       return result;
@@ -113,6 +125,9 @@ export class ServerDiscovery {
       if (!candidates.length && options.npmPackage && /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/i.test(options.npmPackage) && !signal.aborted) {
         const node = (await this.find('node', { resolveEnvironment: options.resolveEnvironment })).selected;
         const directories = node ? npmDirectories(environment.env, node.path) : [];
+        // Looking up node may have outlived a reset. What an interrupted lookup would ask npm is
+        // not kept: it would stand as the new scan's answer and hide every global package.
+        if (signal.aborted) throw new Error(discoveryCancelled);
         if (node && (options.resolveEnvironment || this.npmPaths)) {
           this.npmPaths ??= this.npmRoot(environment.env, node.path, signal);
           directories.push(...await this.npmPaths);

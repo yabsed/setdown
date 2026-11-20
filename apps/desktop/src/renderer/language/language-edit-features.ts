@@ -18,39 +18,28 @@ export function installEditFeatures(c: LanguageFeatureContext): void {
     autoFormatTriggerCharacters: [cap.documentOnTypeFormattingProvider.firstTriggerCharacter, ...(cap.documentOnTypeFormattingProvider.moreTriggerCharacter ?? [])],
     provideOnTypeFormattingEdits: async (_model, position, ch, options, token) => (await c.request<L.TextEdit[]>('textDocument/onTypeFormatting', { position: toPosition(position), ch, options }, token))?.map(textEdit),
   })));
-  if (cap.codeActionProvider) c.add(api.languages.registerCodeActionProvider(selector, scoped({
-    provideCodeActions: async (_model, range, context, token) => {
-      const version = c.model.getVersionId(), versions = c.snapshot();
-      const result = await c.request<(L.CodeAction | L.Command)[]>('textDocument/codeAction', { range: toRange(range), context: {
-        // Preserve server diagnostic data for rust-analyzer/clangd quick fixes.
-        diagnostics: c.diagnostics().filter(d => d.range.start.line <= range.endLineNumber - 1 && d.range.end.line >= range.startLineNumber - 1),
-        only: context.only ? [context.only] : undefined, triggerKind: context.trigger,
-      } }, token);
-      if (!result) return null;
-      const actions: M.languages.CodeAction[] = result.map(original => {
-        const action = original as L.CodeAction;
-        return { title: original.title, kind: action.kind, disabled: action.disabled?.reason,
-          isPreferred: action.isPreferred, diagnostics: action.diagnostics?.map(d => marker(api, d)),
-          command: c.action(original.title, async () => {
-            if (!c.alive(version)) throw Error('Document changed. Request the code action again.');
-            let resolved = original;
-            if (typeof original.command !== 'string' && typeof cap.codeActionProvider === 'object' && cap.codeActionProvider.resolveProvider) {
-              const result = await c.request<L.CodeAction>('codeAction/resolve', original, noCancellation);
-              if (!result) throw Error('Could not resolve the code action. Request it again.');
-              resolved = result;
-            }
-            if (!c.alive(version)) throw Error('Document changed during code action.');
-            if ('disabled' in resolved && resolved.disabled) throw Error(resolved.disabled.reason);
-            if ('edit' in resolved && resolved.edit) c.apply(await c.edit(resolved.edit, versions, noCancellation));
-            const command = typeof resolved.command === 'string' ? resolved as L.Command : resolved.command;
-            // User activated this action before its edits. The command can legitimately follow that edit revision.
-            if (command) await c.execute(command);
-          }),
-        };
-      });
-      return { actions, dispose() {} };
-    },
-  }), typeof cap.codeActionProvider === 'object' ? { providedCodeActionKinds: cap.codeActionProvider.codeActionKinds } : undefined));
+  if (cap.codeActionProvider) {
+    const run = codeActionRunner(c);
+    c.add(api.languages.registerCodeActionProvider(selector, scoped({
+      provideCodeActions: async (_model, range, context, token) => {
+        const version = c.model.getVersionId(), versions = c.snapshot();
+        const result = await c.request<(L.CodeAction | L.Command)[]>('textDocument/codeAction', { range: toRange(range), context: {
+          // Preserve server diagnostic data for rust-analyzer/clangd quick fixes.
+          diagnostics: c.diagnostics().filter(d => d.range.start.line <= range.endLineNumber - 1 && d.range.end.line >= range.startLineNumber - 1),
+          only: context.only ? [context.only] : undefined, triggerKind: context.trigger,
+        } }, token);
+        if (!result) return null;
+        const actions: M.languages.CodeAction[] = result.map(original => {
+          const action = original as L.CodeAction;
+          return { title: original.title, kind: action.kind, disabled: action.disabled?.reason,
+            isPreferred: action.isPreferred, diagnostics: action.diagnostics?.map(d => marker(api, d)),
+            command: c.action(original.title, () => run(original, version, versions)),
+          };
+        });
+        return { actions, dispose() {} };
+      },
+    }), typeof cap.codeActionProvider === 'object' ? { providedCodeActionKinds: cap.codeActionProvider.codeActionKinds } : undefined));
+  }
   if (cap.codeLensProvider) {
     const originals = new WeakMap<M.languages.CodeLens, { item: L.CodeLens; version: number }>();
     const convert = (item: L.CodeLens): M.languages.CodeLens => {
@@ -72,4 +61,26 @@ export function installEditFeatures(c: LanguageFeatureContext): void {
       },
     })));
   }
+}
+
+/** Runs an action the tool offered, for the document as it was when the action was offered: the
+ * tool fills the action in when it left that for later, its edit is applied, then its command
+ * runs. The editor's own list of actions and the menu at the cursor both run actions this way. */
+export function codeActionRunner(c: LanguageFeatureContext): (original: L.CodeAction | L.Command, version: number, versions: Map<M.editor.ITextModel, number>) => Promise<void> {
+  const cap = c.capabilities;
+  return async (original, version, versions) => {
+    if (!c.alive(version)) throw Error('Document changed. Request the code action again.');
+    let resolved = original;
+    if (typeof original.command !== 'string' && typeof cap.codeActionProvider === 'object' && cap.codeActionProvider.resolveProvider) {
+      const result = await c.request<L.CodeAction>('codeAction/resolve', original, noCancellation);
+      if (!result) throw Error('Could not resolve the code action. Request it again.');
+      resolved = result;
+    }
+    if (!c.alive(version)) throw Error('Document changed during code action.');
+    if ('disabled' in resolved && resolved.disabled) throw Error(resolved.disabled.reason);
+    if ('edit' in resolved && resolved.edit) c.apply(await c.edit(resolved.edit, versions, noCancellation));
+    const command = typeof resolved.command === 'string' ? resolved as L.Command : resolved.command;
+    // User activated this action before its edits. The command can legitimately follow that edit revision.
+    if (command) await c.execute(command);
+  };
 }

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
@@ -8,6 +8,11 @@ import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { markRepositoryRoot } from '../../support/project/repository-marker';
 const require = createRequire(import.meta.url), execute = promisify(execFile);
+/** One entry of an environment choice: its name, and where needed what it is said to be. */
+const named = (list: Locator, name: string | RegExp, detail?: string) => {
+  const entry = list.getByRole('radio').filter({ has: list.page().locator('strong').getByText(name, { exact: true }) });
+  return detail ? entry.filter({ hasText: detail }) : entry;
+};
 async function fixture(prefix: string) {
   const root = await mkdtemp(path.join(os.tmpdir(), prefix)), project = path.join(root, 'project'), config = path.join(root, 'config');
   await markRepositoryRoot(project);
@@ -48,9 +53,10 @@ test('current-file Python environment repairs real imports, preserves unsaved te
     await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
     await panel.getByRole('button', { name: /^Python environment/ }).click();
-    const environment = panel.getByRole('combobox', { name: 'Python environment' });
-    const choice = await environment.locator('option').filter({ hasText: '.venv · Project' }).getAttribute('value');
-    expect(choice).toBeTruthy(); await environment.selectOption(choice!);
+    // The choice is one list for every language: what is in use first and marked, then the rest.
+    const environment = panel.getByRole('radiogroup', { name: 'Python environment' });
+    await expect(environment.getByRole('radio', { checked: true })).toHaveCount(1);
+    await named(environment, '.venv', 'Project ·').click();
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
     await expect(panel).toContainText('Working');
     await panel.getByRole('button', { name: 'More…', exact: true }).click(); await expect(panel).toContainText('Results received for this open file'); await panel.getByRole('button', { name: 'Back to code support' }).click();
@@ -98,17 +104,18 @@ test('C++ build selection changes the real clangd flags and repairs unsaved sour
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
     await expect(panel).toContainText('Several build configurations');
     await panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ }).click();
-    const environment = panel.getByRole('combobox', { name: 'C / C++ build configuration' });
-    const wrong = await environment.locator('option').filter({ hasText: /^build ·/ }).getAttribute('value');
-    await environment.selectOption(wrong!);
+    const environment = panel.getByRole('radiogroup', { name: 'C / C++ build configuration' });
+    // Nothing is chosen yet, so nothing is marked as in use.
+    await expect(environment.getByRole('radio', { checked: true })).toHaveCount(0);
+    await named(environment, 'build').click();
     await expect(page.locator('.squiggly-error').first()).toBeVisible({ timeout: 20_000 });
     await panel.getByRole('button', { name: 'Close language status' }).click();
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await page.keyboard.insertText('// unsaved configuration test');
     await page.getByRole('button', { name: /Language status:/ }).click();
     await panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ }).click();
-    const right = await environment.locator('option').filter({ hasText: /^builddir ·/ }).getAttribute('value');
-    await environment.selectOption(right!);
+    await expect(named(environment, 'build')).toBeChecked();
+    await named(environment, 'builddir').click();
     await expect(page.locator('.squiggly-error')).toHaveCount(0, { timeout: 20_000 });
     await expect(panel).toContainText('Working');
     await panel.getByRole('button', { name: 'More…', exact: true }).click(); await expect(panel).toContainText('Results received for this open file'); await panel.getByRole('button', { name: 'Back to code support' }).click();
@@ -132,7 +139,7 @@ test('the project’s TypeScript SDK is used automatically; an explicit bundled 
     const page = await application.firstWindow();
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await page.getByRole('button', { name: /Language status:/ }).click();
-    const panel = page.getByRole('dialog', { name: 'Current file language support' }), sdk = panel.getByRole('combobox', { name: 'TypeScript SDK' });
+    const panel = page.getByRole('dialog', { name: 'Current file language support' }), sdk = panel.getByRole('radiogroup', { name: 'TypeScript SDK' });
     const sdkRow = panel.getByRole('button', { name: /^TypeScript SDK/ }), projectSdk = path.join(project, 'node_modules/typescript/lib/tsserver.js');
     // The installed project SDK is in use before any choice is made.
     await expect(sdkRow).toContainText('Project TypeScript');
@@ -140,8 +147,9 @@ test('the project’s TypeScript SDK is used automatically; an explicit bundled 
     await expect(panel).toContainText(projectSdk);
     await expect(panel).toContainText('Automatic selection');
     // The bundled SDK remains an explicit choice for this project; removing it returns to the project's own.
-    const bundledSdk = await sdk.locator('option').filter({ hasText: 'Bundled TypeScript' }).getAttribute('value');
-    await sdk.selectOption(bundledSdk!);
+    // What is in effect without a choice is marked as the recommended one.
+    await expect(named(sdk, /^Project TypeScript/)).toBeChecked(); await expect(named(sdk, /^Project TypeScript/)).toContainText('Recommended');
+    await named(sdk, /^Bundled TypeScript/).click();
     await expect(sdkRow).toContainText('Bundled TypeScript');
     await expect(page.locator('.squiggly-error')).toHaveCount(1, { timeout: 20_000 });
     await sdkRow.click();
@@ -179,9 +187,15 @@ test('Configure project generates and selects a real CMake database only on the 
     const page = await application.firstWindow();
     await page.getByRole('button', { name: /Language status:/ }).click();
     const panel = page.getByRole('dialog', { name: 'Current file language support' });
-    await expect(panel).toContainText('Choose a build folder or configure this project');
+    // clangd answers for this file and reports no include it could not find, so the status claims
+    // nothing about the project: what is in use is a row, and what Setdown infers waits behind it.
+    await expect(page.getByRole('button', { name: /Language status:/ })).toHaveAccessibleName('Language status: C++');
+    const row = panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ });
+    await expect(row).toContainText('None · clangd defaults');
+    await expect(panel).not.toContainText('No build configuration was found');
     const before = await readFile(path.join(config, 'Setdown/project-analysis.json'), 'utf8').catch(() => ''); expect(before).toBe('');
-    await panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ }).click();
+    await row.click();
+    await expect(panel).toContainText('No build configuration was found in this project, so clangd is using its default flags.');
     await panel.getByText('Configure CMake analysis', { exact: true }).click();
     await panel.getByRole('button', { name: 'Configure project', exact: true }).click();
     await expect(panel).toContainText('Configuration output', { timeout: 30_000 });
@@ -195,6 +209,45 @@ test('Configure project generates and selects a real CMake database only on the 
     expect(preferences.projects[project].compilation.startsWith(config)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('cmake-configuration.png') });
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});
+
+test('while a tool is still starting a ring turns beside the language name; once it is ready there is only the name', async () => {
+  const { root, project, config } = await fixture('setdown-project-starting-');
+  const file = path.join(project, 'main.slow'), script = path.join(root, 'server.cjs'), go = path.join(root, 'go');
+  const settings = path.join(config, 'Setdown'); await mkdir(settings, { recursive: true }); await writeFile(file, 'initial\n');
+  // The tool answers its first request only once the test says so: it is "still starting" for exactly that long.
+  await writeFile(script, `
+    const fs=require('node:fs');
+    const {createMessageConnection,StreamMessageReader,StreamMessageWriter}=require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c=createMessageConnection(new StreamMessageReader(process.stdin),new StreamMessageWriter(process.stdout));
+    c.onRequest('initialize',()=>new Promise(resolve=>{const wait=()=>fs.existsSync(${JSON.stringify(go)})?resolve({capabilities:{textDocumentSync:{openClose:true,change:1}}}):setTimeout(wait,50);wait();}));
+    c.onNotification('textDocument/didOpen',p=>c.sendNotification('textDocument/publishDiagnostics',{uri:p.textDocument.uri,version:p.textDocument.version,diagnostics:[]}));
+    c.onRequest('shutdown',()=>null);c.onNotification('exit',()=>process.exit(0));c.listen();
+  `);
+  await writeFile(path.join(settings, 'language-servers.json'), JSON.stringify({ version: 1, servers: { slow: { enabled: true } }, preferred: { slow: 'slow' }, custom: [{ id: 'slow', name: 'Slow fixture', launch: { kind: 'native', command: process.execPath, args: [script] }, languages: [{ languageId: 'slow', monacoId: 'plaintext', extensions: ['.slow'] }], rootMarkers: ['.git'], settings: {} }] }));
+  const application = await launch(file, config);
+  try {
+    const page = await application.firstWindow(), host = page.locator('.editor-host');
+    const status = page.getByRole('button', { name: /Language status:/ }), ring = status.locator('.indicator');
+    await expect(host).toHaveAttribute('data-language-server', 'starting');
+    await expect(ring).toBeVisible();
+    const motion = () => ring.evaluate(node => { const style = getComputedStyle(node); return { name: style.animationName, state: style.animationPlayState, count: style.animationIterationCount, shape: style.borderTopLeftRadius }; });
+    expect(await motion()).toEqual({ name: expect.stringContaining('support-turning'), state: 'running', count: 'infinite', shape: '50%' });
+    // It turns: the ring is drawn at a different angle a moment later.
+    const angle = () => ring.evaluate(node => getComputedStyle(node).transform);
+    const first = await angle();
+    await expect.poll(angle).not.toBe(first);
+    // The panel behind the name says the same thing, with the same sign.
+    await status.click();
+    const panel = page.getByRole('dialog', { name: 'Current file language support' });
+    await expect(panel).toContainText('Starting…');
+    await expect(panel.locator('.turning')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await writeFile(go, '');
+    await expect(host).toHaveAttribute('data-language-server', 'ready');
+    await expect(ring).toHaveCount(0);
+    expect(await status.getAttribute('aria-label')).toMatch(/^Language status: [^,·]+$/);
+  } finally { await writeFile(go, ''); await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
 
 test('a crashed analysis process reconnects the latest unsaved buffer without replaying an editor command', async ({}, testInfo) => {
@@ -307,10 +360,12 @@ test('a chosen program that is not a language tool is not retried; the status an
     await expect(sidebar.locator('.issue-notice')).toContainText('not-a-language-tool, which did not start as a language tool.');
     await sidebar.locator('.issue-notice').getByRole('button', { name: 'Use automatic setup', exact: true }).click();
     await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 30_000 });
-    // Once the tool runs, the next thing this project needs surfaces: its build configuration.
-    // It was not shown before, because no build configuration starts the wrong program.
-    await expect(status).toHaveAccessibleName('Language status: C++, Needs setup');
-    await status.click(); await expect(panel).toContainText('Choose a build folder or configure this project');
+    // Once the tool runs it answers for this file and reports nothing missing, so the status is the
+    // language's name alone. That the project has no build configuration is an inference: it is a
+    // row behind the name, not a warning.
+    await expect(status).toHaveAccessibleName('Language status: C++');
+    await expect(status.locator('.indicator')).toHaveCount(0);
+    await status.click(); await expect(panel.getByRole('button', { name: /^C \/ C\+\+ build configuration/ })).toContainText('None · clangd defaults');
     await expect(panel).not.toContainText("can't start"); await panel.getByRole('button', { name: 'Close language status' }).click();
     await expect(sidebar.locator('.issue-notice')).toHaveCount(0);
     await sidebar.getByRole('button', { name: 'Back to language settings' }).click();
