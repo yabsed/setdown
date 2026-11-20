@@ -58,6 +58,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y build-essential clang clangd cmake meson ninja-build pkg-config libfontconfig1-dev libasound2-dev libxkbcommon-dev libwayland-dev libudev-dev libssl-dev
+      # Unit tests compare the rules carried over from each tool's own editor extension with the
+      # pinned source they were read from. A test that reads another submodule needs it added here.
+      - name: Initialize the extension sources the language tests compare with
+        run: >
+          git submodule update --init --depth 1 --jobs 4 --
+          vendor/vscode vendor/vscode-languageserver-node
+          vendor/pyright vendor/basedpyright vendor/vscode-python
+          vendor/rust-analyzer vendor/vscode-clangd vendor/svelte-language-tools
+          vendor/vscode-go vendor/vscode-java vendor/kotlin-lsp
+          vendor/vscode-intelephense vendor/vscode-yaml
       - name: Unit tests and architecture boundaries
         run: npm test
       # Tooling tests read the pinned sources before the build initializes them.
