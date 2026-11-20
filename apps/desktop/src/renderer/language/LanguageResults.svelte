@@ -46,8 +46,8 @@
 <!-- This is an editor-local panel; it cannot cover or capture native browser views. -->
 <div class="language-results" role="dialog" aria-label={source.title} aria-busy={busy} onkeydown={keydown} tabindex="-1">
   <header><strong>{source.title}</strong><button type="button" aria-label="Close language results" onclick={close}>×</button></header>
-  <input bind:this={input} bind:value={query} oninput={changed} placeholder={source.searchable ? 'Search workspace symbols…' : 'Results for the current file'}
-    readonly={!source.searchable} aria-label={source.searchable ? 'Search workspace symbols' : 'Language results'} />
+  <input bind:this={input} bind:value={query} oninput={changed} placeholder={source.placeholder ?? (source.searchable ? 'Search workspace symbols…' : 'Results for the current file')}
+    readonly={!source.searchable} aria-label={source.placeholder ?? (source.searchable ? 'Search workspace symbols' : 'Language results')} />
   {#if trail.length}<button class="back" onclick={back}>← {trail.map(item => item.label).join(' / ')}</button>{/if}
   {#if error}<p role="alert">{error}</p>{/if}
   <div class="results" aria-label="Language results list">

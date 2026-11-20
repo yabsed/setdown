@@ -20,6 +20,8 @@ export interface LanguageFeatureContext {
   edit(edit: L.WorkspaceEdit, versions: Map<M.editor.ITextModel, number>, token: M.CancellationToken): Promise<M.languages.WorkspaceEdit>;
   apply(edit: M.languages.WorkspaceEdit): void;
   command(command: L.Command, version: number, afterCompletion?: boolean): M.languages.Command;
+  /** Runs a command a tool named: in the editor when the tool hands it back to its editor, else by the tool. */
+  execute(command: L.Command): Promise<void>;
   action(title: string, run: () => Promise<void>): M.languages.Command;
 }
 

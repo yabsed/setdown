@@ -1,0 +1,171 @@
+{
+  "date": "2026-11-20T14:13:59.083Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "python",
+      "language": "Python",
+      "project": "pallets/flask@49943b5a94",
+      "file": "src/flask/app.py",
+      "expectedTool": "pyright",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error; line 1363 accepted: Pyright does not take a bytearray where werkzeug declares bytes; flask is checked with mypy, which does",
+          "seconds": 4.405
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type \"Literal['three']\" is not assignable to declared type \"int\"",
+          "seconds": 1.405
+        },
+        {
+          "kind": "hover",
+          "what": "MapAdapter | None:",
+          "ok": true,
+          "expected": "text matching /\\(class\\) MapAdapter|class MapAdapter/",
+          "observed": "```python class MapAdapter( map: Map, server_name: str, script_name: str, subdomain: str | None, url_scheme: str, path_info: str, default_method: str, query_ar…",
+          "seconds": 0.24
+        },
+        {
+          "kind": "hover",
+          "what": "get_debug_flag()",
+          "ok": true,
+          "expected": "text matching /get_debug_flag\\(\\) -> bool/",
+          "observed": "```python (function) def get_debug_flag() -> bool ``` --- Get whether debug mode should be enabled for the app, indicated by the `FLASK_DEBUG` environment vari…",
+          "seconds": 0.254
+        },
+        {
+          "kind": "completion",
+          "what": "self.url_map.bind_to_env|",
+          "ok": true,
+          "expected": "\"bind_to_environ\" offered",
+          "observed": "1 offered, first: bind_to_environ",
+          "seconds": 0.399
+        },
+        {
+          "kind": "definition",
+          "what": "get_debug_flag()",
+          "ok": true,
+          "expected": "leads to src/flask/helpers.py",
+          "observed": "src/flask/helpers.py:28",
+          "seconds": 0.402
+        },
+        {
+          "kind": "definition",
+          "what": "MapAdapter | None:",
+          "ok": true,
+          "expected": "leads to /werkzeug\\/routing\\/map\\.pyi?$/",
+          "observed": ".venv/lib/python3.13/site-packages/werkzeug/routing/map.py:382",
+          "seconds": 0.403
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.773,
+        "tool": "pyright",
+        "name": "Pyright",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask",
+          "Root: Project marker: pyproject.toml",
+          "Python interpreter: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask/.venv/bin/python (configured)",
+          "Type checking: basic (client policy)",
+          "Analysis paths: [] (client configuration; project configuration may override)",
+          "Analysis path source: Server defaults",
+          "Project analysis configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/flask/pyproject.toml (detected; interpreted by server, including executionEnvironments)"
+        ]
+      }
+    },
+    {
+      "id": "python-poetry",
+      "language": "Python",
+      "project": "python-poetry/cleo@30df50748e",
+      "file": "tests/conftest.py",
+      "expectedTool": "pyright",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.376
+        },
+        {
+          "kind": "mistake",
+          "what": "setdown_mistake: int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type \"Literal['three']\" is not assignable to declared type \"int\"",
+          "seconds": 1.376
+        },
+        {
+          "kind": "hover",
+          "what": "BufferedIO(input_)",
+          "ok": true,
+          "expected": "text matching /class BufferedIO/",
+          "observed": "```python class BufferedIO( input: Input | None = None, decorated: bool = False, supports_utf8: bool = True ) ```",
+          "seconds": 0.325
+        },
+        {
+          "kind": "hover",
+          "what": "MockerFixture",
+          "ok": true,
+          "expected": "text matching /MockerFixture/",
+          "observed": "```python class MockerFixture(config: Any) ``` --- Fixture that provides the same interface to functions in the mock module, ensuring that they are uninstalled…",
+          "seconds": 0.362
+        },
+        {
+          "kind": "completion",
+          "what": "input_.set_str|",
+          "ok": true,
+          "expected": "\"set_stream\" offered",
+          "observed": "1 offered, first: set_stream",
+          "seconds": 0.374
+        },
+        {
+          "kind": "definition",
+          "what": "BufferedIO(input_)",
+          "ok": true,
+          "expected": "leads to src/cleo/io/buffered_io.py",
+          "observed": "src/cleo/io/buffered_io.py:15",
+          "seconds": 0.376
+        },
+        {
+          "kind": "definition",
+          "what": "MockerFixture",
+          "ok": true,
+          "expected": "leads to /pypoetry\\/virtualenvs\\/cleo-[^/]+\\/lib\\/python[\\d.]+\\/site-packages\\/pytest_mock\\/plugin\\.pyi?$/",
+          "observed": "../../../../../../../../../../.cache/pypoetry/virtualenvs/cleo-UXhin33b-py3.13/lib/python3.13/site-packages/pytest_mock/plugin.py:80",
+          "seconds": 0.376
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.33,
+        "tool": "pyright",
+        "name": "Pyright",
+        "source": "included",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cleo",
+          "Root: Project marker: pyproject.toml",
+          "Python interpreter: /home/yabsed/.cache/pypoetry/virtualenvs/cleo-UXhin33b-py3.13/bin/python (configured)",
+          "Type checking: basic (client policy)",
+          "Analysis paths: [] (client configuration; project configuration may override)",
+          "Analysis path source: Server defaults",
+          "Project analysis configuration: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cleo/pyproject.toml (detected; interpreted by server, including executionEnvironments)"
+        ]
+      }
+    }
+  ]
+}

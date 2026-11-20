@@ -2,6 +2,7 @@ import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '.
 import type { LanguageRefresh } from './language-features';
 import type { Diagnostic, DiagnosticOptions, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import type { LanguageRoute } from '../core/document/language-support';
+import { toolMethods, type ToolFamily, type ToolMethod } from './language-tools';
 
 export type LanguageServerOptions = { automaticInstall?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean; scope?: string; args: string[]; settings: Record<string, unknown>; initializationOptions: Record<string, unknown>; root?: string };
 /** Local bridge metadata, never sent as an LSP ServerCapabilities object. */
@@ -33,8 +34,8 @@ export function textSynchronization(capabilities: ServerCapabilities): { change:
       save: typeof sync?.save === 'object' ? sync.save : sync?.save === true ? {} : false };
 }
 
-/** Only listed LSP methods cross this port. Notebook Python paths are explicitly selected environments, never server commands. */
-export const languageMethods = [
+/** The requests of the protocol itself. */
+const protocolMethods = [
   'textDocument/completion', 'completionItem/resolve', 'textDocument/hover',
   'textDocument/signatureHelp', 'textDocument/definition', 'textDocument/references',
   'textDocument/documentSymbol', 'textDocument/rename', 'textDocument/prepareRename',
@@ -48,11 +49,12 @@ export const languageMethods = [
   'textDocument/willSaveWaitUntil', 'textDocument/diagnostic', 'workspace/symbol', 'workspaceSymbol/resolve', 'workspace/executeCommand',
   'textDocument/prepareCallHierarchy', 'callHierarchy/incomingCalls', 'callHierarchy/outgoingCalls',
   'textDocument/prepareTypeHierarchy', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes',
-  // Outside the protocol: what one tool's own editor extension asks it. Each is sent only to
-  // the tool it belongs to (`LanguageConnection.autoInsert`, `LanguageConnection.companion`).
-  'html/autoInsert', 'html/tag', 'textDocument/switchSourceHeader',
 ] as const;
-export type LanguageMethod = typeof languageMethods[number];
+/** Only listed methods cross this port: the protocol's, and what one tool's own editor extension
+ * asks it (`language-tools.ts`), each sent only to the tool it belongs to. Notebook Python paths
+ * are explicitly selected environments, never server commands. */
+export const languageMethods: readonly LanguageMethod[] = [...protocolMethods, ...toolMethods];
+export type LanguageMethod = typeof protocolMethods[number] | ToolMethod;
 export type LanguageCell = { id: string; version: number; text: string };
 export type LanguageDocument = { server?: string; languageId?: string; notebook?: 'python'; cells?: LanguageCell[]; python?: string; id: string; generation: string; path: string; text: string; version: number };
 /** What a tool tells the person: a question with its answers, or a notice (`severity`, no actions) that stays until dismissed. */
@@ -73,7 +75,8 @@ export type LanguageIssue =
  * `html/autoInsert` the quotes of an attribute after `=`. The main process names the request
  * of the document's tool and whether the person left each kind on. */
 export type LanguageAutoInsert = { method: 'html/autoInsert' | 'html/tag'; close: boolean; quote: boolean };
-export type LanguageConnection = { autoInsert?: LanguageAutoInsert; /** The tool answers `textDocument/switchSourceHeader` (clangd). */ companion?: boolean; messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
+export type LanguageConnection = { autoInsert?: LanguageAutoInsert; /** The tool answers `textDocument/switchSourceHeader` (clangd). */ companion?: boolean;
+  /** The extension whose commands and requests this tool is offered with. */ tool?: ToolFamily; messages?: LanguageServerMessage[]; analysis?: AnalysisObservation; name?: string; context?: string[]; uri: string; cells?: Record<string, string>; capabilities: LanguageCapabilities; server?: string };
 export type LanguageUnavailable = { unavailable: 'missing'; message?: string; issue?: LanguageIssue; server?: { id: string; name: string } };
 export type LanguageEvent =
   | { type: 'configuration'; roots?: string[]; servers?: string[]; documents?: { id: string; generation: string }[]; retainedDocuments?: { id: string; generation: string }[] }

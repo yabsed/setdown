@@ -1,0 +1,94 @@
+{
+  "date": "2026-11-20T14:36:14.362Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "java",
+      "language": "Java",
+      "project": "spring-projects/spring-petclinic@500158f732",
+      "file": "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+      "expectedTool": "jdtls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 312.194
+        },
+        {
+          "kind": "mistake",
+          "what": "class SetdownMistake { int value = \"three\"; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Type mismatch: cannot convert from String to int",
+          "seconds": 303.294
+        },
+        {
+          "kind": "hover",
+          "what": "findByLastNameStartingWith",
+          "ok": true,
+          "expected": "text matching /findByLastNameStartingWith/",
+          "observed": "Page<Owner> org.springframework.samples.petclinic.owner.OwnerRepository.findByLastNameStartingWith(String lastName, Pageable pageable) Retrieve [Owner](file://…",
+          "seconds": 303.641
+        },
+        {
+          "kind": "hover",
+          "what": "BindingResult",
+          "ok": true,
+          "expected": "text matching /BindingResult/",
+          "observed": "org.springframework.validation.BindingResult General interface that represents binding results. Extends the [Errors](file:///tmp/jdtls_decompiled/session_5562c…",
+          "seconds": 309.161
+        },
+        {
+          "kind": "completion",
+          "what": "return owners.findByLastNameSta|",
+          "ok": true,
+          "expected": "\"findByLastNameStartingWith\" offered",
+          "observed": "1 offered, first: findByLastNameStartingWith",
+          "seconds": 309.174
+        },
+        {
+          "kind": "definition",
+          "what": "findByLastNameStartingWith",
+          "ok": true,
+          "expected": "leads to owner/OwnerRepository.java",
+          "observed": "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java:45",
+          "seconds": 309.185
+        },
+        {
+          "kind": "definition",
+          "what": "Owner",
+          "ok": true,
+          "expected": "leads to owner/Owner.java",
+          "observed": "src/main/java/org/springframework/samples/petclinic/owner/Owner.java:50",
+          "seconds": 309.193
+        },
+        {
+          "kind": "own",
+          "what": "build the workspace",
+          "ok": true,
+          "expected": "an answer matching /^[12]$/",
+          "observed": "1",
+          "seconds": 302.293
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 470.638,
+        "tool": "jdtls",
+        "name": "jdtls",
+        "source": "installed by Setdown",
+        "downloaded": true,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/petclinic",
+          "Root: Project marker: build.gradle",
+          "Tool runtime: Java 25 at /usr/lib/jvm/java-25-openjdk (the tool needs Java 25 or newer; the environment's Java is 17)",
+          "Server: JDT Language Server (Standard) 1.63.0-SNAPSHOT"
+        ]
+      }
+    }
+  ]
+}

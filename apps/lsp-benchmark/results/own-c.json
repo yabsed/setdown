@@ -1,0 +1,110 @@
+{
+  "date": "2026-11-20T13:05:45.889Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "c",
+      "language": "C",
+      "project": "DaveGamble/cJSON@6d9f2443ab",
+      "file": "cJSON_Utils.c",
+      "expectedTool": "clangd",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.019
+        },
+        {
+          "kind": "mistake",
+          "what": "int setdown_mistake(void) { return missing_name; }",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Use of undeclared identifier 'missing_name'; error: No previous prototype for function 'setdown_mistake' (fix available)",
+          "seconds": 0
+        },
+        {
+          "kind": "hover",
+          "what": "cJSON_IsArray(object)",
+          "ok": true,
+          "expected": "text matching /cJSON_IsArray/",
+          "observed": "### function `cJSON_IsArray` provided by `\"cJSON.h\"` --- → `cJSON_bool (aka int)` Parameters: - `const cJSON *const item (aka const struct cJSON *const)` --- `…",
+          "seconds": 0.003
+        },
+        {
+          "kind": "hover",
+          "what": "strlen((const char*)string)",
+          "ok": true,
+          "expected": "text matching /strlen/",
+          "observed": "### function `strlen` provided by `<string.h>` --- → `__size_t (aka unsigned long)` Parameters: - `const char * __s` Return the length of S. --- ```cpp extern …",
+          "seconds": 0.004
+        },
+        {
+          "kind": "completion",
+          "what": "cJSON_IsArr|",
+          "ok": true,
+          "expected": "\"cJSON_IsArray\" offered",
+          "observed": "1 offered, first: •cJSON_IsArray",
+          "seconds": 0.012
+        },
+        {
+          "kind": "faded",
+          "what": "#pragma warning (disable : 4001)",
+          "ok": true,
+          "expected": "the line is marked as left out",
+          "observed": "7 regions left out: lines 25-25, 29-29, 32-34, 47-47, 50-50, 57-57, 62-62",
+          "seconds": 0.012
+        },
+        {
+          "kind": "definition",
+          "what": "cJSON_IsArray(object)",
+          "ok": true,
+          "expected": "leads to /cJSON\\.[ch]$/",
+          "observed": "cJSON.c:3042",
+          "seconds": 0.013
+        },
+        {
+          "kind": "own",
+          "what": "textDocument/switchSourceHeader",
+          "ok": true,
+          "expected": "an answer matching /cJSON_Utils\\.h/",
+          "observed": "file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson/cJSON_Utils.h",
+          "seconds": 0.014
+        },
+        {
+          "kind": "own",
+          "what": "textDocument/ast",
+          "ok": true,
+          "expected": "an answer matching /\"kind\":\"Call\"/",
+          "observed": "{\"arcana\":\"CallExpr 0x7f3d20158eb8 </home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson/cJSON_Utils.c:221:…",
+          "seconds": 0.014
+        },
+        {
+          "kind": "own",
+          "what": "$/memoryUsage",
+          "ok": true,
+          "expected": "an answer matching /\"_total\":\\d+/",
+          "observed": "{\"_self\":0,\"_total\":7187687,\"clangd_server\":{\"_self\":0,\"_total\":7187687,\"background_index\":{\"_self\":0,\"_total\":3708416,\"index\":{\"_self\":2499246,\"_total\":249924…",
+          "seconds": 0.018
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.386,
+        "tool": "clangd",
+        "name": "clangd",
+        "source": "found on this computer",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson",
+          "Root: Project marker: .git",
+          "Compilation database: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cjson/build/compile_commands.json",
+          "Server: clangd clangd version 22.1.0 (https://github.com/llvm/llvm-project.git 4434dabb69916856b824f68a64b029c67175e532) linux+debug x86_64-unknown-linux-gnu"
+        ]
+      }
+    }
+  ]
+}

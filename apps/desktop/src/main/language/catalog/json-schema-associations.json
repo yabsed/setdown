@@ -1,0 +1,421 @@
+{
+  "source": "https://github.com/microsoft/vscode/tree/d3d31f62268b169a2dfab62ffb2d7d38158a5b7c/extensions",
+  "vscode": "1.142.0",
+  "licence": {
+    "name": "MIT",
+    "file": "json-schemas/VSCODE-LICENSE.txt",
+    "from": "LICENSE.txt"
+  },
+  "associations": [
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "devcontainer.json",
+      "url": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json"
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": ".devcontainer.json",
+      "url": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json"
+    },
+    {
+      "extension": "css-language-features",
+      "fileMatch": "*.css-data.json",
+      "url": "https://raw.githubusercontent.com/microsoft/vscode-css-languageservice/master/docs/customData.schema.json"
+    },
+    {
+      "extension": "css-language-features",
+      "fileMatch": "package.json",
+      "url": "./schemas/package.schema.json",
+      "file": "css-language-features/package.schema.json"
+    },
+    {
+      "extension": "html-language-features",
+      "fileMatch": "*.html-data.json",
+      "url": "https://raw.githubusercontent.com/microsoft/vscode-html-languageservice/master/docs/customData.schema.json"
+    },
+    {
+      "extension": "html-language-features",
+      "fileMatch": "package.json",
+      "url": "./schemas/package.schema.json",
+      "file": "html-language-features/package.schema.json"
+    },
+    {
+      "extension": "json-language-features",
+      "fileMatch": "*.schema.json",
+      "url": "http://json-schema.org/draft-07/schema#"
+    },
+    {
+      "extension": "json-language-features",
+      "fileMatch": "arazzo.json",
+      "url": "https://www.schemastore.org/openapi-arazzo-1.X.json"
+    },
+    {
+      "extension": "json-language-features",
+      "fileMatch": [
+        "openapi.json",
+        "*.openapi.json"
+      ],
+      "url": "https://www.schemastore.org/openapi-3.X.json"
+    },
+    {
+      "extension": "json-language-features",
+      "fileMatch": [
+        "overlay.json",
+        "*.overlay.json"
+      ],
+      "url": "https://www.schemastore.org/openapi-overlay-1.X.json"
+    },
+    {
+      "extension": "markdown-language-features",
+      "fileMatch": "package.json",
+      "url": "./schemas/package.schema.json",
+      "file": "markdown-language-features/package.schema.json"
+    },
+    {
+      "extension": "npm",
+      "fileMatch": "package.json",
+      "url": "https://www.schemastore.org/package"
+    },
+    {
+      "extension": "npm",
+      "fileMatch": "bower.json",
+      "url": "https://www.schemastore.org/bower"
+    },
+    {
+      "extension": "php-language-features",
+      "fileMatch": "composer.json",
+      "url": "https://getcomposer.org/schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "package.json",
+      "url": "./schemas/package.schema.json",
+      "file": "typescript-language-features/package.schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "tsconfig.json",
+      "url": "https://www.schemastore.org/tsconfig"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "tsconfig.json",
+      "url": "./schemas/tsconfig.schema.json",
+      "file": "typescript-language-features/tsconfig.schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "tsconfig.*.json",
+      "url": "https://www.schemastore.org/tsconfig"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "tsconfig-*.json",
+      "url": "./schemas/tsconfig.schema.json",
+      "file": "typescript-language-features/tsconfig.schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "tsconfig-*.json",
+      "url": "https://www.schemastore.org/tsconfig"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "tsconfig.*.json",
+      "url": "./schemas/tsconfig.schema.json",
+      "file": "typescript-language-features/tsconfig.schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "typings.json",
+      "url": "https://www.schemastore.org/typings"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": ".bowerrc",
+      "url": "https://www.schemastore.org/bowerrc"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": ".babelrc",
+      "url": "https://www.schemastore.org/babelrc"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": ".babelrc.json",
+      "url": "https://www.schemastore.org/babelrc"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "babel.config.json",
+      "url": "https://www.schemastore.org/babelrc"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "jsconfig.json",
+      "url": "https://www.schemastore.org/jsconfig"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "jsconfig.json",
+      "url": "./schemas/jsconfig.schema.json",
+      "file": "typescript-language-features/jsconfig.schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "jsconfig.*.json",
+      "url": "https://www.schemastore.org/jsconfig"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "jsconfig.*.json",
+      "url": "./schemas/jsconfig.schema.json",
+      "file": "typescript-language-features/jsconfig.schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": ".swcrc",
+      "url": "https://swc.rs/schema.json"
+    },
+    {
+      "extension": "typescript-language-features",
+      "fileMatch": "typedoc.json",
+      "url": "https://typedoc.org/schema.json"
+    }
+  ],
+  "files": [
+    {
+      "path": "css-language-features/package.schema.json",
+      "from": "extensions/css-language-features/schemas/package.schema.json",
+      "extensionLicence": "MIT",
+      "licenceHeader": null
+    },
+    {
+      "path": "html-language-features/package.schema.json",
+      "from": "extensions/html-language-features/schemas/package.schema.json",
+      "extensionLicence": "MIT",
+      "licenceHeader": null
+    },
+    {
+      "path": "markdown-language-features/package.schema.json",
+      "from": "extensions/markdown-language-features/schemas/package.schema.json",
+      "extensionLicence": "MIT",
+      "licenceHeader": null
+    },
+    {
+      "path": "typescript-language-features/package.schema.json",
+      "from": "extensions/typescript-language-features/schemas/package.schema.json",
+      "extensionLicence": "MIT",
+      "licenceHeader": null
+    },
+    {
+      "path": "typescript-language-features/tsconfig.schema.json",
+      "from": "extensions/typescript-language-features/schemas/tsconfig.schema.json",
+      "extensionLicence": "MIT",
+      "licenceHeader": null
+    },
+    {
+      "path": "typescript-language-features/jsconfig.schema.json",
+      "from": "extensions/typescript-language-features/schemas/jsconfig.schema.json",
+      "extensionLicence": "MIT",
+      "licenceHeader": null
+    }
+  ],
+  "skipped": [
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "vscode://defaultsettings/keybindings.json",
+      "url": "vscode://schemas/keybindings",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/keybindings.json",
+      "url": "vscode://schemas/keybindings",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/profiles/*/keybindings.json",
+      "url": "vscode://schemas/keybindings",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "vscode://defaultsettings/*.json",
+      "url": "vscode://schemas/settings/default",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/settings.json",
+      "url": "vscode://schemas/settings/user",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/profiles/*/settings.json",
+      "url": "vscode://schemas/settings/profile",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%MACHINE_SETTINGS_HOME%/settings.json",
+      "url": "vscode://schemas/settings/machine",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_WORKSPACES_HOME%/*/workspace.json",
+      "url": "vscode://schemas/workspaceConfig",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "**/*.code-workspace",
+      "url": "vscode://schemas/workspaceConfig",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "**/argv.json",
+      "url": "vscode://schemas/argv",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "/.vscode/settings.json",
+      "url": "vscode://schemas/settings/folder",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "/.vscode/launch.json",
+      "url": "vscode://schemas/launch",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "/.vscode/tasks.json",
+      "url": "vscode://schemas/tasks",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "/.vscode/mcp.json",
+      "url": "vscode://schemas/mcp",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/tasks.json",
+      "url": "vscode://schemas/tasks",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/chatLanguageModels.json",
+      "url": "vscode://schemas/language-models",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/profiles/*/chatLanguageModels.json",
+      "url": "vscode://schemas/language-models",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/snippets/*.json",
+      "url": "vscode://schemas/snippets",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/prompts/*.toolsets.jsonc",
+      "url": "vscode://schemas/toolsets",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/profiles/*/snippets/.json",
+      "url": "vscode://schemas/snippets",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/sync/snippets/preview/*.json",
+      "url": "vscode://schemas/snippets",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "**/*.code-snippets",
+      "url": "vscode://schemas/global-snippets",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "/.vscode/extensions.json",
+      "url": "vscode://schemas/extensions",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/globalStorage/ms-vscode-remote.remote-containers/nameConfigs/*.json",
+      "url": "./schemas/attachContainer.schema.json",
+      "reason": "Every file it applies to is in VS Code's own settings folder, which a project does not have."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "%APP_SETTINGS_HOME%/globalStorage/ms-vscode-remote.remote-containers/imageConfigs/*.json",
+      "url": "./schemas/attachContainer.schema.json",
+      "reason": "Every file it applies to is in VS Code's own settings folder, which a project does not have."
+    },
+    {
+      "extension": "configuration-editing",
+      "fileMatch": "**/quality/*/product.json",
+      "url": "vscode://schemas/vscode-product",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "copilot",
+      "fileMatch": "settings.json",
+      "url": "ccsettings://root/schema.json",
+      "reason": "The address is served by the extension's own code inside VS Code (ccsettings:), which nothing else can read."
+    },
+    {
+      "extension": "extension-editing",
+      "fileMatch": "package.json",
+      "url": "vscode://schemas/vscode-extensions",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "extension-editing",
+      "fileMatch": "*language-configuration.json",
+      "url": "vscode://schemas/language-configuration",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "extension-editing",
+      "fileMatch": [
+        "*icon-theme.json",
+        "!*product-icon-theme.json"
+      ],
+      "url": "vscode://schemas/icon-theme",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "extension-editing",
+      "fileMatch": "*product-icon-theme.json",
+      "url": "vscode://schemas/product-icon-theme",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    },
+    {
+      "extension": "extension-editing",
+      "fileMatch": "*color-theme.json",
+      "url": "vscode://schemas/color-theme",
+      "reason": "The schema describes VS Code itself (its settings, keybindings, snippets, themes and extension manifests). VS Code generates it while running and serves it under vscode://, which nothing else can read."
+    }
+  ]
+}

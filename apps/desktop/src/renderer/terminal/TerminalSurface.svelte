@@ -10,6 +10,7 @@
   import { onTerminalZoom, terminalZoomFactor } from '../editor/text-zoom';
   import { registerTerminalOutput } from './terminal-output';
   import { installTerminalWheel } from './terminal-wheel';
+  import { takeStart } from './terminal-start';
   import type { TerminalApi, TerminalEvent, TerminalSize } from '../../protocol/terminal';
   let { api, id, tabId, cwd = '', active, focused, changed }: { api: TerminalApi; id: string; tabId?: string; cwd?: string; active: boolean; focused: boolean;
     changed(info: { title?: string; cwd?: string; exited?: boolean }): void } = $props();
@@ -23,6 +24,16 @@
   let pending: TerminalEvent[] = [];
   let requested: TerminalSize | undefined;
   let directory = '';
+  /** A command line to type once the new shell has drawn its prompt (`terminal-start.ts`): when
+   * its first output has gone quiet, so the line is not echoed once before the prompt and again in it. */
+  let first: string | undefined, quiet: ReturnType<typeof setTimeout> | undefined;
+  function typeFirst() {
+    clearTimeout(quiet);
+    if (first === undefined || !alive || !ready) return;
+    const line = first; first = undefined;
+    api.write(id, `${line}\r`);
+  }
+  function settle() { if (first !== undefined) { clearTimeout(quiet); quiet = setTimeout(typeFirst, 150); } }
   let resizeTimer: ReturnType<typeof setTimeout> | undefined;
   function theme() {
     return terminalTheme(document.documentElement.dataset.theme);
@@ -46,7 +57,7 @@
   function receive(event: TerminalEvent) {
     if (!term || !alive || event.id !== id) return;
     if (starting) { pending.push(event); return; }
-    if (event.type === 'data') term.write(event.data, () => api.acknowledge(id, event.data.length));
+    if (event.type === 'data') term.write(event.data, () => { api.acknowledge(id, event.data.length); settle(); });
     else if (event.type === 'resize') term.write('', () => {
       if (alive && term) term.resize(event.size.cols, event.size.rows);
     });
@@ -135,11 +146,15 @@
       }
       if (!alive) return;
       starting = false; ready = info.exitCode === undefined;
+      // Only a shell that has just started is given the line; one that was moved here already ran it.
+      first = info.snapshot ? (takeStart(id), undefined) : takeStart(id);
+      // A shell that prints nothing, or never stops printing, is given the line all the same.
+      if (first !== undefined) setTimeout(typeFirst, 3000);
       if (info.exitCode !== undefined) receive({ id, type: 'exit', exitCode: info.exitCode });
       for (const event of pending) receive(event);
       pending = [];
       resize(true); if (focused && active) term?.focus();
-    }).catch(cause => { if (alive) { error = String(cause); starting = false; changed({ title: 'Terminal failed', exited: true }); } });
+    }).catch(cause => { takeStart(id); if (alive) { error = String(cause); starting = false; changed({ title: 'Terminal failed', exited: true }); } });
     return () => {
       unregisterOutput();
       alive = false; unsubscribe(); unsubscribeZoom(); removeWheel(); observer.disconnect(); themes.disconnect();

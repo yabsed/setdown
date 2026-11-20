@@ -6,6 +6,7 @@ import { hasRepositoryMarker, languageRoot } from './language-root';
 import { isInside } from '../documents/file-system';
 import { isSvelteServer, isTypeScriptServer, jsonOptions, svelteOptions, typescriptOptions } from './extension-rules';
 import { mergeLanguageSettings } from './language-settings';
+import { withBuiltinJsonSchemas } from './json-builtin-schema-files';
 
 /** The tools whose ordinary files Zed's project engine serves: Zed chooses the servers of a
  * file, starts them and keeps them informed of the text. A tool is added here once
@@ -100,7 +101,8 @@ export function setdownDefaults(names: ZedNames, definition: (id: string) => Lan
   // Zed gives its JSON server the schemas of the files in `zedSchemaFiles` and adds the ones
   // listed under `lsp.<server>.settings`. Setdown's other schema addresses are listed there.
   const json = definition('json-lsp'), jsonServer = json && !names.fromExtension(json) ? names.server(json) : undefined;
-  const schemas = ((json?.settings.json as { schemas?: { fileMatch: string[]; url: string }[] } | undefined)?.schemas ?? [])
+  // After them come the associations VS Code has built in (`json-builtin-schemas.ts`).
+  const schemas = ((withBuiltinJsonSchemas(json?.settings, zedSchemaFiles).json as { schemas: { fileMatch: string[]; url: string }[] }).schemas)
     .map(schema => ({ ...schema, fileMatch: schema.fileMatch.filter(name => !zedSchemaFiles.has(name)) })).filter(schema => schema.fileMatch.length);
   if (jsonServer && schemas.length) lsp[jsonServer] = { ...lsp[jsonServer], settings: { json: { schemas } } };
   // What each tool's own editor extension tells it at startup. typescript-language-server

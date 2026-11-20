@@ -314,7 +314,7 @@ test('rust-analyzer\'s standing status is shown as it stands: one notice replace
   const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, serverProfiles['rust-analyzer'], { activity: () => { activity++; } });
   sessions.push(server); await server.ready;
   // The tool reports its status only to an editor that asks for it.
-  expect(await server.request('asked', {})).toEqual({ serverStatusNotification: true });
+  expect(await server.request('asked', {})).toMatchObject({ serverStatusNotification: true });
   const notices = () => server.messages.map(({ message, severity, actions }) => ({ message, severity, actions }));
   await server.request('status', { health: 'ok', quiescent: false });
   await expect.poll(() => server.progress.size).toBe(1);
@@ -487,4 +487,86 @@ test('the JSON server gets a schema from its editor, or the refusal with its cod
   const plain = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {});
   sessions.push(plain); await plain.ready;
   expect(await plain.request('fetch', { uri: 'https://json.schemastore.org/package.json' })).toMatchObject({ code: 5 });
+});
+
+test('a tool\'s own rules: its notifications become lines and notices, a notice button acts, its requests are answered and may ask the person', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-rules-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    let asked;
+    c.onRequest('initialize', params => { asked = params; return {capabilities:{}}; });
+    c.onRequest('asked', () => ({ options: asked.initializationOptions, experimental: asked.capabilities.experimental ?? null }));
+    c.onRequest('tell', ([method, params]) => { c.sendNotification(method, params); return null; });
+    c.onRequest('call', async ([method, params]) => { try { return { result: await c.sendRequest(method, params) }; } catch (error) { return { error: error.message }; } });
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  const acted: unknown[] = [];
+  const { withRules } = await import('./tool-rules');
+  const profile = withRules({ ...serverProfiles.gopls, initializationOptions: { written: 'by the person', shared: 'person' } }, {
+    capabilities: general => ({ ...general, experimental: { tool: true } }),
+    initializationOptions: { shared: 'rules', added: 1 },
+    started: () => ({ context: { Import: 'not started' } }),
+    notifications: {
+      'tool/status': params => { const status = params as { state: string; problem?: string };
+        return { context: { Import: status.state }, progress: { import: status.state === 'importing' ? 'Importing the project' : undefined }, log: [`status ${status.state}`],
+          notices: { jdk: status.problem ? { severity: 'warning', message: status.problem, actions: [{ title: 'Use Java 21', setting: { name: 'java.home', value: '/jdk21' } }, { title: 'Later', dismiss: true }] } : undefined } }; },
+      'tool/broken': () => { throw Error('a rule that fails'); },
+      // A handler of the session's own is not replaced by a rule of the same name.
+      'window/logMessage': () => ({ context: { Stolen: 'yes' } }),
+    },
+    requests: {
+      'tool/bundles': () => ({ result: ['a.jar'], signal: { context: { Asked: 'bundles' } } }),
+      'tool/choose': params => ({ question: { message: 'Which build tool?', answers: (params as { tools: string[] }).tools }, result: answer => answer === undefined ? null : (params as { tools: string[] }).tools[answer] }),
+      'tool/refuses': () => { throw Error('not here'); },
+    },
+  });
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, profile, { act: action => { acted.push(action); } });
+  sessions.push(server); await server.ready;
+  // What the rules add is told at startup; what the person wrote wins.
+  expect(await server.request('asked', {})).toEqual({ options: { written: 'by the person', shared: 'person', added: 1 }, experimental: { tool: true } });
+  expect(server.context.get('Import')).toBe('not started');
+  await server.request('tell', ['tool/status', { state: 'importing' }]);
+  await expect.poll(() => server.context.get('Import')).toBe('importing');
+  expect([...server.progress.values()]).toEqual(['Importing the project']); expect(server.logs).toContain('status importing'); expect(server.messages).toEqual([]);
+  await server.request('tell', ['tool/status', { state: 'imported', problem: 'Gradle needs Java 21.' }]);
+  await expect.poll(() => server.messages.length).toBe(1);
+  expect(server.progress.size).toBe(0);
+  expect(server.messages.map(({ message, severity, actions }) => ({ message, severity, actions }))).toEqual([{ message: 'Gradle needs Java 21.', severity: 'warning', actions: ['Use Java 21', 'Later'] }]);
+  // The same notice again is the same notice. Its button acts once and takes the notice away.
+  const id = server.messages[0].id;
+  await server.request('tell', ['tool/status', { state: 'imported', problem: 'Gradle needs Java 21.' }]);
+  await server.request('asked', {}); expect(server.messages.map(entry => entry.id)).toEqual([id]);
+  expect(() => server.answerMessage(id, 2)).toThrow('no longer available');
+  server.answerMessage(id, 0);
+  await expect.poll(() => acted).toEqual([{ title: 'Use Java 21', setting: { name: 'java.home', value: '/jdk21' } }]);
+  expect(server.messages).toEqual([]);
+  // Answered, it stays away while the tool repeats itself, and returns when what it says changes.
+  await server.request('tell', ['tool/status', { state: 'imported', problem: 'Gradle needs Java 21.' }]);
+  await server.request('asked', {}); expect(server.messages).toEqual([]);
+  await server.request('tell', ['tool/status', { state: 'imported', problem: 'Gradle needs Java 25.' }]);
+  await expect.poll(() => server.messages.length).toBe(1);
+  // "Later" only removes it; the rule taking the notice back removes it too.
+  server.answerMessage(server.messages[0].id, 1); expect(server.messages).toEqual([]); expect(acted).toHaveLength(1);
+  await server.request('tell', ['tool/status', { state: 'imported', problem: 'Another problem.' }]);
+  await expect.poll(() => server.messages.length).toBe(1);
+  await server.request('tell', ['tool/status', { state: 'imported' }]);
+  await expect.poll(() => server.messages.length).toBe(0);
+  // A rule that fails is logged and nothing else happens; the session's own handlers stay.
+  await server.request('tell', ['tool/broken', {}]); await server.request('tell', ['window/logMessage', { message: 'plain log' }]);
+  await expect.poll(() => server.logs.join('\n')).toContain('plain log');
+  expect(server.logs.join('\n')).toContain('tool/broken: Error: a rule that fails'); expect(server.context.has('Stolen')).toBe(false);
+  // The tool's own requests: an answer at once, an answer the person chooses, and a refusal.
+  expect(await server.request('call', ['tool/bundles', {}])).toEqual({ result: ['a.jar'] }); expect(server.context.get('Asked')).toBe('bundles');
+  const choice = server.request('call', ['tool/choose', { tools: ['Gradle', 'Maven'] }]);
+  await expect.poll(() => server.messages.length).toBe(1);
+  expect(server.messages[0]).toMatchObject({ message: 'Which build tool?', actions: ['Gradle', 'Maven'] }); expect(server.messages[0].severity).toBeUndefined();
+  server.answerMessage(server.messages[0].id, 1);
+  expect(await choice).toEqual({ result: 'Maven' });
+  const dismissed = server.request('call', ['tool/choose', { tools: ['Gradle', 'Maven'] }]);
+  await expect.poll(() => server.messages.length).toBe(1); server.answerMessage(server.messages[0].id);
+  expect(await dismissed).toEqual({ result: null });
+  expect(await server.request('call', ['tool/refuses', {}])).toEqual({ error: 'not here' });
+  expect(acted).toHaveLength(1);
 });

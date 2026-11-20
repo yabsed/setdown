@@ -18,9 +18,10 @@ import { applyMonacoTheme, monacoThemeName, registerMonacoThemes } from '../them
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { LanguageOptions } from '../language/language-client';
 import type { LanguageServices } from '../language/language-services';
+import { toolFamilies } from '../../protocol/language-tools';
 import { installSyntaxHighlighting } from '../language/syntax-runtime';
 import { updateLanguageDefinitions } from '../../core/document/language-catalog';
-import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin } from '../language/language-runtime';
+import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin, toolCommandList, toolContextKey } from '../language/language-runtime';
 import { recognizedLanguage } from '../../core/document/language-policy';
 import { loadMonaco } from '../editor/monaco-runtime';
 import { displayOptions, releaseDisplayOptions } from '../editor/tools/view-display';
@@ -553,10 +554,14 @@ export class MonacoEditor {
     const symbols = editor.createContextKey<boolean>('setdownLanguageSymbols', false), calls = editor.createContextKey<boolean>('setdownLanguageCalls', false),
       types = editor.createContextKey<boolean>('setdownLanguageTypes', false), problems = editor.createContextKey<boolean>('setdownLanguageProblems', false),
       companion = editor.createContextKey<boolean>('setdownLanguageCompanion', false);
+    // One key for each tool whose own extension adds commands: true while the document's tool is that one.
+    const tools = new Map(toolFamilies.map(tool => [tool, editor.createContextKey<boolean>(toolContextKey(tool), false)]));
     const updateLanguageContext = () => {
       const cap = this.languageClient?.capabilitiesFor(editor.getModel());
       symbols.set(!!cap?.workspaceSymbolProvider); calls.set(!!cap?.callHierarchyProvider); types.set(!!cap?.typeHierarchyProvider);
       problems.set(!!editor.getModel()); companion.set(!!this.languageClient?.hasCompanion(editor.getModel()));
+      const running = this.languageClient?.toolsFor(editor.getModel()) ?? [];
+      for (const [tool, key] of tools) key.set(running.includes(tool));
     };
     this.languageContexts.set(editor, updateLanguageContext);
     editor.onDidChangeModel(updateLanguageContext);
@@ -573,6 +578,16 @@ export class MonacoEditor {
         if (!model || await this.languageClient?.openCompanion(model) || editor.getModel() !== model || !position) return;
         (editor.getContribution('editor.contrib.messageController') as unknown as { showMessage?(message: string, position: Monaco.IPosition): void } | null)?.showMessage?.('Didn\'t find a corresponding file.', position);
       } });
+    // The commands each tool's own extension adds (`tool-command-list.ts`), with the extension's keys.
+    const toolKeys = { 'ctrl-shift-u': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyU, 'ctrl-shift-j': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyJ,
+      'ctrl-shift-m': api.KeyMod.CtrlCmd | api.KeyMod.Shift | api.KeyCode.KeyM, enter: api.KeyCode.Enter };
+    for (const command of toolCommandList) editor.addAction({ id: `setdown.tool.${command.id}`, label: command.title, precondition: toolContextKey(command.tool),
+      ...(command.menu ? { contextMenuGroupId: 'navigation', contextMenuOrder: 6 } : {}),
+      ...(command.key ? { keybindings: [toolKeys[command.key]],
+        // Enter stays the editor's own wherever it already means something else, and during composition.
+        keybindingContext: command.key === 'enter' ? 'editorTextFocus && !editorReadonly && !suggestWidgetVisible && !renameInputVisible && !inSnippetMode && !parameterHintsVisible && !editorHasMultipleSelections && !compositionInProgress' : 'editorTextFocus' } : {}),
+      // A key the command took from the editor is given back when the command could not run.
+      run: async () => { if (!await this.languageClient?.runToolCommand(command.id, editor) && command.key === 'enter') editor.trigger('keyboard', 'type', { text: '\n' }); } });
     editor.addAction({ id: 'setdown.toggle-inlay-hints', label: 'Toggle Inlay Hints', run: () => {
       const enabled = editor.getOption(api.editor.EditorOption.inlayHints).enabled;
       editor.updateOptions({ inlayHints: { enabled: enabled === 'on' ? 'offUnlessPressed' : 'on' } });

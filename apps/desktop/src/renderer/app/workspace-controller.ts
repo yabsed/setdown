@@ -2,6 +2,7 @@ import { fileLocation } from '../../core/document/file-location';
 import { parentFolder } from '../../core/files/folder-presentation';
 import { imageSessions } from '../image/image-edit-sessions';
 import { DocumentSessions } from '../workspace/document-sessions';
+import { startWith } from '../terminal/terminal-start';
 import { notebookContent, notebookViews } from '../notebook/document-content';
 import { createBrowserActions } from '../browser/browser-actions';
 import { createBrowserRuntime } from '../browser/browser-runtime';
@@ -342,7 +343,15 @@ export function startWorkspace(desktop: DesktopPort) {
     },
     language: { port: desktop.language,
       prepare: async path => { const tab = await tabs.prepareLanguageDocument(path); return { tab, model: editor.modelFor(tab) }; },
-      open: actions.openLanguageLocation },
+      open: actions.openLanguageLocation,
+      // A program a tool knows how to start (a test, a binary) runs in a new terminal of this window.
+      // The terminal's own surface starts the shell and types the line (`terminal-start.ts`).
+      runProgram: async (commandLine, cwd) => {
+        const id = crypto.randomUUID();
+        startWith(id, commandLine);
+        await tabs.openTerminal(cwd ?? '', undefined, id);
+      },
+      openLink: href => desktop.openLink(href) },
     theme: () => reader.themeId, status: (status) => shell.dataset.editorRuntime = status,
     viewChanged: () => positions?.schedule(),
     focusTab: (id) => actions.activateTab(id),

@@ -8,6 +8,7 @@ import { languageSupport, resourceLanguageRoutes } from '../../core/document/lan
 import { LanguageClient, type LanguageOptions } from './language-client';
 import type { ProviderSupport } from './document-support';
 import { builtinSupport, onBuiltinSupport } from './builtin-diagnostics';
+import { toolCommandList } from './tool-command-list';
 
 const primaryChannel = '@primary';
 
@@ -81,6 +82,12 @@ export class LanguageServices {
   /** False when the tool found no file that belongs with this one. */
   async openCompanion(model: M.editor.ITextModel): Promise<boolean> {
     return await [...this.clients.values()].find(client => client.hasCompanion(model))?.openCompanion(model) ?? false;
+  }
+  /** The extensions whose commands this document's tools are offered with (`tool-command-list.ts`). */
+  toolsFor(model: M.editor.ITextModel | null) { return [...this.clients.values()].flatMap(client => client.toolFor(model) ?? []); }
+  async runToolCommand(id: string, editor: M.editor.IStandaloneCodeEditor): Promise<boolean> {
+    const tool = toolCommandList.find(command => command.id === id)?.tool;
+    return await [...this.clients.values()].find(client => !!tool && client.toolFor(editor.getModel()) === tool)?.runToolCommand(id, editor) ?? false;
   }
   async documentSymbols(model: M.editor.ITextModel) {
     const client = [...this.clients.values()].find(client => client.capabilitiesFor(model).documentSymbolProvider);

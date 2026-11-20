@@ -43,6 +43,14 @@ impl lsp::request::Request for SchemaContent {
     type Result = String;
     const METHOD: &'static str = "vscode/content";
 }
+/// `html/customDataContent`: the HTML server asks its editor for the text of every custom
+/// data file it was told of; it reads none itself.
+enum HtmlCustomDataContent {}
+impl lsp::request::Request for HtmlCustomDataContent {
+    type Params = Vec<String>;
+    type Result = String;
+    const METHOD: &'static str = "html/customDataContent";
+}
 const SHUTDOWN_LIMIT: Duration = Duration::from_secs(3);
 
 /// The requests Setdown may send to a server Zed runs. They cross unchanged in both
@@ -100,7 +108,38 @@ raw_requests!(
     // only to the tool it belongs to (`apps/desktop/src/main/language/extension-rules.ts`).
     HtmlAutoInsert = "html/autoInsert", HtmlTag = "html/tag",
     SwitchSourceHeader = "textDocument/switchSourceHeader",
-    JsonLanguageStatus = "json/languageStatus",
+    JsonLanguageStatus = "json/languageStatus", JsonSort = "json/sort",
+    HtmlSemanticTokenLegend = "html/semanticTokenLegend", HtmlSemanticTokens = "html/semanticTokens",
+    YamlFileSchemas = "yaml/get/jsonSchema", YamlAllSchemas = "yaml/get/all/jsonSchemas",
+);
+
+/// What a server tells only its own editor extension. Setdown shows each as that extension
+/// does (`apps/desktop/src/main/language/tool-signals.ts`), so they cross unchanged.
+macro_rules! forwarded_notifications {
+    ($($name:ident = $method:literal),* $(,)?) => {
+        $(
+            enum $name {}
+            impl lsp::notification::Notification for $name {
+                type Params = Value;
+                const METHOD: &'static str = $method;
+            }
+        )*
+        fn forward_notifications(workspace: &str, server: &Arc<LanguageServer>) {
+            $({
+                let workspace = workspace.to_string();
+                let id = server.server_id().0;
+                server
+                    .on_notification::<$name, _>(move |params, _| {
+                        emit(json!({"event": "project.toolNotification", "workspace": workspace, "server": id, "method": $method, "params": params}));
+                    })
+                    .detach();
+            })*
+        }
+    };
+}
+forwarded_notifications!(
+    YamlSchemaStoreInitialized = "yaml/schema/store/initialized",
+    YamlResultLimitReached = "yaml/resultLimitReached",
 );
 
 /// What Setdown tells a server itself: a save it is about to make, and the files it created,
@@ -127,6 +166,9 @@ raw_notifications!(
     DidRenameFiles = "workspace/didRenameFiles", DidDeleteFiles = "workspace/didDeleteFiles",
     // The Svelte server reads TypeScript and JavaScript files from disk unless told of a change.
     SvelteScriptChanged = "$/onDidChangeTsOrJsFile",
+    // The custom data files of the project, and the YAML extension's "send me the schema store event".
+    CssCustomDataChanged = "css/customDataChanged", HtmlCustomDataChanged = "html/customDataChanged",
+    YamlSupportSchemaSelection = "yaml/supportSchemaSelection",
 );
 
 struct Document {
@@ -256,6 +298,8 @@ impl ProjectHost {
                 if let Some(server) = lsp_store.read(cx).language_server_for_id(*id) {
                     self.own_server_edits(workspace, &server, cx);
                     self.own_schema_downloads(workspace, lsp_store, &server, cx);
+                    self.own_custom_data(workspace, &server, cx);
+                    forward_notifications(workspace, &server);
                 }
                 emit(json!({"event": "project.server", "workspace": workspace, "state": "added", "server": id.0, "name": name.0}));
             }
@@ -361,6 +405,40 @@ impl ProjectHost {
                     };
                     this.update(&mut cx, |this, _| this.edits.remove(&edit)).ok();
                     Ok(lsp::ApplyWorkspaceEditResponse { applied, failure_reason, failed_change: None })
+                }
+            })
+            .detach();
+    }
+
+    /// The HTML server reads no custom data file itself: it asks its editor for the text of each
+    /// (`html/customDataContent`). Setdown reads the file and answers, or refuses, on the channel
+    /// the JSON server's schema requests use.
+    fn own_custom_data(&mut self, workspace: &str, server: &Arc<LanguageServer>, cx: &mut Context<Self>) {
+        let this = cx.weak_entity();
+        let workspace = workspace.to_string();
+        let server_id = server.server_id().0;
+        server
+            .on_request::<HtmlCustomDataContent, _, _>(move |mut params, cx| {
+                let this = this.clone();
+                let workspace = workspace.clone();
+                let mut cx = cx.clone();
+                async move {
+                    let uri = params.pop().context("No URI")?;
+                    let (request, answer) = this.update(&mut cx, |this, _| {
+                        let (send, receive) = oneshot::channel();
+                        this.next_schema += 1;
+                        this.schemas.insert(this.next_schema, send);
+                        (this.next_schema, receive)
+                    })?;
+                    emit(json!({"event": "project.schemaContent", "kind": "html.customData", "workspace": workspace, "server": server_id, "request": request, "uri": uri}));
+                    let mut timeout = cx.background_executor().timer(SCHEMA_ANSWER_TIMEOUT).fuse();
+                    let mut answer = answer.fuse();
+                    let answer = futures::select_biased! {
+                        answer = answer => answer.unwrap_or_else(|_| Err((SCHEMA_REQUEST_FAILED, "The editor closed before answering.".into()))),
+                        _ = timeout => Err((SCHEMA_REQUEST_FAILED, "The editor did not answer in time.".into())),
+                    };
+                    this.update(&mut cx, |this, _| this.schemas.remove(&request)).ok();
+                    answer.map_err(|(code, message)| anyhow::Error::new(lsp::ResponseError { code: code.into(), message, data: None }))
                 }
             })
             .detach();

@@ -20,8 +20,11 @@ import { diagnosticsFor, type DiagnosticStore } from './diagnostic-store';
 import { documentSupport, type ProviderSupport } from './document-support';
 import { problemsEmpty } from './document-presentation';
 import { featureNames } from '../../protocol/language-features';
+import { mayEdit, type ToolFamily } from '../../protocol/language-tools';
+import { clientCommandHandlers, commandLine, plainSnippet, toolCommands, type ToolCommandContext } from './tool-commands';
+import { toolCommandList } from './tool-command-list';
 
-type Binding = { autoInsert?: LanguageAutoInsert; companion?: boolean; issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
+type Binding = { autoInsert?: LanguageAutoInsert; companion?: boolean; tool?: ToolFamily; issue?: import('../../protocol/language').LanguageIssue; preparing?: boolean; recovery?: import('../../protocol/language').LanguageRecovery; messages?: import('../../protocol/language').LanguageServerMessage[]; analysis?: AnalysisObservation; serverName?: string; hasDiagnostics?: boolean; id: string; context?: string[]; unavailable?: 'missing'; lease: ReturnType<DiagnosticStore['lease']>; diagnosticChannels: Map<string, L.Diagnostic[]>; capabilities: LanguageCapabilities; diagnosticCache: DiagnosticCache; diagnostics: L.Diagnostic[]; refresh: Map<LanguageRefresh, Set<() => void>>; serverId: string; tab: DocumentTab; model: M.editor.ITextModel; path: string; generation: string; connected: Promise<LanguageConnection | LanguageUnavailable>;
   uri?: string; sync?: ReturnType<typeof textSynchronization>; queue: Promise<unknown>; listener: M.IDisposable; providers: M.IDisposable[]; failed: boolean; state: 'starting' | 'ready' | 'failed' | 'unavailable'; message?: string };
 export type LanguageOptions = {
   port: LanguageApi;
@@ -32,6 +35,10 @@ export type LanguageOptions = {
   route?: typeof languageSupport;
   prepare(path: string): Promise<{ tab: DocumentTab; model: M.editor.ITextModel }>;
   open(path: string, selection: M.IRange | M.IPosition | undefined): Promise<void>;
+  /** Starts a command line in a new terminal of the window. Absent where the window has none. */
+  runProgram?(commandLine: string, cwd?: string): Promise<void>;
+  /** Opens a page a tool points to (documentation). */
+  openLink?(href: string): Promise<void>;
   status(state: string, message?: string): void;
 };
 
@@ -147,7 +154,7 @@ export class LanguageClient {
         binding.listener.dispose(); this.publishStatus(); return;
       }
       binding.uri = connection.uri; binding.state = 'ready'; binding.issue = undefined; binding.preparing = false; binding.context = connection.context; binding.analysis = connection.analysis; binding.messages = connection.messages; binding.serverName = connection.name;
-      binding.autoInsert = connection.autoInsert; binding.companion = connection.companion;
+      binding.autoInsert = connection.autoInsert; binding.companion = connection.companion; binding.tool = connection.tool;
       this.setServer(binding, connection.server ?? binding.serverId);
       binding.sync = textSynchronization(connection.capabilities);
       if (this.bindings.get(model) === binding && !binding.failed) this.installProviders(binding, connection.capabilities);
@@ -201,11 +208,12 @@ export class LanguageClient {
   private cancel(binding: Binding): void {
     for (const [id, owner] of this.requests) if (owner === binding) this.options.port.cancel(id);
   }
-  private async request<T>(model: M.editor.ITextModel, method: LanguageMethod, params: unknown, token: M.CancellationToken): Promise<T | null> {
+  /** `strict`: a refusal of the tool is thrown with its own words instead of being logged. */
+  private async request<T>(model: M.editor.ITextModel, method: LanguageMethod, params: unknown, token: M.CancellationToken, strict = false): Promise<T | null> {
     const binding = this.bindings.get(model);
     if (!binding || binding.failed || token.isCancellationRequested) return null;
     const version = model.getVersionId();
-    const commandVersions = method === 'workspace/executeCommand' ? this.snapshot() : undefined;
+    const commandVersions = method === 'workspace/executeCommand' || mayEdit(method) ? this.snapshot() : undefined;
     await binding.queue;
     if (this.bindings.get(model) !== binding || model.getVersionId() !== version || binding.failed || token.isCancellationRequested) return null;
     const id = crypto.randomUUID();
@@ -219,6 +227,7 @@ export class LanguageClient {
         && !token.isCancellationRequested ? result as T : null;
     } catch (error) {
       if (error instanceof LanguageRequestError && [-32800, -32801, -32802].includes(error.code)) return null;
+      if (strict && error instanceof LanguageRequestError) throw error;
       if (!token.isCancellationRequested && !model.isDisposed() && model.getVersionId() === version && !binding.failed)
         console.warn('Language request failed:', method, error);
       return null;
@@ -282,6 +291,98 @@ export class LanguageClient {
     if (!found || typeof found !== 'string') return false;
     await this.options.open(this.uri(found).fsPath, undefined);
     return true;
+  }
+  /** The extension whose commands the document's tool is offered with, once it is ready. */
+  toolFor(model: M.editor.ITextModel | null): ToolFamily | undefined {
+    const binding = model && this.bindings.get(model); return binding && !binding.failed && binding.state === 'ready' ? binding.tool : undefined;
+  }
+  /** Runs one command of `tool-command-list.ts` for the document in this editor. False when the document's tool is not the command's. */
+  async runToolCommand(id: string, editor: M.editor.IStandaloneCodeEditor): Promise<boolean> {
+    const model = editor.getModel(), binding = model && this.bindings.get(model), run = toolCommands[id];
+    if (!binding || !run || this.toolFor(model) !== toolCommandList.find(command => command.id === id)?.tool) return false;
+    const context = this.commandContext(binding, editor);
+    try { await run(context); } catch (error) { context.message(String(error instanceof Error ? error.message : error)); }
+    return true;
+  }
+  /** A command a tool named in a code lens, a completion or a code action. The ones the tool
+   * hands back to its editor run here (`tool-commands.ts`); the editor's own two that tools
+   * name by their VS Code ids run in the editor; every other one is the tool's to run. */
+  private async execute(binding: Binding, command: L.Command): Promise<void> {
+    const editor = this.api.editor.getEditors().find(editor => editor.getModel() === binding.model && editor.hasTextFocus())
+      ?? this.api.editor.getEditors().find(editor => editor.getModel() === binding.model);
+    const own = binding.tool && clientCommandHandlers[binding.tool]?.[command.command];
+    if (own && editor) { const context = this.commandContext(binding, editor as M.editor.IStandaloneCodeEditor);
+      try { await own(context, Array.isArray(command.arguments) ? command.arguments : []); } catch (error) { context.message(String(error instanceof Error ? error.message : error)); }
+      return; }
+    if (['editor.action.triggerSuggest', 'editor.action.triggerParameterHints'].includes(command.command)) { editor?.trigger('setdown.language', command.command, {}); return; }
+    await this.request(binding.model, 'workspace/executeCommand', command, noCancellation);
+  }
+  private commandContext(binding: Binding, editor: M.editor.IStandaloneCodeEditor): ToolCommandContext {
+    const { api } = this, model = binding.model;
+    const host = editor.getDomNode()?.parentElement ?? undefined;
+    const restore = () => { if (!model.isDisposed() && editor.getModel() === model) editor.focus(); };
+    const selections = (editor.getSelections() ?? []).map(selection => toRange(selection));
+    const position = toPosition(editor.getPosition() ?? { lineNumber: 1, column: 1 });
+    const message = (text: string) => { const at = editor.getPosition();
+      if (at) (editor.getContribution('editor.contrib.messageController') as unknown as { showMessage?(message: string, position: M.IPosition): void } | null)?.showMessage?.(text.slice(0, 500), at); };
+    const open = async (uri: string, range?: L.Range) => { await this.options.open(this.uri(uri).fsPath, range && fromRange(range)); };
+    const show = async (view: Promise<M.IDisposable>) => { this.resultsView?.dispose(); this.resultsView = await view; if (this.bindings.get(model) !== binding) this.resultsView.dispose(); else binding.providers.push(this.resultsView); };
+    return {
+      position, selections, selection: selections[0] ?? { start: position, end: position }, uri: binding.uri ?? '',
+      formatting: { tabSize: model.getOptions().tabSize, insertSpaces: model.getOptions().insertSpaces },
+      line: model.getLineContent(Math.min(position.line + 1, model.getLineCount())),
+      request: (method, params, strict) => this.request(model, method, params, noCancellation, strict),
+      showText: async source => { if (host) await show(import('./language-text').then(({ showLanguageText }) => showLanguageText(api, host, source, restore))); },
+      showLocations: async (title, found, empty) => {
+        const places = found.flatMap(place => { const uri = 'targetUri' in place ? place.targetUri : place.uri, range = 'targetUri' in place ? place.targetSelectionRange : place.range;
+          try { return [{ uri, range, path: this.uri(uri).fsPath }]; } catch { return []; } });
+        if (!places.length) { message(empty); return; }
+        if (places.length === 1) { await this.options.open(places[0].path, fromRange(places[0].range)); return; }
+        if (host) await show(import('./language-results').then(({ showLanguageResults }) => showLanguageResults(host, { title, searchable: false,
+          load: async () => places.map(place => ({ label: `${place.path.split(/[\\/]/).at(-1)}:${place.range.start.line + 1}`, detail: place.path,
+            location: { path: place.path, line: place.range.start.line + 1, column: place.range.start.character + 1, endLine: place.range.end.line + 1, endColumn: place.range.end.character + 1 },
+            open: () => this.options.open(place.path, fromRange(place.range)) })) }, restore)));
+      },
+      open,
+      ask: async source => host ? (await import('./language-text')).askLanguageInput(host, source, restore) : undefined,
+      pick: async (title, items) => {
+        if (!host) return undefined;
+        const { showLanguageResults } = await import('./language-results');
+        return new Promise(resolve => {
+          let chosen: typeof items[number]['value'] | undefined;
+          // A long list is narrowed by typing, as a quick pick is.
+          const rows = items.map(item => ({ label: item.label, detail: item.detail, open: async () => { chosen = item.value; } }));
+          const narrowed = (query: string) => { const words = query.toLowerCase().split(/\s+/).filter(Boolean); return words.length ? rows.filter(row => words.every(word => row.label.toLowerCase().includes(word) || row.detail.toLowerCase().includes(word))) : rows; };
+          void show(showLanguageResults(host, { title, searchable: items.length > 8, placeholder: items.length > 8 ? 'Type to narrow the list' : 'Choose with the arrow keys and Enter', load: async query => narrowed(query) },
+            () => { restore(); resolve(chosen); }));
+        });
+      },
+      edit: (edits, snippet = false) => {
+        if (editor.getModel() !== model) return;
+        // The tool's offsets are in the text before the edits; the cursor mark of a snippet moves with the edits before it.
+        const items = edits.map(edit => ({ range: fromRange(edit.range), ...(snippet ? plainSnippet(edit.newText) : { text: edit.newText, cursor: undefined }) }))
+          .map(item => ({ ...item, start: model.getOffsetAt({ lineNumber: item.range.startLineNumber, column: item.range.startColumn }), end: model.getOffsetAt({ lineNumber: item.range.endLineNumber, column: item.range.endColumn }) }))
+          .sort((a, b) => a.start - b.start);
+        const marked = items.find(item => item.cursor !== undefined);
+        const cursor = marked && marked.start + marked.cursor! + items.filter(item => item.start < marked.start).reduce((moved, item) => moved + item.text.length - (item.end - item.start), 0);
+        editor.pushUndoStop();
+        editor.executeEdits('setdown.language', items.map(item => ({ range: api.Range.lift(item.range), text: item.text, forceMoveMarkers: true })));
+        if (cursor !== undefined) { const at = model.getPositionAt(cursor); editor.setPosition(at); editor.revealPositionInCenterIfOutsideViewport(at); }
+        editor.pushUndoStop();
+      },
+      workspaceEdit: async edit => { this.applyEdit(await this.workspaceEdit(edit, this.snapshot(), noCancellation, true)); },
+      select: ranges => {
+        if (editor.getModel() !== model || !ranges.length) return;
+        editor.setSelections(ranges.map(range => new api.Selection(range.start.line + 1, range.start.character + 1, range.end.line + 1, range.end.character + 1)));
+        editor.revealRangeInCenterIfOutsideViewport(fromRange(ranges[0]));
+      },
+      run: async program => { if (!this.options.runProgram) return false; await this.options.runProgram(commandLine(program, /Win/i.test(navigator.platform)), program.cwd); return true; },
+      copy: async text => { await navigator.clipboard.writeText(text); },
+      link: async href => { await this.options.openLink?.(href); },
+      message,
+      editorAction: async id => { editor.focus(); const action = editor.getAction(id); if (action) await action.run(); else editor.trigger('setdown.language', id, {}); },
+      type: text => { editor.trigger('keyboard', 'type', { text }); },
+    };
   }
   async documentSymbols(model: M.editor.ITextModel): Promise<Array<{ name: string; line: number; column: number; kind: number }>> {
     if (!this.capabilitiesFor(model).documentSymbolProvider) return [];
@@ -405,6 +506,7 @@ export class LanguageClient {
       for (const [id, callback] of callbacks) if (callback.version < owner.model.getVersionId() - 1) callbacks.delete(id);
     }), { dispose: () => callbacks.clear() });
     const commandId = `setdown.language.${crypto.randomUUID()}`;
+    const hoverCallbacks: string[] = [];
     const action = (title: string, run: () => Promise<void>): M.languages.Command => {
       const id = crypto.randomUUID(); callbacks.set(id, { version: owner.model.getVersionId(), run });
       return { id: commandId, title, arguments: [id] };
@@ -423,8 +525,9 @@ export class LanguageClient {
       edit: (edit, versions, token) => this.workspaceEdit(edit, versions, token, true), apply: edit => this.applyEdit(edit), action,
       command: (command, version, afterCompletion = false) => action(command.title, async () => {
         if (!context.alive(version) && !(afterCompletion && context.alive(version + 1))) throw Error('Document changed. Request the command again.');
-        await this.request(owner.model, 'workspace/executeCommand', command, noCancellation);
+        await this.execute(owner, command);
       }),
+      execute: command => this.execute(owner, command),
     };
     installNavigationFeatures(context); installSemanticFeatures(context); installEditFeatures(context);
     if (owner.autoInsert) installAutoInsertion(context, owner.autoInsert);
@@ -468,7 +571,23 @@ export class LanguageClient {
     if (capabilities.hoverProvider) owner.providers.push(api.languages.registerHoverProvider(language, scoped({
       provideHover: async (model, position, token) => {
         const result = await this.request<L.Hover>(model, 'textDocument/hover', { position: toPosition(position) }, token);
-        return result && { contents: (Array.isArray(result.contents) ? result.contents : [result.contents]).map(markdown),
+        if (!result) return result;
+        // rust-analyzer adds what can be done with the item under the cursor (`lsp_ext.ts` `hover`,
+        // `CommandLinkGroup`): go to its implementations, show its references, run it. Each is a
+        // link below the hover that runs the command, as in `client.ts` `renderHoverActions`. The
+        // links of the hover before this one stop working.
+        for (const id of hoverCallbacks.splice(0)) callbacks.delete(id);
+        const groups = owner.tool && clientCommandHandlers[owner.tool] ? ((result as { actions?: unknown }).actions as { title?: unknown; commands?: unknown }[] | undefined) : undefined;
+        const lines = (Array.isArray(groups) ? groups : []).slice(0, 8).flatMap(group => {
+          const links = (Array.isArray(group?.commands) ? group.commands as L.Command[] : []).filter(item => typeof item?.title === 'string' && typeof item.command === 'string').slice(0, 8).map(item => {
+            const link = context.command(item, model.getVersionId());
+            hoverCallbacks.push(link.arguments![0] as string);
+            return `[${item.title.replace(/[\\\[\]`*_<>]/g, '\\$&')}](command:${link.id}?${encodeURIComponent(JSON.stringify(link.arguments))})`;
+          });
+          return links.length ? [`${typeof group.title === 'string' && group.title ? `${group.title.replace(/[\\\[\]`*_<>]/g, '\\$&')} ` : ''}${links.join(' | ')}`] : [];
+        });
+        return { contents: [...(Array.isArray(result.contents) ? result.contents : [result.contents]).map(markdown),
+          ...(lines.length ? [{ value: lines.join('\n\n'), isTrusted: { enabledCommands: [commandId] }, supportHtml: false }] : [])],
           range: result.range ? fromRange(result.range) : undefined };
       },
     })));

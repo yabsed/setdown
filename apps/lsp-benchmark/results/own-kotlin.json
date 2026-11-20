@@ -1,0 +1,93 @@
+{
+  "date": "2026-11-20T14:39:09.579Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "kotlin",
+      "language": "Kotlin",
+      "project": "spring-guides/tut-spring-boot-kotlin@4b45a63b46",
+      "file": "src/main/kotlin/com/example/blog/HttpControllers.kt",
+      "expectedTool": "kotlin-lsp",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 8.255
+        },
+        {
+          "kind": "mistake",
+          "what": "val setdownMistake: Int = \"three\"",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: Initializer type mismatch: expected 'Int', actual 'String'.; warning: Might be 'const'",
+          "seconds": 5.213
+        },
+        {
+          "kind": "hover",
+          "what": "ResponseStatusException(NOT_FOUND, \"This article",
+          "ok": true,
+          "expected": "text matching /ResponseStatusException/",
+          "observed": "From class: [`org.springframework.web.server.ResponseStatusException`](command:jetbrains.navigateToLocation?%5B%22jar%3A%2F%2F%2Fhome%2Fyabsed%2F.gradle%2Fcach…",
+          "seconds": 2.598
+        },
+        {
+          "kind": "hover",
+          "what": "findBySlug",
+          "ok": true,
+          "expected": "text matching /findBySlug/",
+          "observed": "````kotlin fun findBySlug(slug: String): Article? ````",
+          "seconds": 2.915
+        },
+        {
+          "kind": "completion",
+          "what": "repository.findByLog|",
+          "ok": true,
+          "expected": "\"findByLogin\" offered",
+          "observed": "1 offered, first: findByLogin",
+          "seconds": 3.479
+        },
+        {
+          "kind": "definition",
+          "what": "findBySlug",
+          "ok": true,
+          "expected": "leads to blog/Repositories.kt",
+          "observed": "src/main/kotlin/com/example/blog/Repositories.kt:6",
+          "seconds": 3.49
+        },
+        {
+          "kind": "definition",
+          "what": "User",
+          "ok": true,
+          "expected": "leads to blog/Entities.kt",
+          "observed": "src/main/kotlin/com/example/blog/Entities.kt:23",
+          "seconds": 3.501
+        },
+        {
+          "kind": "own",
+          "what": "the tests of this class",
+          "ok": true,
+          "expected": "an answer matching /\"isTest\":false/",
+          "observed": "{\"isTest\":false,\"targets\":[],\"sourceName\":\"ArticleController\"}",
+          "seconds": 3.622
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 3.269,
+        "tool": "kotlin-lsp",
+        "name": "kotlin-lsp",
+        "source": "chosen program",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/spring-kotlin",
+          "Root: Project marker: settings.gradle.kts",
+          "Server: IntelliJ Language Server by JetBrains ILS-271.2085.0"
+        ]
+      }
+    }
+  ]
+}

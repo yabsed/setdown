@@ -1,0 +1,214 @@
+{
+  "date": "2026-11-20T13:58:53.361Z",
+  "platform": "linux x64",
+  "profile": "kept",
+  "outcomes": [
+    {
+      "id": "go",
+      "language": "Go",
+      "project": "spf13/cobra@adbc881390",
+      "file": "command.go",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 4.921
+        },
+        {
+          "kind": "mistake",
+          "what": "var setdownMistake string = 1",
+          "ok": true,
+          "expected": "the added line is marked",
+          "observed": "error: cannot use 1 (untyped int constant) as string value in variable declaration",
+          "seconds": 1.921
+        },
+        {
+          "kind": "hover",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "text matching /func \\(.*FlagSet\\) GetBool/",
+          "observed": "```go func (f *flag.FlagSet) GetBool(name string) (bool, error) ``` --- GetBool return the bool value of a flag with the given name --- [`(pflag.FlagSet).GetBo…",
+          "seconds": 0.033
+        },
+        {
+          "kind": "hover",
+          "what": "ExecuteC",
+          "ok": true,
+          "expected": "text matching /func \\(c \\*Command\\) ExecuteC/",
+          "observed": "```go func (c *Command) ExecuteC() (cmd *Command, err error) ``` --- ExecuteC executes the command. --- [`(cobra.Command).ExecuteC` on pkg.go.dev](https://pkg.…",
+          "seconds": 0.034
+        },
+        {
+          "kind": "completion",
+          "what": "c.Flags().ArgsLenAt|",
+          "ok": true,
+          "expected": "\"ArgsLenAtDash\" offered",
+          "observed": "1 offered, first: ArgsLenAtDash",
+          "seconds": 0.037
+        },
+        {
+          "kind": "definition",
+          "what": "GetBool",
+          "ok": true,
+          "expected": "leads to /spf13\\/pflag@[^/]+\\/bool\\.go$/",
+          "observed": "../../../../../../../../../../go/pkg/mod/github.com/spf13/pflag@v1.0.9/bool.go:39",
+          "seconds": 0.038
+        },
+        {
+          "kind": "definition",
+          "what": "Root",
+          "ok": true,
+          "expected": "leads to command.go",
+          "observed": "command.go:892",
+          "seconds": 0.039
+        },
+        {
+          "kind": "own",
+          "what": "the packages that can be imported",
+          "ok": true,
+          "expected": "an answer matching /\"Packages\":\\[.*\"net\\/http\"/",
+          "observed": "{\"Packages\":[\"archive/tar\",\"archive/zip\",\"bufio\",\"bytes\",\"cmp\",\"compress/bzip2\",\"compress/flate\",\"compress/gzip\",\"compress/lzw\",\"compress/zlib\",\"container/heap…",
+          "seconds": 0.068
+        },
+        {
+          "kind": "own",
+          "what": "add the import net/http",
+          "ok": true,
+          "expected": "a proposed edit matching /\"net\\/http/",
+          "observed": "{\"documentChanges\":[{\"textDocument\":{\"uri\":\"file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/com…",
+          "seconds": 0.094
+        },
+        {
+          "kind": "own",
+          "what": "add json tags to Use",
+          "ok": true,
+          "expected": "a proposed edit matching /json:\\\\\"use\\\\\"/",
+          "observed": "{\"documentChanges\":[{\"textDocument\":{\"uri\":\"file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/com…",
+          "seconds": 0.121
+        },
+        {
+          "kind": "own",
+          "what": "tags are asked for when the settings name none",
+          "ok": true,
+          "expected": "an answer matching /^\\{\"ask\":\"Tags to add/",
+          "observed": "{\"ask\":\"Tags to add, separated by commas, for example json,xml\"}",
+          "seconds": 0.121
+        },
+        {
+          "kind": "own",
+          "what": "the go test line of a test lens",
+          "ok": true,
+          "expected": "an answer matching /\"program\":\"go\",\"args\":\\[\"test\",\"-test\\.fullpath=true\",\"-timeout\",\"30s\",\"-run\",\"\\^TestSingleCommand\\$\",\"\\.\"\\]/",
+          "observed": "{\"cwd\":\"/home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra\",\"program\":\"go\",\"args\":[\"test\",\"-test.fullpath…",
+          "seconds": 0.122
+        },
+        {
+          "kind": "own",
+          "what": "the Go versions to choose from",
+          "ok": true,
+          "expected": "an answer matching /\"current\":\"[^\"]*1\\.\\d+/",
+          "observed": "{\"current\":\"1.27.4-X:nodwarf5\",\"chosen\":false,\"local\":[{\"label\":\"1.27.4-X:nodwarf5\",\"program\":\"/usr/lib/golang/bin/go\"}],\"downloadable\":[{\"label\":\"Go 1.27.4\",\"…",
+          "seconds": 0.92
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.811,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "go-test",
+      "language": "Go, a test for a function",
+      "project": "spf13/cobra@adbc881390",
+      "file": "args.go",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.043
+        },
+        {
+          "kind": "hover",
+          "what": "NoArgs",
+          "ok": true,
+          "expected": "text matching /func NoArgs/",
+          "observed": "```go func NoArgs(cmd *Command, args []string) error ``` --- NoArgs returns an error if any args are included. --- [`cobra.NoArgs` on pkg.go.dev](https://pkg.g…",
+          "seconds": 0.016
+        },
+        {
+          "kind": "own",
+          "what": "a test for NoArgs",
+          "ok": true,
+          "expected": "a proposed edit matching /func TestNoArgs/",
+          "observed": "{\"documentChanges\":[{\"textDocument\":{\"uri\":\"file:///home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra/arg…",
+          "seconds": 0.043
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 0.922,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Open folder"
+        ]
+      }
+    },
+    {
+      "id": "gomod",
+      "language": "Go module file",
+      "project": "spf13/cobra@adbc881390",
+      "file": "go.mod",
+      "expectedTool": "gopls",
+      "checks": [
+        {
+          "kind": "clean",
+          "what": "the project's own lines",
+          "ok": true,
+          "expected": "no error above the added line",
+          "observed": "no error",
+          "seconds": 3.012
+        },
+        {
+          "kind": "hover",
+          "what": "github.com/spf13/pflag",
+          "ok": true,
+          "expected": "text matching /\\S/",
+          "observed": "#### github.com/spf13/pflag This module is necessary because [github.com/spf13/pflag](https://pkg.go.dev/github.com/spf13/pflag@v1.0.9) is imported in `github.…",
+          "seconds": 0.012
+        }
+      ],
+      "start": {
+        "ok": true,
+        "seconds": 1.113,
+        "tool": "gopls",
+        "name": "gopls",
+        "source": "installed by Setdown",
+        "downloaded": false,
+        "context": [
+          "Project: /home/yabsed/Documents/fall26/work/projects/better-markdown-viewer/apps/lsp-benchmark/work/sources/cobra",
+          "Root: Open folder"
+        ]
+      }
+    }
+  ]
+}

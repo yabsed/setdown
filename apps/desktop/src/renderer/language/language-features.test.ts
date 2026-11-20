@@ -21,6 +21,7 @@ function fixture(capabilities: LanguageCapabilities) {
     alive: v => v === version, onRefresh: (feature, fn) => { const set = listeners.get(feature) ?? new Set(); set.add(fn); listeners.set(feature, set); return { dispose: () => { set.delete(fn); } }; },
     diagnostics: () => [], snapshot: () => new Map([[model, version]]), edit: vi.fn(async () => ({ edits: [] })), apply: vi.fn(),
     command: vi.fn(() => ({ id: 'local-command', title: 'owned command' })), action: vi.fn(() => ({ id: 'local-action', title: 'owned action' })),
+    execute: vi.fn(async () => {}),
   };
   return { context, providers, request: vi.mocked(context.request), emit: (type: string) => { for (const fn of listeners.get(type) ?? []) fn(); },
     change: () => { version++; for (const fn of listeners.get('change') ?? []) fn(); }, dispose: () => disposables.forEach(d => d.dispose()) };
@@ -84,7 +85,8 @@ test('code actions preserve raw diagnostic data and apply edits before their pro
   await run();
   expect(f.context.edit).toHaveBeenCalledWith(edit, expect.any(Map), noCancellation);
   expect(f.context.apply).toHaveBeenCalledOnce();
-  expect(f.request).toHaveBeenLastCalledWith('workspace/executeCommand', command, noCancellation);
+  // The command goes to the client's executor, which runs it in the editor or hands it to the tool.
+  expect(f.context.execute).toHaveBeenLastCalledWith(command);
 });
 
 test('pull diagnostics are debounced, reuse result IDs, refresh and never publish after disposal', async () => {

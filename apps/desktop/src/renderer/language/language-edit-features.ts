@@ -44,7 +44,7 @@ export function installEditFeatures(c: LanguageFeatureContext): void {
             if ('edit' in resolved && resolved.edit) c.apply(await c.edit(resolved.edit, versions, noCancellation));
             const command = typeof resolved.command === 'string' ? resolved as L.Command : resolved.command;
             // User activated this action before its edits. The command can legitimately follow that edit revision.
-            if (command) await c.request('workspace/executeCommand', command, noCancellation);
+            if (command) await c.execute(command);
           }),
         };
       });

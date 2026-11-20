@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { unwatchFile, watchFile } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { ApplyWorkspaceEditResult, Diagnostic, FileOperationRegistrationOptions, ServerCapabilities, TextDocumentContentChangeEvent, WorkspaceEdit } from 'vscode-languageserver-protocol';
+import type { ApplyWorkspaceEditResult, Diagnostic, FileOperationRegistrationOptions, Range, SemanticTokensLegend, ServerCapabilities, TextDocumentContentChangeEvent, WorkspaceEdit } from 'vscode-languageserver-protocol';
 import { languageMethods, type LanguageCapabilities, type LanguageCatalogEntry, type LanguageConnection, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod, type LanguageUnavailable } from '../../protocol/language';
 import { documentRequest, featureNames, resolveMethods, type LanguageRefresh } from '../../protocol/language-features';
 import { languageFailure } from '../../protocol/language-request';
@@ -13,11 +13,20 @@ import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
 import { failureLine, runtimeIssue } from './language-issue';
-import { answersRequest, autoInsertion, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, jsonLanguageStatus, schemaLines, svelteScriptChanged, svelteScriptLanguages } from './extension-rules';
+import { answersRequest, autoInsertion, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, jsonLanguageStatus, schemaLines, setting, svelteScriptChanged, svelteScriptLanguages, toolFamily } from './extension-rules';
+import { isOwnAction, isToolCommand, toolMessage } from '../../protocol/language-tools';
 import { findGoTool, goEnvironment, installGoTool } from './go-tools';
+import { withoutDuplicates } from './go-check';
+import { chooseGoVersion, goLintOnSave, goProjectEnvironment, lintAfterChange, goTagsCommand, goTestProgram, goVersionList, goplsStartOptions } from './go-project';
 import { forgetKotlinServer, kotlinServerForRun } from './kotlin-download';
 import { kotlinInitializationOptions } from './kotlin-options';
 import { schemaContentErrors, schemaDownloadSettings, SchemaContentError, type JsonSchemaContent } from './json-schema-content';
+import { withBuiltinJsonSchemas } from './json-builtin-schema-files';
+import { customDataAddresses, customDataChanged, htmlCustomDataFile } from './markup-custom-data';
+import { htmlSemanticLegend, htmlSemanticLegendRequest, htmlSemanticTokenData, htmlSemanticTokensMethod, htmlSemanticTokensParams, htmlSemanticTokensProvider } from './html-embedded-tokens';
+import { yamlDetectionAfterPick, yamlDetectionSetting, yamlFileSchemasMethod, yamlSchemaLine, yamlSchemaRequest, yamlSchemaSelectionSupported, yamlSchemaStoreInitializedMethod, yamlSchemasAfterPick, yamlSchemasSetting } from './yaml-schema-choice';
+import { toolRules } from './tool-rules';
+import type { ToolSignal } from './tool-signals';
 import { LanguagePackageStore, type ExtensionPackage } from './language-package-store';
 import { LanguageServiceSupervisor } from './language-supervisor';
 import type { ServerRegistry } from './server-registry';
@@ -37,8 +46,18 @@ type Channel = { id: string; generation: string; version: number; target: Projec
 /** One file of one window. Every channel of the editor (the language's own tool and each
  * helper tool) reads the same text, so Zed holds one copy and each change is applied once. */
 type OpenFile = { path: string; uri: string; owner: string; root: string; rootReason: string; revision: number; channels: Map<string, Channel>;
-  opened: Promise<{ language?: string; servers: string[] }>; saved?: { revision: number; at: number }; resync?: ReturnType<typeof setTimeout> };
-type Running = { name: string; items: ServerItems; command?: Channel; progress: Map<string, string> };
+  opened: Promise<{ language?: string; servers: string[] }>; saved?: { revision: number; at: number }; resync?: ReturnType<typeof setTimeout>; repairing?: 'once' | 'again';
+  /** What gopls last said of the file, and what the lint tool of `go.lintTool` said after a save (`go-project.ts`). */
+  reported?: Diagnostic[]; lint?: { diagnostics: Diagnostic[]; revision: number }; linting?: AbortController };
+type Running = { name: string; items: ServerItems; command?: Channel; progress: Map<string, string>;
+  /** The addresses of the custom data files the tool was last told, as text; the HTML tool is read those files and no other. */
+  customData?: string;
+  /** The HTML tool's token names for the script inside a page; `null` when it was asked and has none. */
+  legend?: SemanticTokensLegend | null;
+  /** The YAML tool was asked to say when its schemas are known. */
+  schemaEvents?: true;
+  /** What the tool said about itself, by a name: a standing line of the document panel. */
+  notes: Map<string, string> };
 type Edit = { window: Window; finish(result: ApplyWorkspaceEditResult): void };
 type Window = { state: WindowState; workspace: string; folders: Set<string>; files: Map<string, OpenFile>; channels: Map<string, OpenFile>;
   requests: Map<string, AbortController>; servers: Map<number, Running>; failed: Set<string>; activity?: ReturnType<typeof setTimeout> };
@@ -52,6 +71,8 @@ export type ProjectLanguagesOptions = {
   download?: typeof fetch; environment?: NodeJS.ProcessEnv;
   /** Downloads the schemas the JSON server asks for. Without it the server downloads them itself. */
   schemas?: JsonSchemaContent;
+  /** Writes settings of a tool by their VS Code names: for the project in `root`, or without one for every project. */
+  writeSettings?(tool: string, resource: string, root: string | undefined, entries: [string, unknown][]): Promise<void>;
   /** The environment tools are looked for in: the person's login shell, where it is known. */
   toolEnvironment?(): NodeJS.ProcessEnv;
 };
@@ -86,6 +107,8 @@ function proposedEdits(method: LanguageMethod, result: unknown): (WorkspaceEdit 
   return method === 'textDocument/rename' ? [result as WorkspaceEdit] : [];
 }
 
+/** Options that say nothing are no options: Zed is not told its settings changed. */
+const someOptions = (options: Record<string, unknown>) => Object.keys(options).length ? options : undefined;
 function failureIssue(message: string, offline: boolean): LanguageIssue {
   const runtime = runtimeIssue(message); if (runtime) return runtime;
   if (offline) return { kind: 'downloads-off' };
@@ -268,18 +291,21 @@ export class ProjectLanguages {
         channel.target = { ...target, tool: replacement.id, toolName: replacement.name, server: session.names.server(replacement)! };
       }
       const running = await this.attach(session, window, current, channel, alive);
+      const registry = this.options.registry(), tool = registry.definitions().find(other => other.id === channel.target.tool) ?? definition;
+      await this.extend(session, window, current, channel, running, tool);
+      if (!alive()) throw Error('Language document closed during initialization.');
       channel.state = 'ready'; channel.capabilities = channelCapabilities(channel.raw);
       this.supervisor.reset(this.recoveryKey(window, channel.target.server));
       this.options.emit(state, { type: 'status', state: 'ready', documents: [{ id: channel.id, generation: channel.generation }] });
       // What Zed already knows about this file reaches a channel that was bound after it was said.
       void host.request('project.diagnostics', { workspace, path: file }).catch(() => {});
-      const registry = this.options.registry(), tool = registry.definitions().find(other => other.id === channel.target.tool) ?? definition;
       const autoInsert = autoInsertion(tool, registry.options(tool.id, file).settings ?? tool.settings);
       channel.notes = await this.schemas(session, window, current, channel, tool);
       if (!alive()) throw Error('Language document closed during initialization.');
-      return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(tool) ? { companion: true } : {}),
+      const family = toolFamily(tool);
+      return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(tool) ? { companion: true } : {}), ...(family ? { tool: family } : {}),
         messages: [], analysis: this.observation(current, channel, running), name: channel.target.toolName, uri: current.uri, capabilities: channel.capabilities,
-        server: channel.target.tool, context: [`Project: ${current.root}`, `Root: ${current.rootReason}`, ...channel.notes] };
+        server: channel.target.tool, context: [`Project: ${current.root}`, `Root: ${current.rootReason}`, ...channel.notes, ...running.notes.values()] };
     } catch (error) {
       if (!alive()) throw error;
       const message = String(error instanceof Error ? error.message : error);
@@ -307,7 +333,9 @@ export class ProjectLanguages {
     if (!prepared) {
       const started = prepared = (async () => {
         const program = isGopls(tool) ? await this.gopls(session, tool, folder, report) : undefined;
-        const options = isKotlinServer(tool) ? await this.kotlin(session, tool, folder, report) : undefined;
+        // gopls is told the person's `go.*` and `gopls` settings as its extension tells it (`go-gopls-rules.ts`).
+        const options = isKotlinServer(tool) ? await this.kotlin(session, tool, folder, report)
+          : isGopls(tool) ? someOptions(goplsStartOptions(this.options.registry().options(tool.id).settings ?? tool.settings)) : undefined;
         // Read and replaced without a pause between: another tool may have been prepared meanwhile.
         if (JSON.stringify([this.rules.programs?.[tool.id], this.rules.options?.[tool.id]]) === JSON.stringify([program, options])) return;
         const { [tool.id]: _program, ...programs } = this.rules.programs ?? {}, { [tool.id]: _options, ...rest } = this.rules.options ?? {};
@@ -332,7 +360,8 @@ export class ProjectLanguages {
   private async gopls(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<NonNullable<SetdownRules['programs']>[string] | undefined> {
     // A program the person named in Language Support is used as it is.
     if (path.isAbsolute(this.options.registry().executable(tool.id))) return undefined;
-    const env = this.options.toolEnvironment?.() ?? this.options.environment ?? process.env;
+    // The Go the person chose with "Go: Choose Go Environment" comes first (`go-project.ts`).
+    const base = this.goBase(), { env, chosen } = await goProjectEnvironment(this.options.directory, folder, this.options.registry().options(tool.id).settings ?? tool.settings, base);
     const isFile = (file: string) => stat(file).then(found => found.isFile(), () => false);
     const go = await goEnvironment(env, undefined, { toolchain: 'local' });
     const found = await findGoTool('gopls', env, go);
@@ -348,10 +377,11 @@ export class ProjectLanguages {
     }
     // gopls runs `go` by name. vscode-go puts Go's own folder in front of PATH when `go` was
     // found somewhere else (goInstallTools.ts `updateGoVarsFromConfig`).
-    const goFolder = go && go.source !== 'PATH' ? go.GOROOT ? path.join(go.GOROOT, 'bin') : path.dirname(go.executable) : undefined;
-    const added = goFolder ? { env: { PATH: [goFolder, env.PATH ?? env.Path ?? ''].filter(Boolean).join(path.delimiter) } } : {};
+    const goFolder = chosen ? path.dirname(chosen) : go && go.source !== 'PATH' ? go.GOROOT ? path.join(go.GOROOT, 'bin') : path.dirname(go.executable) : undefined;
+    const added = goFolder ? { env: { PATH: [goFolder, ...(base.PATH ?? base.Path ?? '').split(path.delimiter).filter(entry => entry && entry !== goFolder)].join(path.delimiter) } } : {};
     return program || goFolder ? { ...(program ? { path: program, arguments: ['-mode=stdio'] } : {}), ...added } : undefined;
   }
+  private goBase(): NodeJS.ProcessEnv { return this.options.toolEnvironment?.() ?? this.options.environment ?? process.env; }
   private async kotlin(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<Record<string, unknown>> {
     // The host refuses the Zed extension's own download of the server, which reads no checksum.
     if (!session.offline) await kotlinServerForRun({ work: this.kotlinWork(tool.id), fetch: this.options.download,
@@ -395,7 +425,7 @@ export class ProjectLanguages {
           if (found) {
             channel.server = found.server; channel.raw = found.capabilities ?? {};
             let running = window.servers.get(found.server);
-            if (!running) window.servers.set(found.server, running = { name, items: new ServerItems(), progress: new Map() });
+            if (!running) window.servers.set(found.server, running = { name, items: new ServerItems(), progress: new Map(), notes: new Map() });
             return running;
           }
           await changed;
@@ -417,8 +447,11 @@ export class ProjectLanguages {
     switch (event.event) {
       case 'project.diagnostics': {
         const file = window.files.get(String(event.path));
-        if (file && event.revision === file.revision) for (const channel of file.channels.values()) if (channel.state === 'ready' && channel.server === event.server)
-          this.options.emit(window.state, { type: 'diagnostics', server: channel.target.tool, id: channel.id, generation: channel.generation, version: file.revision, diagnostics: event.diagnostics as Diagnostic[] });
+        if (file && event.revision === file.revision) for (const channel of file.channels.values()) if (channel.state === 'ready' && channel.server === event.server) {
+          const tool = this.options.registry().definitions().find(other => other.id === channel.target.tool);
+          if (tool && isGopls(tool)) { file.reported = event.diagnostics as Diagnostic[]; this.reportGo(window, file, channel); }
+          else this.options.emit(window.state, { type: 'diagnostics', server: channel.target.tool, id: channel.id, generation: channel.generation, version: file.revision, diagnostics: event.diagnostics as Diagnostic[] });
+        }
         break;
       }
       case 'project.registered': for (const channel of waiting(file => file.path === event.path)) channel.waiting!.changed(); break;
@@ -454,7 +487,7 @@ export class ProjectLanguages {
           this.options.emit(window.state, { type: 'activity' });
           for (const { file, channel } of bound(undefined)) { const active = window.servers.get(channel.server!);
             this.options.emit(window.state, { type: 'context', id: channel.id, generation: channel.generation, messages: [], analysis: this.observation(file, channel, active),
-              context: [`Project: ${file.root}`, `Root: ${file.rootReason}`, ...channel.notes ?? [], ...active?.progress.values() ?? []] }); }
+              context: [`Project: ${file.root}`, `Root: ${file.rootReason}`, ...channel.notes ?? [], ...active?.notes.values() ?? [], ...active?.progress.values() ?? []] }); }
         }, 500);
         break;
       }
@@ -466,7 +499,28 @@ export class ProjectLanguages {
           .then(result => host.request('project.applyEditResult', { edit: event.edit, applied: result.applied, failureReason: result.failureReason })).catch(() => {});
         break;
       }
+      case 'project.toolNotification': {
+        // What a tool tells only its own extension (`tool-signals.ts`).
+        const running = window.servers.get(event.server as number); if (!running) break;
+        if (event.method === yamlSchemaStoreInitializedMethod) { for (const { file, channel } of bound(event.server)) void this.renote(window, file, channel); break; }
+        const tool = this.options.registry().definitions().find(other => bound(event.server).some(({ channel }) => channel.target.tool === other.id));
+        const rules = tool && toolRules(tool, { name: tool.name, root: '', settings: tool.settings });
+        let signal: ToolSignal | undefined;
+        try { signal = rules?.notifications?.[String(event.method)]?.(event.params); } catch { /* A malformed message of a tool shows nothing. */ }
+        // This path has no notices of its own: what a notice says stands as a line of the panel.
+        for (const [key, notice] of Object.entries(signal?.notices ?? {})) { if (notice?.message.trim()) running.notes.set(key, notice.message.replace(/\s+/g, ' ').trim().slice(0, 1000)); else running.notes.delete(key); }
+        if (signal?.notices) for (const { file, channel } of bound(event.server)) this.context(window, file, channel);
+        break;
+      }
       case 'project.schemaContent':
+        if (event.kind === 'html.customData') {
+          // The HTML tool reads no custom data file itself. It is read the files it was told of, and no other.
+          const told = [...window.servers.values()].flatMap(running => { try { return JSON.parse(running.customData ?? '[]') as string[]; } catch { return []; } });
+          const file = told.includes(String(event.uri)) ? htmlCustomDataFile(event.uri) : undefined;
+          void (file ? stat(file).then(found => found.size > 16 * 1024 * 1024 ? '' : readFile(file, 'utf8')).catch(() => '') : Promise.resolve(''))
+            .then(content => host.request('project.schemaContentResult', { request: event.request, content })).catch(() => {});
+          break;
+        }
         // The JSON server asked for a schema it does not read itself. The answer, or the
         // refusal with its code, is what VS Code's JSON extension would give.
         void this.schemaContent(String(event.uri)).then(content => ({ content }), error => ({ error: String(error instanceof Error ? error.message : error),
@@ -479,6 +533,10 @@ export class ProjectLanguages {
         // document is bound again, which sends the editor's text whole.
         const file = window.files.get(String(event.path));
         if (file && !file.resync) file.resync = setTimeout(() => { file.resync = undefined; this.resync(window, file); }, 1500);
+        // After a save of Setdown's own, the file is the editor's text of this revision. Zed is
+        // given that text again and the document stays bound: binding it again would close what
+        // the person has open on it and show the tool as starting.
+        if (file && file.saved?.revision === file.revision) void this.repair(window, file);
         break;
       }
     }
@@ -486,13 +544,71 @@ export class ProjectLanguages {
   private async schemaContent(uri: string): Promise<string> {
     const registry = this.options.registry(), tool = registry.definitions().find(isJsonServer);
     if (!this.options.schemas || !tool) throw new SchemaContentError(schemaContentErrors.http, 'This editor downloads no schemas.');
-    return this.options.schemas.content(uri, schemaDownloadSettings(registry.options(tool.id).settings ?? tool.settings));
+    // An address VS Code has built in for a file name is trusted, as one the person assigned is (jsonClient.ts `isTrusted`).
+    return this.options.schemas.content(uri, schemaDownloadSettings(withBuiltinJsonSchemas(registry.options(tool.id).settings ?? tool.settings)));
   }
-  /** Which schemas the JSON server checks this file against, as lines of the document panel. */
+  /** Which schemas the JSON or the YAML server checks this file against, as lines of the document panel. */
   private async schemas(session: Session, window: Window, file: OpenFile, channel: Channel, tool: LanguageServerDefinition): Promise<string[]> {
-    if (!isJsonServer(tool) || channel.server === undefined) return [];
-    try { return schemaLines(await session.host.request('project.request', { workspace: window.workspace, server: channel.server, method: jsonLanguageStatus, params: [file.uri] })); }
-    catch { return []; }
+    if (channel.server === undefined) return [];
+    const send = { workspace: window.workspace, server: channel.server };
+    try {
+      if (isJsonServer(tool)) return schemaLines(await session.host.request('project.request', { ...send, method: jsonLanguageStatus, params: [file.uri] }));
+      // vscode-yaml shows the file's schema in the status bar (`yaml-schema-choice.ts`).
+      if (toolFamily(tool) === 'yaml') return [`Schema: ${yamlSchemaLine(await session.host.request('project.request', { ...send, ...yamlSchemaRequest(yamlFileSchemasMethod, file.uri) }))}`];
+    } catch { /* A tool that does not answer shows no line. */ }
+    return [];
+  }
+  /** Reads the schema line of a file again, after the tool's schemas or the person's choice changed. */
+  private async renote(window: Window, file: OpenFile, channel: Channel): Promise<void> {
+    const session = await this.session?.catch(() => undefined), tool = this.options.registry().definitions().find(other => other.id === channel.target.tool);
+    if (!session || !tool || channel.state !== 'ready') return;
+    const notes = await this.schemas(session, window, file, channel, tool);
+    if (file.channels.get(channel.id) !== channel || JSON.stringify(notes) === JSON.stringify(channel.notes)) return;
+    channel.notes = notes; this.context(window, file, channel);
+  }
+  private context(window: Window, file: OpenFile, channel: Channel): void {
+    const active = channel.server === undefined ? undefined : window.servers.get(channel.server);
+    this.options.emit(window.state, { type: 'context', id: channel.id, generation: channel.generation, messages: [], analysis: this.observation(file, channel, active),
+      context: [`Project: ${file.root}`, `Root: ${file.rootReason}`, ...channel.notes ?? [], ...active?.notes.values() ?? [], ...active?.progress.values() ?? []] });
+  }
+  /** What a tool's own extension does once the tool runs: it names the project's custom data
+   * files (`markup-custom-data.ts`), asks the HTML tool for the token names of a page's script
+   * (`html-embedded-tokens.ts`), and asks the YAML tool to say when its schemas are known. */
+  private async extend(session: Session, window: Window, file: OpenFile, channel: Channel, running: Running, tool: LanguageServerDefinition): Promise<void> {
+    const family = toolFamily(tool), send = { workspace: window.workspace, server: channel.server };
+    if (family === 'html' || family === 'css') {
+      const addresses = customDataAddresses(family, this.options.registry().options(tool.id, file.path).settings ?? tool.settings, file.root), told = JSON.stringify(addresses);
+      // Each notification replaces the whole list, so an emptied list is told as well.
+      if (running.customData !== told && (addresses.length || running.customData !== undefined)) {
+        running.customData = told;
+        await session.host.request('project.notify', { ...send, ...customDataChanged(family, addresses) }).catch(() => {});
+      }
+    }
+    if (family === 'html') {
+      if (running.legend === undefined) running.legend = htmlSemanticLegend(await session.host.request('project.request', { ...send, ...htmlSemanticLegendRequest }).catch(() => null)) ?? null;
+      if (running.legend && !channel.raw.semanticTokensProvider) channel.raw = { ...channel.raw, semanticTokensProvider: htmlSemanticTokensProvider(running.legend) };
+    }
+    if (family === 'yaml' && !running.schemaEvents) {
+      running.schemaEvents = true;
+      await session.host.request('project.notify', { ...send, ...yamlSchemaSelectionSupported }).catch(() => {});
+    }
+  }
+  /** vscode-yaml `showSchemaSelection`: the person's choice of schemas for a file is written to
+   * `yaml.schemas` (`yaml-schema-choice.ts`). A new entry names the file by its full address, so
+   * it is kept with the person's settings for the tool everywhere: a choice kept for one
+   * project would move that project's files to Setdown's own client (`eligible`). */
+  private async selectSchemas(session: Session, window: Window, file: OpenFile, channel: Channel, tool: LanguageServerDefinition, params: Record<string, unknown>): Promise<boolean> {
+    if (!this.options.writeSettings) throw Error('Settings cannot be written here.');
+    const selected = Array.isArray(params.selected) ? params.selected.filter((uri): uri is string => typeof uri === 'string' && uri.length <= 2048).slice(0, 32) : [];
+    const inUse = await session.host.request<unknown>('project.request', { workspace: window.workspace, server: channel.server, ...yamlSchemaRequest(yamlFileSchemasMethod, file.uri) }).catch(() => []);
+    const used = (Array.isArray(inUse) ? inUse : []).flatMap(entry => typeof (entry as { uri?: unknown } | null)?.uri === 'string' ? [(entry as { uri: string }).uri] : []);
+    const settings = this.options.registry().chosen(tool.id).settings ?? tool.settings, place = { uri: file.uri, folder: file.root };
+    const detection = yamlDetectionAfterPick(setting(settings, yamlDetectionSetting), place, selected);
+    await this.options.writeSettings(tool.id, file.path, undefined, [[yamlSchemasSetting, yamlSchemasAfterPick(setting(settings, yamlSchemasSetting), place, selected, used)],
+      ...(detection === undefined ? [] : [[yamlDetectionSetting, detection] as [string, unknown]])]);
+    // The tool reads the new settings in its own time; the line follows a moment later.
+    setTimeout(() => void this.renote(window, file, channel), 1500).unref();
+    return true;
   }
   private async capabilitiesChanged(host: ZedLanguageHost, window: Window, server: number): Promise<void> {
     for (const file of window.files.values()) {
@@ -500,8 +616,11 @@ export class ProjectLanguages {
       if (!channels.length) continue;
       const { servers } = await host.request<{ servers: { server: number; capabilities: ServerCapabilities }[] }>('project.servers', { workspace: window.workspace, path: file.path }).catch(() => ({ servers: [] }));
       const found = servers.find(candidate => candidate.server === server); if (!found) continue;
-      for (const channel of channels) if (file.channels.get(channel.id) === channel && JSON.stringify(channel.raw) !== JSON.stringify(found.capabilities)) {
-        channel.raw = found.capabilities; channel.capabilities = channelCapabilities(found.capabilities);
+      // The token names of the HTML tool are no capability of its own; they stay what was asked.
+      const legend = window.servers.get(server)?.legend;
+      const raw = legend && !found.capabilities.semanticTokensProvider ? { ...found.capabilities, semanticTokensProvider: htmlSemanticTokensProvider(legend) } : found.capabilities;
+      for (const channel of channels) if (file.channels.get(channel.id) === channel && JSON.stringify(channel.raw) !== JSON.stringify(raw)) {
+        channel.raw = raw; channel.capabilities = channelCapabilities(raw);
         this.options.emit(window.state, { type: 'capabilities', id: channel.id, generation: channel.generation, capabilities: channel.capabilities });
       }
     }
@@ -513,6 +632,27 @@ export class ProjectLanguages {
     if (documents.length) this.options.emit(window.state, { type: 'configuration', servers: [...new Set([...file.channels.values()].filter(channel => !tool || channel.target.tool === tool).map(channel => channel.target.tool))], documents });
   }
   private resync(window: Window, file: OpenFile): void { clearTimeout(file.resync); file.resync = undefined; this.rebind(window, file); }
+  /** Gives Zed the saved file's text as the document's text, while the file is still the
+   * document at its current revision. When that cannot be done the timer of `project.diverged`
+   * binds the document again. */
+  private async repair(window: Window, file: OpenFile): Promise<void> {
+    if (file.repairing) { file.repairing = 'again'; return; }
+    try {
+      for (;;) {
+        file.repairing = 'once';
+        const revision = file.revision;
+        const current = () => this.windows.get(window.state.webContentsId) === window && window.files.get(file.path) === file
+          && file.revision === revision && file.saved?.revision === revision;
+        const text = await readFile(file.path, 'utf8');
+        const session = await this.session;
+        if (!session || !current()) return;
+        await session.host.request('project.change', { workspace: window.workspace, path: file.path, revision, text });
+        if (!current()) return;
+        // Zed read the file once more while this was on its way: the text is given again.
+        if (file.repairing === 'once') { clearTimeout(file.resync); file.resync = undefined; return; }
+      }
+    } catch { /* The timer binds the document again. */ } finally { file.repairing = undefined; }
+  }
   private forget(window: Window, server: number): void {
     window.servers.delete(server);
     for (const edit of this.edits.values()) if (edit.window === window) edit.finish({ applied: false, failureReason: 'Language session closed.' });
@@ -544,6 +684,8 @@ export class ProjectLanguages {
     // Every channel reports the same change of the same text. The first report is applied.
     if (version <= file.revision) return;
     file.revision = version;
+    // What the lint tool said after the last save stays where the text it is about now is.
+    if (file.lint) file.lint = { diagnostics: lintAfterChange(file.lint.diagnostics, changes), revision: version };
     if (changes.some(change => !('range' in change))) { clearTimeout(file.resync); file.resync = undefined; }
     const session = await this.start();
     await session.host.request('project.change', { workspace: window.workspace, path: file.path, revision: version, changes }).catch(error => {
@@ -566,9 +708,33 @@ export class ProjectLanguages {
       || window.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw Error('Invalid or stale language request.');
     if (!answersRequest(this.options.registry().definitions().find(tool => tool.id === channel.target.tool), method)) throw Error('This tool does not answer that request.');
     const origin = { document: id, generation: channel.generation, version };
-    const command = method === 'workspace/executeCommand';
-    const requestParams = method in resolveMethods || command ? running.items.resolve(method, params, origin)
-      : documentRequest(method, params, file.uri);
+    const tool = this.options.registry().definitions().find(other => other.id === channel.target.tool);
+    let made: ReturnType<typeof toolMessage>;
+    if (isOwnAction(method)) {
+      if (method === 'setdown/yaml.selectSchemas' && tool) return this.start().then(session => this.selectSchemas(session, window, file, channel, tool, params as Record<string, unknown>)).catch(languageFailure);
+      if (!tool || !isGopls(tool)) throw Error('This tool has no such command.');
+      if (method !== 'setdown/go.modifyTags') return this.goAction(window, file, channel, tool, method, params as Record<string, unknown>).catch(languageFailure);
+      // Sent as a command of gopls, which then changes the struct itself.
+      const tags = goTagsCommand(file.uri, params as Record<string, unknown>, this.options.registry().options(tool.id).settings ?? tool.settings);
+      if (!tags) throw Error('Select the fields of a struct in a Go file.');
+      if ('ask' in tags) return tags;
+      made = { method: 'workspace/executeCommand', params: tags, notification: false };
+    }
+    // The script inside a page is coloured by the HTML tool's own request (`html-embedded-tokens.ts`).
+    if (running.legend && (method === 'textDocument/semanticTokens/full' || method === 'textDocument/semanticTokens/range')) {
+      const range = method.endsWith('/range') ? (params as { range?: Range }).range : undefined;
+      try {
+        const session = await this.start();
+        const answer = await session.host.request('project.request', { workspace: window.workspace, server: channel.server, method: htmlSemanticTokensMethod, params: htmlSemanticTokensParams(file.uri, range) });
+        return file.channels.get(id) === channel && channel.version === version ? { data: htmlSemanticTokenData(answer) ?? [] } : null;
+      } catch (error) { return languageFailure(error); }
+    }
+    // A tool's own request (`language-tools.ts`): its name and parameter are made here. A bare
+    // address is sent the way a language client sends one: as the only positional parameter.
+    const own = made ?? toolMessage(method, params as Record<string, unknown>, file.uri);
+    const command = method === 'workspace/executeCommand' || isToolCommand(method) || !!made;
+    const requestParams = method in resolveMethods || method === 'workspace/executeCommand' ? running.items.resolve(method, params, origin)
+      : own ? (typeof own.params === 'string' ? [own.params] : own.params) : documentRequest(method, params, file.uri);
     if (command && running.command) throw Error('A language command is already running.');
     const controller = new AbortController();
     window.requests.set(requestId, controller);
@@ -576,7 +742,8 @@ export class ProjectLanguages {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const session = await this.start();
-      const send = { workspace: window.workspace, server: channel.server, method, params: requestParams };
+      const send = { workspace: window.workspace, server: channel.server, method: own?.method ?? method, params: requestParams };
+      if (own?.notification) { await session.host.request('project.notify', send); return null; }
       if (method === 'textDocument/willSaveWaitUntil') {
         const sync = channel.raw.textDocumentSync;
         if (typeof sync !== 'object' || ![1, 2, 3].includes((params as { reason: number }).reason)) return [];
@@ -610,6 +777,69 @@ export class ProjectLanguages {
     if (file.saved?.revision === file.revision && Date.now() - file.saved.at < 1000) return;
     file.saved = { revision: file.revision, at: Date.now() };
     void this.session?.then(session => session.host.request('project.saved', { workspace: window.workspace, path: file.path, revision: file.revision })).catch(() => {});
+    const tool = this.options.registry().definitions().find(other => other.id === channel.target.tool);
+    if (tool && isGopls(tool) && channel.state === 'ready') void this.lintGo(window, file, channel, tool);
+  }
+  /** vscode-go runs the lint tool of `go.lintTool` after a save (`go-check.ts`). What it finds
+   * stands beside what gopls reports, until the file changes and is saved again. */
+  private async lintGo(window: Window, file: OpenFile, channel: Channel, tool: LanguageServerDefinition): Promise<void> {
+    file.linting?.abort();
+    const controller = file.linting = new AbortController(), revision = file.revision;
+    const registry = this.options.registry(), settings = registry.options(tool.id).settings ?? tool.settings;
+    const note = (text?: string) => this.goNote(window, file, channel, 'go.lint', text);
+    try {
+      const { env } = await goProjectEnvironment(this.options.directory, file.root, settings, this.goBase());
+      const session = await this.session?.catch(() => undefined);
+      const run = await goLintOnSave({ file: file.path, project: file.root, settings, env, directory: this.options.directory, signal: controller.signal,
+        mayInstall: !session?.offline && registry.automaticInstall(tool.id, file.path), report: note });
+      if (controller.signal.aborted || file.linting !== controller || window.files.get(file.path) !== file) return;
+      file.linting = undefined;
+      if (!run) { if (file.lint) { file.lint = undefined; this.reportGo(window, file, channel); } note(); return; }
+      for (const line of run.log.slice(0, 20)) console.warn(`${tool.name} lint: ${line.slice(0, 2000)}`);
+      // The lint tool names every file of the package; each open one shows its own.
+      for (const [name, diagnostics] of run.diagnostics) {
+        const other = window.files.get(canonicalPath(name)); if (!other || other === file) continue;
+        other.lint = { diagnostics: diagnostics.slice(0, 2000), revision: other.revision };
+        for (const bound of other.channels.values()) if (bound.target.tool === tool.id && bound.state === 'ready') this.reportGo(window, other, bound);
+      }
+      file.lint = { diagnostics: (run.diagnostics.get(file.path) ?? [...run.diagnostics].find(([name]) => canonicalPath(name) === file.path)?.[1] ?? []).slice(0, 2000), revision };
+      this.reportGo(window, file, channel);
+      // A lint tool that is not on this computer is named in the document panel, with how to install it.
+      note(run.notes[0]);
+    } catch (error) { if (!controller.signal.aborted) console.warn(`Could not run the Go lint tool for ${file.path}`, error); }
+  }
+  /** A standing line of the document panel about Go, or its removal. */
+  private goNote(window: Window, file: OpenFile, channel: Channel, key: string, text?: string): void {
+    const running = channel.server === undefined ? undefined : window.servers.get(channel.server);
+    if (!running || (text ? running.notes.get(key) === text : !running.notes.has(key))) return;
+    if (text) running.notes.set(key, text.replace(/\s+/g, ' ').trim().slice(0, 1000)); else running.notes.delete(key);
+    if (file.channels.get(channel.id) === channel) this.context(window, file, channel);
+  }
+  /** gopls' own diagnostics with the lint tool's after them, without the ones gopls reports too (goCheck.ts). */
+  private reportGo(window: Window, file: OpenFile, channel: Channel): void {
+    const own = file.reported ?? [], lint = file.lint?.revision === file.revision ? withoutDuplicates(file.lint.diagnostics, own) : [];
+    this.options.emit(window.state, { type: 'diagnostics', server: channel.target.tool, id: channel.id, generation: channel.generation, version: file.revision, diagnostics: [...own, ...lint] });
+  }
+  /** "Go: Choose Go Environment" and the `go test` of a lens (`go-project.ts`). */
+  private async goAction(window: Window, file: OpenFile, channel: Channel, tool: LanguageServerDefinition, method: string, params: Record<string, unknown>): Promise<unknown> {
+    const settings = this.options.registry().options(tool.id).settings ?? tool.settings, base = this.goBase();
+    if (method === 'setdown/go.testCommand') {
+      const { env } = await goProjectEnvironment(this.options.directory, file.root, settings, base);
+      const test = goTestProgram(params.arguments, settings, file.root, env);
+      // The chosen Go is not on the terminal's PATH, so the terminal is told it.
+      return test ? { ...test, env: { ...test.env, ...(env.PATH !== base.PATH && env.PATH ? { PATH: env.PATH } : {}) } } : null;
+    }
+    if (method === 'setdown/go.versions') return goVersionList(this.options.directory, file.root, settings, base, this.options.download);
+    if (method === 'setdown/go.chooseVersion') {
+      const session = await this.session?.catch(() => undefined);
+      if (session?.offline && typeof params.version === 'string') throw Error('Downloads are turned off, so a Go release cannot be downloaded.');
+      const changed = await chooseGoVersion(this.options.directory, file.root, settings, base, params, message => this.goNote(window, file, channel, 'go.version', message), this.options.download)
+        .finally(() => this.goNote(window, file, channel, 'go.version'));
+      // gopls is started again with the other Go, as the extension restarts it.
+      if (changed) await this.restart(window.state.webContentsId, file.path, tool.id);
+      return changed;
+    }
+    throw Error('This tool has no such command.');
   }
   close(windowId: number, id: string): void {
     this.opening.delete(`${windowId}:${id}`);

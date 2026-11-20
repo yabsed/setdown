@@ -10,6 +10,7 @@ import type { Options } from './server-registry';
 import type { ServerLaunch } from './server-session';
 import { serverProfile, type ServerProfile } from './server-definitions';
 import { applyPythonProjectSettings, nativePythonConfiguration, pythonProjectSettings, pythonSettingsContext, withLibraryStubs } from './python-project-settings';
+import { envImportRoots, pythonEnvFile, pythonEnvFileSetting, readEnvFile } from './python-env-file';
 import { libraryStubs } from './python-library-stubs';
 import { belongsToProject, declaredPython, pythonPrefix, pythonSource, type FoundPython } from './python-toolchains';
 
@@ -123,13 +124,22 @@ export class AnalysisContextService {
         // Retain even a missing explicit choice; never silently substitute a different interpreter.
         profile.configuration = setPython(profile.configuration, selected);
       } else issue('python-unknown', 'Choose a Python environment so imports can use the project dependencies.', true);
+      // The folders the project's `.env` file adds to `PYTHONPATH`. Microsoft's Python extension
+      // reads the file and tells its server; Pyright is told through its analysis paths, after
+      // the person's own (`python-env-file.ts`). The file is watched: a change starts the analysis again.
+      const envFile = pythonEnvFile(root, section(options.settings ?? {}, pythonEnvFileSetting) !== undefined ? options.settings
+        : project.envFile !== undefined ? { [pythonEnvFileSetting]: project.envFile } : undefined);
+      const envRoots = envImportRoots(readEnvFile(envFile, process.env), root).extraPaths;
+      if (envFile) inputs.add(envFile);
+      if (envRoots.length) context.evidence.push(`PYTHONPATH from ${path.relative(root, envFile!) || envFile}: ${envRoots.map(folder => path.relative(root, folder) || '.').join(', ')}`.slice(0, 1000));
+      profile.configuration = withLibraryStubs(profile.configuration, server, envRoots);
       // Decided per environment: each interpreter has its own libraries and its own stubs.
       const stubs = selected ? libraryStubs(root, await notebookPython.searchPaths(selected)) : { paths: [], evidence: [] };
       context.evidence.push(...stubs.evidence);
       profile.configuration = withLibraryStubs(profile.configuration, server, stubs.paths);
       inputs.add(path.join(root, 'typings'));
       configuration = settings => {
-        const scoped = withLibraryStubs(applyPythonProjectSettings(settings, project, server, explicitChecking, preferences['python-checking']), server, stubs.paths);
+        const scoped = withLibraryStubs(applyPythonProjectSettings(settings, project, server, explicitChecking, preferences['python-checking']), server, [...envRoots, ...stubs.paths]);
         return selected && (notebookPythonOverride || preferences.python || section(scoped, 'python.pythonPath') === undefined) ? setPython(scoped, selected) : scoped;
       };
       if (!notebookPythonOverride && !preferences.python && !configured && environments.selectionNeeded)

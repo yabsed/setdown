@@ -207,6 +207,29 @@ test('each tool is asked only the requests of its own editor extension', async (
   expect(called('project.request').at(-1)!.values).toMatchObject({ server: source.server, method: 'textDocument/switchSourceHeader', params: { uri: source.uri } });
 });
 
+test('a copy Zed read again from a file Setdown saved is given the saved text, and the document stays bound', async () => {
+  const opened = await open('main.go', 'gopls', 'go');
+  const changes = [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }, text: 'package main\n' }];
+  await languages.change(1, opened.id, 2, changes);
+  await writeFile(opened.file, 'package main\n');
+  languages.saved(1, opened.id);
+  const workspace = called('project.open').at(-1)!.values.workspace;
+  events.length = 0;
+  host.listener!({ event: 'project.diverged', workspace, path: opened.file, revision: 2 });
+  await vi.waitFor(() => expect(called('project.change').at(-1)!.values).toMatchObject({ path: opened.file, revision: 2, text: 'package main\n' }));
+  // Past the time after which a diverged copy is bound again, nothing was bound again.
+  await new Promise(resolve => setTimeout(resolve, 1700));
+  expect(events.filter(event => event.type === 'configuration')).toEqual([]);
+
+  // With text that is not saved the file is not the document: it is bound again, as before.
+  await languages.change(1, opened.id, 3, changes);
+  const sent = called('project.change').length;
+  host.listener!({ event: 'project.diverged', workspace, path: opened.file, revision: 3 });
+  await new Promise(resolve => setTimeout(resolve, 1700));
+  expect(called('project.change')).toHaveLength(sent);
+  expect(events.some(event => event.type === 'configuration')).toBe(true);
+});
+
 test('the Svelte tool hears each unsaved change of a TypeScript file, and of no other language', async () => {
   const svelteTool = registry.definitions().find(isSvelteServer)!;
   const svelte = await open('App.svelte', svelteTool.id, 'svelte');

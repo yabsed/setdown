@@ -3,6 +3,7 @@
 // each language's tool answers. See README.md.
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { cases } from './cases.mjs';
 import { after, at, completionLabels, definitionTargets, diagnosticSummary, errorsAbove, hoverText, leadsTo, marksLine, offers, shorten, withMistake } from './lib/checks.mjs';
 import { results, work } from './lib/paths.mjs';
@@ -129,6 +130,26 @@ for (const item of selected) {
       const targets = definitionTargets(await request('textDocument/definition', { position: at(text, check.at, check.on) }));
       return { ok: leadsTo(targets, check.to), expected: `leads to ${check.to}`,
         observed: targets.map(target => `${path.relative(root, decodeURIComponent(new URL(target.uri).pathname))}:${target.line + 1}`).join(', ') || 'no target' };
+    } })),
+    // What the tool's own editor extension asks beyond the protocol: expand this macro, show
+    // the other file of the pair, the compiled component. The answer is judged as text.
+    ...(item.own ?? []).map(check => ({ kind: 'own', what: check.what ?? check.method, async ask() {
+      const more = typeof check.params === 'function' ? check.params({ at: (needle, on) => at(text, needle, on), after: needle => after(text, needle), uri: pathToFileURL(file).href }) : check.params;
+      // A command makes the tool propose an edit to the editor. The benchmark changes no file:
+      // it reads the proposal and declines it, which the tool then reports as a failed command.
+      const from = window.received.length; let proposed;
+      const declining = check.edit ? setInterval(() => {
+        for (const { event } of window.received.slice(from)) if (event.type === 'apply-edit' && event.id === item.id && !event.declined) {
+          event.declined = true; proposed = JSON.stringify(event.edit); window.send('edit-applied', event.requestId, false, 'The benchmark changes no file.');
+        }
+      }, 25) : undefined;
+      let answer;
+      try { answer = await request(check.method, { ...(check.at ? { position: at(text, check.at, check.on) } : {}), ...more }); }
+      catch (error) { if (!check.edit) throw error; answer = `the command ended with: ${String(error?.message ?? error)}`; }
+      finally { clearInterval(declining); }
+      const seen = typeof answer === 'string' ? answer : JSON.stringify(answer ?? null);
+      if (check.edit) return { ok: check.edit.test(proposed ?? ''), expected: `a proposed edit matching ${check.edit}`, observed: proposed ? shorten(proposed) : `no edit was proposed; ${shorten(seen)}` };
+      return { ok: check.expect.test(seen), expected: `an answer matching ${check.expect}`, observed: shorten(seen) || 'no answer' };
     } })),
   ];
   // A tool may ask the person something before it reads the project; Setdown shows the question

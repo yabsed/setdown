@@ -1,6 +1,8 @@
 /** Public, lightweight entry for editor surfaces. Project clients remain lazy. */
 export { builtinSupport, onBuiltinSupport, retargetBuiltin, installBuiltinDiagnostics } from './builtin-diagnostics';
 export { documentSupport, languageCatalogRequest, openLanguageSupport } from './document-support';
+// The commands of each tool's own extension, as plain data: the editor lists them without loading the project client.
+export { toolCommandList, toolContextKey } from './tool-command-list';
 
 export function createLanguageWorker(label: string): Promise<Worker> | undefined {
   switch (label) {

@@ -30,7 +30,9 @@ vi.mock('./server-session', () => ({ ServerSession: class {
 } }));
 beforeEach(async () => { mocks.directory = await mkdtemp(path.join(os.tmpdir(), 'setdown-manager-test-'));  mocks.handles.clear(); mocks.events.clear(); mocks.app.clear(); mocks.servers.length = 0; mocks.answer = undefined; });
 
-afterEach(async () => { await rm(mocks.directory, { recursive: true, force: true }); });
+// The session of these tests is no process, so nothing ends it: what a launch made is cleaned up here (`python-cancellation.ts`).
+const endLaunches = () => { for (const server of mocks.servers) (server as unknown as { launch?: { dispose?(): void } }).launch?.dispose?.(); };
+afterEach(async () => { endLaunches(); await rm(mocks.directory, { recursive: true, force: true }); });
 
 const noPackages: AutomaticLanguagePackages = {rank:()=>0,canPrepare:()=>false,prepare:async()=>{throw Error('No package in this discovery fixture');},highlight:async()=>[],dispose() {}};
 function fixture(discovery?: ServerDiscovery, root = path.resolve('language-fixture'), packages = noPackages) {
@@ -198,7 +200,7 @@ test('an ordinary Python file starts with the project\'s environment that Zed\'s
   expect(environment.choices.find((choice: { id: string }) => choice.id === environment.selected)).toMatchObject({ path: poetry, name: 'Python 3.12.3 (app-x-py3.12; Poetry)' });
   expect(environment.issues).toEqual([]);
   discovery.dispose();
-  mocks.servers.length = 0;
+  endLaunches(); mocks.servers.length = 0;
   const failing = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '/global/bin', SETDOWN_LSP_INHERIT_ENV: '1' }));
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const g = fixture(failing, root, { ...noPackages, pythonEnvironments: async () => { throw Error('Zed lists no environments for Python'); } });

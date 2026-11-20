@@ -9,6 +9,8 @@ export type PythonProjectSettings = {
   checkingSource?: string;
   source?: string;
   projectConfiguration?: string;
+  /** `python.envFile` as the project's `.vscode/settings.json` writes it (`python-env-file.ts`). */
+  envFile?: string;
   errors: string[];
 };
 
@@ -35,6 +37,8 @@ export function pythonProjectSettings(root: string): PythonProjectSettings {
     const errors: ParseError[] = [];
     const settings = parse(readFileSync(file, 'utf8'), errors, { allowTrailingComma: true, disallowComments: false });
     if (errors.length || !settings || typeof settings !== 'object' || Array.isArray(settings)) throw Error('Invalid JSONC settings.');
+    const envFile = section(settings, 'python.envFile');
+    if (typeof envFile === 'string' && envFile.length <= 4096) result.envFile = envFile;
     const checkingKey = section(settings, 'basedpyright.analysis.typeCheckingMode') !== undefined
       ? 'basedpyright.analysis.typeCheckingMode' : 'python.analysis.typeCheckingMode';
     const checking = section(settings, checkingKey);

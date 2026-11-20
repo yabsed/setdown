@@ -3,6 +3,7 @@ import { statSync } from 'node:fs';
 import type { ClientCapabilities, Diagnostic, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import type { LanguageAutoInsert } from '../../protocol/language';
+import { clientCommands, toolRequest, type ToolFamily } from '../../protocol/language-tools';
 import { mergeLanguageSettings } from './language-settings';
 
 // A tool's own editor extension does more than start it: it tells it things at startup, asks
@@ -20,6 +21,9 @@ import { mergeLanguageSettings } from './language-settings';
 //   vendor/rust-analyzer/editors/code/src/client.ts, ctx.ts                      server status: the capability and what is shown
 //   vendor/rust-analyzer/docs/book/src/contributing/lsp-extensions.md            what a server status means
 //   vendor/zed/crates/project/src/lsp_store/rust_analyzer_ext.rs                 server status as the server's health
+//   vendor/rust-analyzer/editors/code/src/client.ts `ExperimentalFeatures`       commands the editor runs, hover actions, local docs
+//   vendor/vscode-clangd/src/clangd-context.ts                                   edits near the cursor, file status, fallback flags
+//   vendor/vscode-clangd/src/file-status.ts                                      what a file status is shown as
 
 type Tool = Pick<LanguageServerDefinition, 'id' | 'launch' | 'provenance'>;
 type Settings = Record<string, unknown>;
@@ -36,6 +40,22 @@ export function setting(settings: Settings | undefined, name: string): unknown {
   }
   return undefined;
 }
+/** The settings with one more written, by its VS Code name. An exact dotted key the person wrote
+ * is replaced; otherwise the value goes into the nested form, which is what a tool is sent when
+ * it asks for a section (`configurationSection`). */
+export function withSetting(settings: Settings | undefined, name: string, value: unknown): Settings {
+  const result: Settings = { ...settings };
+  if (Object.hasOwn(result, name)) { result[name] = value; return result; }
+  const parts = name.split('.').filter(part => !['__proto__', 'constructor', 'prototype'].includes(part));
+  if (!parts.length) return result;
+  // The longest written dotted prefix is kept as the person wrote it.
+  for (let length = parts.length - 1; length > 0; length--) {
+    const head = parts.slice(0, length).join('.');
+    if (Object.hasOwn(result, head) && record(result[head])) { result[head] = withSetting(record(result[head]), parts.slice(length).join('.'), value); return result; }
+  }
+  result[parts[0]] = parts.length === 1 ? value : withSetting(record(result[parts[0]]), parts.slice(1).join('.'), value);
+  return result;
+}
 /** The names a tool goes by: its id here, its name in the catalog it was imported from, and its program. */
 function named(tool: Tool, ...names: string[]): boolean {
   const program = tool.launch.kind === 'native' ? path.basename(tool.launch.command).replace(/\.(exe|cmd)$/i, '') : undefined;
@@ -49,16 +69,31 @@ export const isJsonServer = (tool: Tool) => named(tool, 'json-lsp', 'vscode-json
 export const isKotlinServer = (tool: Tool) => named(tool, 'kotlin-lsp');
 export const isGopls = (tool: Tool) => named(tool, 'gopls');
 export const isRustAnalyzer = (tool: Tool) => named(tool, 'rust-analyzer');
+const families: readonly [ToolFamily, (tool: Tool) => boolean][] = [
+  ['rust-analyzer', isRustAnalyzer], ['clangd', isClangd], ['svelte', isSvelteServer], ['typescript', isTypeScriptServer],
+  ['gopls', isGopls], ['jdtls', tool => named(tool, 'jdtls')], ['kotlin', isKotlinServer], ['intelephense', tool => named(tool, 'intelephense')],
+  ['pyright', tool => named(tool, 'pyright', 'basedpyright', 'basedpyright-langserver', 'pyright-langserver')], ['json', isJsonServer],
+  ['yaml', tool => named(tool, 'yaml-language-server')], ['html', isHtmlServer], ['css', tool => named(tool, 'css-lsp', 'vscode-css-language-server')],
+];
+/** The extension whose behaviour a tool is given (`protocol/language-tools.ts`), or none. */
+export const toolFamily = (tool: Tool | undefined): ToolFamily | undefined => tool && families.find(([, is]) => is(tool))?.[0];
 
-/** What a tool reports only to an editor that says it can take it. clangd names the lines the
- * preprocessor leaves out once `inactiveRegionsCapabilities` is declared (inactive-regions.ts
- * `fillClientCapabilities`; Zed declares the same in c.rs). rust-analyzer reports its standing
- * status once `serverStatusNotification` is declared (client.ts `fillClientCapabilities`; Zed's
- * lsp.rs); without it, it shows a problem once as a passing message (main_loop.rs). Undefined:
- * the tool is told what every tool is told. */
+/** What a tool does only for an editor that says it can take it.
+ * clangd names the lines the preprocessor leaves out once `inactiveRegionsCapabilities` is
+ * declared (inactive-regions.ts `fillClientCapabilities`; Zed declares the same in c.rs), and
+ * with `editsNearCursor` it offers completions that also change text beside the cursor, such as
+ * `.` to `->` on a pointer (clangd-context.ts `EnableEditsNearCursorFeature`).
+ * rust-analyzer reports its standing status once `serverStatusNotification` is declared
+ * (client.ts `fillClientCapabilities`; Zed's lsp.rs); without it, it shows a problem once as a
+ * passing message (main_loop.rs). It offers run, references and go-to links in code lenses and
+ * hovers only for the commands its editor says it can run (`commands`, `hoverActions`), and the
+ * documentation built on this computer beside the web one with `localDocs`.
+ * Undefined: the tool is told what every tool is told. */
 export function toolCapabilities(tool: Tool, general: ClientCapabilities): ClientCapabilities | undefined {
-  if (isClangd(tool)) return { ...general, textDocument: { ...general.textDocument, inactiveRegionsCapabilities: { inactiveRegions: true } } as ClientCapabilities['textDocument'] };
-  if (isRustAnalyzer(tool)) return { ...general, experimental: { ...record(general.experimental), serverStatusNotification: true } };
+  if (isClangd(tool)) return { ...general, textDocument: { ...general.textDocument, completion: { ...general.textDocument?.completion, editsNearCursor: true },
+    inactiveRegionsCapabilities: { inactiveRegions: true } } as ClientCapabilities['textDocument'] };
+  if (isRustAnalyzer(tool)) return { ...general, experimental: { ...record(general.experimental), serverStatusNotification: true,
+    hoverActions: true, localDocs: true, commands: { commands: [...clientCommands['rust-analyzer'] ?? []] } } };
   return undefined;
 }
 export const reportsInactiveRegions = (capabilities: ClientCapabilities | undefined) =>
@@ -148,10 +183,26 @@ export function autoInsertion(tool: Tool, settings: Settings | undefined): Langu
 
 /** A request outside the protocol goes only to the tool whose extension makes it. */
 export function answersRequest(tool: Tool | undefined, method: string): boolean {
-  if (method === 'html/autoInsert') return !!tool && isHtmlServer(tool);
-  if (method === 'html/tag') return !!tool && isSvelteServer(tool);
-  if (method === 'textDocument/switchSourceHeader') return !!tool && isClangd(tool);
-  return true;
+  const row = toolRequest(method);
+  return !row || toolFamily(tool) === row.tool;
+}
+
+/** clangd-context.ts, `clientOptions.initializationOptions`: clangd reports what it is doing with
+ * each file once `clangdFileStatus` is on, and compiles a file no compilation database covers
+ * with `clangd.fallbackFlags`. What the person wrote in the options wins. */
+export function clangdOptions(settings: Settings | undefined, written: Settings | undefined): Settings {
+  const flags = setting(settings, 'clangd.fallbackFlags');
+  return mergeLanguageSettings({ clangdFileStatus: true, ...(Array.isArray(flags) && flags.every(flag => typeof flag === 'string') ? { fallbackFlags: flags } : {}) }, written);
+}
+export const clangdFileStatusMethod = 'textDocument/clangd.fileStatus';
+/** file-status.ts: the extension shows `clangd: <state>` for the file in front. Here the state
+ * of each file clangd is working on is a line of work in progress, gone when the file is idle. */
+export function clangdFileStatus(params: unknown): { uri: string; line?: string } | undefined {
+  const status = record(params);
+  if (typeof status?.uri !== 'string' || typeof status.state !== 'string') return undefined;
+  const state = status.state.trim().slice(0, 200);
+  let name = status.uri; try { name = path.basename(decodeURIComponent(new URL(status.uri).pathname)); } catch { /* Shown as sent. */ }
+  return { uri: status.uri, line: !state || state === 'idle' ? undefined : `${name.slice(0, 120)}: ${state}` };
 }
 
 /** `extension.ts`, `clientOptions.synchronize.configurationSection`: the settings the Svelte
@@ -179,6 +230,30 @@ export const svelteRestartFiles: readonly RegExp[] = [
   /^\.prettierrc\.(js|cjs)$/,
   /^prettier\.config\.(js|cjs)$/,
 ];
+/** `extension.ts`, `addRenameFileListener`: after a file or folder was renamed the Svelte tool
+ * is asked which imports now point at the wrong place. A folder is asked about, and of files
+ * only these kinds. */
+export const svelteRenameEdits = '$/getEditsForFileRename';
+export function svelteAsksAboutRename(oldUri: string): boolean {
+  const last = oldUri.split(/\/|\\/).at(-1) ?? '';
+  return !last.includes('.') || ['.ts', '.js', '.json', '.svelte'].some(ending => last.endsWith(ending));
+}
+/** The same listener: which of the edits the tool proposes are applied. Edits of a TypeScript or
+ * JavaScript file belong to the TypeScript tool, except the ones that update an import of a
+ * Svelte file, and with the Svelte TypeScript plugin on (`tsPlugin`) the others of such a file too. */
+export function svelteRenameChanges(answer: unknown, tsPlugin: boolean): { uri: string; edits: { range: Diagnostic['range']; newText: string }[] }[] {
+  const changes = Array.isArray(record(answer)?.documentChanges) ? record(answer)!.documentChanges as unknown[] : [];
+  return changes.slice(0, 200).flatMap(change => {
+    const document = record(record(change)?.textDocument), edits = record(change)?.edits;
+    if (typeof document?.uri !== 'string' || !Array.isArray(edits)) return [];
+    const valid = edits.flatMap(edit => { const item = record(edit), range = record(item?.range);
+      return item && typeof item.newText === 'string' && position(range?.start) && position(range?.end) ? [{ range: range as unknown as Diagnostic['range'], newText: item.newText }] : []; });
+    const script = document.uri.endsWith('.ts') || document.uri.endsWith('.js');
+    if (script && !valid.some(edit => edit.newText.endsWith('.svelte'))) return [];
+    const kept = valid.filter(edit => !script || tsPlugin || edit.newText.endsWith('.svelte'));
+    return kept.length ? [{ uri: document.uri, edits: kept }] : [];
+  });
+}
 /** The files whose change starts the tool again with what they now say. */
 export function restartsTool(tool: Tool, file: string): boolean {
   return isSvelteServer(tool) && svelteRestartFiles.some(pattern => pattern.test(path.basename(file)));
@@ -224,18 +299,22 @@ export function packageFolder(start: string, name: string): string | undefined {
  *  - `maxTsServerMemory`: 3072 MB unless `typescript.tsserver.maxTsServerMemory` says otherwise, never under 128.
  *  - `npmLocation`: `typescript.npm`. `locale`: `typescript.locale` unless it is `auto`.
  *  - `disableAutomaticTypingAcquisition`: the extension lets tsserver download type packages
- *    with npm unless `typescript.disableAutomaticTypeAcquisition` is on. Setdown downloads
- *    nothing a person did not ask for, so here it stays off until that setting is written `false`.
+ *    with npm unless `typescript.disableAutomaticTypeAcquisition` is on, which is how a plain
+ *    JavaScript project gets the types of its packages. Here the setting decides when it is
+ *    written; otherwise tsserver downloads types where Setdown may download tools for this
+ *    project (`downloads`), and nowhere else. Without a decision about downloads it stays off.
  *  - `plugins`: the extension forwards the tsserver plugins other extensions contribute. The one
  *    Setdown's languages have is the Svelte plugin, which the Svelte extension leaves off until
  *    `svelte.enable-ts-plugin` is on (`tsplugin.ts`). `svelte` is the Svelte tool's settings and
  *    `places` are the folders it may be installed in: the project first, then the tool's own.
- * `written` is what the person or the tool's profile already put in the options; it wins. */
-export function typescriptOptions(settings: Settings | undefined, written: Settings | undefined, plugin?: { svelte?: Settings; places: string[] }): Settings {
-  const memory = setting(settings, 'typescript.tsserver.maxTsServerMemory');
+ * `written` is what the person or the tool's profile already put in the options; it wins, except
+ * that a decision about downloads replaces what an earlier pass of this function put there. */
+export function typescriptOptions(settings: Settings | undefined, written: Settings | undefined, plugin?: { svelte?: Settings; places: string[]; downloads?: boolean }): Settings {
+  const memory = setting(settings, 'typescript.tsserver.maxTsServerMemory'), acquisition = setting(settings, 'typescript.disableAutomaticTypeAcquisition');
+  const disable = typeof acquisition === 'boolean' ? acquisition : !(plugin?.downloads ?? false);
   const options: Settings = {
     maxTsServerMemory: typeof memory === 'number' && Number.isSafeInteger(memory) ? Math.max(memory, tsserverMemory.minimum) : tsserverMemory.default,
-    disableAutomaticTypingAcquisition: setting(settings, 'typescript.disableAutomaticTypeAcquisition') !== false,
+    disableAutomaticTypingAcquisition: disable,
   };
   const npm = setting(settings, 'typescript.npm'), locale = setting(settings, 'typescript.locale');
   if (typeof npm === 'string' && npm) options.npmLocation = npm;
@@ -246,5 +325,5 @@ export function typescriptOptions(settings: Settings | undefined, written: Setti
     const location = plugin?.places.map(place => packageFolder(place, sveltePlugin)).find(Boolean);
     if (location) plugins.push({ name: sveltePlugin, location });
   }
-  return { ...mergeLanguageSettings(options, written), ...(plugins.length ? { plugins } : {}) };
+  return { ...mergeLanguageSettings(options, written), ...(plugin?.downloads !== undefined ? { disableAutomaticTypingAcquisition: disable } : {}), ...(plugins.length ? { plugins } : {}) };
 }

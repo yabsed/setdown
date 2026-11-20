@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { officeViewerNotices } from './office-viewer-notices.mjs';
 
 const shared = {
@@ -12,6 +12,9 @@ const shared = {
 await mkdir('dist-electron', { recursive: true });
 await import('./build-language-host.mjs');
 await copyFile('../../LICENSE', 'dist-electron/SETDOWN-LICENSE.txt');
+// The schema files VS Code's extensions bring for JSON files; the JSON server reads them from disk.
+await rm('dist-electron/json-schemas', { recursive: true, force: true });
+await cp('src/main/language/catalog/json-schemas', 'dist-electron/json-schemas', { recursive: true });
 await copyFile('src/core/project/upstream/VSCODE-LICENSE', 'dist-electron/VSCODE-GIT-LICENSE');
 await copyFile('src/core/project/upstream/NOTICE', 'dist-electron/VSCODE-GIT-NOTICE');
 // Retire outputs from builds that included the removed document editor.
@@ -35,6 +38,8 @@ await Promise.all([
 ]);
 
 await copyFile('src/main/notebook/kernel-bridge.py', 'dist-electron/kernel-bridge.py');
+// Loaded by Node before the Pyright server, so it is a file of its own (`pyright-thread.ts`).
+await copyFile('src/main/language/pyright-thread-entry.cjs', 'dist-electron/pyright-thread-entry.cjs');
 await copyFile('src/main/windows/x11-pinch.py', 'dist-electron/x11-pinch.py');
 await copyFile('src/main/files/file-manager-dbus.py', 'dist-electron/file-manager-dbus.py');
 await copyFile('src/main/files/x11-file-drag.py', 'dist-electron/x11-file-drag.py');

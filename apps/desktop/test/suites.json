@@ -421,7 +421,9 @@
     "project/explorer-git-decorations.spec.ts": {
       "previewContract": true
     },
-    "preview/native-layout.spec.ts": { "previewContract": true },
+    "preview/native-layout.spec.ts": {
+      "previewContract": true
+    },
     "preview/renderer-recovery.spec.ts": {
       "previewContract": true
     },
@@ -468,10 +470,11 @@
     },
     "language-servers": {
       "command": "test:language-servers",
-      "environment": "isolated Electron; installed fortls and rust-analyzer toolchains",
+      "environment": "isolated Electron; installed fortls, rust-analyzer, gopls and clangd toolchains; checkouts of spf13/cobra, DaveGamble/cJSON and sveltejs/realworld (packages installed)",
       "files": [
         "test/language-servers/fortls.spec.ts",
-        "test/language-servers/rust-analyzer.spec.ts"
+        "test/language-servers/rust-analyzer.spec.ts",
+        "test/language-servers/tool-commands.spec.ts"
       ]
     },
     "notebook-tools": {

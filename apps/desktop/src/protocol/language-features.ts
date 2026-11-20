@@ -1,4 +1,5 @@
 import type { ClientCapabilities, ServerCapabilities } from 'vscode-languageserver-protocol';
+import { toolMessage } from './language-tools';
 
 /** One inventory for negotiation, request routing and the Language Support details. */
 export const languageFeatures = {
@@ -30,11 +31,12 @@ export const resolveMethods = {
   'typeHierarchy/subtypes': 'textDocument/prepareTypeHierarchy',
 } as const;
 /** Requests about one document: the main process fills in the document's address. */
-export const isDocumentMethod = (method: string) => method.startsWith('textDocument/') || method === 'html/autoInsert' || method === 'html/tag';
-/** What a request is sent with. The editor names no document: the main process knows which one a channel is for. */
+export const isDocumentMethod = (method: string) => method.startsWith('textDocument/');
+/** What a request is sent with. The editor names no document: the main process knows which one
+ * a channel is for. A tool's own request has its own shape (`language-tools.ts`). */
 export function documentRequest(method: string, params: object, uri: string): unknown {
-  // clangd takes the document itself as the parameter (vendor/vscode-clangd/src/switch-source-header.ts).
-  if (method === 'textDocument/switchSourceHeader') return { uri };
+  const own = toolMessage(method, params as Record<string, unknown>, uri);
+  if (own) return own.params;
   return isDocumentMethod(method) ? { ...params, textDocument: { uri } } : params;
 }
 

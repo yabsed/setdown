@@ -10,6 +10,7 @@ export const supportedLanguages: readonly { name: string; languages: readonly st
   { name: 'Rust', languages: ['rust'], tool: 'rust-analyzer' },
   { name: 'Go', languages: ['go', 'gomod', 'gowork'], tool: 'gopls' },
   { name: 'PHP', languages: ['php'], tool: 'intelephense' },
+  { name: 'Java', languages: ['java'], tool: 'jdtls' },
   { name: 'Kotlin', languages: ['kotlin'], tool: 'kotlin-lsp' },
   { name: 'JSON', languages: ['json', 'jsonc'], tool: 'json-lsp' },
   { name: 'YAML', languages: ['yaml'], tool: 'yaml-language-server' },

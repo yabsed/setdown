@@ -4,10 +4,12 @@ import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { builtinLanguageServers } from './catalog/profiles';
 import { serverProfile } from './server-definitions';
-import { answersRequest, autoInsertion, InactiveRegions, inactiveRegionMessage, inactiveRegionsMethod, isClangd, isHtmlServer, isRustAnalyzer, isSvelteServer, isTypeScriptServer, packageFolder,
+import { answersRequest, autoInsertion, clangdFileStatus, clangdFileStatusMethod, clangdOptions, svelteAsksAboutRename, svelteRenameChanges, svelteRenameEdits, toolFamily, withSetting, InactiveRegions, inactiveRegionMessage, inactiveRegionsMethod, isClangd, isHtmlServer, isRustAnalyzer, isSvelteServer, isTypeScriptServer, packageFolder,
   reportsInactiveRegions, restartsTool, serverStatusMethod, setting, statusMeaning, svelteConfigurationSections,
   svelteOptions, sveltePlugin, svelteRestartFiles, svelteScriptChanged, svelteScriptLanguages, toolCapabilities, toolStatus, tsserverMemory, typescriptOptions } from './extension-rules';
-import { clientCapabilities } from '../../protocol/language-features';
+import { clientCapabilities, documentRequest } from '../../protocol/language-features';
+import { languageMethods } from '../../protocol/language';
+import { clientCommands, isToolCommand, toolFamilies, toolMessage, toolMethods, toolRequest, toolRequests } from '../../protocol/language-tools';
 
 const vendor = path.resolve(__dirname, '../../../../../vendor');
 const source = (file: string) => readFileSync(path.join(vendor, file), 'utf8');
@@ -64,6 +66,91 @@ test('a request outside the protocol is refused for every tool but its own', () 
   expect(source('vscode-clangd/src/switch-source-header.ts')).toContain("'textDocument/switchSourceHeader'");
 });
 
+test('every tool belongs to the extension it is given the behaviour of, and to no other', () => {
+  const expected: Record<string, string | undefined> = { 'rust-analyzer': 'rust-analyzer', clangd: 'clangd', 'svelte-language-server': 'svelte', 'typescript-language-server': 'typescript',
+    gopls: 'gopls', jdtls: 'jdtls', 'kotlin-lsp': 'kotlin', intelephense: 'intelephense', pyright: 'pyright', basedpyright: 'pyright', 'json-lsp': 'json',
+    'yaml-language-server': 'yaml', 'html-lsp': 'html', 'css-lsp': 'css', vtsls: undefined, superhtml: undefined, 'kotlin-language-server': undefined, 'zed.php.phpactor': undefined };
+  for (const [id, family] of Object.entries(expected)) expect(toolFamily(tool(id)), id).toBe(family);
+  expect(toolFamily(undefined)).toBeUndefined();
+  expect(new Set(Object.values(expected).filter(Boolean))).toEqual(new Set(toolFamilies));
+});
+
+test('a tool\'s own request is sent only to that tool, under the name and with the parameter its extension uses', () => {
+  const uri = 'file:///project/a.rs';
+  // Every row crosses the port and names a known family.
+  for (const method of toolMethods) { expect(languageMethods).toContain(method); expect(toolFamilies).toContain(toolRequests[method].tool); }
+  for (const method of toolMethods) for (const id of ['rust-analyzer', 'clangd', 'svelte-language-server', 'html-lsp', 'pyright'])
+    expect(answersRequest(tool(id), method), `${id} ${method}`).toBe(toolFamily(tool(id)) === toolRequests[method].tool);
+  expect(toolRequest('toString')).toBeUndefined(); expect(toolRequest('textDocument/hover')).toBeUndefined();
+  // The shapes, each as its extension sends it.
+  expect(documentRequest('rust-analyzer/expandMacro', { position: { line: 1, character: 2 } }, uri)).toEqual({ textDocument: { uri }, position: { line: 1, character: 2 } });
+  expect(documentRequest('rust-analyzer/viewFileText', { ignored: 1 }, uri)).toEqual({ uri });
+  expect(documentRequest('textDocument/switchSourceHeader', {}, uri)).toEqual({ uri });
+  expect(documentRequest('$/getCompiledCode', {}, uri)).toBe(uri);
+  expect(documentRequest('rust-analyzer/memoryUsage', { ignored: 1 }, uri)).toBeUndefined();
+  expect(documentRequest('rust-analyzer/viewCrateGraph', { full: true }, uri)).toEqual({ full: true });
+  expect(documentRequest('textDocument/hover', { position: { line: 0, character: 0 } }, uri)).toEqual({ textDocument: { uri }, position: { line: 0, character: 0 } });
+  expect(documentRequest('workspace/symbol', { query: 'a' }, uri)).toEqual({ query: 'a' });
+  expect(toolMessage('rust-analyzer/runFlycheck', {}, uri)).toEqual({ method: 'rust-analyzer/runFlycheck', params: { textDocument: { uri } }, notification: true });
+  // A command the editor starts by name: the name and the arguments are made here, not by the editor.
+  expect(toolMessage('workspace/executeCommand:migrate_to_svelte_5', { command: 'rm', arguments: ['x'] }, uri)).toEqual({ method: 'workspace/executeCommand', params: { command: 'migrate_to_svelte_5', arguments: [uri] }, notification: false });
+  const range = { start: { line: 1, character: 0 }, end: { line: 3, character: 0 } };
+  expect(toolMessage('workspace/executeCommand:extract_to_svelte_component', { range, filePath: 'New', uri: 'file:///elsewhere' }, uri)!.params)
+    .toEqual({ command: 'extract_to_svelte_component', arguments: [uri, { uri, range, filePath: 'New' }] });
+  expect(isToolCommand('workspace/executeCommand:migrate_to_svelte_5')).toBe(true); expect(isToolCommand('rust-analyzer/expandMacro')).toBe(false); expect(isToolCommand('workspace/executeCommand')).toBe(false);
+  // The names are the extensions' own.
+  const rust = source('rust-analyzer/editors/code/src/lsp_ext.ts');
+  for (const method of toolMethods.filter(method => toolRequests[method].tool === 'rust-analyzer')) expect(rust, method).toContain(`"${method}"`);
+  expect(source('vscode-clangd/src/ast.ts')).toContain("'textDocument/ast'"); expect(source('vscode-clangd/src/memory-usage.ts')).toContain("'$/memoryUsage'");
+  const svelte = ['extension.ts', 'CompiledCodeContentProvider.ts', 'typescript/findComponentReferences.ts', 'typescript/findFileReferences.ts'].map(file => source(`svelte-language-tools/packages/svelte-vscode/src/${file}`)).join('\n');
+  for (const name of ['$/getFileReferences', '$/getComponentReferences', '$/getCompiledCode', "'migrate_to_svelte_5'", "'extract_to_svelte_component'", 'arguments: [uri, { uri, range, filePath }]']) expect(svelte, name).toContain(name);
+});
+
+test('a setting is written where the tool will read it, and a spelling the person chose is kept', () => {
+  expect(withSetting(undefined, 'java.import.gradle.java.home', '/jdk')).toEqual({ java: { import: { gradle: { java: { home: '/jdk' } } } } });
+  expect(withSetting({ java: { home: '/old' } }, 'java.import.gradle.java.home', '/jdk')).toEqual({ java: { home: '/old', import: { gradle: { java: { home: '/jdk' } } } } });
+  expect(withSetting({ 'java.import.gradle.java.home': '/old' }, 'java.import.gradle.java.home', '/jdk')).toEqual({ 'java.import.gradle.java.home': '/jdk' });
+  expect(withSetting({ 'java.import': { gradle: { enabled: true } } }, 'java.import.gradle.java.home', '/jdk')).toEqual({ 'java.import': { gradle: { enabled: true, java: { home: '/jdk' } } } });
+  const written = { yaml: { schemas: { a: 'b' } } }, next = withSetting(written, 'yaml.schemas', { c: 'd' });
+  expect(next).toEqual({ yaml: { schemas: { c: 'd' } } }); expect(written).toEqual({ yaml: { schemas: { a: 'b' } } });
+  for (const name of ['java.import.gradle.java.home', 'yaml.schemas']) expect(setting(withSetting({}, name, 7), name)).toBe(7);
+  expect(withSetting({}, '__proto__.polluted', 1)).toEqual({ polluted: 1 }); expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+});
+
+test('clangd is asked for each file\'s status and given the fallback flags, as its extension does', () => {
+  expect(clangdOptions({ clangd: { fallbackFlags: ['-std=c++20'] } }, { other: 1 })).toEqual({ clangdFileStatus: true, fallbackFlags: ['-std=c++20'], other: 1 });
+  expect(clangdOptions({ 'clangd.fallbackFlags': 'not a list' }, undefined)).toEqual({ clangdFileStatus: true });
+  expect(clangdOptions(undefined, { clangdFileStatus: false })).toEqual({ clangdFileStatus: false });
+  expect(serverProfile(tool('clangd')).initializationOptions).toMatchObject({ clangdFileStatus: true });
+  expect(clangdFileStatus({ uri: 'file:///p/src/a%20b.cpp', state: 'parsing includes, running Update' })).toEqual({ uri: 'file:///p/src/a%20b.cpp', line: 'a b.cpp: parsing includes, running Update' });
+  expect(clangdFileStatus({ uri: 'file:///p/a.cpp', state: 'idle' })).toEqual({ uri: 'file:///p/a.cpp', line: undefined });
+  for (const bad of [null, {}, { uri: 1, state: 'idle' }, { uri: 'file:///a.cpp' }]) expect(clangdFileStatus(bad)).toBeUndefined();
+  const context = source('vscode-clangd/src/clangd-context.ts'), status = source('vscode-clangd/src/file-status.ts');
+  expect(context).toContain('clangdFileStatus: true'); expect(context).toContain("fallbackFlags: await config.get<string[]>('fallbackFlags')");
+  expect(status).toContain(`'${clangdFileStatusMethod}'`); expect(status).toContain('`clangd: ` + status.state');
+});
+
+test('after a rename the Svelte tool\'s import updates are applied by the rule of its extension', () => {
+  expect(svelteAsksAboutRename('file:///p/src/lib')).toBe(true); expect(svelteAsksAboutRename('file:///p/src/A.svelte')).toBe(true);
+  expect(svelteAsksAboutRename('file:///p/src/a.ts')).toBe(true); expect(svelteAsksAboutRename('file:///p/src/a.css')).toBe(false);
+  const edit = (newText: string) => ({ range: { start: { line: 1, character: 2 }, end: { line: 1, character: 9 } }, newText });
+  const answer = { documentChanges: [
+    { textDocument: { uri: 'file:///p/B.svelte', version: null }, edits: [edit('./lib/A.svelte'), edit('./lib/util')] },
+    { textDocument: { uri: 'file:///p/only-ts.ts', version: null }, edits: [edit('./lib/util')] },
+    { textDocument: { uri: 'file:///p/mixed.ts', version: null }, edits: [edit('./lib/A.svelte'), edit('./lib/util')] },
+    { kind: 'rename', oldUri: 'file:///p/x', newUri: 'file:///p/y' }, { textDocument: { uri: 5 }, edits: [] },
+    { textDocument: { uri: 'file:///p/bad.svelte' }, edits: [{ range: { start: { line: -1, character: 0 }, end: { line: 0, character: 0 } }, newText: 'x' }, 'junk'] },
+  ] };
+  // Without the TypeScript plugin, the other imports of a script file are left to the TypeScript tool.
+  expect(svelteRenameChanges(answer, false)).toEqual([
+    { uri: 'file:///p/B.svelte', edits: [edit('./lib/A.svelte'), edit('./lib/util')] }, { uri: 'file:///p/mixed.ts', edits: [edit('./lib/A.svelte')] }]);
+  expect(svelteRenameChanges(answer, true)[1]).toEqual({ uri: 'file:///p/mixed.ts', edits: [edit('./lib/A.svelte'), edit('./lib/util')] });
+  for (const bad of [null, undefined, 'text', {}, { documentChanges: 'x' }]) expect(svelteRenameChanges(bad, false)).toEqual([]);
+  const extension = source('svelte-language-tools/packages/svelte-vscode/src/extension.ts');
+  expect(extension).toContain(`'${svelteRenameEdits}'`); expect(extension).toContain("!['.ts', '.js', '.json', '.svelte'].some((ending) => lastPart.endsWith(ending))");
+  expect(extension).toContain("edit.newText.endsWith('.svelte')"); expect(extension).toContain('if (isTsOrJsFile && !containsSvelteImportUpdate)');
+});
+
 test('the Svelte tool starts with the options its extension sends', () => {
   const written = tool('svelte-language-server').initializationOptions;
   const options = svelteOptions({ svelte: { plugin: { css: { enable: false } } }, html: { autoClosingTags: false }, unrelated: { a: 1 } }, written);
@@ -101,6 +188,13 @@ test('only the Svelte tool starts again, and only for the files it read at start
 
 test('tsserver gets the memory limit of the TypeScript extension and downloads no types unless asked', () => {
   expect(typescriptOptions({}, {})).toEqual({ maxTsServerMemory: 3072, disableAutomaticTypingAcquisition: true });
+  // Type packages are downloaded where tools may be, unless the person decided: by the setting, or (the caller's check) in the options.
+  const places: string[] = [];
+  expect(typescriptOptions({}, { disableAutomaticTypingAcquisition: true }, { places, downloads: true }).disableAutomaticTypingAcquisition).toBe(false);
+  expect(typescriptOptions({}, { disableAutomaticTypingAcquisition: false }, { places, downloads: false }).disableAutomaticTypingAcquisition).toBe(true);
+  expect(typescriptOptions({ typescript: { disableAutomaticTypeAcquisition: true } }, {}, { places, downloads: true }).disableAutomaticTypingAcquisition).toBe(true);
+  expect(typescriptOptions({ typescript: { disableAutomaticTypeAcquisition: false } }, {}, { places, downloads: false }).disableAutomaticTypingAcquisition).toBe(false);
+  expect(typescriptOptions({}, { disableAutomaticTypingAcquisition: false }, { places }).disableAutomaticTypingAcquisition).toBe(false);
   expect(typescriptOptions({ typescript: { tsserver: { maxTsServerMemory: 16 } } }, {}).maxTsServerMemory).toBe(128);
   expect(typescriptOptions({ 'typescript.tsserver.maxTsServerMemory': 8192 }, {}).maxTsServerMemory).toBe(8192);
   expect(typescriptOptions({ typescript: { tsserver: { maxTsServerMemory: 1.5 } } }, {}).maxTsServerMemory).toBe(3072);
@@ -150,17 +244,22 @@ test('clangd and rust-analyzer are told what their own editors tell them, and no
   const general = clientCapabilities();
   const clangd = toolCapabilities(tool('clangd'), general)!;
   expect(reportsInactiveRegions(clangd)).toBe(true);
-  expect(clangd.textDocument).toMatchObject({ ...general.textDocument, inactiveRegionsCapabilities: { inactiveRegions: true } });
+  expect(clangd.textDocument).toMatchObject({ ...general.textDocument, completion: { ...general.textDocument!.completion, editsNearCursor: true }, inactiveRegionsCapabilities: { inactiveRegions: true } });
+  expect(source('vscode-clangd/src/clangd-context.ts')).toContain('extendedCompletionCapabilities.editsNearCursor = true');
   expect({ ...clangd, textDocument: undefined }).toEqual({ ...general, textDocument: undefined });
   const rust = toolCapabilities(tool('rust-analyzer'), { ...general, experimental: { other: 1 } })!;
-  expect(rust.experimental).toEqual({ other: 1, serverStatusNotification: true });
+  // The commands rust-analyzer may hand back are the extension's own list without the one that starts a debugger.
+  const declared = /commands: \[([^\]]+)\]/.exec(source('rust-analyzer/editors/code/src/client.ts'))![1].match(/rust-analyzer\.\w+/g)!;
+  expect(clientCommands['rust-analyzer']).toEqual(declared.filter(command => command !== 'rust-analyzer.debugSingle'));
+  expect(rust.experimental).toEqual({ other: 1, serverStatusNotification: true, hoverActions: true, localDocs: true, commands: { commands: clientCommands['rust-analyzer'] } });
+  for (const name of ['hoverActions: true', 'localDocs: true', 'serverStatusNotification: true']) expect(source('rust-analyzer/editors/code/src/client.ts')).toContain(name);
   expect(reportsInactiveRegions(rust)).toBe(false);
   expect({ ...toolCapabilities(tool('rust-analyzer'), general), experimental: undefined }).toEqual({ ...general, experimental: undefined });
   expect(isRustAnalyzer(tool('rust-analyzer'))).toBe(true);
   for (const id of ['pyright', 'gopls', 'typescript-language-server', 'json-lsp']) { expect(toolCapabilities(tool(id), general), id).toBeUndefined(); expect(serverProfile(tool(id)).capabilities, id).toBeUndefined(); }
   // The profile a tool is started with carries them.
   expect(reportsInactiveRegions(serverProfile(tool('clangd')).capabilities)).toBe(true);
-  expect(serverProfile(tool('rust-analyzer')).capabilities?.experimental).toEqual({ serverStatusNotification: true });
+  expect(serverProfile(tool('rust-analyzer')).capabilities?.experimental).toMatchObject({ serverStatusNotification: true, hoverActions: true });
   expect(reportsInactiveRegions(undefined)).toBe(false);
 });
 

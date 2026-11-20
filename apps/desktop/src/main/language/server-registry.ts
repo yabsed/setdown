@@ -108,6 +108,8 @@ export class ServerRegistry {
   }
   /** What a person set for this tool everywhere, without what Zed settings files add. */
   chosen(id: string): Options { return this.storedOptions(id); }
+  /** The same for the project of a file: the choice for the project over the one made everywhere. */
+  chosenFor(id: string, resource?: string): Options { return this.storedOptions(id, resource); }
   /** True when a choice made for one project folder applies to this file. */
   hasProjectChoices(resource: string): boolean { return this.projectScopes(resource).length > 0; }
   role(id: string, resource?: string): 'primary' | 'supplementary' { return this.options(id, resource).role ?? this.definition(id).role ?? 'primary'; }

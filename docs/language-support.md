@@ -28,8 +28,8 @@ The home screen is ordered by what a person asks, not by where a setting is stor
 
 Setdown answers for a fixed list of languages, kept in
 `src/core/document/supported-languages.ts`: Python, JavaScript and TypeScript,
-Svelte, C and C++, Rust, Go, PHP, Kotlin, JSON, YAML, Dockerfile, Docker Compose,
-CSS and HTML. Each names the one tool that serves it. Opening a file of a
+Svelte, C and C++, Rust, Go, PHP, Kotlin, Java, JSON, YAML, Dockerfile, Docker
+Compose, CSS and HTML. Each names the one tool that serves it. Opening a file of a
 supported language starts that tool and, when downloads are on, downloads it the
 first time without a question. `apps/lsp-benchmark` opens files of real projects
 in each of these languages through the same code and records what the tool
@@ -54,10 +54,14 @@ answered.
 An installation may take up to thirty minutes before Setdown gives it up. The
 limit is there for an installer that has stopped, not for a slow connection.
 
-Java is not on the list. Its tool installs through an extension that needs a
-newer Java than most projects build with and a download that did not finish on
-the measuring machine; it was never seen answering on a real project. It works
-like every other tool once a person asks for it.
+Java is served by eclipse.jdt.ls, which its Zed extension downloads. It needs
+Java 21 or newer to run, whatever Java the project builds with; Setdown starts
+it on an installed JDK that is new enough, or downloads one where it may
+download tools, and passes the project's own JDK as the project's runtime. On
+spring-petclinic the first start took close to eight minutes, download
+included, and a first answer came about five minutes after the tool was ready,
+because it imports the Maven build first. Its status line in the document panel
+says what it is doing during that time.
 
 Two supported tools are told more than their catalog entry says
 (`scripts/language-profiles/overrides.json`, `settings`). The JSON tool is given
@@ -571,26 +575,73 @@ startup, asks it things the protocol has no name for, and checks what it
 downloads. Setdown runs no extension. It carries these rules over from the
 extension sources under `vendor/`, and each rule names the file it came from
 (`extension-rules.ts`, `json-schema-content.ts`, `go-tools.ts`,
-`kotlin-download.ts`, `kotlin-options.ts`, `python-toolchains.ts`). Their tests
-compare the copied values with `vendor/`, so an updated submodule that changes
-a rule fails a test. The settings below are read by their VS Code names from a
-tool's connection settings and from Zed's `lsp.<server>.settings`.
+`kotlin-download.ts`, `kotlin-options.ts`, `python-toolchains.ts`, and one file
+for each extension's messages: `java-signals.ts`, `kotlin-signals.ts`,
+`go-gopls-rules.ts`, `intelephense-rules.ts`, `yaml-schema-choice.ts`,
+`markup-custom-data.ts`, `pyright-client.ts`). Their tests compare the copied
+values with `vendor/`, so an updated submodule that changes a rule fails a test.
+The settings below are read by their VS Code names from a tool's connection
+settings and from Zed's `lsp.<server>.settings`.
+
+What a tool says outside the protocol reaches the person in three places
+(`tool-signals.ts`): a notice with the buttons the tool offers, a standing line
+in the document's panel, and the list of work in progress. A button can send
+the tool a request or a command, write one setting for the project and start
+the tool again, or open a file or a link. It can do nothing else, and a tool
+cannot name a program to run.
 
 | Language | What Setdown does | Settings |
 | --- | --- | --- |
-| HTML | Typing `>` or `/` closes the tag and typing `=` writes the attribute's quotes (`html/autoInsert`). | `html.autoClosingTags`, `html.autoCreateQuotes` (both on) |
+| HTML | Typing `>` or `/` closes the tag and typing `=` writes the attribute's quotes (`html/autoInsert`). The script inside a page is coloured by the tool's own request (`html/semanticTokens`). The project's custom data files are named to the tool, which is then read each file it asks for and no other. | `html.autoClosingTags`, `html.autoCreateQuotes` (both on), `html.customData` |
+| CSS, SCSS, Less | The project's custom data files are named to the tool, which reads them itself. | `css.customData` |
 | Svelte | The server starts with the settings sections its extension sends, is told when an open TypeScript or JavaScript file changes, restarts when a `svelte.config.*`, `vite.config.*` or Prettier configuration file changes, and closes tags (`html/tag`). `isTrusted` is `true`: Setdown has no workspace trust, and opening a file is the consent. | `svelte.enable-ts-plugin` (off) loads `typescript-svelte-plugin` into tsserver when the project has it |
-| TypeScript, JavaScript | tsserver gets the memory limit of the TypeScript extension. It downloads no type packages on its own: VS Code lets it, and Setdown downloads nothing a person did not ask for. npm location and display language follow the extension's settings. | `typescript.tsserver.maxTsServerMemory` (3072 MB), `typescript.disableAutomaticTypeAcquisition` (write `false` to let tsserver download types), `typescript.npm`, `typescript.locale` |
-| JSON | The editor, not the server, downloads a schema (`vscode/content`). An address outside the trusted domains is refused and the file says so. Downloaded schemas are kept in `language-packages/json-schemas` and checked again with their ETag. The document panel lists the schemas a file was checked with (`json/languageStatus`). | `json.schemaDownload.enable` (on), `json.schemaDownload.trustedDomains` (the extension's list; add a domain with `"https://example.com/": true`) |
-| Go | `gopls` is looked for where the Go extension looks, with the project's Go environment: `GOBIN`, each `GOPATH/bin`, `GOROOT/bin`, then `PATH`. When none is found and downloads are on, Setdown installs it with `go install` into its own folder. An install that fails is shown; nothing else is started in its place. | A program named in settings is used as written |
-| Kotlin | The server archive is downloaded by Setdown and started only after its checksum matches the one JetBrains publishes. The server starts with the options its extension sends. An option the server would reject is left out and named in the document panel. | `intellij.jdkForSymbolResolution`, `intellij.buildTool`, `intellij.projects` |
-| C, C++ | **Switch Between Source/Header** (Alt+O, ⌥⌘O on macOS) opens the other file (`textDocument/switchSourceHeader`). Lines an `#if` leaves out of the build are faded (`textDocument/inactiveRegions`), always for the same version of the text as clangd's own diagnostics. | none |
+| TypeScript, JavaScript | tsserver gets the memory limit of the TypeScript extension. It downloads the type packages of a JavaScript project with npm, as the extension lets it, where Setdown may download tools for that project, and nowhere else; the setting decides when it is written. npm location and display language follow the extension's settings. | `typescript.tsserver.maxTsServerMemory` (3072 MB), `typescript.disableAutomaticTypeAcquisition`, `typescript.npm`, `typescript.locale` |
+| JSON | A file name VS Code has a schema for has it here too: the associations of VS Code's built-in extensions are carried over with the schema files they ship (`json-builtin-schemas.ts`, `scripts/update-json-schema-associations.mjs`), after the ones a person wrote. The editor, not the server, downloads a schema (`vscode/content`). An address outside the trusted domains is refused and the file says so. Downloaded schemas are kept in `language-packages/json-schemas` and checked again with their ETag. The document panel lists the schemas a file was checked with (`json/languageStatus`). | `json.schemaDownload.enable` (on), `json.schemaDownload.trustedDomains` (the extension's list; add a domain with `"https://example.com/": true`) |
+| Go | `gopls` is looked for where the Go extension looks, with the project's Go environment: `GOBIN`, each `GOPATH/bin`, `GOROOT/bin`, then `PATH`. When none is found and downloads are on, Setdown installs it with `go install` into its own folder. An install that fails is shown; nothing else is started in its place. gopls starts with the person's `gopls` settings and with what the extension makes of the `go.*` ones: build flags and tags, inlay hints, the vulnerability check. After a save the lint tool a person named is run for the file, its package or the project, and what it finds stands beside gopls' own marks; with downloads on, a lint tool that is missing is installed first. Without `go.lintTool` nothing runs on save, as in the extension. A "run test" lens runs `go test` in the terminal. | `gopls`, `go.buildFlags`, `go.buildTags`, `go.inlayHints.*`, `go.diagnostic.vulncheck`, `go.lintTool`, `go.lintOnSave` (`package`), `go.lintFlags`, `go.toolsEnvVars`, `go.testFlags`, `go.testTags`, `go.testTimeout` (`30s`), `go.testEnvVars`, `go.addTags`, `go.removeTags`, `go.enableCodeLens.runtest` |
+| Kotlin | The server archive is downloaded by Setdown and started only after its checksum matches the one JetBrains publishes. The server starts with the options its extension sends. An option the server would reject is left out and named in the document panel. The state of the project import and its log are shown (`intellij/*`), and a build-tool conflict is asked as a question with the tool's own choices. The project's build files say which Java it is for; when the Java of the environment is older, the tool is given an installed JDK that is new enough, and the document panel names it. | `intellij.jdkForSymbolResolution`, `intellij.buildTool`, `intellij.projects` |
+| Java | jdt.ls's status ("Activating…", the import of the build, "Ready") is a line of the document panel and its work is listed as progress (`language/status`, `language/progressReport`). What it asks with buttons is a notice with those buttons (`language/actionableNotification`), and the commands it hands back to its editor are run or refused by name (`workspace/executeClientCommand`). With no JDK that jdt.ls can run on and downloads on, the tool's Zed extension downloads one. | `java.jdt.ls.java.home`, `java.home` (the JDK jdt.ls runs on) |
+| PHP | Intelephense starts with the options its extension sends (the index is cleared when the person asks), and its memory limit becomes Node's heap size. | `intelephense.maxMemory` |
+| Python | The file `python.envFile` names is read as the Python extension reads it, and the folders of its `PYTHONPATH` are added to the paths the tool reads imports from; the document panel says so. A request that is no longer wanted is cancelled through a file, as Pyright's extension does it: Pyright reads no message while it analyses. The same argument starts Pyright's background analysis thread, so it is given only to a server Setdown ships and has looked at (`pyright-thread.ts`); a program a person chose is cancelled by message as before. | `python.envFile` (`${workspaceFolder}/.env`) |
+| YAML | The schema a file is checked against is a line of the document panel (`yaml/get/jsonSchema`), read again when the tool has loaded its schema list. | `yaml.schemas` |
+| C, C++ | **Switch Between Source/Header** (Alt+O, ⌥⌘O on macOS) opens the other file (`textDocument/switchSourceHeader`). Lines an `#if` leaves out of the build are faded (`textDocument/inactiveRegions`), always for the same version of the text as clangd's own diagnostics. What clangd is doing with each file is listed as work in progress (`textDocument/clangd.fileStatus`), and a completion may change text beside the cursor, such as `.` to `->` (`editsNearCursor`). | none |
 | Rust | rust-analyzer's standing status is shown (`experimental/serverStatus`): a warning means some results may be wrong, an error that most are incomplete or wrong. It appears as one notice that the next status replaces and as a line in the document panel. While background work is pending the file shows as still being analyzed. | none |
 
 Changed behaviour to know about: a JSON schema from a domain outside the
-trusted list is no longer downloaded, as in VS Code, and TypeScript no longer
-downloads type packages for JavaScript projects on its own, unlike VS Code.
-Each has the setting above.
+trusted list is no longer downloaded, as in VS Code. TypeScript downloads type
+packages for a JavaScript project where Setdown may download tools for that
+project, and nowhere else; the setting above decides when it is written.
+
+### Commands of a tool's own extension
+
+An extension also adds commands. The ones below are in the command list (F1)
+while the document's tool is the one they belong to, and the marked ones are in
+the editor's menu as well (`tool-command-list.ts`, `tool-commands.ts`). The
+editor names no server command and no document address: it sends a name from a
+fixed table (`protocol/language-tools.ts`), and the main process makes the
+request for the tool the document belongs to.
+
+| Tool | Commands |
+| --- | --- |
+| rust-analyzer | Run (menu), Copy Run Command Line, Peek Related Tests, Expand macro recursively (menu), Locate parent module, Locate child modules, Open Cargo.toml, Open Docs, Join lines, Find matching brace, Move Item Up and Down, Structural Search Replace, Reload workspace, Rebuild proc macros, Run, Cancel and Clear flycheck, Status, Memory Usage, the views of the syntax tree, HIR, MIR, item tree, file text, crate graph and memory layout, Interpret, Get Failed Obligations, and Enter inside a comment. The commands it hands back (run a test, show references, go to a location, rename) run in the editor; a lens that starts a debugger is not offered. |
+| clangd | Switch Between Source/Header, Show AST of the selection, Show memory usage |
+| Svelte | Show Compiled Code, Show Compiled CSS, Extract Component (menu), Find File References (menu), Find Component References (menu), Migrate Component to Svelte 5 Syntax. Renaming or moving a file updates the imports that point at it. |
+| Java | Reload Projects (menu), Import Java Projects into Workspace, Force Java Compilation |
+| Kotlin | Reload Workspace, Go to Test or Test Subject (menu) |
+| PHP | Index workspace, Cancel indexing, Enter licence key. The key is kept with the tool's settings for every project, and Intelephense activates it itself. |
+| JSON | Sort Document |
+| YAML | Select JSON Schema. The choice is written to `yaml.schemas` for every project, because it names the file by its full address. |
+| Go | Add Import (menu), Generate Unit Tests For Function (menu), Add Tags To Struct Fields (menu), Remove Tags From Struct Fields, Toggle compiler optimization details, Choose Go Environment. Tags come from `go.addTags` and `go.removeTags`; where they name none the person types them. The chosen Go is one for Setdown, not one for each project, because the project engine starts every gopls with one environment; a release that is not on the computer is downloaded with `go install golang.org/dl/…` when downloads are on. A project that sets `go.goroot`, or an environment that sets `GOROOT`, is left alone. |
+
+A program a tool starts (rust-analyzer's Run, gopls' "run test" lens) runs in
+a new terminal tab of the window: the tab starts its shell and types the command
+line once the shell's first output has gone quiet (`terminal-start.ts`). Code
+lenses are hidden until **Toggle Code Lens** turns them on, unlike in VS Code;
+a lens of a tool is therefore one command away, not on screen from the start.
+
+Not carried over: debuggers and test explorers (a lens or command that starts
+one is not offered), the Java extension's import chooser and source-action
+prompts, the Kotlin extension's export, decompile and build commands, the Go
+extension's test coverage, playground and `go.testEnvFile`, and gopls' forms.
 
 ## Finding an installation
 
@@ -842,12 +893,43 @@ clangd. Each test records which server or fixture it exercises; profile presence
 alone is not an integration-test claim.
 
 The additional real-server gate requires an installed Rust toolchain, an explicit
-rust-analyzer path and `fortls` discoverable in the test environment:
+rust-analyzer path and `fortls` discoverable in the test environment. Its
+`tool-commands.spec.ts` also needs Go on PATH, a gopls and a clangd, and checkouts
+of spf13/cobra, DaveGamble/cJSON and sveltejs/realworld, the last with its
+packages installed (the ones `apps/lsp-benchmark` keeps in `work/sources` are at
+the pinned commits):
 
 ```sh
 SETDOWN_RUST_ANALYZER_PATH=/absolute/path/to/rust-analyzer \
+SETDOWN_GOPLS_PATH=/absolute/path/to/gopls \
+SETDOWN_CLANGD_PATH=/absolute/path/to/clangd \
+SETDOWN_GO_PROJECT_PATH=/absolute/path/to/cobra \
+SETDOWN_C_PROJECT_PATH=/absolute/path/to/cJSON \
+SETDOWN_SVELTE_PROJECT_PATH=/absolute/path/to/realworld \
   npm run test:language-servers --workspace @setdown/desktop
 ```
+
+`tool-commands.spec.ts` uses the commands of a tool's own extension by hand in the
+real app, on a copy of the project and with a new profile: Go's Add Tags (the
+tags are typed, gopls changes the struct), Add Import (the list is narrowed by
+typing), Choose Go Environment, a "run test" lens that starts `go test` in a
+terminal, `go.lintTool` set to staticcheck, which Setdown installs and runs on
+save, clangd's AST and memory usage, and Svelte's compiled code and component
+references. A new profile has no Svelte tool and no staticcheck, so the run
+downloads both and needs the network. The benchmark asks the same tools the
+same things without a window; three faults were visible only here: the editor
+declined gopls' edit for a request the main process turns into a command, the
+terminal of a started program was attached twice, and a document of the project
+engine was bound again a second and a half after a save, which closed whatever
+list was open on it.
+
+The last one is how the engine keeps Zed's copy of a document equal to the
+editor's. Zed reads a file again when it changes on disk, also after Setdown's
+own save, and the host reports that its copy changed by itself
+(`project.diverged`). When the document is saved at its current revision the
+file is the editor's text, so Zed is given that text again and the document
+stays bound (`project-languages.ts` `repair`). With unsaved text the editor is
+expected to send its text whole; if it does not, the document is bound again.
 
 It uses isolated Xvfb and fails if its tools are missing. The Fortran case opens a
 real `.f90`, connects without creating user settings, checks hover/completion and

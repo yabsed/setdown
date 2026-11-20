@@ -325,6 +325,68 @@ rust-analyzer의 상태 알림은 없는 의존성을 적은 `Cargo.toml`로 실
 - HTML 자동 닫기, Alt+O, 흐리게 표시된 줄, rust-analyzer 알림을 앱 화면에서 눈으로 보지는 않았다. 서버와 주고받는 내용까지 확인했다.
 - 미리보기 성능 벤치마크(`bench:preview`)는 돌리지 않았다. 미리보기 준비·표시·전환·테마 코드와 의존성을 바꾸지 않았다.
 
+### 8.2 확장의 명령과 자체 요청 (2026-11-20 ~ 21)
+
+8.1절까지는 "도구가 맞는 답을 하게" 만드는 규칙이었다. 이번에는 확장이 LSP 표준 밖에서 하는 일을 옮겼다. 도구가 편집기에 보내는 알림과 질문, 편집기가 도구에 보내는 자체 요청, 확장이 명령 목록에 더하는 명령이다. 편집기(렌더러)는 서버 명령 이름이나 문서 주소를 정하지 못한다. 고정된 표(`protocol/language-tools.ts`)의 이름만 보내고, 요청은 메인 프로세스가 만든다.
+
+| 언어 | 옮긴 것 | 실제 도구로 확인한 것 |
+| --- | --- | --- |
+| Java | `language/status`, `language/progressReport`, `language/actionableNotification`(버튼이 있는 알림), `workspace/executeClientCommand`, 명령 3개(Reload Projects, Import Java Projects, Force Java Compilation). JDK 25 이상이 없으면 내려받기 허용 범위에서 JDK를 받는다. 지원 언어 목록에 Java를 넣었다 | spring-petclinic: 시작, 거짓 오류 없음, 틀린 줄, 호버, 완성, 정의, `java/buildWorkspace` → 1 |
+| Kotlin | `intellij/*` 요청과 알림(가져오기 상태와 기록, 서버가 묻는 선택, Reload Workspace, Go to Test), 프로젝트가 요구하는 JDK 고르기 | tut-spring-boot-kotlin: 전부 충족, `intellij/relatedTests` 응답 |
+| Python | `.env`(또는 `python.envFile`)가 `PYTHONPATH`에 더하는 폴더를 임포트 경로로 전달, 파일 기반 취소 | flask, cleo: 전부 충족. 아래 "Pyright" 항목 |
+| Go | Add Import, Generate Unit Tests For Function, Add/Remove Tags, Toggle compiler optimization details, Choose Go Environment, gopls의 "run test" 렌즈(`gopls.run_tests`), `go.lintTool`의 저장 시 실행(staticcheck, golangci-lint, revive)과 없을 때 설치 | cobra: 자체 요청 6개와 테스트 생성. 앱 화면에서 태그 추가, 임포트 추가, Go 목록, 렌즈로 `go test` 실행, staticcheck 설치와 경고 표시 |
+| Rust | 서버가 편집기에 시키는 명령, 명령 31개(Run, Expand macro, Syntax Tree, HIR/MIR, Crate Graph, Memory Layout 등) | walkdir: 자체 요청 9개 |
+| C/C++ | `editsNearCursor`, 파일 상태, AST 보기, 메모리 사용량 | cJSON: 자체 요청 3개. 앱 화면에서 AST와 메모리 사용량 |
+| Svelte | 파일 이름을 바꾸면 임포트 고치기, 파일/컴포넌트 참조, 컴파일된 코드 보기, Extract Component, Svelte 5 이전 | realworld: 자체 요청 3개. 앱 화면에서 컴파일된 코드와 컴포넌트 참조 |
+| TS/JS | 타입 꾸러미 자동 내려받기. 그 프로젝트에 도구 내려받기가 허용된 곳에서만 켜지고, `typescript.disableAutomaticTypeAcquisition`을 적으면 그 값을 따른다 | 단위 테스트까지 |
+| JSON | VS Code에 내장된 스키마 연결 목록, Sort Document | p-queue: `json/sort` |
+| HTML | custom data, `<script>` 안의 시맨틱 토큰 | html5-boilerplate: 토큰 응답 |
+| CSS, YAML | custom data, YAML 스키마 고르기 | p-queue의 워크플로: 스키마 요청 2개 |
+| PHP | Index workspace, Cancel indexing, Enter licence key, 시작 옵션 | FastRoute: `cancelIndexing` |
+
+결과 파일은 `apps/lsp-benchmark/results/own-*.md`다. 열두 건 모두 "Every expectation was met"으로 끝났다.
+
+**앱 화면에서만 보인 결함 다섯.** 벤치마크는 창 없이 언어 관리자만 돌린다. 같은 것을 실제 앱(격리된 화면, 새 프로필, 프로젝트 사본)에서 손으로 하는 테스트(`test/language-servers/tool-commands.spec.ts`, 6개)를 붙이자 다음이 나왔고, 모두 고쳤다.
+
+- Go의 태그 추가가 아무것도 바꾸지 않았다. 메인 프로세스가 gopls 명령으로 바꿔 보내는 요청인데, 편집기는 "명령이 도는 동안에만 도구의 편집을 받는다"는 규칙에서 이 요청을 명령으로 치지 않아 gopls의 편집을 거절했다(`mayEdit`).
+- 도구가 시작한 프로그램의 터미널에 "already attached" 오류가 뜨고 탭이 "(exited)"로 표시됐다. 셸을 먼저 만들고 탭이 같은 셸에 다시 붙으려 했기 때문이다. 이제 탭이 셸을 만들고, 셸의 첫 출력이 잦아들면 명령 줄을 입력한다(`terminal-start.ts`). rust-analyzer의 Run도 같은 경로다.
+- 저장하고 1.5초 뒤에 엔진 경로의 문서가 다시 묶였다. 그때 그 문서에 열려 있던 목록이 닫히고 도구 상태가 "시작 중"으로 돌아갔다. Go 환경 목록이 뜨자마자 사라지는 것으로 드러났고, 고치기 전에는 열 번에 다섯 번쯤 났고, 고친 뒤 여섯 번 연속으로 나지 않았다. Zed는 디스크의 파일이 바뀌면 다시 읽는데, Setdown이 저장한 직후에도 그렇게 하고, 호스트는 이를 "사본이 스스로 바뀌었다"고 알린다. 지금 판으로 저장된 문서라면 파일이 곧 편집기의 글이므로, 다시 묶지 않고 Zed에 그 글을 다시 준다(`project-languages.ts`의 `repair`). 이 결함은 이번 작업 전부터 엔진 경로(gopls, JSON, YAML, CSS, HTML)에 있었다. Zed가 다시 읽은 글이 왜 판 번호를 바꾸는지는 호스트 쪽을 더 봐야 안다. 고친 것은 그 결과다.
+- 편집기 어댑터가 언어 기능의 비공개 파일을 직접 가져왔다. 언어 폴더의 테스트만 돌려서 구조 경계 테스트(`architecture-boundaries.test.ts`)를 놓쳤다. 공개 진입점(`language-runtime.ts`)을 거치게 했다.
+- 항목이 몇 개 없는 선택 목록의 안내 문구가 검색 결과용 문구였다.
+
+**테스트 결과 (2026-11-21).**
+
+| 묶음 | 결과 |
+| --- | --- |
+| 단위 테스트 전체(`npm test`) | 1,866개 통과 |
+| 타입 검사, svelte-check | 오류와 경고 없음 |
+| 언어 서버 종단(`test:language-servers`: fortls, rust-analyzer, 새 테스트 6개) | 7개 통과. 그 전 실행에서는 Svelte 도구 내려받기가 "fetch failed"로 실패해 Svelte 테스트가 떨어진 적이 있다(Svelte를 띄운 다섯 번 가운데 두 번). 앱은 그 사실과 "Try again"을 보여 줬다 |
+| 언어 E2E(`test/e2e/language`) | 37개 통과, 1개 실패(`language-registry.spec.ts:310`). 8절에 적은 그 실패다. JSON이 엔진 경로로 간 뒤로 이 테스트의 가짜 JSON 서버는 쓰이지 않는다. 테스트를 다른 도구로 바꿀지 지울지는 정해지지 않았다 |
+| 미리보기 계약(`test:preview-contract`) | 단위 1,217개 통과. E2E 396개 중 394개 통과. 실패 둘은 위의 `language-registry.spec.ts:310`과 `renderer-recovery.spec.ts:67`이다. 뒤의 것은 단독으로 세 번 돌려 세 번 통과했고, 미리보기 코드는 바꾸지 않았다. 전체 실행에서 왜 한 번 떨어졌는지는 모른다. 이 실행은 `repair`를 넣기 전의 것이다 |
+| 미리보기 성능 벤치마크(`bench:preview`) | 돌리지 않았다. 미리보기 준비·표시·전환·테마 코드와 의존성을 바꾸지 않았다 |
+
+**Pyright의 파일 기반 취소.** 이 방식을 켜면 Pyright는 분석을 별도 스레드로 옮기는데, npm의 `pyright` 1.1.414는 그 스레드를 조각 파일(`dist/pyright-internal.js`)로 시작해 스레드가 곧바로 끝나고 진단이 영영 오지 않는다. `basedpyright` 1.40.2는 한 파일이라 문제가 없다. Setdown은 자기 Node로 띄우는 서버의 꾸러미를 읽어 보고, 스레드를 서버 진입 파일로 돌려 주는 작은 preload(`pyright-thread-entry.cjs`)를 붙이거나, 판단할 수 없으면 전처럼 메시지 기반 취소를 쓴다. 사람이 고른 프로그램에는 손대지 않는다.
+
+**정한 것.**
+
+- 고른 Go는 프로젝트마다가 아니라 Setdown 하나에 대한 것이다. 프로젝트 엔진이 모든 gopls를 한 환경으로 띄운다. `go.goroot`나 `GOROOT`가 있으면 건드리지 않는다. 프로젝트별 설정이 있어 기존 경로로 도는 프로젝트에서는 Go 목록을 거절한다.
+- 린트는 `go.lintTool`이 적혀 있을 때만 저장 시 돈다(gopls를 쓰는 확장과 같다). 도구가 없으면 내려받기 허용 범위에서 설치한다. 치는 동안 표시는 남고, 바뀐 줄의 표시만 사라진다.
+- "run test" 렌즈는 저장된 파일로 `go test`를 터미널에서 돌린다.
+- YAML 스키마 선택과 Intelephense 키는 모든 프로젝트에 대해 저장된다.
+- **코드 렌즈는 기본으로 꺼져 있다.** 이번 작업 전부터 있던 편집기 기본값(`codeLens: false`)이고 바꾸지 않았다. VS Code는 켜져 있다. "Toggle Code Lens"로 켠다. 확장과 같은 첫인상을 원하면 기본값을 켜는 것이 맞지만, 모든 언어의 화면에 줄이 끼어드는 변화라 정해 달라.
+
+**하지 않은 것, 확인하지 않은 것.**
+
+- 디버거와 테스트 탐색기는 옮기지 않았다(시작하는 렌즈와 명령도 내지 않는다). Go의 `dlv`, `goplay`, 커버리지, `go.testEnvFile`, gopls의 입력 양식, 취약점 검사 명령, 패키지 개요도 없다. Go 확장이 쓰던 나머지 도구 가운데 옮긴 것은 gopls가 대신하는 것(태그, 테스트 생성)과 린트 도구 셋이다.
+- Java의 가져오기 선택 화면과 소스 액션 질문, Kotlin의 내보내기·디컴파일·빌드 명령, 설정 변경 알림, 시작 실패 분류, rust-analyzer의 디버그 명령은 없다. `rust-analyzer/memoryUsage`는 배포판 rust-analyzer가 거절하고, 그 말이 그대로 보인다.
+- Python은 `pyrightNodeArguments`의 힙 옵션과 임포트 정리 명령이 없고, `.env`의 다른 변수는 서버에 전달되지 않는다(`PYTHONPATH`만 임포트 경로가 된다). PHP는 `intelephenseConfiguration` 미들웨어와 낡은 색인 검사가 없다. CSS의 `format.*` 설정도 없다.
+- 다른 Go를 고르거나 내려받는 것은 실행하지 않았다. 목록이 뜨는 데까지 봤다(이 컴퓨터의 Go 하나와 내려받을 수 있는 판들).
+- JDK 내려받기는 실행되지 않았다. 이 컴퓨터에 JDK 25가 있다. Kotlin의 JDK 고르기는 `JAVA_HOME`(17)보다 높은 JDK가 필요한 프로젝트에서 확인하지 않았다. Kotlin 벤치마크는 이미 있는 서버로 돌아서, 체크섬을 맞춰 받는 경로는 이번에도 실제로 돌지 않았다.
+- Java, Kotlin, PHP, YAML, JSON, Rust의 명령과 알림은 앱 화면에서 눌러 보지 않았다. 서버와 주고받는 내용(벤치마크)과 단위 테스트까지다. 앱 화면에서 본 것은 Go, clangd, Svelte(컴파일된 코드와 컴포넌트 참조)다. 앞의 셋에서 결함이 다섯 나왔으니, 보지 않은 언어에도 같은 종류가 남아 있을 수 있다.
+- HTML의 `<script>` 토큰과 YAML의 스키마 줄은 엔진 경로에서만 된다. 프로젝트별 설정이 있어 기존 경로로 도는 프로젝트에는 없다.
+- VS Code에서 같은 프로젝트를 여는 기준 실험(`experiment/run.sh`)은 이 세션이 VS Code를 띄울 수 없어 돌리지 않았다.
+- macOS와 Windows.
+
 ## 부록 A. 기준 소스
 
 이번에 `vendor/`에 얕은 서브모듈로 추가한 저장소다. 스테이징만 했고 커밋하지 않았다.

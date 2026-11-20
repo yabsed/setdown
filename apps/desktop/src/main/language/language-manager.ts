@@ -28,10 +28,24 @@ import { analysisPreferences } from './analysis-preferences';
 import { AnalysisPreparation } from './analysis-preparation';
 import { LanguageServiceSupervisor } from './language-supervisor';
 import { preparationIssue, runtimeHelp, sessionIssue } from './language-issue';
-import { isJdtls, javaPlan, javaSettings, jdtlsJava, toolRuntime, type JavaPlan, type ToolRuntime } from './tool-runtime';
+import { configuredJavaHome, isJdtls, javaPlan, javaSettings, jdtlsJava, toolRuntime, type JavaPlan, type ToolRuntime } from './tool-runtime';
 import { kotlinInitializationOptions } from './kotlin-options';
-import { answersRequest, autoInsertion, isClangd, isJsonServer, isKotlinServer, isSvelteServer, isTypeScriptServer, jsonLanguageStatus, restartsTool, schemaLines, svelteScriptChanged, svelteScriptLanguages, typescriptOptions } from './extension-rules';
+import { answersRequest, autoInsertion, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, isTypeScriptServer, jsonLanguageStatus, restartsTool, schemaLines, setting, svelteAsksAboutRename, svelteRenameChanges, svelteRenameEdits, svelteScriptChanged, svelteScriptLanguages, toolFamily, typescriptOptions, withSetting } from './extension-rules';
+import { isOwnAction, isToolCommand, toolMessage } from '../../protocol/language-tools';
+import { toolRules, withRules } from './tool-rules';
+import type { ToolAction, ToolRulesFactory } from './tool-signals';
+import { javaRules } from './java-signals';
+import { isKotlinReload, kotlinReloadFailure, kotlinReloadParams, kotlinRules } from './kotlin-signals';
+import { goTagsCommand, goTestProgram } from './go-project';
+import { goplsOwnOptions } from './go-gopls-rules';
+import { kotlinProjectJdk } from './kotlin-project-jdk';
+import type { KotlinJdkPlan } from './kotlin-jdk';
+import { intelephenseNodeArguments, intelephenseRules, licenceKeyProblem } from './intelephense-rules';
+import { pythonCancellation, temporaryFolderOf } from './python-cancellation';
+import { pyrightThread } from './pyright-thread';
+import { yamlDetectionAfterPick, yamlDetectionSetting, yamlFileSchemasMethod, yamlSchemasAfterPick, yamlSchemasSetting } from './yaml-schema-choice';
 import { JsonSchemaContent, schemaDownloadSettings } from './json-schema-content';
+import { withBuiltinJsonSchemas } from './json-builtin-schema-files';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
 import { AutomaticDownloadsDisabled, LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
@@ -78,6 +92,7 @@ export class LanguageManager {
       : this.packagePreparation ? null : new ProjectLanguages({ directory: path.join(app.getPath('userData'), 'language-packages'), executable: this.hostExecutable,
         home: app.getPath('home'), packaged: app.isPackaged, registry: () => this.registry, catalog: () => this.packageCatalog,
         schemas: this.schemas, toolEnvironment: () => this.discovery.environment.peek().env,
+        writeSettings: (tool, resource, root, entries) => this.writeSettings(tool, resource, root, entries),
         emit: (state, event) => { if (!state.window.isDestroyed() && !state.window.webContents.isDestroyed()) state.window.webContents.send('language:event', event); } });
     return this.projectsValue ?? undefined;
   }
@@ -121,7 +136,12 @@ export class LanguageManager {
   }
   private registryValue: ServerRegistry | undefined;
   private readonly subscribers = new Map<number, WindowState>();
-  private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; resource?: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue; settling?: Promise<void>; features?: string[] }>();
+  private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; resource?: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue; settling?: Promise<void>; features?: string[];
+    /** What Setdown adds to kotlin-lsp's initialization options beside the settings; sent again with every reload. */
+    kotlinAdded?: Record<string, unknown> }>();
+  /** Initialization options for the next start of a tool in a project, used once: Intelephense
+   * rebuilds its index when it is started with `clearCache`. */
+  private readonly startOnce = new Map<string, Record<string, unknown>>();
   private updating: Promise<void> = Promise.resolve();
   private get registry(): ServerRegistry { return this.registryValue ??= new ServerRegistry(app.getPath('userData'),()=>this.packageCatalog.profiles,
     (definition, resource) => this.zedSettings.options(definition, resource, this.packageCatalog.binding(definition.id)?.server),
@@ -305,12 +325,24 @@ export class LanguageManager {
         || typeof requestId !== 'string' || requestId.length > 128 || owner.requests.has(requestId)
         || owner.requests.size >= 64 || !params || typeof params !== 'object' || JSON.stringify(params).length > 4 * 1024 * 1024) throw new Error('Invalid or stale language request.');
       if (!answersRequest(this.registry.definitions().find(definition => definition.id === this.sessions.get(binding.server)?.id), method)) throw new Error('This tool does not answer that request.');
+      let made: ReturnType<typeof toolMessage>;
+      if (isOwnAction(method)) {
+        if (method !== 'setdown/go.modifyTags') return this.ownAction(owner, binding, method, params as Record<string, unknown>).catch(languageFailure);
+        // Sent as a command of gopls, which then changes the struct itself (`go-project.ts`).
+        const info = this.sessions.get(binding.server), definition = info && this.registry.definition(info.id);
+        const tags = info && goTagsCommand(binding.uri, params as Record<string, unknown>, this.registry.options(info.id, info.resource).settings ?? definition?.settings);
+        if (!tags) throw new Error('Select the fields of a struct in a Go file.');
+        if ('ask' in tags) return tags;
+        made = { method: 'workspace/executeCommand', params: tags, notification: false };
+      }
       const origin = { document: id, generation: binding.generation, version };
       const items = this.items.get(binding.server)!;
-      const command = method === 'workspace/executeCommand';
-      const itemMethod = method in resolveMethods || command;
+      // A tool's own request (`language-tools.ts`): its name and parameter are made here.
+      const own = made ?? toolMessage(method, params as Record<string, unknown>, binding.uri);
+      const command = method === 'workspace/executeCommand' || isToolCommand(method) || !!made;
+      const itemMethod = method in resolveMethods || method === 'workspace/executeCommand';
       const requestParams = itemMethod ? items.resolve(method, params, origin)
-        : documentRequest(method, params, binding.uri);
+        : made ? made.params : documentRequest(method, params, binding.uri);
       if (command && this.commands.has(binding.server)) throw Error('A language command is already running.');
       const token = new CancellationTokenSource();
       owner.requests.set(requestId, token);
@@ -322,7 +354,8 @@ export class LanguageManager {
           if (sync.willSave) await binding.server.notify('textDocument/willSave', requestParams);
           if (!sync.willSaveWaitUntil) return [];
         }
-        const result = await binding.server.request(method, requestParams, token, method === 'textDocument/willSaveWaitUntil' ? 1500 : undefined);
+        if (own?.notification) { await binding.server.notify(own.method, own.params); return null; }
+        const result = await binding.server.request(own?.method ?? method, requestParams, token, method === 'textDocument/willSaveWaitUntil' ? 1500 : own ? 60_000 : undefined);
         return owner.documents.get(id) === binding && binding.version === version
           ? items.remember(method, result, origin) : null;
       } catch (error) { return languageFailure(error); } finally {
@@ -536,6 +569,7 @@ export class LanguageManager {
     let runtime: ToolRuntime | undefined;
     // What was decided about Java when the tool is jdt.ls: the JDK it runs on and the JDKs a project may use.
     let java: JavaPlan | undefined;
+    let kotlinJdk: KotlinJdkPlan = {};
     const named = () => ({ id: support.server, name: definition.name });
     // A connection that cannot be prepared reports why before the request is rejected,
     // so the document shows the cause and its repair instead of a bare error.
@@ -552,7 +586,12 @@ export class LanguageManager {
       // The Zed Java extension starts jdt.ls on `java_home`, else on the environment's Java, and
       // refuses one that is too old. It is told the JDK the VS Code Java extension would run on.
       java = isJdtls(definition) ? await javaPlan(environment, options.settings ?? definition.settings) : undefined;
-      const settings = java?.tooling ? { settings: { ...(options.settings ?? definition.settings), java_home: java.tooling.home } } : {};
+      // VS Code's Java extension brings a Java of its own. Setdown has none, so where no JDK of
+      // this computer is new enough and the person named none, the Zed extension downloads one
+      // (`jdk_auto_download`), under the same leave as the download of the tool itself.
+      const written = options.settings ?? definition.settings;
+      const settings = java?.tooling ? { settings: { ...written, java_home: java.tooling.home } }
+        : java && automaticInstall && !configuredJavaHome(written) && written?.jdk_auto_download === undefined ? { settings: { ...written, jdk_auto_download: true } } : {};
       return this.provisioner.prepare(definition, support.languageId, root, environment,
         { ...options, ...settings, automaticInstall }, message => {
           if (current()) this.emit(owner, { type: 'status', state: 'starting', preparing: true, message, server: target, documents: [{ id: document.id, generation: document.generation }] });
@@ -671,6 +710,18 @@ export class LanguageManager {
         if (!current()) throw Error('Language document closed or configuration changed while choosing a tool runtime.');
         launch = runtime.launch; java = runtime.java ?? java; server = activeServer();
       }
+      if (!server && launch && isKotlinServer(definition)) {
+        // The JDK the project's build files ask for (`kotlin-jdk.ts`): the import runs on it.
+        kotlinJdk = await kotlinProjectJdk(root, launch.env ?? process.env, this.registry.options(support.server, file).settings ?? definition.settings);
+        if (!current()) throw Error('Language document closed or configuration changed while choosing the project JDK.');
+        if (kotlinJdk.env) launch = { ...launch, env: { ...launch.env, ...kotlinJdk.env } };
+        server = activeServer();
+      }
+      if (!server && launch && toolFamily(definition) === 'intelephense') {
+        // `intelephense.maxMemory`, as the extension passes it to the runtime.
+        const memory = intelephenseNodeArguments(this.registry.options(support.server, file).settings ?? definition.settings);
+        if (memory.length) launch = { ...launch, args: [...memory, ...launch.args] };
+      }
     } finally { if (pending.get(document.id) === opening) pending.delete(document.id); }
     const configuration = configurations.get(support.server)!;
     const owned = owner;
@@ -691,18 +742,38 @@ export class LanguageManager {
       // tsserver loads the Svelte plugin when the person turned it on for the Svelte tool. It is
       // looked for in the project, then where the Svelte tool was installed.
       const svelteTool = isTypeScriptServer(definition) ? this.registry.definitions().find(isSvelteServer) : undefined;
+      // tsserver may download type packages where Setdown may download tools for this project,
+      // unless the person wrote the option themselves.
+      const ownOptions = this.registry.options(support.server, file).initializationOptions ?? definition.initializationOptions;
       const scriptProfile = isTypeScriptServer(definition) ? { ...javaProfile, initializationOptions: typescriptOptions(javaProfile.configuration, javaProfile.initializationOptions,
-        { svelte: svelteTool && (this.registry.options(svelteTool.id, file).settings ?? svelteTool.settings), places: [root, path.join(app.getPath('userData'), 'language-packages', 'extensions', 'work', 'svelte')] }) } : javaProfile;
+        { svelte: svelteTool && (this.registry.options(svelteTool.id, file).settings ?? svelteTool.settings), places: [root, path.join(app.getPath('userData'), 'language-packages', 'extensions', 'work', 'svelte')],
+          downloads: ownOptions?.disableAutomaticTypingAcquisition === undefined ? this.registry.automaticInstall(support.server, file) : undefined }) } : javaProfile;
       // JetBrains' Kotlin server is told the JDK, the build tool and the projects when it starts,
       // as its VS Code extension tells it. The Zed extension that starts it here sends nothing.
       const kotlin = isKotlinServer(definition) ? kotlinInitializationOptions(scriptProfile.configuration, [pathToFileURL(root).href]) : undefined;
-      const profile = kotlin ? { ...scriptProfile, initializationOptions: mergeLanguageSettings(kotlin.options, scriptProfile.initializationOptions) } : scriptProfile;
+      const kotlinAdded = kotlinJdk.defaultSdk ? { defaultSdk: kotlinJdk.defaultSdk } : {};
+      const kotlinProfile = kotlin ? { ...scriptProfile, initializationOptions: mergeLanguageSettings({ ...kotlinAdded, ...kotlin.options }, scriptProfile.initializationOptions) } : scriptProfile;
+      // What the tool's own extension listens to and answers beyond the protocol.
+      // The JSON server knows the schemas VS Code has built in for a file name (`json-builtin-schemas.ts`).
+      const toolProfile = isJsonServer(definition) ? { ...kotlinProfile, configuration: withBuiltinJsonSchemas(kotlinProfile.configuration) } : kotlinProfile;
+      const once = this.startOnce.get(`${support.server}:${root}`); this.startOnce.delete(`${support.server}:${root}`);
+      const factories: Partial<Record<string, ToolRulesFactory>> = { kotlin: kotlinRules,
+        ...(java ? { jdtls: javaRules(java.installed) } : {}),
+        // The licence key is one of the person's own initialization options; what it adds is that the index is made anew when asked.
+        intelephense: intelephenseRules({ clearCache: once?.clearCache === true }) };
+      const profile = withRules(toolProfile, toolRules(definition, { name: definition.name, root, settings: toolProfile.configuration }, factories));
       const tool = definition;
       const recoveryKey = `${state.webContentsId}:${support.server}:${root}`;
       const pinned = prepared ? undefined : this.registry.options(support.server).executable;
       const repair = this.registry.canDetect(support.server) && !this.registry.isCustom(support.server);
       const runtimeFound = runtime?.found ?? java?.found;
-      server = new ServerSession(launch, root, params => {
+      // Pyright is told of a cancelled request through a file, as its own extension tells it:
+      // it reads no message while it analyses (`python-cancellation.ts`). The same argument
+      // starts its background thread, so it is given only to a server that can run one (`pyright-thread.ts`).
+      const thread = toolFamily(definition) === 'pyright' ? await pyrightThread(launch) : undefined;
+      const cancellation = thread ? pythonCancellation(temporaryFolderOf(launch.env ?? process.env)) : undefined;
+      const started = thread && cancellation?.args.length ? { ...launch, args: [...thread.nodeArguments, ...launch.args, ...cancellation.args], cancellation: cancellation.strategy, dispose: cancellation.dispose } : launch;
+      server = new ServerSession(started, root, params => {
         for (const binding of owned.documents.values()) {
           // Versionless push diagnostics are best-effort observations, never used as edit versions.
           if (binding.server === server && binding.uri === params.uri && (params.version === undefined || params.version === binding.version))
@@ -740,7 +811,9 @@ export class LanguageManager {
           let resource = file;
           try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Invalid scopes use the session document. */ }
           const settings = this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
-          return mergeLanguageSettings(prepared?.settings,plan!.configuration(settings),runtimeSettings);
+          const merged = mergeLanguageSettings(prepared?.settings,plan!.configuration(settings),runtimeSettings);
+          // gopls asks for its section and replaces each option it is sent, so the answer is the whole set (`go-gopls-rules.ts`).
+          return isJsonServer(tool) ? withBuiltinJsonSchemas(merged) : isGopls(tool) ? { ...merged, gopls: goplsOwnOptions(merged) } : merged;
         },
         refresh: feature => this.emit(owned, { type: 'refresh', feature,
           documents: [...owned.documents.values()].filter(b => b.server === server).map(({ id, generation }) => ({ id, generation })) }),
@@ -762,14 +835,16 @@ export class LanguageManager {
           }, 500);
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
-        schemaContent: address => this.schemas.content(address, schemaDownloadSettings(this.registry.options(tool.id, file).settings ?? tool.settings)),
+        act: action => this.toolAction(owned, server!, action),
+        schemaContent: address => this.schemas.content(address, schemaDownloadSettings(withBuiltinJsonSchemas(this.registry.options(tool.id, file).settings ?? tool.settings))),
       });
       for (const evidence of plan.context.evidence) server.context?.set(evidence.split(': ')[0], evidence.split(': ').slice(1).join(': '));
       const runtimeNote = runtime?.note ?? java?.note;
       if (runtimeNote) server.context?.set('Tool runtime', runtimeNote);
       if (kotlin?.problems.length) server.context?.set('Settings not sent', kotlin.problems.join('; '));
+      if (kotlinJdk.note) server.context?.set('Project JDK', kotlinJdk.note);
       this.items.set(server, new ServerItems());
-      this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting' });
+      this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting', ...(kotlin ? { kotlinAdded } : {}) });
       owner.servers.set(key, server);
       server.watch(root);
       const instance = server, watchedInputs = plan.inputs;
@@ -799,8 +874,130 @@ export class LanguageManager {
     const autoInsert = autoInsertion(definition, this.registry.options(support.server, file).settings ?? definition.settings);
     // Which schemas the JSON server checks this file against, as its extension shows them.
     const schemas = isJsonServer(definition) ? await server.request(jsonLanguageStatus, binding.uri, undefined, 3000).then(schemaLines, () => []) : [];
-    return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(definition) ? { companion: true } : {}),
+    const family = toolFamily(definition);
+    return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(definition) ? { companion: true } : {}), ...(family ? { tool: family } : {}),
       messages: server.messages, analysis: this.observation(server), name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...schemas, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
+  }
+  /** What a button of a tool's own notice does (`tool-signals.ts`). */
+  private async toolAction(owner: Owner, server: ServerSession, action: ToolAction): Promise<void> {
+    const info = this.sessions.get(server);
+    if (!info || this.owners.get(owner.state.webContentsId) !== owner) return;
+    // Whether what follows the effect is still to be done (`ToolAction.next`).
+    let follows = true;
+    if ('link' in action) {
+      if (!/^https:\/\//.test(action.link)) throw Error('Only https pages are opened.');
+      await shell.openExternal(action.link);
+    } else if ('restart' in action) {
+      if (info.recoveryKey) this.supervisor.reset(info.recoveryKey);
+      await this.reconnect(owner, server); follows = false;
+    } else if ('notify' in action) await server.notify(action.notify.method, action.notify.params);
+    else if ('request' in action) {
+      if (isKotlinReload(action)) await this.kotlinReload(server);
+      else await server.request(action.request.method, action.request.params, undefined, 60_000);
+    } else if ('command' in action) {
+      // The tool may change files while its command runs, as for a command the editor starts.
+      // An extension's command of this kind may run a build tool, which takes minutes.
+      const binding = [...owner.documents.values()].find(document => document.server === server);
+      if (this.commands.has(server)) throw Error('A language command is already running.');
+      if (binding) this.commands.set(server, binding);
+      try {
+        const answer = await server.request<unknown>('workspace/executeCommand', action.command, undefined, 10 * 60_000);
+        follows = answer !== null && answer !== undefined && answer !== '';
+      } finally { if (binding && this.commands.get(server) === binding) this.commands.delete(server); }
+    } else if ('setting' in action) {
+      // Written for this project, over what the person chose themselves. The changed settings
+      // start the tool again, as any change of them does, so nothing is left to follow.
+      await this.writeSettings(info.id, info.resource, info.root, [[action.setting.name, action.setting.value]]);
+      follows = this.sessions.has(server);
+    }
+    if (follows && action.next && this.sessions.has(server)) await this.toolAction(owner, server, action.next);
+  }
+  /** Writes settings of a tool by their VS Code names, over what the person chose themselves:
+   * for the project in `root`, or without one for every project. Running tools then get them
+   * as after any change of the settings. */
+  private async writeSettings(id: string, resource: string | undefined, root: string | undefined, entries: [string, unknown][]): Promise<void> {
+    const options = root ? this.registry.chosenFor(id, resource) : this.registry.chosen(id), definition = this.registry.definition(id);
+    const settings = entries.reduce((written, [name, value]) => withSetting(written, name, value), options.settings ?? definition.settings);
+    await this.changed(() => this.registry.configure(id, { args: options.args, settings, initializationOptions: options.initializationOptions,
+      root: options.root, role: options.role, formatting: options.formatting, automaticInstall: options.automaticInstall }, root));
+  }
+  /** `intellij/reloadWorkspace`: kotlin-lsp imports the project again with the initialization
+   * options of this moment, as its extension's "Reload workspace" sends them (`kotlin-signals.ts`). */
+  private async kotlinReload(server: ServerSession): Promise<void> {
+    const info = this.sessions.get(server); if (!info) return;
+    const definition = this.registry.definition(info.id), options = this.registry.options(info.id, info.resource);
+    const { params } = kotlinReloadParams(options.settings ?? definition.settings, [pathToFileURL(info.root).href], info.kotlinAdded);
+    const sent = { initializationOptions: mergeLanguageSettings(params.initializationOptions, options.initializationOptions ?? definition.initializationOptions) };
+    try { await server.request('intellij/reloadWorkspace', sent, undefined, 10 * 60_000); server.signal({ log: ['Workspace reloaded'] }); }
+    catch (error) { const message = kotlinReloadFailure(error); if (message) throw Error(message); }
+  }
+  /** A command of a tool's extension that takes more than one message to the tool
+   * (`protocol/language-tools.ts`, the rows marked `own`). */
+  private async ownAction(owner: Owner, binding: Binding, method: string, params: Record<string, unknown>): Promise<unknown> {
+    const server = binding.server, info = this.sessions.get(server);
+    if (!info) throw Error('The tool is not running.');
+    const definition = this.registry.definition(info.id);
+    if (method === 'setdown/kotlin.reloadWorkspace') { await this.kotlinReload(server); return true; }
+    if (method === 'setdown/go.testCommand') {
+      // The `go test` of a "run test" lens, as on the project engine's path (`project-languages.ts` `goAction`).
+      const settings = this.registry.options(info.id, info.resource).settings ?? definition.settings;
+      return goTestProgram(params.arguments, settings, info.root, this.discovery.environment.peek().env) ?? null;
+    }
+    // "Go: Choose Go Environment" changes the Go of the project engine, which runs gopls for
+    // every project that has no settings of its own.
+    if (method === 'setdown/go.versions' || method === 'setdown/go.chooseVersion') throw Error('This project has its own language settings, so its Go is the one of its environment.');
+    if (method === 'setdown/intelephense.indexWorkspace') {
+      // extension.ts `indexWorkspace`: the tool is stopped and started again with `clearCache: true`.
+      this.startOnce.set(`${info.id}:${info.root}`, { clearCache: true });
+      if (info.recoveryKey) this.supervisor.reset(info.recoveryKey);
+      await this.reconnect(owner, server); return true;
+    }
+    if (method === 'setdown/intelephense.licenceKey') {
+      // extension.ts `enterLicenceKey`: the key is kept, an empty one removes it, and the tool
+      // starts again with a fresh index. It is the person's, not the project's, so it is kept
+      // with what they chose for the tool everywhere. The tool activates the key itself.
+      const key = typeof params.key === 'string' ? params.key.trim() : '';
+      const problem = licenceKeyProblem(key); if (problem) throw Error(problem);
+      const chosen = this.registry.chosen(info.id);
+      const { licenceKey: _removed, ...initializationOptions } = { ...(chosen.initializationOptions ?? {}) } as Record<string, unknown>;
+      this.startOnce.set(`${info.id}:${info.root}`, { clearCache: true });
+      await this.changed(() => this.registry.configure(info.id, { args: chosen.args, settings: chosen.settings,
+        initializationOptions: key ? { ...initializationOptions, licenceKey: key } : Object.keys(initializationOptions).length ? initializationOptions : undefined,
+        root: chosen.root, role: chosen.role, formatting: chosen.formatting, automaticInstall: chosen.automaticInstall }));
+      // An unchanged key changes no setting, and the index is still to be made anew.
+      if (this.sessions.has(server)) await this.reconnect(owner, server);
+      return true;
+    }
+    if (method === 'setdown/yaml.selectSchemas') {
+      // vscode-yaml `showSchemaSelection`, as on the project engine's path (`project-languages.ts` `selectSchemas`).
+      const selected = Array.isArray(params.selected) ? params.selected.filter((uri): uri is string => typeof uri === 'string' && uri.length <= 2048).slice(0, 32) : [];
+      const inUse = await server.request<unknown>(yamlFileSchemasMethod, binding.uri, undefined, 10_000).catch(() => []);
+      const used = (Array.isArray(inUse) ? inUse : []).flatMap(entry => typeof (entry as { uri?: unknown } | null)?.uri === 'string' ? [(entry as { uri: string }).uri] : []);
+      const settings = this.registry.chosen(info.id).settings ?? definition.settings, place = { uri: binding.uri, folder: info.root };
+      const detection = yamlDetectionAfterPick(setting(settings, yamlDetectionSetting), place, selected);
+      await this.writeSettings(info.id, info.resource, undefined, [[yamlSchemasSetting, yamlSchemasAfterPick(setting(settings, yamlSchemasSetting), place, selected, used)],
+        ...(detection === undefined ? [] : [[yamlDetectionSetting, detection] as [string, unknown]])]);
+      return true;
+    }
+    throw Error(`${definition.name} has no such command.`);
+  }
+  /** After a rename the Svelte tool says which imports now point at the wrong place, and its
+   * extension applies them (`extension-rules.ts` `svelteRenameChanges`). */
+  private async svelteRenamed(owner: Owner, server: ServerSession, operation: LanguageFileOperation): Promise<void> {
+    const info = this.sessions.get(server), file = operation.files[0];
+    const tool = info && this.registry.definitions().find(definition => definition.id === info.id);
+    if (!info || !tool || !isSvelteServer(tool) || operation.kind !== 'rename' || !file?.to) return;
+    const oldUri = pathToFileURL(file.path).href, newUri = pathToFileURL(file.to).href;
+    if (!svelteAsksAboutRename(oldUri)) return;
+    const binding = [...owner.documents.values()].find(document => document.server === server);
+    if (!binding) return;
+    const settings = this.registry.options(tool.id, info.resource).settings ?? tool.settings;
+    const answer = await server.request<unknown>(svelteRenameEdits, { oldUri, newUri }, undefined, 10_000).catch(() => null);
+    const changes = svelteRenameChanges(answer, setting(settings, 'svelte.enable-ts-plugin') === true);
+    if (!changes.length || owner.documents.get(binding.id) !== binding) return;
+    const versions = [...owner.documents.values()].filter(document => document.server === server).map(({ id, generation, version }) => ({ id, generation, version }));
+    const result = await this.applyEdit(owner, server, { documentChanges: changes.map(change => ({ textDocument: { uri: change.uri, version: null }, edits: change.edits })) }, { binding, versions });
+    if (!result.applied) console.warn('Svelte import updates were not applied:', result.failureReason);
   }
   /** The Svelte tool reads TypeScript and JavaScript files from disk. Its extension tells it
    * each unsaved change of one, so a component is checked against the text in the editor. */
@@ -908,6 +1105,7 @@ export class LanguageManager {
     for (const server of owner.servers.values()) {
       if (this.sessions.get(server)?.state !== 'ready') continue;
       const versions = [...owner.documents.values()].filter(binding => binding.server === server).map(({ id, generation, version }) => ({ id, generation, version }));
+      if (phase === 'did') await this.svelteRenamed(owner, server, operation).catch(error => console.warn('Svelte import updates failed', error));
       const method = fileOperationMethod(operation, phase);
       const params = filteredFileOperation(operation, server.capabilities.fileOperation(method));
       if (!params.files.length) continue;

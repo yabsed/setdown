@@ -4,7 +4,8 @@ import { matchesLanguagePattern } from '../../core/document/language-support';
 import path from 'node:path';
 import { languageRoot } from './language-root';
 import type { ClientCapabilities } from 'vscode-languageserver-protocol';
-import { isJsonServer, isSvelteServer, isTypeScriptServer, jsonOptions, svelteOptions, toolCapabilities, typescriptOptions } from './extension-rules';
+import { clangdOptions, isClangd, isJsonServer, isSvelteServer, isTypeScriptServer, jsonOptions, svelteOptions, toolCapabilities, typescriptOptions } from './extension-rules';
+import type { ToolRules } from './tool-signals';
 import { clientCapabilities } from '../../protocol/language-features';
 
 export type ServerProfile = {
@@ -12,6 +13,8 @@ export type ServerProfile = {
   configuration: Record<string, unknown>; initializationOptions?: Record<string, unknown>;
   renameAfterDiagnostics?: boolean;
   capabilities?: ClientCapabilities;
+  /** What the tool's own extension listens to and answers beyond the protocol (`tool-rules.ts`). */
+  rules?: ToolRules;
   watches(file: string): boolean;
 };
 export function serverProfile(definition: LanguageServerDefinition, options?: { settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown> }): ServerProfile {
@@ -23,6 +26,7 @@ export function serverProfile(definition: LanguageServerDefinition, options?: { 
   if (isSvelteServer(definition)) initializationOptions = svelteOptions(configuration, initializationOptions);
   if (isTypeScriptServer(definition)) initializationOptions = typescriptOptions(configuration, initializationOptions);
   if (isJsonServer(definition)) initializationOptions = jsonOptions(initializationOptions);
+  if (isClangd(definition)) initializationOptions = clangdOptions(configuration, initializationOptions);
   if (definition.id === 'typescript-language-server' && definition.launch.kind === 'bundledNode') {
     const sdk = require.resolve('typescript/lib/tsserver.js').replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
     Object.assign(initializationOptions, { tsserver: { path: sdk, ...(initializationOptions as { tsserver?: object }).tsserver } });
