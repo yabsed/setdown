@@ -6,6 +6,16 @@ import { isInside } from '../../documents/file-system';
 
 export type RepositoryFailure = { root: string; command: string; message: string };
 export type RepositoryDiscovery = { roots: string[]; limited: boolean; parent?: string; errors: RepositoryFailure[] };
+/** Every path value declared in .gitmodules, as written. Like VS Code's
+ * Repository.submodules it does not depend on how many discovery opens. */
+export async function submodulePaths(repositoryRoot: string): Promise<string[]> {
+  const modules = path.join(repositoryRoot, '.gitmodules');
+  if (!await fs.stat(modules).then(info => info.isFile(), () => false)) return [];
+  try {
+    const output = await GitCli.run(repositoryRoot, ['config', '--null', '--file', modules, '--get-regexp', '^submodule\\..*\\.path$']);
+    return output.split('\0').filter(Boolean).map(record => record.slice(record.indexOf('\n') + 1));
+  } catch (error) { if ((error as { code?: unknown }).code === 1) return []; throw error; }
+}
 /** Bounded folder scanning and explicit submodule/worktree discovery are
  * separate. Never recurse through symlinks or silently open a parent repo. */
 export async function discoverRepositories(root: string, settings: GitSettings = DEFAULT_GIT_SETTINGS): Promise<RepositoryDiscovery> {
@@ -39,21 +49,17 @@ export async function discoverRepositories(root: string, settings: GitSettings =
   limited ||= queue.length > 0;
   for (const repositoryRoot of [...roots]) {
     if (settings.detectSubmodules) {
-      const modules = path.join(repositoryRoot, '.gitmodules');
-      if (await fs.stat(modules).then(info => info.isFile(), () => false)) {
-        try {
-          const output = await GitCli.run(repositoryRoot, ['config', '--null', '--file', modules, '--get-regexp', '^submodule\\..*\\.path$']);
-          const paths = output.split('\0').filter(Boolean).map(record => record.slice(record.indexOf('\n') + 1));
-          limited ||= paths.length > settings.detectSubmodulesLimit;
-          for (const relative of paths.slice(0, settings.detectSubmodulesLimit)) {
-            const candidate = path.resolve(repositoryRoot, relative);
-            if (!isInside(repositoryRoot, candidate)) continue;
-            const real = await fs.realpath(candidate).catch(() => null);
-            if (!real || real !== candidate) continue;
-            await connect(candidate, true);
-          }
-        } catch (error) { if ((error as { code?: unknown }).code !== 1) errors.push({ root: repositoryRoot, command: 'git config --file .gitmodules --get-regexp path', message: String(error) }); }
-      }
+      try {
+        const paths = await submodulePaths(repositoryRoot);
+        limited ||= paths.length > settings.detectSubmodulesLimit;
+        for (const relative of paths.slice(0, settings.detectSubmodulesLimit)) {
+          const candidate = path.resolve(repositoryRoot, relative);
+          if (!isInside(repositoryRoot, candidate)) continue;
+          const real = await fs.realpath(candidate).catch(() => null);
+          if (!real || real !== candidate) continue;
+          await connect(candidate, true);
+        }
+      } catch (error) { errors.push({ root: repositoryRoot, command: 'git config --file .gitmodules --get-regexp path', message: String(error) }); }
     }
     if (settings.detectWorktrees) {
       try {

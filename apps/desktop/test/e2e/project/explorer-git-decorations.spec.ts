@@ -97,6 +97,52 @@ test('Explorer renders upstream Git states, ignores and collapsed ancestors, and
   } finally { if (app) await disposeApplication(app); await rm(temporary, { recursive: true, force: true }); }
 });
 
+test('Explorer shows declared submodule folders in the upstream submodule color, with or without changes', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'setdown-explorer-submodules-'));
+  const root = path.join(temporary, 'workspace'); await mkdir(root);
+  const identity = ['-c', 'user.name=Setdown Test', '-c', 'user.email=test@example.test'];
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
+  try {
+    await exec('git', ['init', '-b', 'main'], { cwd: root });
+    for (const name of ['clean', 'ahead', 'dirty']) {
+      const cwd = path.join(root, 'vendor', name); await mkdir(cwd, { recursive: true });
+      await exec('git', ['init'], { cwd }); await exec('git', [...identity, 'commit', '--allow-empty', '-m', 'base'], { cwd });
+    }
+    await mkdir(path.join(root, 'plain')); await writeFile(path.join(root, 'plain/note.md'), '# Note\n');
+    await writeFile(path.join(root, '.gitmodules'), ['clean', 'ahead', 'dirty']
+      .map(name => `[submodule "${name}"]\n\tpath = vendor/${name}\n\turl = ./${name}\n`).join(''));
+    await exec('git', ['add', '.'], { cwd: root }); await exec('git', [...identity, 'commit', '-m', 'modules'], { cwd: root });
+    await exec('git', [...identity, 'commit', '--allow-empty', '-m', 'ahead'], { cwd: path.join(root, 'vendor/ahead') });
+    await writeFile(path.join(root, 'vendor/dirty/new.md'), '# New\n');
+    const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+    app = await electron.launch({ args: ['.'], env: { ...env, XDG_CONFIG_HOME: path.join(temporary, 'config') } });
+    await focusApplication(app); const page = await app.firstWindow();
+    await page.evaluate(root => window.marktex.restoreProjectFolder(root), root); await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    const row = (name: string) => page.locator('.explorer-row').filter({ has: page.locator('.explorer-entry-name', { hasText: new RegExp(`^${name}$`) }) });
+    await expect(row('plain')).not.toHaveAttribute('data-git-status');
+    // The parent of submodules is an ordinary folder; only the dirty one bubbles up.
+    await expect(row('vendor')).toHaveAttribute('data-git-status', 'contains-changes');
+    await row('vendor').click();
+    for (const name of ['clean', 'ahead']) {
+      await expect(row(name)).toHaveAttribute('data-git-status', 'Submodule');
+      await expect(row(name)).toHaveAccessibleName(`${name} • Submodule`);
+      await expect(row(name).locator('.explorer-git-badge')).toHaveText('S');
+      await expect(row(name).locator('.explorer-entry-name')).toHaveCSS('color', 'rgb(18, 88, 167)');
+    }
+    await expect(row('dirty')).toHaveAttribute('data-git-status', 'contains-changes');
+    await expect(row('dirty').locator('.explorer-entry-name')).toHaveCSS('color', 'rgb(18, 88, 167)');
+    expect(await row('plain').locator('.explorer-entry-name').evaluate(element => getComputedStyle(element).color)).not.toBe('rgb(18, 88, 167)');
+    await page.locator('.project-sidebar').screenshot({ path: test.info().outputPath('submodules-light.png') });
+    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await page.locator('[data-menu-item-id="menu-theme"]').hover();
+    await page.locator('[data-menu-item-id="preview-theme-github-dark"]').click();
+    await expect(row('clean').locator('.explorer-entry-name')).toHaveCSS('color', 'rgb(141, 185, 226)');
+    await page.locator('.project-sidebar').screenshot({ path: test.info().outputPath('submodules-dark.png') });
+  } finally { if (app) await disposeApplication(app); await rm(temporary, { recursive: true, force: true }); }
+});
+
 test('Explorer decorates all visible repositories and clears status when the folder changes', async () => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), 'setdown-explorer-multiple-'));
   const root = path.join(temporary, 'workspace'); await mkdir(root);

@@ -14,6 +14,7 @@ import type { AppActions } from '../../ports/ui-actions';
   import type { BrowserPlace } from '../../../protocol/browser';
   import { fileLocation, isFileLocation, readableFileLocation } from '../../../core/document/file-location';
   import { isMarkdownPath } from '../../editor/markdown-editor-port';
+  import { stepSuggestion } from './suggestion-selection';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
   const tab = $derived(view.tabs.find(t => t.id === group?.activeId));
@@ -24,6 +25,8 @@ import type { AppActions } from '../../ports/ui-actions';
   let input = $state<HTMLInputElement>();
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
+  // What the user typed. While the arrow keys are on a row the input shows that row's address instead.
+  let typed = '';
   let error = $state('');
   let selectOnClick = false;
   let activeTabId: string | undefined;
@@ -87,16 +90,26 @@ import type { AppActions } from '../../ports/ui-actions';
       ...(panelMode ? { panel: { mode: panelMode, location, draft, actions: [] } } : {}),
     }).catch(reason => { error = String(reason); });
   });
+  function present(rows: BrowserPlace[]) {
+    // Rows that arrive under a selected one replace it: back to the typed text they answer.
+    if (selected >= 0) draft = typed;
+    suggestions = rows; selected = -1;
+  }
+  function select(step: 1 | -1) {
+    selected = stepSuggestion(selected, suggestions.length, step);
+    draft = selected >= 0 ? suggestions[selected].url : typed;
+  }
   function search() {
     clearTimeout(timer); const request = ++generation;
+    typed = draft; selected = -1;
     if (composing) return;
     // Typed paths complete from the filesystem (shell-like), web input from Browser places.
     const typedPath = isFileLocation(draft) && !/^file:/i.test(draft.trim());
     timer = setTimeout(() => void (typedPath
       ? actions.completePath(draft.trim()).then(rows => rows.map(row => ({ url: row.directory ? `${row.path}/` : row.path, title: row.name, bookmarked: false, lastVisit: 0, visits: 0 })))
       : actions.browserPlaces(draft)).then(rows => {
-      if (request === generation && editing) { suggestions = rows.slice(0, 8); selected = -1; }
-    }).catch(() => { if (request === generation) suggestions = []; }), typedPath ? 40 : 100);
+      if (request === generation && editing) present(rows.slice(0, 8));
+    }).catch(() => { if (request === generation) present([]); }), typedPath ? 40 : 100);
   }
   async function go(value = selected >= 0 ? suggestions[selected].url : draft) {
     // Submitting ends the address edit and lets navigation focus the content.
@@ -195,8 +208,7 @@ import type { AppActions } from '../../ports/ui-actions';
         else if (event.key === 'Tab' && !event.shiftKey && suggestions.length && isFileLocation(draft) && !/^file:/i.test(draft.trim())) {
           event.preventDefault(); draft = suggestions[Math.max(0, selected)].url; search();
         }
-        else if (event.key === 'ArrowDown' && suggestions.length) { event.preventDefault(); selected = (selected + 1) % suggestions.length; }
-        else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); selected = (selected + suggestions.length - 1) % suggestions.length; }
+        else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && suggestions.length) { event.preventDefault(); select(event.key === 'ArrowDown' ? 1 : -1); }
       }} />
     {#if web}
       {#if web.pdf}

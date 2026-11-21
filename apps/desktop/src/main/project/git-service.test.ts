@@ -403,6 +403,33 @@ test('Explorer decorations cover unselected repositories and disappear when clea
   expect((await service.configure(state, { visibleRoots: [roots[1]] })).decorations).toEqual([]);
 });
 
+test('Explorer decorations mark every declared submodule, beyond the discovery limit and over its own status', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-decoration-modules-')); temporaryDirectories.push(root);
+  const identity = ['-c', 'user.name=Setdown Test', '-c', 'user.email=test@example.test'];
+  const [one, two] = ['one', 'two'].map(name => path.join(root, 'vendor', name));
+  await GitCli.run(root, ['init']);
+  for (const directory of [one, two]) {
+    await mkdir(directory, { recursive: true }); await GitCli.run(directory, ['init']);
+    await GitCli.run(directory, [...identity, 'commit', '--allow-empty', '-m', 'base']);
+  }
+  await writeFile(path.join(root, '.gitmodules'), '[submodule "one"]\n path = vendor/one\n url = ./one\n'
+    + '[submodule "two"]\n path = ./vendor/two/\n url = ./two\n[submodule "outside"]\n path = ../outside\n url = ./outside\n');
+  await GitCli.run(root, ['add', '.']); await GitCli.run(root, [...identity, 'commit', '-m', 'modules']);
+  // New commits make the gitlink Modified; VS Code still shows it as a submodule.
+  await GitCli.run(one, [...identity, 'commit', '--allow-empty', '-m', 'ahead']);
+  const service = new GitService(new ProjectPaths()), state = { projectRoot: root } as WindowState;
+  const snapshot = await service.configure(state, { settings: { detectSubmodulesLimit: 1 } });
+  expect(snapshot).toMatchObject({ roots: [root, one], changes: [{ path: 'vendor/one', workingTreeStatus: 'M' }] });
+  expect(snapshot.decorations).toEqual([one, two].map(path => (
+    { badge: 'S', tooltip: 'Submodule', color: 'gitDecoration.submoduleResourceForeground', propagate: false, path })));
+  // Failing to read the declared paths costs the submodule colors, not the status.
+  const run = GitCli.run;
+  vi.spyOn(GitCli, 'run').mockImplementation((directory, args, timeout) => args.includes('--get-regexp')
+    ? Promise.reject(Error('unreadable modules')) : run.call(GitCli, directory, args, timeout));
+  expect(await service.status(state)).toMatchObject({ changes: [{ path: 'vendor/one' }], errors: [],
+    decorations: [{ path: one, tooltip: 'Modified' }] });
+});
+
 test('ignore batches use Git rules, negations, global excludes, tracked entries and NUL paths', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-decoration-ignore-')); temporaryDirectories.push(root);
   const repo = path.join(root, 'repo'); await mkdir(repo);

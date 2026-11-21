@@ -1,6 +1,6 @@
 import { GitPreferences } from './git-preferences';
 import { gitSettings, type GitSettings } from '../../core/project/git-settings';
-import { discoverRepositories } from './engines/git-repositories';
+import { discoverRepositories, submodulePaths } from './engines/git-repositories';
 import { gitChangeGroups } from '../../core/project/git-change-groups';
 import { gitFileDecorations } from '../../core/project/git-file-decorations';
 import { isInside } from '../documents/file-system';
@@ -147,7 +147,7 @@ export class GitService {
     const selected = state.gitRoot && visibleRoots.includes(state.gitRoot) ? state.gitRoot : visibleRoots[0];
     state.gitRoot = selected ?? null;
     const errors = [...discovery.errors], repositories: GitCli[] = [];
-    const results = new Map<string, ParsedStatus>();
+    const results = new Map<string, ParsedStatus>(), submodules = new Map<string, string[]>();
     // A failed repository never discards successful snapshots or their counts.
     // Read the list and badge from the same bounded batch, including after edits.
     for (let offset = 0; offset < visibleRoots.length; offset += 4) {
@@ -156,7 +156,8 @@ export class GitService {
           const repository = await this.repository(root);
           if (!repository) throw Error('Repository is no longer available.');
           repositories.push(repository);
-          results.set(root, await this.readStatus(repository, settings));
+          const [status, modules] = await Promise.all([this.readStatus(repository, settings), this.submodules(root)]);
+          results.set(root, status); submodules.set(root, modules);
         } catch (error) { errors.push({ root, command: 'git status --porcelain=v2 -z --branch --ahead-behind', message: String(error) }); }
       }));
     }
@@ -176,10 +177,21 @@ export class GitService {
         && ((settings.scmCountBadge === 'all' && discovery.errors.length > 0)
           || errors.some(error => counted.includes(error.root)) || counted.some(root => results.get(root)?.statusLimited)),
       pendingChanges,
-      decorations: visibleRoots.flatMap(root => [...gitFileDecorations(results.get(root)?.changes ?? [])]
+      decorations: visibleRoots.flatMap(root => [...gitFileDecorations(results.get(root)?.changes ?? [], submodules.get(root))]
         .map(([relative, decoration]) => ({ ...decoration, path: path.join(root, relative) }))),
       changes: (parsed?.changes ?? []).map(change => ({ ...change, filePath: path.join(selected!, change.path) })),
     };
+  }
+
+  /** Declared submodule directories of one repository for its Explorer
+   * decorations, read with every status like VS Code's Repository.submodules.
+   * An unreadable .gitmodules costs only these colors, never the status;
+   * discovery reports that failure when submodule detection is on. */
+  private async submodules(root: string): Promise<string[]> {
+    const declared = await submodulePaths(root).catch(() => []);
+    return declared.map(value => path.resolve(root, value))
+      .filter(candidate => candidate !== root && isInside(root, candidate))
+      .map(candidate => path.relative(root, candidate).split(path.sep).join('/'));
   }
 
   /** Like GitIgnoreDecorationProvider: batch only requested tree entries per

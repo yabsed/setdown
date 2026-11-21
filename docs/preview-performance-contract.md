@@ -402,6 +402,14 @@ invalidated by dismissal and owner destruction. `test/e2e/browser/*.spec.ts` exe
 advancing video frames beside Markdown, web Reader and live web content,
 unchanged native page bounds/identity, Korean composition, native pointer
 selection and keyboard dismissal.
+Arrow keys walk the rows, and the address field shows the selected row's
+address without starting a query for it: the list stays that of the typed text.
+Stepping past either end of the list restores the typed text. Editing the shown
+address is typing again, so Enter opens the edited text and never the row it came
+from; rows that arrive under a selected row clear it and restore the typed text.
+The compact panel's own field follows the same rule
+(`renderer/workspace/location/suggestion-selection.ts`), and
+`browser/address-selection.spec.ts` covers both fields.
 Hiding an empty suggestion list or repositioning it on window resize is a
 presentation change, not an address-edit cancellation. Dragging a split sash
 keeps the address edit, so the open list follows its address bar, including a

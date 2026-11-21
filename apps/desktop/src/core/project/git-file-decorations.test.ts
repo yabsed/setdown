@@ -33,6 +33,13 @@ test('rename aliases retain working-tree precedence and copies do not decorate t
   expect(gitFileDecorations([change('  ')])).toEqual(new Map());
 });
 
+test('a declared submodule keeps the upstream Submodule decoration over its own status', () => {
+  const submodule = { badge: 'S', tooltip: 'Submodule', color: 'gitDecoration.submoduleResourceForeground', propagate: false };
+  const result = gitFileDecorations([change(' M', 'vendor/ahead'), change(' M', 'vendor/note.md')], ['vendor/ahead', 'vendor/clean']);
+  expect(result.get('vendor/ahead')).toEqual(submodule); expect(result.get('vendor/clean')).toEqual(submodule);
+  expect(result.get('vendor/note.md')?.tooltip).toBe('Modified'); expect(result.size).toBe(3);
+});
+
 test('SCM groups retain their own letters and colors for partially staged additions and renames', () => {
   expect(gitChangeDecoration(change('AM'), true)).toMatchObject({ badge: 'A', color: 'gitDecoration.addedResourceForeground' });
   expect(gitChangeDecoration(change('AM'), false)).toMatchObject({ badge: 'M', color: 'gitDecoration.modifiedResourceForeground' });

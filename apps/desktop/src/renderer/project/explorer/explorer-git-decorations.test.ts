@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { GitSnapshot, ProjectEntry } from '../../../protocol/desktop-api';
-import { resourceDecoration } from '../../../core/project/git-file-decorations';
+import { resourceDecoration, SUBMODULE_DECORATION } from '../../../core/project/git-file-decorations';
 import { Status } from '../../../core/project/upstream/git-resource';
 import { explorerGitDecorations } from './explorer-git-decorations';
 
@@ -18,6 +18,17 @@ test('collapsed ancestors use ordered propagating descendants, never deleted or 
   expect(result.get('/repo/src')).toMatchObject({ badge: '●', child: true, color: 'gitDecoration.modifiedResourceForeground' });
   expect(result.get('/repo/src/nested')).toMatchObject({ child: true, color: 'gitDecoration.addedResourceForeground' });
   expect(result.has('/repo/deleted')).toBe(false); expect(result.has('/repo/clean')).toBe(false);
+});
+
+test('a submodule keeps its color with changes inside and never marks its parent', () => {
+  const entries = [entry('/repo/vendor'), entry('/repo/vendor/clean'), entry('/repo/vendor/dirty')];
+  const submodule = (path: string) => ({ ...SUBMODULE_DECORATION, path });
+  const result = explorerGitDecorations(entries, '/repo', { decorations: [submodule('/repo/vendor/clean'),
+    submodule('/repo/vendor/dirty'), { ...resourceDecoration(Status.MODIFIED), path: '/repo/vendor/dirty/a.md' }] } as GitSnapshot, new Set());
+  expect(result.get('/repo/vendor/clean')).toMatchObject(SUBMODULE_DECORATION);
+  expect(result.get('/repo/vendor/dirty')).toMatchObject({ badge: '●', child: true, color: SUBMODULE_DECORATION.color });
+  expect(result.get('/repo/vendor')).toMatchObject({ child: true, color: 'gitDecoration.modifiedResourceForeground' });
+  expect(explorerGitDecorations(entries, '/repo', { decorations: [submodule('/repo/vendor/clean')] } as GitSnapshot, new Set()).has('/repo/vendor')).toBe(false);
 });
 
 test('ignore decorates only checked entries and cannot override a tracked change', () => {

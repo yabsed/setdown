@@ -3,19 +3,26 @@
   import type { LocationSuggestionsPort } from '../../ports/desktop-port';
   import type { LocationSuggestionsContext } from '../../../protocol/desktop-api';
   import { applyShellTheme } from '../../theme';
+  import { stepSuggestion } from './suggestion-selection';
   let { desktop }: { desktop: LocationSuggestionsPort } = $props();
   let context = $state<LocationSuggestionsContext>();
   let input = $state<HTMLInputElement>(), draft = $state(''), selected = $state(-1), composing = false;
+  // The panel's own input follows LocationBar: it shows the selected row's address, else this typed text.
+  let typed = '';
   const show = (value: LocationSuggestionsContext) => {
     if (!value) return;
     const opening = value.token !== context?.token;
+    if (!opening && value.panel && selected >= 0) draft = typed;
     applyShellTheme(value.theme); context = value; selected = value.selected;
     if (opening && value.panel) {
-      draft = value.panel.draft;
+      draft = typed = value.panel.draft;
       void tick().then(() => { if (context?.token === value.token) { input?.focus(); input?.select(); } });
     }
   };
-  function edit() { if (context && !composing) desktop.locationSuggestions.panelAction({ token: context.token, type: 'edit', value: draft }); }
+  function edit() {
+    typed = draft; selected = -1;
+    if (context && !composing) desktop.locationSuggestions.panelAction({ token: context.token, type: 'edit', value: draft });
+  }
   function key(event: KeyboardEvent) {
     if (!context?.panel || composing || event.isComposing) return;
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); desktop.locationSuggestions.panelAction({ token: context.token, type: 'dismiss' }); }
@@ -23,7 +30,8 @@
       event.preventDefault(); desktop.locationSuggestions.panelAction({ token: context.token, type: 'submit', value: context.rows[selected]?.url ?? draft });
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       if (!context.rows.length) return;
-      event.preventDefault(); selected = (selected + (event.key === 'ArrowDown' ? 1 : -1) + context.rows.length) % context.rows.length;
+      event.preventDefault(); selected = stepSuggestion(selected, context.rows.length, event.key === 'ArrowDown' ? 1 : -1);
+      draft = selected >= 0 ? context.rows[selected].url : typed;
     }
   }
   onMount(() => {

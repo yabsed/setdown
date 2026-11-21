@@ -9,7 +9,9 @@ wrappers are removed; the switch bodies and ignore parser are otherwise retained
 git-colors.json extracts contributes.colors defaults for gitDecoration.*.
 ../git-file-decorations.ts adapts repository XY status grouping, provider overwrite
 order, rename aliases and resourceDecoration.propagate to Setdown's NUL porcelain-v2
-snapshot. The SCM list uses
+snapshot, and GitDecorationProvider.SubmoduleDecorationData with its place after
+every status group. The main process reads the declared paths from .gitmodules
+with each status, as Repository.submodules does. The SCM list uses
 its own index/working-tree resource instead of the Explorer winner. Explorer presentation adapts workbench descendant propagation and badges
 without the VS Code extension host, URI tree, dynamic CSS service or SCM commands.
 Equal-weight descendant decorations use path order, not Resource.priority (which

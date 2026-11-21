@@ -32,9 +32,14 @@ export function gitChangeDecoration(change: GitDecorationChange, staged: boolean
   return type === undefined ? undefined : resourceDecoration(type);
 }
 
-/** VS Code's index → untracked → working tree → merge provider order. Paths
- * stay repository-relative here; the main process owns platform path resolution. */
-export function gitFileDecorations(changes: readonly GitDecorationChange[]): Map<string, GitFileDecoration> {
+/** GitDecorationProvider.SubmoduleDecorationData. */
+export const SUBMODULE_DECORATION: GitFileDecoration = {
+  badge: 'S', tooltip: 'Submodule', color: 'gitDecoration.submoduleResourceForeground', propagate: false };
+
+/** VS Code's index → untracked → working tree → merge → submodule provider
+ * order: a submodule directory keeps its own decoration whatever its status.
+ * Paths stay repository-relative here; the main process owns platform path resolution. */
+export function gitFileDecorations(changes: readonly GitDecorationChange[], submodules: readonly string[] = []): Map<string, GitFileDecoration> {
   const groups: Array<Array<{ change: GitDecorationChange; type: Status }>> = [[], [], [], []];
   for (const change of changes) {
     const { indexStatus: x, workingTreeStatus: y } = change;
@@ -55,5 +60,6 @@ export function gitFileDecorations(changes: readonly GitDecorationChange[]): Map
     if (change.previousPath && (change.indexStatus === 'R' || change.workingTreeStatus === 'R'))
       decorations.set(change.previousPath, decoration);
   }
+  for (const submodule of submodules) decorations.set(submodule, SUBMODULE_DECORATION);
   return decorations;
 }
