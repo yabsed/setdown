@@ -5,11 +5,12 @@ import { diagnosticsFor } from './diagnostic-store';
 import { scriptKindForResource } from './typescript-resource';
 import { marker } from './language-conversion';
 import type { ProviderSupport } from './document-support';
+import type { LanguageCapabilities } from '../../protocol/language';
 import { previewScheme } from '../editor/file-previews';
 
 export const hasBuiltinLanguageService = (language: string): boolean => localSupport(language).features.length > 0;
 type DiagnosticMessage = { messageText: string; next?: DiagnosticMessage[] };
-type LocalState = { state: ProviderSupport; schedule(): void; owners: Set<string> };
+type LocalState = { state: ProviderSupport; schedule(): void; owners: Set<string>; answers: Map<string, readonly BuiltinQuestion[]> };
 const states = new WeakMap<M.editor.ITextModel, LocalState>();
 const listeners = new Set<(model: M.editor.ITextModel) => void>();
 export const onBuiltinSupport = (listener: (model: M.editor.ITextModel) => void) => {
@@ -27,6 +28,37 @@ export function ownLanguageDiagnostics(_api: typeof M, model: M.editor.ITextMode
   if (!local || !replacesLocalChecks(server, model.getLanguageId())) return { dispose() {} };
   const key = crypto.randomUUID(); local.owners.add(key); local.schedule();
   return { dispose() { if (local.owners.delete(key)) local.schedule(); } };
+}
+
+// What the editor's own TypeScript worker answers, by the capability of a project tool that
+// answers the same question.
+const questions = { hoverProvider: 'hover', completionProvider: 'completion', definitionProvider: 'definition', referencesProvider: 'references',
+  documentHighlightProvider: 'highlights', signatureHelpProvider: 'signatureHelp', documentSymbolProvider: 'symbols',
+  codeActionProvider: 'codeActions', inlayHintProvider: 'inlayHints' } as const;
+export type BuiltinQuestion = typeof questions[keyof typeof questions];
+export const answeredBy = (capabilities: LanguageCapabilities): BuiltinQuestion[] =>
+  (Object.keys(questions) as (keyof typeof questions)[]).flatMap(capability => capabilities[capability] ? [questions[capability]] : []);
+const answered = (local: LocalState): BuiltinQuestion[] => [...new Set([...local.answers.values()].flat())];
+const scripts = (model: M.editor.ITextModel) => ['typescript', 'javascript'].includes(model.getLanguageId());
+function sendAnswered(api: typeof M, model: M.editor.ITextModel, local: LocalState): void {
+  if (model.isDisposed() || !scripts(model)) return;
+  const asked = answered(local), language = model.getLanguageId();
+  void (async () => {
+    const factory = await (language === 'typescript' ? api.typescript.getTypeScriptWorker() : api.typescript.getJavaScriptWorker());
+    const worker = await factory(model.uri);
+    await (worker as typeof worker & { setAnswered(uri: string, questions: string[]): Promise<void> }).setAnswered(model.uri.toString(), asked);
+  })().catch(() => {});
+}
+/** The language's own project tool answers these questions for the model, so the editor's own
+ * worker does not answer them too. That worker reads one file and none of its imports: beside
+ * the tool it adds `any` under the real type, every global a second time, and the import line
+ * as a second definition, which turns "go to definition" into a list of two. Where no project
+ * tool answers, the worker answers as before. */
+export function ownLanguageAnswers(api: typeof M, model: M.editor.ITextModel, asked: readonly BuiltinQuestion[]): M.IDisposable {
+  const local = states.get(model);
+  if (!local || !scripts(model) || !asked.length) return { dispose() {} };
+  const key = crypto.randomUUID(); local.answers.set(key, asked); local.schedule(); sendAnswered(api, model, local);
+  return { dispose() { if (local.answers.delete(key)) { local.schedule(); sendAnswered(api, model, local); } } };
 }
 
 // This pinned Monaco boundary exposes the real CSS worker through its own manager.
@@ -77,14 +109,16 @@ export function installBuiltinDiagnostics(api: typeof M, validator?: LocalValida
     let generation = 0, timer: ReturnType<typeof setTimeout> | undefined;
     const lease = diagnosticsFor(api).lease(model, 'builtin', crypto.randomUUID());
     const changed = () => listeners.forEach(fn => fn(model));
-    const local: LocalState = { state: builtinSupport(model), owners: new Set(), schedule: () => {
+    const local: LocalState = { state: builtinSupport(model), owners: new Set(), answers: new Map(), schedule: () => {
       clearTimeout(timer); const epoch = ++generation;
       lease.clear();
       const language = model.getLanguageId(), support = localSupport(language);
       if (language === 'json' && jsonDialect(diagnosticsFor(api).resource(model)) === 'jsonl') {
         support.checks = 'syntax'; support.features = ['Syntax']; support.name = 'JSON Lines';
       }
-      local.state = { id: 'builtin', name: support.name, kind: 'builtin', state: 'ready', features: local.owners.size ? support.features.filter(feature => !['Syntax', 'Available schemas', 'CSS lint'].includes(feature)) : support.features,
+      // What the project tool answers is not listed as this worker's.
+      const taken = answered(local), left = support.features.filter(feature => !(feature === 'Completion' && taken.includes('completion')) && !(feature === 'Hover' && taken.includes('hover')));
+      local.state = { id: 'builtin', name: support.name, kind: 'builtin', state: 'ready', features: local.owners.size ? left.filter(feature => !['Syntax', 'Available schemas', 'CSS lint'].includes(feature)) : left,
         checks: local.owners.size ? 'none' : support.checks,
         message: local.owners.size ? 'Diagnostics provided by the analysis server.' : support.checks === 'syntax' ? 'Syntax only. Project and import checks require a project service.' : undefined };
       changed();
@@ -120,4 +154,9 @@ export function installBuiltinDiagnostics(api: typeof M, validator?: LocalValida
   };
   api.editor.onDidCreateModel(attach);
   api.editor.getModels().forEach(attach);
+  // A changed setting starts a new worker, which knows nothing of what the tools answer. It is
+  // told again once the old one has been stopped.
+  for (const defaults of [api.typescript.typescriptDefaults, api.typescript.javascriptDefaults]) defaults.onDidChange(() => setTimeout(() => {
+    for (const model of api.editor.getModels()) { const local = states.get(model); if (local?.answers.size) sendAnswered(api, model, local); }
+  }, 0));
 }

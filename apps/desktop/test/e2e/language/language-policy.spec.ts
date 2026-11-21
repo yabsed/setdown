@@ -198,3 +198,76 @@ test('the bundled project service resolves installed and sibling imports while p
     await expect(problems).not.toContainText("Cannot find module './helper'");
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
 });
+
+test("beside the project service the editor's own worker adds no second answer, and answers again when analysis is off", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-one-answer-'));
+  const file = path.join(root, 'example.ts'), config = path.join(root, 'config');
+  await writeFile(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true } }));
+  await writeFile(path.join(root, 'helper.ts'), 'export const sum = (a: number, b: number) => a + b;\n');
+  await writeFile(file, 'import { sum } from "./helper";\nexport const three = sum(1, 2);\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await application.firstWindow(); await focusApplication(application);
+    const status = page.getByRole('button', { name: /Language status:/ }); await status.click();
+    const panel = page.getByRole('dialog', { name: 'Current file language support' });
+    await expect(panel).toContainText('Working', { timeout: 25_000 });
+    await panel.getByRole('button', { name: 'More…', exact: true }).click();
+    await expect(panel).toContainText('Results received for this open file', { timeout: 25_000 });
+    // The row of the editor's own worker no longer claims what the project service answers.
+    await panel.getByRole('button', { name: /^TypeScript\s+Built in/ }).click();
+    await panel.getByText('Supported features and service context', { exact: true }).click();
+    await expect(panel).toContainText('Formatting');
+    await expect(panel).not.toContainText('Hover');
+    await expect(panel).not.toContainText('Completion');
+    await panel.getByRole('button', { name: 'Close language status', exact: true }).click();
+
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    const selected = page.locator('.document-tab[aria-selected="true"]');
+    const toImportedName = async () => { await editor.press('Control+Home'); for (let i = 0; i < 10; i++) await editor.press('ArrowRight'); };
+    // The pointer goes onto the imported name itself, found in the drawn line.
+    const hoverImportedName = async () => {
+      const point = await page.evaluate(() => {
+        const text = (node: Node) => (node.textContent ?? '').replace(/\u00a0/g, ' ');
+        const line = [...document.querySelectorAll('.editor-host .view-line')].find(item => text(item).startsWith('import { sum }'));
+        if (!line) throw Error('The import line is not on screen.');
+        let offset = text(line).indexOf('sum');
+        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const length = text(node).length;
+          if (offset < length) { const range = document.createRange(); range.setStart(node, offset); range.setEnd(node, Math.min(length, offset + 3)); const box = range.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; }
+          offset -= length;
+        }
+        throw Error('The imported name is not on screen.');
+      });
+      await page.mouse.move(point.x - 1, point.y); await page.mouse.move(point.x, point.y);
+      const hover = page.locator('.monaco-hover:visible').first(); await expect(hover).toBeVisible();
+      return hover;
+    };
+    // One hover: the project service's. The worker cannot follow the import and would add "import sum" below it.
+    const hover = await hoverImportedName();
+    await expect(hover).toContainText('(a: number, b: number) => number');
+    expect((await hover.innerText()).match(/import sum/g) ?? []).toHaveLength(1);
+    await page.mouse.move(40, 400); await editor.press('Escape');
+    // One definition: the file the name comes from. Two answers opened a list on the import line instead.
+    await toImportedName(); await editor.press('F12');
+    await expect(selected).toContainText('helper.ts');
+    await expect(page.locator('.peekview-widget')).toHaveCount(0);
+
+    // With project analysis off for the project, the worker is the only one who answers: it does again.
+    await page.getByRole('tab', { name: /example\.ts/ }).click();
+    await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click();
+    await panel.getByRole('button', { name: /^TypeScript and JavaScript/ }).click();
+    await panel.getByRole('button', { name: 'Choose analysis tool…', exact: true }).click();
+    await panel.getByRole('combobox', { name: 'Analysis provider', exact: true }).selectOption('off');
+    await panel.getByRole('button', { name: 'Close language status', exact: true }).click();
+    await status.click(); await panel.getByRole('button', { name: 'More…', exact: true }).click();
+    await panel.getByRole('button', { name: /^TypeScript\s+Built in/ }).click();
+    await panel.getByText('Supported features and service context', { exact: true }).click();
+    await expect(panel).toContainText('Hover');
+    await panel.getByRole('button', { name: 'Close language status', exact: true }).click();
+    const alone = await hoverImportedName();
+    await expect(alone).toContainText('import sum');
+    await expect(alone).not.toContainText('(a: number, b: number) => number');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); }
+});

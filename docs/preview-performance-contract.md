@@ -436,6 +436,16 @@ restore the same live views; transferring from a context menu to its confirmatio
 active. `test/e2e/browser/*.spec.ts` checks overlap, actionable menus, restoration, and
 unsaved web input across ordinary Markdown and split Markdown/web panels.
 
+The "Save Changes" prompt is the exception while a web page is visible in its
+window: a captured picture would stop the page's video for as long as the
+question stands. The prompt is then shown in a transparent native layer above
+the whole window (`close-prompt-overlay.ts`, as `MenuOverlay` does for menus).
+The page keeps its bounds, its visibility and its frames, and the shell shows
+neither its own dialog nor a captured picture. Without a visible web page the
+shell's own dialog asks, as before. `test/e2e/browser/lifecycle.spec.ts` checks
+that the page stays shown and keeps drawing under the prompt, and that
+cancelling and "Don't Save" act on the tab that asked.
+
 Monaco context menus use that same balanced shell overlay lifecycle across
 ordinary, diff and notebook cell editors, including keyboard invocation and
 submenus. While the menu is open, captured native panels allow the entire menu

@@ -315,7 +315,7 @@ export function startWorkspace(desktop: DesktopPort) {
   const workspace = new WorkspaceState();
   const active = () => workspace.activeDocument;
   const session = createTabSession(() => workspace.active, EMPTY_ANCHOR);
-  const closePrompt = new ClosePromptController();
+  const closePrompt = new ClosePromptController(desktop.closePromptOverlay ? request => desktop.closePromptOverlay.ask({ scope: request.scope, names: [...request.names] }) : undefined);
   let surfaces: SurfaceController;
   let tabs: TabController;
   let autoSave: AutoSaveController;

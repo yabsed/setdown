@@ -6,7 +6,7 @@ import { builtinLanguageServers } from './catalog/profiles';
 import { serverProfile } from './server-definitions';
 import { answersRequest, autoInsertion, clangdFileStatus, clangdFileStatusMethod, clangdOptions, svelteAsksAboutRename, svelteRenameChanges, svelteRenameEdits, toolFamily, withSetting, InactiveRegions, inactiveRegionMessage, inactiveRegionsMethod, isClangd, isHtmlServer, isRustAnalyzer, isSvelteServer, isTypeScriptServer, packageFolder,
   reportsInactiveRegions, restartsTool, serverStatusMethod, setting, statusMeaning, svelteConfigurationSections,
-  svelteOptions, sveltePlugin, svelteRestartFiles, svelteScriptChanged, svelteScriptLanguages, toolCapabilities, toolStatus, tsserverMemory, typescriptOptions } from './extension-rules';
+  svelteOptions, sveltePlugin, svelteRestartFiles, svelteScriptChanged, svelteScriptLanguages, toolCapabilities, toolStatus, tsserverMemory, typescriptOptions, companionLanguages, tsserverOwnLanguages, tsserverPluginLanguages } from './extension-rules';
 import { clientCapabilities, documentRequest } from '../../protocol/language-features';
 import { languageMethods } from '../../protocol/language';
 import { clientCommands, isToolCommand, toolFamilies, toolMessage, toolMethods, toolRequest, toolRequests } from '../../protocol/language-tools';
@@ -345,4 +345,18 @@ test('the capabilities, the notifications and their meaning are the ones clangd\
   expect(source('rust-analyzer/editors/code/src/ctx.ts')).toContain('if (!status.quiescent) icon = "$(loading~spin) ";');
   expect(source('zed/crates/lsp/src/lsp.rs')).toContain('"serverStatusNotification": true,');
   expect(source('zed/crates/project/src/lsp_store/rust_analyzer_ext.rs')).toContain(`const METHOD: &'static str = "${serverStatusMethod}";`);
+});
+
+test("TypeScript's server answers for the languages its plugins name, and for its own four by itself", () => {
+  const typescript = builtinLanguageServers.find(profile => profile.id === 'typescript-language-server')!;
+  const svelte = builtinLanguageServers.find(profile => profile.id === 'svelte-language-server')!;
+  const options = { plugins: [{ name: '@vue/typescript-plugin', location: '/work/vue', languages: ['typescript', 'vue.js'] }, { name: '@marko/ts-plugin', location: '/work/marko' }, { name: 'other', location: '/x', languages: ['vue.js', 7] }] };
+  expect(tsserverPluginLanguages(options)).toEqual(['typescript', 'vue.js']);
+  expect(tsserverPluginLanguages({})).toEqual([]); expect(tsserverPluginLanguages({ plugins: 'none' })).toEqual([]);
+  expect(companionLanguages(typescript, options)).toEqual(['typescript', 'vue.js']);
+  // The same option given to another tool means nothing.
+  expect(companionLanguages(svelte, options)).toEqual([]);
+  // Helix lists the server for Glimmer files; without Glint's plugin it never answers them.
+  expect(typescript.languages.map(language => language.languageId).sort()).toEqual([...tsserverOwnLanguages].sort());
+  expect(typescript.watchExtensions).not.toContain('.gjs');
 });

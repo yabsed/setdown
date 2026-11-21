@@ -52,3 +52,24 @@ test('package downloads are deduplicated, reused offline, and a bad upgrade leav
  await expect(store.ensure({...pkg,version:'2.0.0',sha256:'0'.repeat(64)})).rejects.toThrow(/checksum/);
  expect(await readFile(path.join(directory,pkg.id,'extension.toml'),'utf8')).toBe(before);
 });
+test("a tool is a guest of the languages its extension lists without defining, and is not a main tool of them",async()=>{
+ // The bundled catalog as it is: Angular's extension defines "Angular" and also lists TypeScript and HTML.
+ const root=await mkdtemp(path.join(os.tmpdir(),'setdown-guest-'));roots.push(root);
+ const catalog=new RuntimeLanguageCatalog(path.join(root,'data'));
+ const profile=(id:string)=>new ServerRegistry(root,()=>catalog.profiles).definition(id);
+ const angular=profile('zed.angular.angular');
+ expect([...catalog.guestLanguages(angular).keys()].sort()).toEqual(['html','typescript']);
+ expect(catalog.guestLanguages(angular).get('typescript')).toBe('typescript');
+ expect(catalog.mainFor(angular,'angular')).toBe(true);
+ expect(catalog.mainFor(angular,'typescript')).toBe(false);
+ expect(catalog.mainFor(angular,'html')).toBe(false);
+ // The GraphQL tool reads the queries inside a script. It cannot be the script's own tool.
+ const graphql=profile('zed.graphql.graphql');
+ expect(catalog.mainFor(graphql,'graphql')).toBe(true);
+ expect(catalog.mainFor(graphql,'typescript')).toBe(false);
+ // A tool Setdown lists itself has no extension that could make it a guest.
+ const typescript=profile('typescript-language-server');
+ expect(catalog.guestLanguages(typescript).size).toBe(0);
+ expect(catalog.mainFor(typescript,'typescript')).toBe(true);
+ expect(catalog.mainFor(typescript,'rust')).toBe(false);
+});

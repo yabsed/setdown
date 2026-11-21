@@ -51,6 +51,9 @@ export class LanguageServices {
         this.options.changed();
       },
       filterCapabilities: (model, server, original) => languageFeaturePlan(server, key === primaryChannel, this.matching(model), original),
+      renameChain: model => [this.clients.get(primaryChannel), ...[...this.clients].filter(([other]) => other !== primaryChannel).map(([, other]) => other)].filter((other): other is LanguageClient => !!other && other.canRename(model)),
+      serves: (model, server) => this.matching(model).some(route => route.server === server),
+      synchronized: async () => { await Promise.all([...this.clients.values()].map(other => other.synchronized())); },
     });
     this.clients.set(key, client); return client;
   }

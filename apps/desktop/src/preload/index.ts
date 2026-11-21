@@ -257,6 +257,12 @@ const api: MarkTexApi = {
     onShow: listener => subscribe('menu-overlay:show', listener),
     onClosed: listener => subscribe('menu-overlay:closed', listener),
   },
+  closePromptOverlay: {
+    ask: request => ipcRenderer.invoke('close-prompt-overlay:ask', request),
+    context: () => ipcRenderer.invoke('close-prompt-overlay:context'),
+    decide: decision => ipcRenderer.send('close-prompt-overlay:decide', decision),
+    onShow: listener => subscribe('close-prompt-overlay:show', listener),
+  },
   executeApplicationMenuItem: (itemId) => ipcRenderer.send('menu:execute', itemId),
   getPreviewThemeAssets: (themeId) => ipcRenderer.invoke('preview:theme-assets', themeId),
   closeEmptyWindow: () => ipcRenderer.send('app:close-empty-window'),

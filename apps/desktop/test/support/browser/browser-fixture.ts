@@ -350,3 +350,10 @@ export async function findOverlayVisible(app: TestApplication) {
   return app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some(owner => owner.contentView.children.some(view =>
     'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().includes('browser-find-overlay=1') && view.getVisible())));
 }
+
+/** The page of the layer that asks "Save Changes" above a live web page. The shell's own
+ * dialog is used where no web page is showing. */
+export async function closePromptLayer(app: TestApplication) {
+  await expect.poll(() => app.windows().some(page => page.url().includes('close-prompt-overlay=1'))).toBe(true);
+  return app.windows().find(page => page.url().includes('close-prompt-overlay=1'))!;
+}

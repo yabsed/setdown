@@ -262,3 +262,19 @@ test('TypeScript uses an installed project SDK automatically; explicit choices w
   expect(missing.context.issues[0].code).toBe('typescript-sdk-missing');
   expect(sdkPath(missing)).toBe(sdk);
 });
+
+test("a Deno project analysed by TypeScript's own server says so; a tsconfig.json makes it an ordinary TypeScript project", async () => {
+  const root = state.directory, service = new AnalysisContextService(), server = definition('typescript-language-server');
+  await mkdir(path.join(root, '.git'));
+  const plain = await service.resolve(root, 'fixture', server);
+  expect(plain.context.issues.map(issue => issue.code)).not.toContain('deno-project');
+  await writeFile(path.join(root, 'deno.json'), '{}');
+  const deno = await service.resolve(root, 'fixture', server, {}, true);
+  expect(deno.context.environment).toBe('partial');
+  expect(deno.context.issues.find(issue => issue.code === 'deno-project')?.message).toBe("This is a Deno project (deno.json). TypeScript's own server reports Deno's globals and imports as errors; Deno's tool understands them.");
+  // Deno's file is watched: the notice comes and goes with it.
+  expect(deno.inputs).toEqual(expect.arrayContaining([path.join(root, 'deno.json'), path.join(root, 'deno.jsonc')]));
+  await writeFile(path.join(root, 'tsconfig.json'), '{}');
+  const both = await service.resolve(root, 'fixture', server, {}, true);
+  expect(both.context.issues.map(issue => issue.code)).not.toContain('deno-project');
+});

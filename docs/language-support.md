@@ -604,6 +604,99 @@ file retains the last valid settings until it is fixed.
 This example declares the two `!Sub` forms. It does not disable validation or
 declare other custom tags such as `!Ref` and `!GetAtt`.
 
+## Tools that work together
+
+Some files are answered by two tools at once. Vue's tool leaves every question
+about types to TypeScript's server: that server must load Vue's plugin, and it
+must be given the `.vue` file too. Setdown starts TypeScript's server itself,
+and Vue's tool comes from its Zed extension. Four general rules connect such
+tools. None of them knows a tool by name, and what they found is on the tool's
+page.
+
+**What one tool adds to another.** A Zed extension can say what it adds to a
+server it did not set up (`language_server_additional_initialization_options`
+and `language_server_additional_workspace_configuration`; in VS Code the same
+thing is `contributes.typescriptServerPlugins`). Before Setdown starts one of
+its own tools it asks the extensions that are loaded, and those that answered
+for this tool in an earlier run and are still on this computer
+(`language-packages/contributors.json`). Nothing is downloaded for the
+question. An answer that names a folder or a package that is not there is left
+out. What the tool's own profile or the person wrote wins over what was added,
+and a list keeps the entries of both sides (`tool-contributions.ts`). The
+tool's page names what was added under **Supported features and service
+context → Added by other tools**, for example `@vue/typescript-plugin
+(vue-language-server)`. When a tool that is set up later adds something, the
+running tool it adds to is started again with it.
+
+**A tool beside the language's own tool.** A plugin can name the languages it
+makes a server understand: Vue's plugin names `vue.js`. TypeScript's server
+then answers for `.vue` files beside Vue's tool, and is given the file under
+the name the plugin used. An extension can also attach its tool to languages it
+does not define: Angular's tool reads `.ts` and HTML files. It is started for
+them only in a project where it has already run for a file of its own, a
+template such as `*.component.html`. In every other project TypeScript and HTML
+files keep one tool (`language-packages/companion-projects.json`). The document
+panel shows such a tool on its own row, marked "Additional diagnostics and
+tools". Its hover, navigation, completion and diagnostics are shown with those
+of the language's own tool.
+
+Rename is the one question a single tool must answer, because its edits have to
+come from the tool that agreed to them. The tools of a file are asked in order,
+the language's own tool first: where it refuses the place, the tool beside it
+is asked, and the edits are taken from the tool that accepted. In a `.vue` file
+Vue's tool renames what belongs to the template and TypeScript renames a
+variable of the script. A linter that happens to offer rename is not asked
+(`renameChain` in `language-services.ts`, `language-feature-plan.ts`).
+
+**A question passed on.** Vue's tool asks its editor for facts about types
+(`tsserver/request`). Setdown has TypeScript's server of the same project
+answer it (`typescript.tsserverRequest`) and sends the answer back
+(`vue-rules.ts`, as Zed's `vue_language_server_ext.rs` does). Where no
+TypeScript server answers, Vue's tool is told so and goes on without that fact.
+A message Setdown does nothing with is named once in the tool's log.
+
+**A tool the project is expected to bring.** Angular's Zed extension installs
+nothing: it runs `@angular/language-server` from the project's `node_modules`.
+Where the project has none and downloads are allowed, Setdown installs the
+version Mason pins into its own folder and names it to the extension in the
+extension's own option (`angular_language_server_path`). A project's own copy,
+or a path the person wrote in that option, is used as it is
+(`project-package-tools.ts`).
+
+TypeScript's server answers only for its own four languages. The imported
+catalog also listed it for Glimmer files (`.gjs`, `.gts`), which it reads only
+with a plugin no catalog provides; such a file showed "Waiting for analysis
+results" for good. Those files now go to `ember-language-server`
+(`adjustedProfile` in `catalog/profiles.ts`).
+
+A project with `deno.json` and no `tsconfig.json` is a Deno project.
+TypeScript's own server reports Deno's globals and imports as errors there, so
+the file shows **Limited**, says why, and offers **Use Deno's tool**. That one
+click chooses Deno's tool for the project; it is not chosen without it. Where
+Deno's tool is not offered for the file, the same button opens the list of
+tools instead.
+
+**Who may be the main tool.** A tool is a guest of every language its extension
+lists without defining: Angular's tool and the GraphQL tool list TypeScript.
+A guest is never offered as the main tool of that language, neither in the
+document's **Choose analysis tool…** nor in Language Support: it cannot stand
+in for TypeScript's own (`guestLanguages` and `mainFor` in
+`runtime-language-catalog.ts`).
+
+**The editor's own worker steps back.** The editor has a TypeScript worker of
+its own. It reads the one open file and none of its imports. Where no project
+tool is connected it answers hover, completion and navigation inside that
+file. Beside a project tool the same answers were shown twice, and the second
+one was the poorer: `any` under the type Deno's tool reported, every global
+twice in the completion list, and the import line itself as a second
+definition, which turned "go to definition" on an imported name into a list of
+two. The worker now leaves a question to the language's own tool when that
+tool answers it (hover, completion, definition, references, highlights,
+parameter hints, symbols, quick fixes, inlay hints), and takes it back when
+the tool goes. A linter beside the language's tool does not silence it. The
+**Built in** row lists only what the worker still answers
+(`ownLanguageAnswers` in `builtin-diagnostics.ts`, `typescript.worker.ts`).
+
 ## What each tool's own editor tells it
 
 A tool's VS Code extension does more than start it. It tells the tool things at

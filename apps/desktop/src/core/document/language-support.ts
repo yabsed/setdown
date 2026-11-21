@@ -1,6 +1,9 @@
 /** Routing metadata is independent of analysis, installation and editor APIs. */
 export type LanguageRoute = {
   role?: 'primary' | 'supplementary'; enabled?: boolean; formatting?: boolean;
+  /** The tool answers for this language beside the language's own tool because the two work
+   * together (a plugin of one runs in the other), not as a linter added to it. */
+  beside?: boolean;
   scopes?: { root: string; enabled?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean }[];
   server: string; languageId: string; monacoId?: string;
   extensions: string[]; caseSensitiveExtensions?: string[];

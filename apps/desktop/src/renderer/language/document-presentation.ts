@@ -1,4 +1,5 @@
 import type { AnalysisContext, DocumentAnalysis } from '../../core/document/analysis-context';
+import { denoProjectIssue, denoTool } from '../../core/document/analysis-context';
 import type { LanguageIssue } from '../../protocol/language';
 import type { ProviderSupport } from './document-support';
 
@@ -90,7 +91,10 @@ export function presentSupport(providers: ProviderSupport[], policy?: DocumentAn
   if (environment) return { label: 'Needs setup', tone: 'warning', title: environment.issues[0]?.message ?? 'Choose an environment for this project.', action: environmentAction(environment.kind) };
   if (failed) return stopped();
   const limited = contexts.find(context => context.environment === 'partial');
-  if (limited) return { label: 'Limited', tone: 'warning', title: limited.issues[0]?.message ?? 'The project environment has limitations.', action: { kind: 'details', label: 'Review environment…' } };
+  if (limited) return { label: 'Limited', tone: 'warning', title: limited.issues[0]?.message ?? 'The project environment has limitations.',
+    // A project of another tool is not repaired in the environment: the person takes that tool,
+    // in one step. The panel opens the list of tools instead where this one is not offered.
+    action: limited.issues[0]?.code === denoProjectIssue ? { kind: 'provider', label: "Use Deno's tool", server: denoTool } : { kind: 'details', label: 'Review environment…' } };
   // The tool answered, and said itself that something this file brings in was not found. Only now
   // does what Setdown inferred about the project become worth saying, as the likely reason.
   const symptom = active.find(p => p.unresolved?.count);

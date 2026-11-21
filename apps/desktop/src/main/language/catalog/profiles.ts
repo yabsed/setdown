@@ -2,10 +2,18 @@ import data from './profiles.json';
 import mason from './mason.json';
 import zed from './zed-profiles.json';
 import type { LanguageServerDefinition } from '../../../core/document/language-definition';
+import { tsserverOwnLanguages } from '../extension-rules';
 
 // Generated data stays in main. Neither the Mason catalog nor upstream profiles
 // belong in the renderer/preview bundle. See scripts/language-profiles for provenance.
-export const builtinLanguageServers = [...data.profiles, ...zed.profiles] as LanguageServerDefinition[];
+/** What the catalogs cannot know about a tool, applied to every imported profile: the bundled
+ * TypeScript server keeps the languages it answers for by itself (`tsserverOwnLanguages`). */
+export function adjustedProfile(profile: LanguageServerDefinition): LanguageServerDefinition {
+  if (profile.id !== 'typescript-language-server' || profile.launch.kind !== 'bundledNode') return profile;
+  return { ...profile, languages: profile.languages.filter(language => tsserverOwnLanguages.includes(language.languageId)),
+    watchExtensions: profile.watchExtensions.filter(extension => !['.gjs', '.gts'].includes(extension)) };
+}
+export const builtinLanguageServers = ([...data.profiles, ...zed.profiles] as LanguageServerDefinition[]).map(adjustedProfile);
 export const profileSource = `Helix ${data.sources.helix.revision.slice(0, 12)} · Zed extensions`;
 export const languageCatalog = [
   ...mason.packages,

@@ -3,16 +3,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, ipcMain, shell } from 'electron';
 import { pathDialog } from '../dialogs/path-picker';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { watchFile, unwatchFile } from 'node:fs';
 import { CancellationTokenSource } from 'vscode-jsonrpc/node';
 import type { WorkspaceEdit, ApplyWorkspaceEditResult, ServerCapabilities, TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 import { languageMethods, textSynchronization, type LanguageCapabilities, type LanguageCatalog, type LanguageCatalogEntry, type LanguageServerOptions, type LanguageDocument, type LanguageEvent, type LanguageIssue, type LanguageMethod, type LanguageAnswer } from '../../protocol/language';
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
-import { ServerRegistry, findExecutable } from './server-registry';
+import { ServerRegistry, findExecutable, type Companion } from './server-registry';
 import { validateLanguageDefinition } from '../../core/document/language-definition';
 import { languageRoot, type LanguageRoot } from './language-root';
+import { languageSupport } from '../../core/document/language-support';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
 import { ServerItems } from './server-items';
 import { documentRequest, featureNames, resolveMethods } from '../../protocol/language-features';
@@ -31,9 +32,10 @@ import { LanguageServiceSupervisor } from './language-supervisor';
 import { preparationIssue, runtimeHelp, sessionIssue } from './language-issue';
 import { configuredJavaHome, isJdtls, javaPlan, javaSettings, jdtlsJava, toolRuntime, type JavaPlan, type ToolRuntime } from './tool-runtime';
 import { kotlinInitializationOptions } from './kotlin-options';
-import { answersRequest, autoInsertion, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, isTypeScriptServer, jsonLanguageStatus, restartsTool, schemaLines, setting, svelteAsksAboutRename, svelteRenameChanges, svelteRenameEdits, svelteScriptChanged, svelteScriptLanguages, toolFamily, typescriptOptions, withSetting } from './extension-rules';
+import { answersRequest, autoInsertion, companionLanguages, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, isTypeScriptServer, jsonLanguageStatus, restartsTool, schemaLines, setting, svelteAsksAboutRename, svelteRenameChanges, svelteRenameEdits, svelteScriptChanged, svelteScriptLanguages, toolFamily, typescriptOptions, withSetting } from './extension-rules';
 import { isOwnAction, isToolCommand, toolMessage } from '../../protocol/language-tools';
 import { toolRules, withRules } from './tool-rules';
+import { contributed, joinSettings, withContributions, type Contribution, describeContributions } from './tool-contributions';
 import type { ToolAction, ToolRulesFactory } from './tool-signals';
 import { javaRules } from './java-signals';
 import { isKotlinReload, kotlinReloadFailure, kotlinReloadParams, kotlinRules } from './kotlin-signals';
@@ -59,7 +61,7 @@ import { ProjectLanguages } from './project-languages';
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
-export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment' | 'pythonEnvironments'>>;
+export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment' | 'pythonEnvironments' | 'contributions'>>;
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 /** How long quitting waits for language tools to shut down: above the 3 s the project host gives
@@ -142,7 +144,9 @@ export class LanguageManager {
   private readonly subscribers = new Map<number, WindowState>();
   private readonly sessions = new Map<ServerSession, { plan?: AnalysisPlan; recoveryKey?: string; unwatch?: () => void; id: string; root: string; resource?: string; rootReason?: string; configuration?: string; state: 'starting' | 'ready' | 'failed'; message?: string; issue?: LanguageIssue; settling?: Promise<void>; features?: string[];
     /** What Setdown adds to kotlin-lsp's initialization options beside the settings; sent again with every reload. */
-    kotlinAdded?: Record<string, unknown> }>();
+    kotlinAdded?: Record<string, unknown>;
+    /** What other tools' extensions added to this tool when it was started (`tool-contributions.ts`). Absent for a tool its own extension set up. */
+    contributed?: string }>();
   /** Initialization options for the next start of a tool in a project, used once: Intelephense
    * rebuilds its index when it is started with `clearCache`. */
   private readonly startOnce = new Map<string, Record<string, unknown>>();
@@ -279,10 +283,10 @@ export class LanguageManager {
       if (!named.has(language.id) || language.sourceId === language.id) named.set(language.id, language);
     const languages = [...named.values()].map(language => ({ id: language.id, name: language.label ?? language.name,
       selection: registry.analysisSelection(language.id), defaultServer: registry.defaultServer(language.id),
-      servers: definitions.filter(d => registry.role(d.id) === 'primary' && d.languages.some(l => l.languageId === language.id || l.monacoId === language.id)).map(d => d.id) }));
+      servers: definitions.filter(d => registry.role(d.id) === 'primary' && this.mainFor(d, language.id)).map(d => d.id) }));
     for (const definition of definitions.filter(d => registry.isCustom(d.id))) for (const language of definition.languages) if (!languages.some(l => l.id === language.languageId))
       languages.push({ id: language.languageId, name: language.languageId, selection: registry.analysisSelection(language.languageId), defaultServer: registry.defaultServer(language.languageId),
-        servers: definitions.filter(d => registry.role(d.id) === 'primary' && d.languages.some(l => l.languageId === language.languageId)).map(d => d.id) });
+        servers: definitions.filter(d => registry.role(d.id) === 'primary' && this.mainFor(d, language.languageId)).map(d => d.id) });
     for (const entry of entries) if (!entry.notebook) entry.selected = languages.filter(language => language.defaultServer === entry.id).map(language => language.id);
     return { release: catalog.release, profileSource, profiles: definitions.length, entries, automaticInstall: registry.automaticInstall(), languages };
   }
@@ -564,7 +568,7 @@ export class LanguageManager {
     const roots = new Map<string, LanguageRoot>();
     const rootFor = (definition: LanguageServerDefinition) => {
       const language = candidates.find(candidate => candidate.server === definition.id)?.languageId;
-      if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, { ...definition, languages: definition.languages.filter(l => l.languageId === language) },
+      if (!roots.has(definition.id)) roots.set(definition.id, languageRoot(file, { ...definition, languages: this.registry.projectLanguages(definition.id, language, file) },
         state.projectRoot ? canonicalPath(state.projectRoot) : undefined, this.registry.options(definition.id, file).root));
       return roots.get(definition.id)!.path;
     };
@@ -585,6 +589,8 @@ export class LanguageManager {
     // What was decided about Java when the tool is jdt.ls: the JDK it runs on and the JDKs a project may use.
     let java: JavaPlan | undefined;
     let kotlinJdk: KotlinJdkPlan = {};
+    let additions: Contribution[] | undefined;
+    let created = false;
     const named = () => ({ id: support.server, name: definition.name });
     // A connection that cannot be prepared reports why before the request is rejected,
     // so the document shows the cause and its repair instead of a bare error.
@@ -715,7 +721,7 @@ export class LanguageManager {
         definition = this.registry.definition(support.server); root = rootFor(definition);
       }
       if (!server) {
-        plan = await this.contexts.resolve(root, roots.get(support.server)?.reason ?? 'Project', { ...definition, languages: definition.languages.filter(l => l.languageId === support.languageId) }, this.registry.options(support.server, file));
+        plan = await this.contexts.resolve(root, roots.get(support.server)?.reason ?? 'Project', { ...definition, languages: this.registry.projectLanguages(definition.id, support.languageId, file) }, this.registry.options(support.server, file));
         if (!current()) throw Error('Language document closed or configuration changed while resolving its environment.');
         // Another document may have finished resolving the same context meanwhile.
         server = activeServer();
@@ -734,6 +740,12 @@ export class LanguageManager {
         if (kotlinJdk.env) launch = { ...launch, env: { ...launch.env, ...kotlinJdk.env } };
         server = activeServer();
       }
+      if (!server && launch && !prepared) {
+        // What the extensions of other tools add to a tool they did not set up (`tool-contributions.ts`).
+        additions = await this.contributionsFor(definition, root, launch.env ?? this.discovery.environment.peek().env);
+        if (!current()) throw Error('Language document closed or configuration changed while asking what other tools add.');
+        server = activeServer();
+      }
       if (!server && launch && toolFamily(definition) === 'intelephense') {
         // `intelephense.maxMemory`, as the extension passes it to the runtime.
         const memory = intelephenseNodeArguments(this.registry.options(support.server, file).settings ?? definition.settings);
@@ -744,7 +756,7 @@ export class LanguageManager {
     const owned = owner;
     if (!server) {
       if (!launch) throw Error('Language session closed during discovery.');
-      const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch, this.registry.options(support.server, file)])).digest('hex').slice(0, 24);
+      const fingerprint = createHash('sha256').update(JSON.stringify([configuration, launch, this.registry.options(support.server, file), ...(additions?.length ? [additions] : [])])).digest('hex').slice(0, 24);
       const key = `${support.server}:${root}:${fingerprint}`;
       if (!plan) throw Error('No analysis launch plan.');
       const preparedProfile = prepared ? {...plan.profile,configuration:mergeLanguageSettings(prepared.settings,plan.profile.configuration),
@@ -765,11 +777,14 @@ export class LanguageManager {
       const scriptProfile = isTypeScriptServer(definition) ? { ...javaProfile, initializationOptions: typescriptOptions(javaProfile.configuration, javaProfile.initializationOptions,
         { svelte: svelteTool && (this.registry.options(svelteTool.id, file).settings ?? svelteTool.settings), places: [root, path.join(app.getPath('userData'), 'language-packages', 'extensions', 'work', 'svelte')],
           downloads: ownOptions?.disableAutomaticTypingAcquisition === undefined ? this.registry.automaticInstall(support.server, file) : undefined }) } : javaProfile;
+      // What other tools' extensions add lies under what the person and the tool's own extension wrote.
+      const joinedProfile = withContributions(scriptProfile, additions ?? []);
+      const addedSettings = contributed(additions ?? []).settings;
       // JetBrains' Kotlin server is told the JDK, the build tool and the projects when it starts,
       // as its VS Code extension tells it. The Zed extension that starts it here sends nothing.
-      const kotlin = isKotlinServer(definition) ? kotlinInitializationOptions(scriptProfile.configuration, [pathToFileURL(root).href]) : undefined;
+      const kotlin = isKotlinServer(definition) ? kotlinInitializationOptions(joinedProfile.configuration, [pathToFileURL(root).href]) : undefined;
       const kotlinAdded = kotlinJdk.defaultSdk ? { defaultSdk: kotlinJdk.defaultSdk } : {};
-      const kotlinProfile = kotlin ? { ...scriptProfile, initializationOptions: mergeLanguageSettings({ ...kotlinAdded, ...kotlin.options }, scriptProfile.initializationOptions) } : scriptProfile;
+      const kotlinProfile = kotlin ? { ...joinedProfile, initializationOptions: mergeLanguageSettings({ ...kotlinAdded, ...kotlin.options }, joinedProfile.initializationOptions) } : joinedProfile;
       // What the tool's own extension listens to and answers beyond the protocol.
       // The JSON server knows the schemas VS Code has built in for a file name (`json-builtin-schemas.ts`).
       const toolProfile = isJsonServer(definition) ? { ...kotlinProfile, configuration: withBuiltinJsonSchemas(kotlinProfile.configuration) } : kotlinProfile;
@@ -829,7 +844,7 @@ export class LanguageManager {
           let resource = file;
           try { if (scopeUri?.startsWith('file:')) resource = fileURLToPath(scopeUri); } catch { /* Invalid scopes use the session document. */ }
           const settings = this.registry.options(definition.id, isInside(root, canonicalPath(resource)) ? resource : file).settings ?? definition.settings;
-          const merged = mergeLanguageSettings(prepared?.settings,plan!.configuration(settings),runtimeSettings);
+          const merged = joinSettings(addedSettings, mergeLanguageSettings(prepared?.settings,plan!.configuration(settings),runtimeSettings));
           // gopls asks for its section and replaces each option it is sent, so the answer is the whole set (`go-gopls-rules.ts`).
           return isJsonServer(tool) ? withBuiltinJsonSchemas(merged) : isGopls(tool) ? { ...merged, gopls: goplsOwnOptions(merged) } : merged;
         },
@@ -854,6 +869,7 @@ export class LanguageManager {
         },
         applyEdit: params => this.applyEdit(owned, server!, params.edit),
         act: action => this.toolAction(owned, server!, action),
+        peer: (family, method, params) => this.askPeer(owned, server!, family, method, params),
         schemaContent: address => this.schemas.content(address, schemaDownloadSettings(withBuiltinJsonSchemas(this.registry.options(tool.id, file).settings ?? tool.settings))),
       });
       for (const evidence of plan.context.evidence) server.context?.set(evidence.split(': ')[0], evidence.split(': ').slice(1).join(': '));
@@ -861,9 +877,12 @@ export class LanguageManager {
       if (runtimeNote) server.context?.set('Tool runtime', runtimeNote);
       if (kotlin?.problems.length) server.context?.set('Settings not sent', kotlin.problems.join('; '));
       if (kotlinJdk.note) server.context?.set('Project JDK', kotlinJdk.note);
+      const added = describeContributions(additions ?? []);
+      if (added) server.context?.set('Added by other tools', added);
       this.items.set(server, new ServerItems());
-      this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting', ...(kotlin ? { kotlinAdded } : {}) });
-      owner.servers.set(key, server);
+      this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting', ...(kotlin ? { kotlinAdded } : {}),
+        ...(additions ? { contributed: JSON.stringify(additions) } : {}) });
+      owner.servers.set(key, server); created = true;
       server.watch(root);
       const instance = server, watchedInputs = plan.inputs;
       const onInput = (current: import('node:fs').Stats, previous: import('node:fs').Stats) => { if ((current.mtimeMs !== previous.mtimeMs || current.size !== previous.size || current.ino !== previous.ino) && this.sessions.has(instance)) { this.contexts.invalidate(root); void this.reconnect(owned, instance); } };
@@ -872,7 +891,9 @@ export class LanguageManager {
     }
     if ([...owner.documents.values()].some(other => other.id !== document.id && other.uri === uri && other.server === server))
       throw new Error('This provider already owns the document.');
-    const wireLanguage = this.packageCatalog.binding(support.server)?.languageIds?.[support.languageId] ?? prepared?.languageId ?? protocolLanguageId(support.languageId);
+    // A companion is told the language by the name the plugin that made it one uses.
+    const wireLanguage = this.registry.companionLanguage(support.server, support.languageId, file)
+      ?? this.packageCatalog.binding(support.server)?.languageIds?.[support.languageId] ?? prepared?.languageId ?? protocolLanguageId(support.languageId);
     const binding = { languageId: wireLanguage, id: document.id, generation: document.generation, uri, version: document.version, server, capabilities: {} as ServerCapabilities };
     owner.documents.set(document.id, binding);
     this.emit(owner, { type: 'status', state: 'starting', server: { id: support.server, name: definition.name }, documents: [{ id: binding.id, generation: binding.generation }] });
@@ -889,12 +910,143 @@ export class LanguageManager {
     if (textSynchronization(capabilities).openClose) await server.notify('textDocument/didOpen', { textDocument: { uri: binding.uri, languageId: wireLanguage,
       version: document.version, text: document.text } });
     this.emit(owner, { type: 'status', state: 'ready', documents: [{ id: binding.id, generation: binding.generation }] });
+    // A tool that was just set up may have brought a plugin for another tool, and a tool that was
+    // just started may answer for more languages than its own.
+    if (created) void this.refreshContributions(root).catch(error => console.warn('Could not ask what language tools add to each other', error));
     const autoInsert = autoInsertion(definition, this.registry.options(support.server, file).settings ?? definition.settings);
     // Which schemas the JSON server checks this file against, as its extension shows them.
     const schemas = isJsonServer(definition) ? await server.request(jsonLanguageStatus, binding.uri, undefined, 3000).then(schemaLines, () => []) : [];
     const family = toolFamily(definition);
     return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(definition) ? { companion: true } : {}), ...(family ? { tool: family } : {}),
       messages: server.messages, analysis: this.observation(server), name: definition.name, uri: binding.uri, capabilities, server: support.server, context: [`Project: ${root}`, `Root: ${roots.get(support.server)?.reason ?? 'server session'}`, ...schemas, ...[...server.context ?? []].map(([key, value]) => `${key}: ${value}`)] };
+  }
+  /** The names a Zed extension may know a tool by. */
+  private zedNames(definition: LanguageServerDefinition): string[] {
+    return [...new Set([definition.id, definition.provenance?.profile, definition.launch.kind === 'native' ? definition.launch.command : undefined,
+      this.packageCatalog.binding(definition.id)?.server].filter((name): name is string => !!name))];
+  }
+  /** What the extensions of other tools add to a tool Setdown starts itself, for one project. */
+  private async contributionsFor(definition: LanguageServerDefinition, root: string, env: NodeJS.ProcessEnv): Promise<Contribution[]> {
+    if (!this.provisioner.contributions) return [];
+    const names = this.zedNames(definition);
+    const found = await this.provisioner.contributions(names, root, env).catch(error => { console.warn(`Could not ask what other tools add to ${definition.name}`, error); return {} as Record<string, Contribution[]>; });
+    return names.flatMap(name => found[name] ?? []);
+  }
+  /** The languages of Setdown that a tool's plugin means by a name. The plugin uses the name the
+   * tool is told: Zed's name in small letters where the tool has none of its own (`vue.js`), else
+   * the protocol's (`vue`). The same files can be known under another id in another catalog
+   * (`vue` and `vue-js` are both `.vue`), so every id those files are opened under counts. */
+  private languagesNamed(name: string): string[] {
+    const lower = name.toLowerCase();
+    const wired = new Set(this.packageCatalog.bindings.flatMap(binding => [
+      ...Object.entries(binding.languages).filter(([, zed]) => zed.toLowerCase() === lower).map(([id]) => id),
+      ...Object.entries(binding.languageIds ?? {}).filter(([, wire]) => wire === name).map(([id]) => id)]));
+    const known = [...this.packageCatalog.languages, ...languageDefinitions].filter(language => wired.has(language.id) || wired.has(language.sourceId)
+      || [language.id, language.sourceId, language.zedName, language.label].some(value => value?.toLowerCase() === lower));
+    const ids = new Set([...wired, ...known.flatMap(language => [language.id, language.sourceId])]);
+    const extensions = new Set(known.flatMap(language => language.extensions.map(extension => extension.toLowerCase())));
+    return [...new Set(this.registry.definitions().flatMap(definition => definition.languages)
+      .filter(language => ids.has(language.languageId) || language.extensions.some(extension => extensions.has(extension.toLowerCase()))).map(language => language.languageId))];
+  }
+  private contributing: Promise<void> = Promise.resolve();
+  private guestLanguages(definition: LanguageServerDefinition) { return this.packageCatalog.guestLanguages(definition); }
+  private mainFor(definition: LanguageServerDefinition, language: string) { return this.packageCatalog.mainFor(definition, language); }
+  private companionProjectsFile() { return path.join(app.getPath('userData'), 'language-packages', 'companion-projects.json'); }
+  private companionProjectsValue?: Promise<Map<string, Set<string>>>;
+  /** The projects each such tool has run in, so that it joins the project's other files from the first one opened. */
+  private companionProjects(): Promise<Map<string, Set<string>>> {
+    return this.companionProjectsValue ??= (async () => {
+      try {
+        const saved = JSON.parse(await readFile(this.companionProjectsFile(), 'utf8'));
+        if (saved?.version !== 1 || !saved.tools || typeof saved.tools !== 'object') return new Map();
+        return new Map(Object.entries(saved.tools as Record<string, unknown>).filter((entry): entry is [string, string[]] =>
+          Array.isArray(entry[1]) && entry[1].length <= 256 && entry[1].every(root => typeof root === 'string' && path.isAbsolute(root))).map(([id, roots]) => [id, new Set(roots)]));
+      } catch { return new Map(); }
+    })();
+  }
+  /** Works out again which tools answer for languages beside the language's own tool
+   * (`Companion` in `server-registry.ts`), after a tool was started.
+   *  - The extensions are asked what they add to the tools Setdown starts itself
+   *    (`tool-contributions.ts`). A tool whose plugins name other languages becomes their
+   *    companion, and a running tool that would now get other additions is started again.
+   *  - A tool that runs in a project joins the other languages its extension attaches it to. */
+  private refreshContributions(root: string): Promise<void> {
+    const next = this.contributing.catch(() => {}).then(async () => {
+      const env = this.discovery.environment.peek().env;
+      const running = [...this.sessions].filter(([, info]) => info.contributed !== undefined);
+      // The tools Setdown brings itself can become companions before they run; the others are asked about once they run.
+      const tools = new Map(this.registry.definitions().filter(definition => definition.launch.kind === 'bundledNode').map(definition => [definition.id, definition]));
+      for (const [, info] of running) tools.set(info.id, this.registry.definition(info.id));
+      const roots = new Set([root, ...running.map(([, info]) => info.root)]);
+      const answers = new Map<string, Contribution[]>();
+      if (this.provisioner.contributions) for (const place of roots) {
+        const names = [...new Set([...tools.values()].flatMap(definition => this.zedNames(definition)))];
+        const found = await this.provisioner.contributions(names, place, env);
+        for (const definition of tools.values()) answers.set(`${definition.id}\n${place}`, this.zedNames(definition).flatMap(name => found[name] ?? []));
+      }
+      const companions: Companion[] = [];
+      for (const definition of tools.values()) {
+        const languages = new Map<string, string>();
+        for (const place of roots) {
+          const options = withContributions({ initializationOptions: {}, configuration: {} }, answers.get(`${definition.id}\n${place}`) ?? []).initializationOptions;
+          for (const name of companionLanguages(definition, options)) for (const language of this.languagesNamed(name))
+            if (!definition.languages.some(own => own.languageId === language)) languages.set(language, name);
+        }
+        for (const [language, wire] of languages) companions.push({ tool: definition.id, language, wire });
+      }
+      const projects = await this.companionProjects();
+      let learned = false;
+      for (const [, info] of this.sessions) {
+        if (info.state === 'failed' || !this.guestLanguages(this.registry.definition(info.id)).size) continue;
+        const known = projects.get(info.id) ?? new Set<string>();
+        if (!known.has(info.root)) { known.add(info.root); projects.set(info.id, known); learned = true; }
+      }
+      if (learned) await writeFile(this.companionProjectsFile(), JSON.stringify({ version: 1, tools: Object.fromEntries([...projects].map(([id, places]) => [id, [...places].slice(-256)])) }), { mode: 0o600 }).catch(() => {});
+      for (const [id, places] of projects) {
+        const definition = this.registry.definitions().find(candidate => candidate.id === id);
+        if (!definition || !places.size) continue;
+        for (const [language, wire] of this.guestLanguages(definition)) companions.push({ tool: id, language, ...(wire ? { wire } : {}), roots: [...places] });
+      }
+      const update = this.updating.then(() => {
+        const before = JSON.stringify(this.registry.associations());
+        if (!this.registry.setCompanions(companions)) return;
+        if (JSON.stringify(this.registry.associations()) === before) return;
+        // Routes were added or taken away; no running tool is touched. Every open document keeps its tools and asks for the new ones.
+        const retainedDocuments = [...this.owners.values()].flatMap(owner => [...owner.documents.values()].map(({ id, generation }) => ({ id, generation })));
+        this.broadcast({ type: 'configuration', servers: [...new Set(companions.map(item => item.tool))], retainedDocuments });
+      });
+      this.updating = update.catch(() => {});
+      await update;
+      for (const [server, info] of running) {
+        if (this.sessions.get(server) !== info || info.contributed === JSON.stringify(answers.get(`${info.id}\n${info.root}`) ?? [])) continue;
+        const owner = [...this.owners.values()].find(owner => [...owner.servers.values()].includes(server));
+        if (owner) await this.reconnect(owner, server);
+      }
+    });
+    this.contributing = next.catch(() => {});
+    return next;
+  }
+  /** A question one tool has for another tool of the same project (`relays` in `tool-signals.ts`):
+   * Vue's tool asks TypeScript's server about types. The other tool is started for the same file a
+   * moment after the first, so it is waited for while it is on its way: while the companions are
+   * being worked out, and then while the file has a route to such a tool. */
+  private async askPeer(owner: Owner, from: ServerSession, family: string, method: string, params: unknown): Promise<unknown> {
+    const origin = this.sessions.get(from);
+    if (!origin) throw Error('The asking tool has stopped.');
+    const related = (root: string) => root === origin.root || isInside(root, origin.root) || isInside(origin.root, root);
+    const find = () => [...owner.servers.values()].find(server => {
+      const info = this.sessions.get(server);
+      return !!info && server !== from && info.state !== 'failed' && toolFamily(this.registry.definition(info.id)) === family && related(info.root);
+    });
+    const coming = () => !!origin.resource && this.registry.routes(origin.resource).some(route => route.server !== origin.id
+      && toolFamily(this.registry.definition(route.server)) === family && !!languageSupport(origin.resource!, [route]));
+    let peer = find();
+    if (!peer) await this.contributing;
+    for (const until = Date.now() + 30_000; !(peer ??= find()) && coming() && Date.now() < until && this.sessions.get(from) === origin;)
+      await new Promise(resolve => setTimeout(resolve, 150));
+    if (!peer) throw Error(`No ${family} tool is running for this project.`);
+    await peer.ready;
+    return peer.request(method, params, undefined, 20_000);
   }
   /** What a button of a tool's own notice does (`tool-signals.ts`). */
   private async toolAction(owner: Owner, server: ServerSession, action: ToolAction): Promise<void> {
@@ -1052,7 +1204,9 @@ export class LanguageManager {
     const options = rootDefinition ? this.registry.options(rootDefinition.id, resource) : {};
     const root = rootDefinition ? languageRoot(resource, { ...rootDefinition, languages: rootDefinition.languages.filter(l => (l.monacoId ?? l.languageId) === language || l.languageId === language) }, state.projectRoot ?? undefined, options.root)
       : languageRoot(resource, { languages: [], rootMarkers: [] }, state.projectRoot ?? undefined);
-    const servers = definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabledFor(d.id, language, resource), role: this.registry.role(d.id, resource) }));
+    // A guest of this language is listed as an additional tool: it is not offered as the main one.
+    const servers = definitions.map(d => ({ id: d.id, name: d.name, selected: d.id === selected, enabled: this.registry.enabledFor(d.id, language, resource),
+      role: this.mainFor(d, language) ? this.registry.role(d.id, resource) : 'supplementary' as const }));
     if (!definition) return { id: language, root: root.path, rootReason: root.reason, environment: 'usable', choices: [], issues: [], evidence: [], servers, analysisSelection };
     const plan = await this.contexts.resolve(root.path, root.reason, { ...definition, languages: definition.languages.filter(l => (l.monacoId ?? l.languageId) === language || l.languageId === language) }, options, refresh);
     this.ownedFile(state, resource);

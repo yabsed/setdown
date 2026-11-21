@@ -6,7 +6,7 @@ import type { AsyncSubscription } from '@parcel/watcher';
 import { subscribeToFiles } from '../documents/native-watcher';
 import { CancellationToken, CancellationTokenSource, createMessageConnection, ResponseError, StreamMessageReader, StreamMessageWriter,
   type CancellationStrategy, type MessageConnection } from 'vscode-jsonrpc/node';
-import type { ToolAction, ToolNotice, ToolSignal } from './tool-signals';
+import type { AskTool, ToolAction, ToolNotice, ToolSignal } from './tool-signals';
 import type { ServerProfile } from './server-definitions';
 import { InactiveRegions, inactiveRegionsMethod, reportsInactiveRegions, serverStatusMethod, statusMeaning, toolStatus } from './extension-rules';
 import { clientCapabilities, refreshMethods, type LanguageRefresh } from '../../protocol/language-features';
@@ -25,6 +25,8 @@ export type SessionHooks = {
   schemaContent?(uri: string): Promise<string>;
   /** What a button of a tool's own notice does (`tool-signals.ts`). */
   act?(action: ToolAction): Promise<void> | void;
+  /** A question this tool has for another tool of its project (`ToolRules.relays`). */
+  peer?: AskTool;
 };
 /** `cancellation`: how the tool is told that an answer is no longer wanted, when its extension
  * does not use the protocol's own message for that (`python-cancellation.ts`). `dispose` runs
@@ -72,6 +74,8 @@ export class ServerSession {
     entry.finish(index);
   }
   readonly logs: string[] = [];
+  /** The names of the tool's messages this client had no answer for. */
+  readonly unhandled: string[] = [];
   readonly context = new Map<string, string>();
   private phase = 'initialization';
   readonly progress = new Map<string | number, string>();
@@ -112,6 +116,22 @@ export class ServerSession {
     const sent = (values: unknown[]) => values.length <= 1 ? values[0] : values;
     for (const [method, rule] of Object.entries(profile.rules?.notifications ?? {})) this.connection.onNotification(method, (...values: unknown[]) => {
       try { this.signal(rule(sent(values))); } catch (error) { this.log(`${method}: ${String(error)}`); }
+    });
+    for (const [method, rule] of Object.entries(profile.rules?.relays ?? {})) this.connection.onNotification(method, (...values: unknown[]) => {
+      void rule(sent(values), (tool, asked, params) => hooks.peer ? hooks.peer(tool, asked, params) : Promise.reject(Error('No other tool is running.')))
+        .then(async replies => { for (const reply of replies) if (!this.stopped) await this.notify(reply.method, reply.params); })
+        .catch(error => this.log(`${method}: ${String(error instanceof Error ? error.message : error)}`));
+    });
+    // A message this client does nothing with is written to the tool's log once, by name. A
+    // request is refused by the connection itself; a notification would otherwise vanish, and a
+    // tool that waits for what it asked there looks alive and answers nothing. Most such
+    // messages want nothing back (Angular's "project loading started"), so the line states what
+    // happened and does not call it a failure.
+    const unknown = new Set<string>();
+    this.connection.onUnhandledNotification(message => {
+      if (message.method.startsWith('$/') || unknown.has(message.method) || unknown.size >= 32) return;
+      unknown.add(message.method); this.unhandled.push(message.method);
+      this.log(`The tool sent "${message.method}". Setdown does nothing with this message.`);
     });
     for (const [method, rule] of Object.entries(profile.rules?.requests ?? {})) this.connection.onRequest(method, async (...values: unknown[]) => {
       if (CancellationToken.is(values.at(-1))) values.pop();

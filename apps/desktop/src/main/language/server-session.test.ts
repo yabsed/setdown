@@ -597,3 +597,43 @@ test('a tool\'s own rules: its notifications become lines and notices, a notice 
   expect(await server.request('call', ['tool/refuses', {}])).toEqual({ error: 'not here' });
   expect(acted).toHaveLength(1);
 });
+
+test("a tool's question for another tool is answered through the peer, and a message nobody knows is named in the log once", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-relay-'));
+  roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  // Vue's server: it asks its editor to have TypeScript's server run a command, and waits for the answer (`vue-rules.ts`).
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    const answers = [];
+    c.onRequest('initialize', () => ({capabilities:{positionEncoding:'utf-16'}}));
+    c.onNotification('tsserver/response', (...values) => answers.push(values));
+    c.onRequest('ask', () => { c.sendNotification('tsserver/request', [[5, '_vue:projectInfo', {file: '/project/a.vue'}]]); c.sendNotification('tsserver/request', [[6, '_vue:quickinfo', {}]]); return null; });
+    c.onRequest('unknown', () => { c.sendNotification('made/up', {a: 1}); c.sendNotification('made/up', {a: 2}); c.sendNotification('$/optional', {}); return null; });
+    c.onRequest('answers', () => answers);
+    c.onRequest('shutdown', () => null);
+    c.onNotification('exit', () => process.exit(0));
+    c.listen();
+  `);
+  const { vueRules } = await import('./vue-rules');
+  const { withRules } = await import('./tool-rules');
+  const asked: unknown[][] = [];
+  const profile = withRules({ ...pullProfile, name: 'vue-language-server' }, vueRules({ name: 'vue-language-server', root, settings: {} }));
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, () => {}, profile, {
+    peer: async (tool, method, params) => {
+      asked.push([tool, method, params]);
+      if ((params as { arguments: unknown[] }).arguments[0] === '_vue:quickinfo') throw Error('No typescript tool is running for this project.');
+      return { body: { configFileName: '/project/tsconfig.json' } };
+    } });
+  sessions.push(server);
+  await server.ready;
+  await server.request('ask', {});
+  await expect.poll(() => server.request('answers', {})).toEqual([[[5, { configFileName: '/project/tsconfig.json' }]], [[6, null]]]);
+  expect(asked).toEqual([
+    ['typescript', 'workspace/executeCommand', { command: 'typescript.tsserverRequest', arguments: ['_vue:projectInfo', { file: '/project/a.vue' }] }],
+    ['typescript', 'workspace/executeCommand', { command: 'typescript.tsserverRequest', arguments: ['_vue:quickinfo', {}] }]]);
+  await server.request('unknown', {});
+  await expect.poll(() => server.unhandled).toEqual(['made/up']);
+  expect(server.logs.filter(line => line.includes('made/up'))).toEqual([`The tool sent "made/up". Setdown does nothing with this message.`]);
+}, 30_000);

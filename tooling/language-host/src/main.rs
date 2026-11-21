@@ -61,6 +61,7 @@ fn report_status(request: u64, server: &LanguageServerName, status: &BinaryStatu
 struct Request {
     id: u64, op: String,
     #[serde(default)] server: String,
+    #[serde(default)] servers: Vec<String>,
     #[serde(default)] language: String,
     #[serde(default)] root: PathBuf,
     #[serde(default)] env: HashMap<String, String>,
@@ -193,6 +194,29 @@ async fn prepare(request: &Request, registry: &Arc<LanguageRegistry>, delegate: 
         "env":binary.env,"languageId":adapter.language_id(&LanguageName::from(SharedString::from(request.language.clone()))),
         "initializationOptions":initialization,"settings":configuration}))
 }
+/// What the extensions of other tools add to the tools named in `servers`: a tsserver plugin from
+/// the Vue extension, for one. Zed merges these answers into a server's options before it starts
+/// it (`LspStore`, `additional_initialization_options`). `prepare` above does that for a tool Zed
+/// prepares; this answers for a tool Setdown starts itself. Each answer is returned on its own,
+/// because two extensions may each bring an entry of the same list.
+async fn contributions(request: &Request, registry: &Arc<LanguageRegistry>, delegate: Arc<dyn LspAdapterDelegate>, cx: &mut AsyncApp) -> Result<Value> {
+    let mut found = serde_json::Map::new();
+    for target in &request.servers {
+        let name = LanguageServerName::from(target.as_str());
+        let mut answers = Vec::new();
+        for other in registry.all_lsp_adapters() {
+            if other.name() == name { continue; }
+            // An extension that fails here loses its own addition, not everybody's.
+            let options = other.adapter.clone().additional_initialization_options(name.clone(), &delegate).await.ok().flatten();
+            let settings = other.adapter.clone().additional_workspace_configuration(name.clone(), &delegate, cx).await.ok().flatten();
+            if options.is_some() || settings.is_some() {
+                answers.push(json!({"server": other.name().0.to_string(), "initializationOptions": options, "settings": settings}));
+            }
+        }
+        found.insert(target.clone(), Value::Array(answers));
+    }
+    Ok(Value::Object(found))
+}
 async fn prepare_npm(request: &Request, data: &Path, node: &NodeRuntime) -> Result<Value> {
     ensure!(!request.package.is_empty() && !request.version.is_empty(), "A pinned npm package is required");
     ensure!(request.package.chars().all(|c| c.is_ascii_alphanumeric() || "@/_.-".contains(c)) && !request.package.contains(".."), "Invalid npm name");
@@ -301,6 +325,11 @@ fn main() -> Result<()> {
                             let missing = extensions.update(cx, |store,cx|store.sync_extensions(versions,cx)).await?;
                             ensure!(missing.is_empty(), "Extensions failed to load: {:?}", missing);
                             Ok(json!({"loaded":request.extensions.len()}))
+                        },
+                        "contributions" => {
+                            ensure!(request.root.is_absolute(), "Workspace root must be absolute");
+                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });
+                            contributions(&request,&registry,delegate,cx).await
                         },
                         "npm" => prepare_npm(&request, &data, &node).await,
                         "highlight" => highlight(&request,&data,&mut grammars),

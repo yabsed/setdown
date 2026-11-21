@@ -136,7 +136,7 @@ import type { AppActions } from './ports/ui-actions';
   {/each}
   </div>
   <InsertionDialogs {actions} />
-  <ClosePrompt {actions} />
+  <ClosePrompt prompt={view.closePrompt} choose={actions.resolveClosePrompt} />
   <BrowserAuthDialog api={desktop.browser} />
 </section>
 

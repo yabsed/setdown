@@ -9,6 +9,9 @@ export function languageFeaturePlan(server: string, primary: boolean, routes: La
   if ((formatter ? server !== formatter : !primary) || own?.formatting === false) {
     delete capabilities.documentFormattingProvider; delete capabilities.documentRangeFormattingProvider; delete capabilities.documentOnTypeFormattingProvider;
   }
-  if (!primary) { delete capabilities.renameProvider; delete capabilities.semanticTokensProvider; }
+  // A linter beside the language's own tool neither renames nor colours. A tool that answers for
+  // the language because another tool plugs into it (TypeScript's server in a `.vue` file) keeps
+  // its rename: the language's own tool is asked first, and this one where that tool declines.
+  if (!primary) { if (!own?.beside) delete capabilities.renameProvider; delete capabilities.semanticTokensProvider; }
   return capabilities;
 }

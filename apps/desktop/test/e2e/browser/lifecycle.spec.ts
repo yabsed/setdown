@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 
-import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
+import { fixture, evaluatePage, closePromptLayer } from '../../support/browser/browser-fixture';
 
 test('browser details: hidden pages retain forms, mute remains accessible and closed tabs reopen without stale forms', async () => {
   const f = await fixture();
@@ -131,7 +131,8 @@ for (const command of ['close', 'quit'] as const) test(`canceling ${command} pre
       if (command === 'quit') app.quit(); else BrowserWindow.getAllWindows()[0].close();
     }, command);
     await close();
-    const prompt = f.page.locator('dialog[aria-labelledby="close-prompt-title"]');
+    // A web page is showing, so the question is asked in the layer above it.
+    const prompt = (await closePromptLayer(f.app)).locator('dialog[aria-labelledby="close-prompt-title"]');
     await expect(prompt).toBeVisible();
     await prompt.locator('.close-cancel').click();
     await expect(prompt).toBeHidden();
@@ -145,3 +146,58 @@ for (const command of ['close', 'quit'] as const) test(`canceling ${command} pre
   } finally { await f.dispose(); }
 });
 
+test('the close prompt is asked above a live web page, which stays shown and keeps drawing', async () => {
+  const f = await fixture();
+  try {
+    await f.page.locator('.mode-toggle').click();
+    const editor = f.page.getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.pressSequentially(' unsaved');
+    await expect(f.page.locator('.tab-dirty')).toHaveCount(1);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    const web = f.page.getByRole('tab', { name: /Research page/ }); await expect(web).toHaveAttribute('aria-selected', 'true');
+    // Observe Blink's own visibility, not the one Playwright's focus emulation reports (see the first test).
+    const target = f.app.context().pages().find(page => page.url().startsWith(f.origin))!;
+    const implementation = (target as any)._connection.toImpl(target);
+    await implementation.delegate._mainFrameSession._client.send('Emulation.setFocusEmulationEnabled', { enabled: false });
+    // A page that plays draws frame after frame. Count them.
+    await evaluatePage(f.app, f.origin, `(function tick() { window.framesDrawn = (window.framesDrawn ?? 0) + 1; requestAnimationFrame(tick); })(); true`);
+    const frames = () => evaluatePage<number>(f.app, f.origin, 'window.framesDrawn');
+    const native = () => f.app.evaluate(({ BrowserWindow, webContents }, origin) => {
+      const window = BrowserWindow.getAllWindows().find(window => window.webContents.getURL().includes('index.html'))!;
+      const page = webContents.getAllWebContents().find(contents => contents.getURL() === `${origin}/first`)!;
+      const children = window.contentView.children as Electron.WebContentsView[];
+      const view = children.find(child => child.webContents === page), layer = children.find(child => child.webContents?.getURL().includes('close-prompt-overlay=1'));
+      return { page: !!view && view.getVisible(), layer: !!layer && layer.getVisible(), layerAbove: !!view && !!layer && children.indexOf(layer) > children.indexOf(view),
+        covers: !!layer && JSON.stringify(layer.getBounds()) === JSON.stringify({ x: 0, y: 0, width: window.getContentSize()[0], height: window.getContentSize()[1] }) };
+    }, f.origin);
+    expect(await native()).toMatchObject({ page: true, layer: false });
+    const close = () => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(window => window.webContents.getURL().includes('index.html'))!.close());
+    await close();
+    const layer = await closePromptLayer(f.app), prompt = layer.locator('dialog[aria-labelledby="close-prompt-title"]');
+    await expect(prompt).toBeVisible();
+    await expect(prompt).toContainText('Save changes to notes.md?');
+    await expect(prompt.locator('.close-save')).toBeFocused();
+    // The page was not hidden and no picture stands in its place; the shell shows no dialog of its own.
+    expect(await native()).toEqual({ page: true, layer: true, layerAbove: true, covers: true });
+    await expect(f.page.locator('dialog[aria-labelledby="close-prompt-title"]')).toBeHidden();
+    await expect(f.page.locator('[data-browser-frozen]')).toHaveCount(0);
+    expect(await evaluatePage(f.app, f.origin, 'document.visibilityState')).toBe('visible');
+    const before = await frames();
+    await expect.poll(async () => await frames() - before).toBeGreaterThan(30);
+    // The layer is see-through outside the dialog: the page shows through, dimmed.
+    expect(await layer.evaluate(() => [document.documentElement, document.body].map(element => getComputedStyle(element).backgroundColor))).toEqual(['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)']);
+    // Escape cancels, the layer goes away, and nothing was closed.
+    await layer.keyboard.press('Escape');
+    await expect(prompt).toBeHidden();
+    await expect.poll(native).toEqual({ page: true, layer: false, layerAbove: false, covers: false });
+    await expect(web).toHaveAttribute('aria-selected', 'true');
+    await expect(f.page.locator('.tab-dirty')).toHaveCount(1);
+    // Asked again, "Don't Save" closes the window.
+    await close();
+    await expect(prompt).toBeVisible();
+    const exited = f.app.waitForEvent('close');
+    await prompt.locator('.close-discard').click();
+    await exited;
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});

@@ -64,6 +64,7 @@ function named(tool: Tool, ...names: string[]): boolean {
 export const isHtmlServer = (tool: Tool) => named(tool, 'html-lsp', 'vscode-html-language-server');
 export const isSvelteServer = (tool: Tool) => named(tool, 'svelte-language-server', 'svelteserver');
 export const isTypeScriptServer = (tool: Tool) => named(tool, 'typescript-language-server');
+export const isVueServer = (tool: Tool) => named(tool, 'vue-language-server');
 export const isClangd = (tool: Tool) => named(tool, 'clangd');
 export const isJsonServer = (tool: Tool) => named(tool, 'json-lsp', 'vscode-json-language-server', 'json-language-server');
 export const isKotlinServer = (tool: Tool) => named(tool, 'kotlin-lsp');
@@ -326,4 +327,22 @@ export function typescriptOptions(settings: Settings | undefined, written: Setti
     if (location) plugins.push({ name: sveltePlugin, location });
   }
   return { ...mergeLanguageSettings(options, written), ...(plugin?.downloads !== undefined ? { disableAutomaticTypingAcquisition: disable } : {}), ...(plugins.length ? { plugins } : {}) };
+}
+
+/** The languages typescript-language-server answers for by itself (`lib/cli.mjs`,
+ * `jsTsLanguageModes`). It ignores a document of any other language unless a plugin names that
+ * language. Helix lists the server for Glimmer files, where it is meant to run with Glint's
+ * plugin; without one it never answers, so such a language reaches it only as a companion. */
+export const tsserverOwnLanguages: readonly string[] = ['javascript', 'javascriptreact', 'typescript', 'typescriptreact'];
+/** typescript-language-server's `plugins[].languages` (`lib/cli.mjs`; in VS Code the same key of
+ * `contributes.typescriptServerPlugins`): the languages, by their protocol names, whose files
+ * tsserver answers for besides its own once the plugin is loaded. Vue's plugin names `vue`. */
+export function tsserverPluginLanguages(options: Settings | undefined): string[] {
+  const plugins = Array.isArray(options?.plugins) ? options.plugins as TsserverPlugin[] : [];
+  return [...new Set(plugins.flatMap(plugin => Array.isArray(plugin?.languages) ? plugin.languages.filter(language => typeof language === 'string') : []))];
+}
+/** The languages besides its own, by their protocol names, that a tool answers for when it is
+ * started with these options. Only TypeScript's server has such an option. */
+export function companionLanguages(tool: Tool, options: Settings | undefined): string[] {
+  return isTypeScriptServer(tool) ? tsserverPluginLanguages(options) : [];
 }

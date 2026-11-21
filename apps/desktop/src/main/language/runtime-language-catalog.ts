@@ -40,6 +40,33 @@ export class RuntimeLanguageCatalog {
   get languages():LanguageDefinition[]{return this.state.packages.flatMap(p=>p.languages);}
   definition(id:string):LanguageDefinition|undefined{return this.languages.find(l=>l.id===id || l.sourceId===id)??languageDefinitions.find(l=>l.id===id || l.sourceId===id);}
   binding(id:string):Binding|undefined{return this.state.packages.flatMap(p=>p.bindings).find(b=>b.id===id)??(bindings.bindings as Binding[]).find(b=>b.id===id);}
+  /** The names Zed gives the languages an extension defines itself. A tool the extension also
+   * attaches to other languages (Angular's to TypeScript and HTML) is a guest there. */
+  ownLanguageNames(extension:string):string[]{
+    const updated=this.state.packages.find(p=>p.id===extension);
+    if(updated)return updated.languages.flatMap(l=>l.zedName?[l.zedName]:[]);
+    return ((bundled.packages.find(p=>p.id===extension) as {languages?:{name:string}[]}|undefined)?.languages??[]).map(l=>l.name);
+  }
+  /** The languages an extension attaches its tool to without defining them: Angular's tool lists
+   * TypeScript and HTML beside Angular's own templates. Each with the name the tool is told it by. */
+  guestLanguages(definition:Pick<LanguageServerDefinition,'id'|'languages'>):Map<string,string|undefined>{
+    const binding=this.binding(definition.id),guests=new Map<string,string|undefined>();
+    if(!binding)return guests;
+    const own=this.ownLanguageNames(binding.extension);
+    // A tool whose extension defines no language at all is nobody's guest: it is chosen or not, as before.
+    if(!Object.values(binding.languages).some(name=>own.includes(name)))return guests;
+    for(const [language,name] of Object.entries(binding.languages))
+      if(!own.includes(name) && definition.languages.some(entry=>entry.languageId===language))guests.set(language,binding.languageIds?.[language]);
+    return guests;
+  }
+  /** Whether a tool can be chosen as the one main tool of a language. Not where it is a guest:
+   * Angular's tool and the GraphQL tool list TypeScript, and neither can stand in for TypeScript's. */
+  mainFor(definition:Pick<LanguageServerDefinition,'id'|'languages'>,language:string):boolean{
+    const guests=this.guestLanguages(definition);
+    return definition.languages.some(entry=>((entry.monacoId??entry.languageId)===language || entry.languageId===language) && !guests.has(entry.languageId));
+  }
+  /** Every tool an extension sets up, the newer catalog's word first. */
+  get bindings():Binding[]{return [...this.state.packages.flatMap(p=>p.bindings),...(bindings.bindings as Binding[])];}
   package(id:string):ExtensionPackage|undefined{return this.state.packages.find(p=>p.id===id)??bundled.packages.find(p=>p.id===id);}
   private rebuild():void {this.profilesValue=[...new Map(this.state.packages.flatMap(pkg=>pkg.profiles).map(profile=>[profile.id,profile])).values()];}
   schedule(changed:(apply:()=>Promise<void>)=>Promise<void>,unknownFile=false):void {

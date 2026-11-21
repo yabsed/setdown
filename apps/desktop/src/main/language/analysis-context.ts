@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { parse } from 'jsonc-parser';
 import type { AnalysisChoice, AnalysisContext, PythonChecking } from '../../core/document/analysis-context';
+import { denoProjectIssue } from '../../core/document/analysis-context';
 import type { LanguageServerDefinition } from '../../core/document/language-definition';
 import { notebookPython } from '../notebook/python-environments';
 import { analysisPreferences } from './analysis-preferences';
@@ -186,6 +187,13 @@ export class AnalysisContextService {
       for (const name of ['tsconfig.json', 'jsconfig.json', 'package.json']) {
         const file = path.join(root, name); inputs.add(file); if (existsSync(file)) context.evidence.push(`Project configuration: ${file}`);
       }
+      // Deno reads its own configuration file and no tsconfig.json. In such a project TypeScript's
+      // server knows neither the `Deno` global nor `jsr:` and `npm:` imports, and marks them as
+      // errors; VS Code's Deno extension turns the built-in service off there for that reason.
+      const deno = ['deno.json', 'deno.jsonc'].map(name => path.join(root, name));
+      for (const file of deno) inputs.add(file);
+      if (deno.some(existsSync) && !['tsconfig.json', 'jsconfig.json'].some(name => existsSync(path.join(root, name))))
+        issue(denoProjectIssue, "This is a Deno project (deno.json). TypeScript's own server reports Deno's globals and imports as errors; Deno's tool understands them.");
       const pkg = json(path.join(root, 'package.json'));
       if ((pkg?.dependencies || pkg?.devDependencies) && !existsSync(path.join(root, 'node_modules')) && directory === root)
         hint('typescript-dependencies', 'This project lists dependencies but has no node_modules folder. Install them with its package manager.');

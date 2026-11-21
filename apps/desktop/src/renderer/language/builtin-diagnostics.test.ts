@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import type * as M from 'monaco-editor';
 import type { Diagnostic } from 'vscode-languageserver-protocol';
-import { builtinSupport, installBuiltinDiagnostics, ownLanguageDiagnostics } from './builtin-diagnostics';
+import { answeredBy, builtinSupport, installBuiltinDiagnostics, ownLanguageAnswers, ownLanguageDiagnostics } from './builtin-diagnostics';
 import { diagnosticsFor } from './diagnostic-store';
 import { scriptKindForResource } from './typescript-resource';
 
@@ -84,4 +84,37 @@ test('query-bearing TSX/JSX resources retain their parser kind without changing 
   expect(scriptKindForResource('file:///project/main.jsx?tab-2')).toBe(2);
   expect(scriptKindForResource('file:///project/main.mts?tab-1')).toBe(3);
   expect(scriptKindForResource('file:///project/main.cjs?tab-2')).toBe(1);
+});
+
+test("the editor's own TypeScript worker leaves a question to the project tool that answers it, and takes it back when the tool goes", async () => {
+  const f = fixture(['typescript', 'json'], async () => []);
+  const setAnswered = vi.fn(async (_uri: string, _questions: string[]) => {});
+  (f.api.typescript as unknown as { getTypeScriptWorker: unknown }).getTypeScriptWorker = async () => async () => ({ setAnswered });
+  const [script, json] = f.models.map(item => item.model), uri = script.uri.toString();
+  expect(builtinSupport(script).features).toEqual(['Completion', 'Hover', 'Formatting', 'Syntax']);
+  // TypeScript's server: it answers hover, completion and definition, and formats too.
+  const asked = answeredBy({ hoverProvider: true, completionProvider: {}, definitionProvider: true, documentFormattingProvider: true });
+  expect(asked).toEqual(['hover', 'completion', 'definition']);
+  const tool = ownLanguageAnswers(f.api, script, asked);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(setAnswered).toHaveBeenLastCalledWith(uri, ['hover', 'completion', 'definition']);
+  // What the tool answers is no longer listed as the worker's own.
+  expect(builtinSupport(script).features).toEqual(['Formatting', 'Syntax']);
+  // A second tool that answers one of them: the worker stays silent on it until both are gone.
+  const other = ownLanguageAnswers(f.api, script, ['hover']);
+  tool.dispose(); await vi.advanceTimersByTimeAsync(0);
+  expect(setAnswered).toHaveBeenLastCalledWith(uri, ['hover']);
+  expect(builtinSupport(script).features).toEqual(['Completion', 'Formatting', 'Syntax']);
+  // A changed setting starts a new worker. It is told again.
+  setAnswered.mockClear(); f.configure(); await vi.advanceTimersByTimeAsync(0);
+  expect(setAnswered).toHaveBeenCalledWith(uri, ['hover']);
+  other.dispose(); other.dispose(); await vi.advanceTimersByTimeAsync(0);
+  expect(setAnswered).toHaveBeenLastCalledWith(uri, []);
+  expect(builtinSupport(script).features).toEqual(['Completion', 'Hover', 'Formatting', 'Syntax']);
+  // Nothing is asked of a tool that answers nothing, and no other language's worker is touched.
+  setAnswered.mockClear();
+  ownLanguageAnswers(f.api, script, answeredBy({})); ownLanguageAnswers(f.api, json, ['hover']);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(setAnswered).not.toHaveBeenCalled();
+  expect(builtinSupport(json).features).toContain('Hover');
 });

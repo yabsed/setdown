@@ -3,7 +3,7 @@ import { access, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateLanguageDefinition, type LanguageServerDefinition } from '../../core/document/language-definition';
-import { builtinLanguageServers } from './catalog/profiles';
+import { adjustedProfile, builtinLanguageServers } from './catalog/profiles';
 import { mergeLanguageSettings } from './language-settings';
 import { languageSupport, type LanguageRoute } from '../../core/document/language-support';
 import type { ServerLaunch } from './server-session';
@@ -14,6 +14,13 @@ import { isSupportedTool, supportedTool } from '../../core/document/supported-la
 export type Options = { automaticInstall?: boolean; role?: 'primary' | 'supplementary'; formatting?: boolean; enabled?: boolean; executable?: string; automaticExecutable?: boolean; args?: string[]; settings?: Record<string, unknown>; initializationOptions?: Record<string, unknown>; root?: string };
 type Settings = { version: 1; servers: Record<string, Options>; custom: LanguageServerDefinition[]; preferred: Record<string, string>; projectPreferred?: Record<string, Record<string, string>>; projects?: Record<string, Record<string, Options>>;
   automaticInstall?: boolean; languageDefaults?: Record<string, string>; projectDefaults?: Record<string, Record<string, string>> };
+/** A tool that answers for a language beside the language's own tool. Two things make one.
+ * A plugin loaded into the tool names the language (Vue's plugin in TypeScript's server, which
+ * then answers for `.vue` files and is told them as `wire`, the plugin's name for the language).
+ * Or the tool's extension attaches it to languages it does not define (Angular's tool to
+ * TypeScript and HTML), and it runs in the project: `roots` are those projects. Without `roots`
+ * it holds everywhere. */
+export type Companion = { tool: string; language: string; wire?: string; roots?: readonly string[] };
 const noPackageDefinitions: readonly LanguageServerDefinition[] = [];
 export class ServerRegistry {
   private data: Settings = { version: 1, servers: {}, custom: [], preferred: {} };
@@ -70,7 +77,7 @@ export class ServerRegistry {
       this.indexedPackages = packages;
       this.indexedCustom = this.data.custom; this.customIds.clear(); this.definitionsById.clear(); this.policyLanguages.clear();
       for (const definition of this.data.custom) this.customIds.add(definition.id);
-      const imported = new Map([...builtinLanguageServers,...packages].map(definition=>[definition.id,definition]));
+      const imported = new Map([...builtinLanguageServers,...packages.map(adjustedProfile)].map(definition=>[definition.id,definition]));
       this.indexedDefinitions = [...imported.values()].filter(d => !this.customIds.has(d.id)).concat(this.data.custom);
       for (const definition of this.indexedDefinitions) {
         this.definitionsById.set(definition.id, definition);
@@ -113,6 +120,61 @@ export class ServerRegistry {
   /** True when a choice made for one project folder applies to this file. */
   hasProjectChoices(resource: string): boolean { return this.projectScopes(resource).length > 0; }
   role(id: string, resource?: string): 'primary' | 'supplementary' { return this.options(id, resource).role ?? this.definition(id).role ?? 'primary'; }
+  /** A tool that answers for a language beside the language's own tool (`Companion`). Nobody
+   * chose it for that language, so it is never the language's analysis tool, only an addition. */
+  private companionList: readonly Companion[] = [];
+  /** True when the set changed. */
+  setCompanions(next: readonly Companion[]): boolean {
+    const written = (list: readonly Companion[]) => JSON.stringify(list.map(item => [item.tool, item.language, item.wire ?? null, item.roots ? [...item.roots].sort() : null]).sort());
+    if (written(next) === written(this.companionList)) return false;
+    this.companionList = next.map(item => ({ ...item, ...(item.roots ? { roots: [...item.roots] } : {}) }));
+    return true;
+  }
+  private companion(id: string, language: string, resource?: string): Companion | undefined {
+    const inside = (root: string) => { const relative = path.relative(root, resource!); return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative)); };
+    return this.companionList.find(item => item.tool === id && item.language === language && (!item.roots || !!resource && item.roots.some(inside)));
+  }
+  /** Whether a tool answers for this language only beside the language's own tool here. A tool
+   * that is the language's analysis tool, by the person's choice or because there is no other, is not. */
+  isCompanion(id: string, language: string, resource?: string): boolean {
+    if (!this.companion(id, language, resource)) return false;
+    if (!this.definitionsById.get(id)?.languages.some(own => own.languageId === language)) return true;
+    return this.defaultServer(language, resource) !== id && this.preferred(language, resource) !== id;
+  }
+  /** The name a companion is told the language by, when the plugin that made it one has its own. */
+  companionLanguage(id: string, language: string, resource?: string): string | undefined { return this.companion(id, language, resource)?.wire; }
+  /** The entries by which a tool finds the project of a file. For a language it is only a
+   * companion of, those are its other languages: it finds the same project for a `.vue` file as
+   * for the `.ts` file beside it, and runs once for both. */
+  projectLanguages(id: string, language: string | undefined, resource?: string): LanguageServerDefinition['languages'] {
+    const definition = this.definition(id);
+    if (language && this.isCompanion(id, language, resource)) {
+      const own = definition.languages.filter(entry => !this.isCompanion(id, entry.languageId, resource));
+      if (own.length) return own;
+    }
+    const asked = definition.languages.filter(entry => entry.languageId === language);
+    return asked.length ? asked : definition.languages;
+  }
+  /** The routes of companions for languages the tool does not list itself, under the language's
+   * own file names. One is on while the tool is on for a language of its own and the language
+   * is not turned off. `everywhere` leaves the project a companion is limited to aside. */
+  private companionRoutes(resource?: string, everywhere = false): (LanguageRoute & { enabled: boolean; roots?: readonly string[] })[] {
+    const definitions = this.definitions(), routes: (LanguageRoute & { enabled: boolean; roots?: readonly string[] })[] = [];
+    for (const item of this.companionList) {
+      const tool = this.definitionsById.get(item.tool);
+      if (!tool || tool.languages.some(language => language.languageId === item.language)) continue;
+      if (!everywhere && !this.companion(item.tool, item.language, resource)) continue;
+      if (routes.some(route => route.server === item.tool && route.languageId === item.language)) continue;
+      const own = definitions.flatMap(definition => definition.languages).find(language => language.languageId === item.language);
+      const on = tool.languages.some(language => this.enabledFor(item.tool, language.languageId, resource));
+      if (own) routes.push({ ...own, server: item.tool, role: 'supplementary', beside: true, enabled: on && this.analysisSelection(item.language, resource).mode !== 'off', ...(item.roots ? { roots: item.roots } : {}) });
+    }
+    return routes;
+  }
+  /** The role a tool has for one language of a file: a companion's is always the additional one. */
+  private routeRole(id: string, language: string, resource?: string): 'primary' | 'supplementary' {
+    return this.isCompanion(id, language, resource) ? 'supplementary' : this.role(id, resource);
+  }
   /** Without an id: the app's switch. With one: whether this tool may be downloaded now.
    * The switch covers the supported languages. Any other tool is downloaded once a person
    * asked for it: by installing it, enabling it, adding it, or choosing it for a language. */
@@ -202,7 +264,8 @@ export class ServerRegistry {
     const key = this.policyLanguage(language);
     if (policy.mode === 'off') return false;
     const primary = this.role(id, resource) === 'primary';
-    if (policy.mode === 'server' && primary) return policy.server === id;
+    // The person's choice of analysis tool decides among the tools that could be it. A companion is none of them.
+    if (policy.mode === 'server' && primary && !this.isCompanion(id, language, resource)) return policy.server === id;
     let enabled = primary && this.data.languageDefaults?.[key] === 'automatic' ? undefined : this.data.servers[id]?.enabled;
     const global = enabled;
     for (const root of this.projectScopes(resource).reverse()) {
@@ -234,8 +297,14 @@ export class ServerRegistry {
   }
   associations(resource?: string): LanguageRoute[] {
     const roots = [...new Set([...Object.keys(this.data.projects ?? {}), ...Object.keys(this.data.projectDefaults ?? {}), ...Object.keys(this.data.projectPreferred ?? {})])];
-    return this.definitions().flatMap(d => d.languages.map(language => ({ ...language, server: d.id, enabled: this.enabledFor(d.id, language.languageId, resource), role: this.role(d.id, resource), formatting: this.options(d.id, resource).formatting,
-      scopes: roots.map(root => ({ root, role: this.role(d.id, root), formatting: this.options(d.id, root).formatting, enabled: this.enabledFor(d.id, language.languageId, root) })) })));
+    const companionRoots = (id: string, language: string) => [...new Set(this.companionList.filter(item => item.tool === id && item.language === language).flatMap(item => item.roots ?? []))];
+    const own: LanguageRoute[] = this.definitions().flatMap(d => d.languages.map(language => ({ ...language, server: d.id, enabled: this.enabledFor(d.id, language.languageId, resource), role: this.routeRole(d.id, language.languageId, resource), formatting: this.options(d.id, resource).formatting, ...(this.companionList.some(item => item.tool === d.id && item.language === language.languageId) ? { beside: true } : {}),
+      // The projects a companion is limited to follow the person's own projects: of two folders that hold a file, the inner one decides.
+      scopes: [...roots.map(root => ({ root, role: this.routeRole(d.id, language.languageId, root), formatting: this.options(d.id, root).formatting, enabled: this.enabledFor(d.id, language.languageId, root) })),
+        ...companionRoots(d.id, language.languageId).filter(root => !roots.includes(root)).map(root => ({ root, role: this.routeRole(d.id, language.languageId, root) }))] })));
+    return [...own, ...this.companionRoutes(resource, true).map(({ roots: limited, ...route }) => ({ ...route, enabled: limited ? false : route.enabled,
+      scopes: [...roots.map(root => ({ root, role: 'supplementary' as const, enabled: this.companionRoutes(root).find(other => other.server === route.server && other.languageId === route.languageId)?.enabled ?? false })),
+        ...(limited ?? []).filter(root => !roots.includes(root)).map(root => ({ root, role: 'supplementary' as const, enabled: this.companionRoutes(root).find(other => other.server === route.server && other.languageId === route.languageId)?.enabled ?? false }))] }))];
   }
   preferred(languageId: string, resource?: string): string | undefined {
     const root = resource && Object.keys(this.data.projectPreferred ?? {}).filter(root => { const relative = path.relative(root, resource); return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative)); }).sort((a, b) => b.length - a.length).find(root => this.data.projectPreferred![root][languageId]);
@@ -259,8 +328,9 @@ export class ServerRegistry {
       candidates.sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred)
         || Number(this.options(b.id, resource).enabled === true) - Number(this.options(a.id, resource).enabled === true));
       for (const candidate of candidates) for (const language of candidate.languages.filter(l => l.languageId === id))
-        result.push({ ...language, server: candidate.id, role: this.role(candidate.id, resource), formatting: this.options(candidate.id, resource).formatting });
+        result.push({ ...language, server: candidate.id, role: this.routeRole(candidate.id, id, resource), formatting: this.options(candidate.id, resource).formatting, ...(this.isCompanion(candidate.id, id, resource) ? { beside: true } : {}) });
     }
+    for (const { enabled, roots: _limited, ...route } of this.companionRoutes(resource)) if (enabled) result.push(route);
     return result;
   }
   candidates(file: string, server?: string, languageId?: string): { server: string; languageId: string }[] {

@@ -14,9 +14,12 @@ import type { RuntimeLanguageCatalog, ZedAdapterBinding } from './runtime-langua
 import type { LanguageCatalogEntry } from '../../protocol/language';
 
 import { mergeLanguageSettings } from './language-settings';
-import { isKotlinServer } from './extension-rules';
+import { isKotlinServer, packageFolder } from './extension-rules';
 import { forgetKotlinServer, kotlinServerForRun } from './kotlin-download';
 import { foundPythons, type FoundPython } from './python-toolchains';
+import { usable, type Contribution } from './tool-contributions';
+import { installedPackageFolder, pinnedNpmPackage, projectHasPackage, projectPackageTools } from './project-package-tools';
+import { existsSync } from 'node:fs';
 export { mergeLanguageSettings } from './language-settings';
 
 export class AutomaticDownloadsDisabled extends Error {}
@@ -177,12 +180,15 @@ export class LanguageProvisioner {
     const kotlin = server && binding && downloads && isKotlinServer(definition) ? path.join(this.directory, 'extensions', 'work', binding.extension) : undefined;
     if (kotlin) await kotlinServerForRun({ work: kotlin, fetch: this.download,
       progress: (received, total) => progress?.(`Downloading ${definition.name}… ${total ? `${Math.floor(received / total * 100)}%` : `${Math.round(received / 1e6)} MB`}`) });
+    // An extension that starts its tool out of the project's packages and installs none is given
+    // Setdown's copy where the project has none (`project-package-tools.ts`).
+    const supplied = server && binding && downloads ? await this.suppliedPackage(server, root, options.initializationOptions ?? definition.initializationOptions, progress) : {};
     if (server) {
       const name = binding?.languages[languageId as keyof typeof binding.languages]
         ?? inventory.languages.find(name => [language?.zedName,language?.name,language?.grammar,language?.label,languageId].some(candidate=>candidate?.toLowerCase()===name.toLowerCase()))
         ?? language?.zedName ?? language?.label ?? languageId;
       const prepared = await (downloads ? this.host : this.offlineHost).prepare({server,language:name,root,allowBinaryDownload:downloads,env:Object.fromEntries(Object.entries(env).filter((e): e is [string,string] => typeof e[1] === 'string')),
-        settings:{[server]:{settings:options.settings??definition.settings,initialization_options:options.initializationOptions??definition.initializationOptions}}},progress).catch(error => {
+        settings:{[server]:{settings:options.settings??definition.settings,initialization_options:{...(options.initializationOptions??definition.initializationOptions),...supplied}}}},progress).catch(error => {
           if (!downloads && /downloading language servers disabled/i.test(String(error))) throw disabled();
           // The extension may have read a newer release list than Setdown did; the next start reads it again.
           if (kotlin) forgetKotlinServer(kotlin);
@@ -202,6 +208,71 @@ export class LanguageProvisioner {
         settings:options.settings??definition.settings,initializationOptions:options.initializationOptions??definition.initializationOptions??{}};
     }
     throw Error(`No automatic installer is available for ${definition.name}. Configure its executable in Language Support.`);
+  }
+  private async suppliedPackage(server: string, root: string, written: Record<string, unknown> | undefined, progress?: (message: string) => void): Promise<Record<string, string>> {
+    const tool = projectPackageTools[server];
+    if (!tool || written?.[tool.option] !== undefined || projectHasPackage(root, tool)) return {};
+    const pinned = pinnedNpmPackage(tool.mason);
+    if (!pinned || pinned.package !== tool.package) return {};
+    // The host says nothing while npm works; a first installation takes several seconds.
+    if (!existsSync(path.join(this.directory, 'npm', pinned.package.replaceAll('/', '--'), pinned.version, 'node_modules', ...pinned.package.split('/'), 'package.json'))) progress?.(`Downloading ${pinned.package}…`);
+    const installed = validatePreparedServer(await this.host.request<PreparedLanguageServer>('npm', { package: pinned.package, version: pinned.version, command: pinned.command }, progress));
+    const folder = installed.args[0] && installedPackageFolder(installed.args[0], tool.package);
+    return folder ? { [tool.option]: folder } : {};
+  }
+  private bindings(): ZedAdapterBinding[] { return this.catalog?.bindings ?? adapters.bindings as ZedAdapterBinding[]; }
+  private contributorsFile() { return path.join(this.directory, 'contributors.json'); }
+  /** Which extensions added something to which tool the last time they were asked. */
+  private async contributors(): Promise<Record<string, string[]>> {
+    try {
+      const saved = JSON.parse(await readFile(this.contributorsFile(), 'utf8'));
+      if (saved?.version !== 1 || !saved.tools || typeof saved.tools !== 'object' || Array.isArray(saved.tools)) return {};
+      return Object.fromEntries(Object.entries(saved.tools as Record<string, unknown>).filter((entry): entry is [string, string[]] =>
+        Array.isArray(entry[1]) && entry[1].length <= 256 && entry[1].every(id => typeof id === 'string' && /^[a-z0-9][a-z0-9._-]{0,127}$/.test(id))));
+    } catch { return {}; }
+  }
+  /** Loads an extension whose package is already on this computer in the catalog's version. Nothing is downloaded. */
+  private async loadPresent(id: string): Promise<void> {
+    if (this.installed.has(id)) return;
+    const pkg = this.catalog?.package(id) ?? zed.packages.find(p => p.id === id);
+    if (!pkg || !await this.packages.present(pkg)) return;
+    const load = this.loading.catch(() => {}).then(async () => {
+      this.installed.set(pkg.id, pkg.version);
+      await this.host.request('extensions', { extensions: [...this.installed].map(([id, version]) => ({ id, version })) })
+        .catch(error => { this.installed.delete(pkg.id); throw error; });
+    });
+    this.loading = load; await load;
+  }
+  /** What the extensions add to tools they did not set up (`tool-contributions.ts`): Vue's
+   * extension tells TypeScript's server to load Vue's plugin. `servers` are the names Zed knows
+   * the tools by. An extension answers only once it is loaded, so the ones that answered before
+   * are loaded again when their package is still on this computer; nothing is downloaded for it.
+   * An answer that names a folder or a package that is not there is left out: the extension's
+   * own tool has not been set up yet. */
+  async contributions(servers: string[], root: string, env: NodeJS.ProcessEnv): Promise<Record<string, Contribution[]>> {
+    const known = await this.contributors();
+    for (const id of new Set(servers.flatMap(server => known[server] ?? []))) await this.loadPresent(id).catch(() => {});
+    await this.loading.catch(() => {});
+    if (!this.installed.size) return {};
+    const answered = await this.host.request<Record<string, Contribution[]>>('contributions', { servers, root, env: orderedEnvironment(env) });
+    const found = (location: string, name?: string) => existsSync(location) && (!name || !!packageFolder(location, name));
+    const result: Record<string, Contribution[]> = {};
+    const extension = (server: string) => this.bindings().find(binding => binding.server === server)?.extension;
+    let changed = false;
+    for (const server of servers) {
+      const all = Array.isArray(answered?.[server]) ? answered[server].filter(item => item && typeof item.server === 'string') : [];
+      result[server] = all.filter(item => usable(item, found));
+      // An extension that answered once stays on the list. Whether it answers depends on the
+      // project (Astro's reads the project's package.json), so silence for one project says
+      // nothing about the next. A listed extension whose package is gone is simply not loaded.
+      const ids = [...new Set([...(known[server] ?? []), ...all.flatMap(item => extension(item.server) ?? [])])].sort();
+      if (JSON.stringify(ids) !== JSON.stringify([...(known[server] ?? [])].sort())) { changed = true; if (ids.length) known[server] = ids; else delete known[server]; }
+    }
+    if (changed) {
+      const file = this.contributorsFile(), staging = file + '.' + randomUUID();
+      await writeFile(staging, JSON.stringify({ version: 1, tools: known }), { mode: 0o600 }).then(() => rename(staging, file)).catch(() => {});
+    }
+    return result;
   }
   dispose(): void { this.host.dispose(); this.offlineHost.dispose(); this.environments.clear(); }
   async highlight(languageId: string, text: string): Promise<Array<[number,number,string]>> {

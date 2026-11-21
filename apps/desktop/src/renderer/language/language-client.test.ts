@@ -22,6 +22,7 @@ function fixture(file = '/project/main.py', capabilities: import('vscode-languag
     } }),
     editor: { registerEditorOpener: () => ({ dispose }), setModelMarkers: vi.fn() },
     MarkerSeverity: { Error: 8, Warning: 4, Info: 2, Hint: 1 }, MarkerTag: { Unnecessary: 1, Deprecated: 2 },
+    Range: class { constructor(readonly startLineNumber: number, readonly startColumn: number, readonly endLineNumber: number, readonly endColumn: number) {} },
   } as unknown as typeof M;
   const model = {
     uri: { fsPath: file, toString: () => `file://${file}?tab-1` },
@@ -276,4 +277,48 @@ test('text a tool made for reading opens as a document beside the code, never ov
   await bare.client.runToolCommand('rust-analyzer.analyzerStatus', { ...editor, getModel: () => bare.model } as M.editor.IStandaloneCodeEditor);
   expect(shown).toHaveBeenCalledWith('This window cannot open the answer as a document.', { lineNumber: 1, column: 1 });
   f.client.dispose(); bare.client.dispose();
+});
+
+test("rename asks the language's own tool first, and the tool beside it where that one declines", async () => {
+  // A `.vue` file: Vue's own tool declines to rename a variable of the script, TypeScript's server
+  // can. Both registered a rename provider, and the editor uses only one of them, so either one
+  // has to ask the same tools in the same order.
+  const renames = { renameProvider: { prepareProvider: true }, textDocumentSync: 2 } as const;
+  let chain: LanguageClient[] = [];
+  const own = fixture('/project/main.py', renames, undefined, { renameChain: () => chain });
+  const beside = fixture('/project/main.py', renames, undefined, { renameChain: () => chain, prepare: async () => ({ tab: own.tab, model: own.model }) });
+  chain = [own.client, beside.client];
+  own.client.bind(own.tab, own.model); beside.client.bind(own.tab, own.model);
+  await vi.waitFor(() => expect(own.providers.has('registerRenameProvider') && beside.providers.has('registerRenameProvider')).toBe(true));
+  const asked: string[] = [];
+  let ownAnswer: unknown = null, besideAnswer: unknown = { range: { start: { line: 2, character: 6 }, end: { line: 2, character: 10 } }, placeholder: 'slug' };
+  vi.mocked(own.port.request).mockImplementation(async (_id, _version, _request, method) => { asked.push(`own ${method}`); return method === 'textDocument/prepareRename' ? ownAnswer : method === 'textDocument/rename' ? { changes: {} } : null; });
+  vi.mocked(beside.port.request).mockImplementation(async (_id, _version, _request, method) => { asked.push(`beside ${method}`); return method === 'textDocument/prepareRename' ? besideAnswer : method === 'textDocument/rename' ? { changes: {} } : null; });
+  const position = { lineNumber: 3, column: 8 } as M.Position;
+  for (const registered of [own, beside]) {
+    asked.length = 0;
+    const provider = registered.providers.get('registerRenameProvider') as M.languages.RenameProvider;
+    expect(await provider.resolveRenameLocation!(own.model, position, token)).toEqual({ range: { startLineNumber: 3, startColumn: 7, endLineNumber: 3, endColumn: 11 }, text: 'slug' });
+    expect(await provider.provideRenameEdits(own.model, position, 'articleSlug', token)).toEqual({ edits: [] });
+    expect(asked).toEqual(['own textDocument/prepareRename', 'beside textDocument/prepareRename', 'beside textDocument/rename']);
+  }
+  // Where the language's own tool can rename, the other one is not asked at all.
+  ownAnswer = { range: { start: { line: 2, character: 6 }, end: { line: 2, character: 10 } }, placeholder: 'tag' }; asked.length = 0;
+  const provider = beside.providers.get('registerRenameProvider') as M.languages.RenameProvider;
+  expect(await provider.resolveRenameLocation!(own.model, position, token)).toMatchObject({ text: 'tag' });
+  await provider.provideRenameEdits(own.model, position, 'next', token);
+  expect(asked).toEqual(['own textDocument/prepareRename', 'own textDocument/rename']);
+  // Where both decline, the person is told so once.
+  ownAnswer = null; besideAnswer = null;
+  expect(await provider.resolveRenameLocation!(own.model, position, token)).toMatchObject({ text: '', rejectReason: 'This symbol cannot be renamed.' });
+});
+
+test('a tool that cannot be asked beforehand renames the word at the cursor, as before', async () => {
+  const f = fixture('/project/main.py', { renameProvider: true, textDocumentSync: 2 });
+  (f.model as unknown as { getWordAtPosition: unknown }).getWordAtPosition = () => ({ word: 'name', startColumn: 5, endColumn: 9 });
+  f.client.bind(f.tab, f.model);
+  await vi.waitFor(() => expect(f.providers.has('registerRenameProvider')).toBe(true));
+  const provider = f.providers.get('registerRenameProvider') as M.languages.RenameProvider;
+  expect(await provider.resolveRenameLocation!(f.model, { lineNumber: 2, column: 6 } as M.Position, token)).toEqual({ range: { startLineNumber: 2, startColumn: 5, endLineNumber: 2, endColumn: 9 }, text: 'name' });
+  expect(f.port.request).not.toHaveBeenCalled();
 });

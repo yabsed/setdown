@@ -350,3 +350,59 @@ test('a supported tool is downloaded when needed; any other tool waits until a p
   expect(registry.asksBeforeInstalling('zls')).toBe(false);
   expect(registry.automaticInstall('fortls')).toBe(true);
 });
+
+test("a plugin's companion answers beside the language's own tool and is never the language's analysis tool", async () => {
+  const root = await directory(), file = path.join(root, 'project', 'App.vue');
+  const registry = new ServerRegistry(root);
+  expect(registry.routes(file).filter(route => route.languageId === 'vue').map(route => route.server)).not.toContain('typescript-language-server');
+  // Vue's plugin names the language `vue.js` (`tool-contributions.ts`).
+  expect(registry.setCompanions([{ tool: 'typescript-language-server', language: 'vue', wire: 'vue.js' }])).toBe(true);
+  expect(registry.setCompanions([{ tool: 'typescript-language-server', language: 'vue', wire: 'vue.js' }])).toBe(false);
+  const route = registry.routes(file).find(route => route.languageId === 'vue' && route.server === 'typescript-language-server')!;
+  expect(route).toMatchObject({ role: 'supplementary', extensions: ['.vue'] });
+  expect(registry.candidates(file)).toEqual([{ server: 'vue-language-server', languageId: 'vue' }]);
+  expect(registry.candidates(file, 'typescript-language-server')).toEqual([{ server: 'typescript-language-server', languageId: 'vue' }]);
+  expect(registry.candidates(file, 'typescript-language-server', 'vue')).toEqual([{ server: 'typescript-language-server', languageId: 'vue' }]);
+  expect(registry.companionLanguage('typescript-language-server', 'vue', file)).toBe('vue.js');
+  expect(registry.isCompanion('typescript-language-server', 'vue', file)).toBe(true);
+  // It finds the project as it does for a .ts file beside this one.
+  expect(registry.projectLanguages('typescript-language-server', 'vue', file).map(language => language.languageId)).toContain('typescript');
+  expect(registry.associations().find(item => item.languageId === 'vue' && item.server === 'typescript-language-server')).toMatchObject({ role: 'supplementary', enabled: true });
+  // The person's choice of Vue's tool does not switch the companion off; turning Vue analysis off does.
+  registry.selectAnalysis('vue', 'vue-language-server');
+  expect(registry.routes(file).some(route => route.languageId === 'vue' && route.server === 'typescript-language-server')).toBe(true);
+  registry.selectAnalysis('vue', 'off');
+  expect(registry.routes(file).some(route => route.languageId === 'vue' && route.server === 'typescript-language-server')).toBe(false);
+  registry.selectAnalysis('vue', 'automatic');
+  // So does turning TypeScript off for the project: its server is not started for Vue files alone.
+  registry.selectAnalysis('typescript', 'off'); registry.selectAnalysis('javascript', 'off');
+  registry.selectAnalysis('typescriptreact', 'off'); registry.selectAnalysis('javascriptreact', 'off');
+  expect(registry.routes(file).some(route => route.languageId === 'vue' && route.server === 'typescript-language-server')).toBe(false);
+  expect(registry.setCompanions([])).toBe(true);
+  expect(registry.associations().some(item => item.languageId === 'vue' && item.server === 'typescript-language-server')).toBe(false);
+});
+
+test("a tool its extension attaches to other languages joins them in the projects it runs in, and only there", async () => {
+  const root = await directory(), project = path.join(root, 'angular-app'), inside = path.join(project, 'src', 'app.component.ts'), outside = path.join(root, 'other', 'main.ts');
+  const registry = new ServerRegistry(root), angular = 'zed.angular.angular';
+  const before = registry.routes(inside).find(route => route.server === angular && route.languageId === 'typescript');
+  expect(before?.role).toBe('primary');
+  registry.setCompanions([{ tool: angular, language: 'typescript', wire: 'typescript', roots: [project] }, { tool: angular, language: 'html', wire: 'html', roots: [project] }]);
+  expect(registry.routes(inside).find(route => route.server === angular && route.languageId === 'typescript')?.role).toBe('supplementary');
+  expect(registry.routes(outside).find(route => route.server === angular && route.languageId === 'typescript')?.role).toBe('primary');
+  // TypeScript's own server stays the analysis tool of the file; Angular's is asked beside it.
+  expect(registry.candidates(inside)).toEqual([{ server: 'typescript-language-server', languageId: 'typescript' }]);
+  expect(registry.candidates(inside, angular)).toEqual([{ server: angular, languageId: 'typescript' }]);
+  // Its own templates are still its own, and it finds the project by them for a .ts file too.
+  expect(registry.isCompanion(angular, 'angular', inside)).toBe(false);
+  expect(registry.projectLanguages(angular, 'typescript', inside).map(language => language.languageId)).toEqual(['angular']);
+  expect(registry.projectLanguages(angular, 'typescript', outside).map(language => language.languageId)).toEqual(['typescript']);
+  // The window is told per project: the route is the tool's ordinary one, and additional inside the project.
+  const association = registry.associations().find(item => item.server === angular && item.languageId === 'typescript')!;
+  expect(association.role).toBe('primary');
+  expect(association.scopes).toContainEqual({ root: project, role: 'supplementary' });
+  // A person who chooses it as the analysis tool of TypeScript there gets it as that.
+  registry.selectAnalysis('typescript', angular, project);
+  expect(registry.isCompanion(angular, 'typescript', inside)).toBe(false);
+  expect(registry.candidates(inside)).toEqual([{ server: angular, languageId: 'typescript' }]);
+});

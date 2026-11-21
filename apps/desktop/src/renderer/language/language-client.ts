@@ -15,7 +15,7 @@ import type { LanguageRefresh } from '../../protocol/language-features';
 import { completionDefaults, completion, fromRange, markdown, marker, toPosition, toRange } from './language-conversion';
 import { requestLanguageResult, LanguageRequestError, languageItemHandles } from '../../protocol/language-request';
 import { completionContext as toCompletionContext } from '../../protocol/language-completion';
-import { ownLanguageDiagnostics } from './builtin-diagnostics';
+import { answeredBy, ownLanguageAnswers, ownLanguageDiagnostics } from './builtin-diagnostics';
 import { diagnosticsFor, type DiagnosticStore } from './diagnostic-store';
 import { documentSupport, type ProviderSupport, type ToolAction, type ToolEnvironment } from './document-support';
 import { environmentAction, problemsEmpty } from './document-presentation';
@@ -37,6 +37,12 @@ export type LanguageOptions = {
   filterCapabilities?(model: M.editor.ITextModel, server: string, capabilities: LanguageCapabilities): LanguageCapabilities;
   documentStatus?(model: M.editor.ITextModel, status?: ProviderSupport): void;
   route?: typeof languageSupport;
+  /** The tools that may rename in a model, the language's own tool first. Absent: this one alone. */
+  renameChain?(model: M.editor.ITextModel): LanguageClient[];
+  /** Whether a tool also reads this model, in any role. Absent: the tool of the model's own route. */
+  serves?(model: M.editor.ITextModel, server: string): boolean;
+  /** Resolves when the other tools of the window have been sent every change made so far. */
+  synchronized?(): Promise<void>;
   prepare(path: string): Promise<{ tab: DocumentTab; model: M.editor.ITextModel }>;
   open(path: string, selection: M.IRange | M.IPosition | undefined): Promise<void>;
   /** Starts a command line in a new terminal of the window. Absent where the window has none. */
@@ -571,6 +577,8 @@ export class LanguageClient {
     const { api } = this;
     const language = { language: owner.model.getLanguageId(), scheme: 'file', pattern: owner.model.uri.fsPath, exclusive: false };
     if (capabilities.diagnosticProvider || owner.hasDiagnostics) owner.providers.push(ownLanguageDiagnostics(api, owner.model, owner.serverId));
+    // The language's own tool answers in place of the editor's own worker. A linter beside it does not.
+    if (!this.options.provider) owner.providers.push(ownLanguageAnswers(api, owner.model, answeredBy(capabilities)));
     // Each provider belongs to one live model and its negotiated capabilities.
     // Different roots/servers may advertise different triggers or resolve support.
     const scoped = <T extends object>(provider: T): T => Object.fromEntries(Object.entries(provider).map(([key, value]) =>
@@ -721,43 +729,86 @@ export class LanguageClient {
           : [convert(symbol)]);
       },
     })));
+    // The editor lets one rename provider answer for a model. Every tool that may rename here
+    // registers the same two functions. They ask the tools in order, the language's own tool
+    // first (`renameChain`), and the edits come from the tool that said it can rename this place.
     if (capabilities.renameProvider) owner.providers.push(api.languages.registerRenameProvider({ ...language, exclusive: true }, scoped({
-      resolveRenameLocation: typeof capabilities.renameProvider !== 'object' || !capabilities.renameProvider.prepareProvider ? undefined : async (model, position, token) => {
-        const result = await this.request<L.Range | { range: L.Range; placeholder: string } | { defaultBehavior: boolean }>(model, 'textDocument/prepareRename', { position: toPosition(position) }, token);
-        if (!result) return { range: new api.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'This symbol cannot be renamed.' };
-        if ('defaultBehavior' in result) { const word = model.getWordAtPosition(position); return word ? { range: new api.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn), text: word.word } : { range: new api.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'No symbol at this position.' }; }
-        const range = fromRange('range' in result ? result.range : result);
-        return { range, text: 'placeholder' in result ? result.placeholder : model.getValueInRange(range) };
-      },
-      provideRenameEdits: async (model, position, newName, token) => {
-        // Capture every open document before asking. A rename cannot silently
-        // overwrite typing that happened while the server was computing edits.
-        const versions = new Map([...this.bindings].map(([m]) => [m, m.getVersionId()]));
-        try {
-          for (let attempt = 0; attempt < 4; attempt++) {
-            await Promise.all([...this.bindings.values()].map(binding => binding.queue));
-            if ([...versions].some(([m, version]) => m.isDisposed() || m.getVersionId() !== version))
-              throw new Error('Documents changed during rename. Try again.');
-            const result = await this.request<L.WorkspaceEdit>(model, 'textDocument/rename', { position: toPosition(position), newName }, token);
-            if (!result) throw new Error('Rename was cancelled or the document changed.');
-            let opened = false;
-            for (const change of this.textChanges(result)) {
-              const target = await this.options.prepare(this.uri(change.uri).fsPath);
-              if (!versions.has(target.model)) {
-                if ((this.options.route ?? languageSupport)(target.tab.document.path)?.server !== (this.options.route ?? languageSupport)(owner.path)?.server)
-                  throw new Error('Rename targets must belong to the same language server.');
-                versions.set(target.model, target.model.getVersionId()); opened = true;
-              }
-            }
-            // Newly opened targets may differ from what the server read from
-            // disk. Recompute against their authoritative live buffers first.
-            if (!opened) return await this.workspaceEdit(result, versions, token);
-          }
-          throw new Error('Rename targets are still changing. Try again.');
-        }
-        catch (error) { return { edits: [], rejectReason: String(error) }; }
-      },
+      resolveRenameLocation: (model, position, token) => this.renameLocation(model, position, token),
+      provideRenameEdits: (model, position, newName, token) => this.renameEdits(model, position, newName, token),
     })));
+  }
+  private readonly renameChoice = new WeakMap<M.editor.ITextModel, { client: LanguageClient; version: number; line: number; column: number }>();
+  private renamers(model: M.editor.ITextModel): LanguageClient[] {
+    const chain = (this.options.renameChain?.(model) ?? [this]).filter(client => client.canRename(model));
+    return chain.length ? chain : [this];
+  }
+  /** Whether this tool renames in the model, under the plan that decides which tools may. */
+  canRename(model: M.editor.ITextModel): boolean { return !!this.bindings.get(model)?.capabilities.renameProvider; }
+  /** Resolves when every change made so far has been sent to this tool. */
+  async synchronized(): Promise<void> { await Promise.all([...this.bindings.values()].map(binding => binding.queue)); }
+  /** This tool's own answer to "what would be renamed here". `undefined`: it cannot be asked beforehand. */
+  async prepareRename(model: M.editor.ITextModel, position: M.Position, token: M.CancellationToken): Promise<(M.languages.RenameLocation & M.languages.Rejection) | undefined> {
+    const { api } = this, provider = this.bindings.get(model)?.capabilities.renameProvider;
+    if (typeof provider !== 'object' || !provider.prepareProvider) return undefined;
+    const result = await this.request<L.Range | { range: L.Range; placeholder: string } | { defaultBehavior: boolean }>(model, 'textDocument/prepareRename', { position: toPosition(position) }, token);
+    if (!result) return { range: new api.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'This symbol cannot be renamed.' };
+    if ('defaultBehavior' in result) { const word = model.getWordAtPosition(position); return word ? { range: new api.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn), text: word.word } : { range: new api.Range(position.lineNumber, position.column, position.lineNumber, position.column), text: '', rejectReason: 'No symbol at this position.' }; }
+    const range = fromRange('range' in result ? result.range : result);
+    return { range, text: 'placeholder' in result ? result.placeholder : model.getValueInRange(range) };
+  }
+  private async renameLocation(model: M.editor.ITextModel, position: M.Position, token: M.CancellationToken): Promise<M.languages.RenameLocation & M.languages.Rejection> {
+    const here = new this.api.Range(position.lineNumber, position.column, position.lineNumber, position.column), reasons: string[] = [];
+    for (const client of this.renamers(model)) {
+      const found = await client.prepareRename(model, position, token);
+      if (found?.rejectReason) { reasons.push(found.rejectReason); continue; }
+      this.renameChoice.set(model, { client, version: model.getVersionId(), line: position.lineNumber, column: position.column });
+      if (found) return found;
+      // A tool that cannot be asked beforehand renames the word at the cursor: what the editor
+      // does itself for a provider without this step.
+      const word = model.getWordAtPosition(position);
+      return word ? { range: new this.api.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn), text: word.word } : { range: here, text: '' };
+    }
+    this.renameChoice.delete(model);
+    return { range: here, text: '', rejectReason: reasons[0] ?? 'This symbol cannot be renamed.' };
+  }
+  private renameEdits(model: M.editor.ITextModel, position: M.Position, newName: string, token: M.CancellationToken): Promise<M.languages.WorkspaceEdit & M.languages.Rejection> {
+    const choice = this.renameChoice.get(model);
+    const client = choice && choice.version === model.getVersionId() && choice.line === position.lineNumber && choice.column === position.column ? choice.client : this.renamers(model)[0];
+    return client.rename(model, position, newName, token);
+  }
+  /** This tool's rename: the edits for every file it names, checked against what is open. */
+  async rename(model: M.editor.ITextModel, position: M.Position, newName: string, token: M.CancellationToken): Promise<M.languages.WorkspaceEdit & M.languages.Rejection> {
+    const owner = this.bindings.get(model);
+    if (!owner) return { edits: [], rejectReason: 'This file is no longer connected to the tool.' };
+    // Capture every open document before asking. A rename cannot silently
+    // overwrite typing that happened while the server was computing edits.
+    const versions = new Map([...this.bindings].map(([m]) => [m, m.getVersionId()]));
+    const route = this.options.route ?? languageSupport;
+    try {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await this.synchronized(); await this.options.synchronized?.();
+        if ([...versions].some(([m, version]) => m.isDisposed() || m.getVersionId() !== version))
+          throw new Error('Documents changed during rename. Try again.');
+        const result = await this.request<L.WorkspaceEdit>(model, 'textDocument/rename', { position: toPosition(position), newName }, token);
+        if (!result) throw new Error('Rename was cancelled or the document changed.');
+        let opened = false;
+        for (const change of this.textChanges(result)) {
+          const target = await this.options.prepare(this.uri(change.uri).fsPath);
+          if (!versions.has(target.model)) {
+            // The same tool may read the target in another role: TypeScript's server reads a
+            // `.vue` file beside Vue's tool and a `.ts` file as its own.
+            if (!(this.options.serves ? this.options.serves(target.model, owner.serverId) : route(target.tab.document.path)?.server === route(owner.path)?.server))
+              throw new Error('Rename targets must belong to the same language server.');
+            versions.set(target.model, target.model.getVersionId()); opened = true;
+          }
+        }
+        // Newly opened targets may differ from what the server read from
+        // disk. Recompute against their authoritative live buffers first.
+        if (!opened) return await this.workspaceEdit(result, versions, token);
+      }
+      throw new Error('Rename targets are still changing. Try again.');
+    }
+    catch (error) { return { edits: [], rejectReason: String(error) }; }
   }
   private textChanges(edit: L.WorkspaceEdit) {
     const changes: { uri: string; version?: number | null; edits: L.TextEdit[] }[] = [];

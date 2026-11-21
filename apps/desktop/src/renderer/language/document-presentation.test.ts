@@ -159,3 +159,11 @@ test('a tool that failed without a known cause is explained in its own words', (
   // A known cause has its own sentence; the raw message is not repeated beside it.
   expect(presentSupport([server({ state: 'failed', recovery: { retrying: false }, issue: { kind: 'crashed' }, message: wrapped })], undefined, 'C++').description).toBeUndefined();
 });
+
+test("a Deno project under TypeScript's own server is Limited, and its one action takes Deno's tool", () => {
+  const message = "This is a Deno project (deno.json). TypeScript's own server reports Deno's globals and imports as errors; Deno's tool understands them.";
+  expect(presentSupport([within({ environment: 'partial', issues: [{ code: 'deno-project', message }] })]))
+    .toMatchObject({ label: 'Limited', tone: 'warning', title: message, action: { kind: 'provider', label: "Use Deno's tool", server: 'deno' } });
+  // Any other limitation is still looked at in the environment.
+  expect(presentSupport([within({ environment: 'partial', issues: [{ code: 'other', message: 'Something is missing.' }] })]).action).toEqual({ kind: 'details', label: 'Review environment…' });
+});

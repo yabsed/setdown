@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -13,10 +13,10 @@ vi.mock('./zed-language-host', async importOriginal => ({
 }));
 const kotlin = vi.hoisted(() => ({ kotlinServerForRun: vi.fn(), forgetKotlinServer: vi.fn() }));
 vi.mock('./kotlin-download', async importOriginal => ({ ...await importOriginal<typeof import('./kotlin-download')>(), ...kotlin }));
-const packages = vi.hoisted(() => ({ ensure: vi.fn() }));
+const packages = vi.hoisted(() => ({ ensure: vi.fn(), present: vi.fn() }));
 vi.mock('./language-package-store', async importOriginal => ({
   ...await importOriginal<typeof import('./language-package-store')>(),
-  LanguagePackageStore: class { ensure = packages.ensure; },
+  LanguagePackageStore: class { ensure = packages.ensure; present = packages.present; },
 }));
 const roots: string[] = [];
 afterEach(async () => { vi.resetAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
@@ -114,4 +114,70 @@ test("JetBrains' Kotlin server is verified and in place before its Zed extension
   await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'fourth'), {}, { automaticInstall: false })).rejects.toThrow('Automatic downloads are disabled');
   await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: true });
   expect(kotlin.kotlinServerForRun).not.toHaveBeenCalled(); f.installer.dispose();
+});
+
+test('an extension is asked what it adds to a tool it did not set up, once it is loaded, and nothing is downloaded for the question', async () => {
+  const f = await fixture(), work = path.join(f.directory, 'extensions', 'work', 'vue');
+  // No extension is loaded and none answered before: the host is not even asked.
+  host.request.mockClear();
+  expect(await f.installer.contributions(['typescript-language-server'], f.project, {})).toEqual({});
+  expect(host.request).not.toHaveBeenCalled();
+  // Vue's extension answered in an earlier run. Its package is still here, so it is loaded and asked again.
+  await writeFile(path.join(f.directory, 'contributors.json'), JSON.stringify({ version: 1, tools: { 'typescript-language-server': ['vue'] } }));
+  await mkdir(path.join(work, 'node_modules', '@vue', 'typescript-plugin'), { recursive: true });
+  await writeFile(path.join(work, 'node_modules', '@vue', 'typescript-plugin', 'package.json'), '{}');
+  packages.present.mockResolvedValue(true);
+  const order: string[] = [];
+  const vue = { server: 'vue-language-server', initializationOptions: { plugins: [{ name: '@vue/typescript-plugin', location: work, languages: ['typescript', 'vue.js'] }] }, settings: null };
+  // Marko's tool was never set up here: the folder its extension names does not exist.
+  const marko = { server: 'marko', initializationOptions: { plugins: [{ name: '@marko/ts-plugin', location: path.join(f.directory, 'extensions', 'work', 'marko') }] }, settings: null };
+  host.request.mockImplementation(async (op: string, values: Record<string, unknown>) => {
+    order.push(op);
+    if (op === 'contributions') { expect(values).toMatchObject({ servers: ['typescript-language-server'], root: f.project }); return { 'typescript-language-server': [vue, marko] }; }
+    return undefined;
+  });
+  const again = new LanguageProvisioner(f.directory, '/unused-host', f.download);
+  expect(await again.contributions(['typescript-language-server'], f.project, {})).toEqual({ 'typescript-language-server': [vue] });
+  expect(order).toEqual(['extensions', 'contributions']);
+  expect(host.request).toHaveBeenCalledWith('extensions', { extensions: [expect.objectContaining({ id: 'vue' })] });
+  expect(packages.ensure).not.toHaveBeenCalled(); expect(f.download).not.toHaveBeenCalled();
+  // Both extensions are remembered as contributors, to be loaded next time when their package is there.
+  expect(JSON.parse(await readFile(path.join(f.directory, 'contributors.json'), 'utf8')).tools['typescript-language-server']).toEqual(['marko', 'vue']);
+  // An extension's answer depends on the project. Silence for one project does not take it off the list.
+  host.request.mockImplementation(async (op: string) => { order.push(op); return op === 'contributions' ? { 'typescript-language-server': [] } : undefined; });
+  expect(await again.contributions(['typescript-language-server'], f.project, {})).toEqual({ 'typescript-language-server': [] });
+  expect(JSON.parse(await readFile(path.join(f.directory, 'contributors.json'), 'utf8')).tools['typescript-language-server']).toEqual(['marko', 'vue']);
+  // A package that is no longer on this computer is not fetched for the question.
+  packages.present.mockResolvedValue(false); order.length = 0;
+  const later = new LanguageProvisioner(f.directory, '/unused-host', f.download);
+  expect(await later.contributions(['typescript-language-server'], f.project, {})).toEqual({});
+  expect(order).toEqual([]);
+  f.installer.dispose(); again.dispose(); later.dispose();
+});
+
+test("Angular's server is installed for the extension where the project brings none, and named in the extension's own option", async () => {
+  const f = await fixture(), angular = builtinLanguageServers.find(server => server.id === 'zed.angular.angular')!;
+  const installed = path.join(f.directory, 'npm', '@angular--language-server', '0.0.0', 'node_modules', '@angular', 'language-server');
+  await mkdir(path.join(installed, 'bin'), { recursive: true });
+  await writeFile(path.join(installed, 'package.json'), '{"name":"@angular/language-server"}');
+  const told: string[] = [];
+  host.request.mockImplementation(async (op: string) => op === 'inventory' ? { servers: [], languages: ['Angular'] }
+    : op === 'npm' ? { executable: process.execPath, args: [path.join(installed, 'bin', 'ngserver')], settings: {}, initializationOptions: {} } : undefined);
+  host.prepare.mockResolvedValue(binary(f.executable));
+  await f.installer.prepare(angular, 'angular', f.project, {}, { automaticInstall: true }, message => told.push(message));
+  expect(host.request).toHaveBeenCalledWith('npm', expect.objectContaining({ package: '@angular/language-server', command: 'ngserver' }), expect.anything());
+  expect(host.prepare.mock.calls.at(-1)![0].settings.angular.initialization_options).toEqual({ angular_language_server_path: installed });
+  expect(told).toContain('Downloading @angular/language-server…');
+  // A project with its own copy is left to the extension, which starts that one.
+  const own = path.join(f.root, 'own'), copy = path.join(own, 'node_modules', '@angular', 'language-server');
+  await mkdir(copy, { recursive: true }); await writeFile(path.join(copy, 'package.json'), '{}');
+  host.request.mockClear();
+  await f.installer.prepare(angular, 'angular', own, {}, { automaticInstall: true });
+  expect(host.request.mock.calls.some(call => call[0] === 'npm')).toBe(false);
+  expect(host.prepare.mock.calls.at(-1)![0].settings.angular.initialization_options).toEqual({});
+  // What the person wrote in the option is what the extension gets.
+  await f.installer.prepare(angular, 'angular', f.project, {}, { automaticInstall: true, initializationOptions: { angular_language_server_path: '/my/copy' } });
+  expect(host.request.mock.calls.some(call => call[0] === 'npm')).toBe(false);
+  expect(host.prepare.mock.calls.at(-1)![0].settings.angular.initialization_options).toEqual({ angular_language_server_path: '/my/copy' });
+  f.installer.dispose();
 });

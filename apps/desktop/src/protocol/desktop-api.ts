@@ -255,6 +255,9 @@ export type ApplicationMenuEntry = {
 };
 
 export type CloseDecision = 'cancel' | 'discard' | 'save';
+/** The question asked before unsaved documents are closed. */
+export type ClosePromptRequest = { scope: 'tab' | 'window'; names: string[] };
+export type ClosePromptContext = ClosePromptRequest & { theme: PreviewThemeId };
 
 export type AppCommand = 'reload-document' | 'image:undo' | 'image:redo'
   | `explorer:${import('./explorer').ExplorerEditCommand}`
@@ -396,6 +399,14 @@ export type MarkTexApi = {
     close(): void;
     onShow(listener: (context: MenuOverlayContext) => void): () => void;
     onClosed(listener: () => void): () => void;
+  };
+  closePromptOverlay: {
+    /** Asks in a layer above a live web page, which goes on playing. Resolves with the choice,
+     * or with null where no web page is showing: the shell then asks in its own dialog. */
+    ask(request: ClosePromptRequest): Promise<CloseDecision | null>;
+    context(): Promise<ClosePromptContext | undefined>;
+    decide(decision: CloseDecision): void;
+    onShow(listener: (context: ClosePromptContext) => void): () => void;
   };
   executeApplicationMenuItem(itemId: string): void;
   getPreviewThemeAssets(themeId: PreviewThemeId): Promise<PreviewThemeAssets>;

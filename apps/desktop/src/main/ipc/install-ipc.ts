@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { isMarkdownDocument, isOfficeDocument, isOpenableDocument, isReadOnlyDocument } from '../../core/document/document-profile';
 import { retainUnsavedRevision } from '../../core/document/document-save';
-import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAction, GitReviewState,
+import type { ApplicationMenuEntry, CloseDecision, ClosePromptRequest, DocumentSnapshot, GitRemoteAction, GitReviewState,
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
 import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
@@ -24,6 +24,7 @@ import { showFolderMenu } from '../menu/folder-menu';
 import { readFolderMenuContext } from '../../core/files/folder-menu';
 import { readTabMenuContext } from '../../core/workspace/tab-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
+import { ClosePromptOverlay } from '../windows/close-prompt-overlay';
 import type { WindowState } from '../windows/window-state';
 import { windowDirtyFingerprint } from '../windows/window-state';
 import { exportPdf } from '../preview/pdf-exporter';
@@ -104,6 +105,13 @@ export function installIpc(options: Options): void {
   channels.handle('menu-overlay:open', (state, menuId: string, position: { x: number; y: number }) => {
     if (![...options.browsers.views.values()].some(entry => entry.owner === state.webContentsId && entry.view.getVisible())) return false;
     return menuOverlay.open(state, { menuId, x: position?.x, y: position?.y, theme: themes.id });
+  });
+  // The shell's own dialog cannot cover a native page. Where one is showing, the question is
+  // asked in a layer above it and the page goes on playing; elsewhere the shell asks itself.
+  const closePromptOverlay = new ClosePromptOverlay();
+  channels.handle('close-prompt-overlay:ask', (state, request: ClosePromptRequest) => {
+    if (![...options.browsers.views.values()].some(entry => entry.owner === state.webContentsId && entry.view.getVisible())) return null;
+    return closePromptOverlay.ask(state, request, themes.id);
   });
   channels.on('menu:execute', (state, itemId: unknown) => executeApplicationMenu(itemId, state.window));
   channels.handle('tabs:context-menu', (state, input: unknown, copy: { path?: unknown; relative?: unknown } | null, at: { x?: unknown; y?: unknown } | null) => {

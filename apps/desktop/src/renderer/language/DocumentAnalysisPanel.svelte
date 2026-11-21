@@ -78,6 +78,7 @@
     else if (action.kind === 'help' && server) void perform(async () => current()?.openHelp(server, action.runtime));
     else if (action.kind === 'log' && server) { selectedServer = server; direct = page === 'summary'; void navigate('output'); }
     else if (action.kind === 'details' && server) inspectProvider(server, page === 'summary');
+    else if (action.kind === 'provider' && server && context?.servers.some(item => item.id === server && item.role === 'primary')) void select({ kind: 'server', value: server });
     else if (action.kind === 'environment' || action.kind === 'provider') void navigate(action.kind);
     else if (action.kind === 'problems') { current()?.problems(); onclose(); }
     else if (action.kind === 'details') void navigate(context?.kind ? 'environment' : 'details');
@@ -207,7 +208,7 @@
       {#each support.providers as item (item.id)}
         <section class="detail-block" data-tool={item.id}>
           <button class="analysis-row" onclick={() => inspectProvider(item.id)}><span>{item.name}</span><strong>{providerStatus(item)} ›</strong></button>
-          <p class="result">{analysisResult(item)}{#if item.role === 'supplementary'} · Additional diagnostics and tools{/if}</p>
+          <p class="result">{analysisResult(item)}{item.role === 'supplementary' ? ' · Additional diagnostics and tools' : ''}</p>
           {#if item.kind === 'server' && item.state !== 'missing' && item.state !== 'off'}
             <div class="actions">
               <button onclick={() => perform(async () => { await documentSupport.current(target)?.restart(item.id); await controller.refresh(); })} aria-label={`Restart ${item.name}`}>Restart</button>

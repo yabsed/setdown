@@ -34,3 +34,9 @@ export type AnalysisObservation = {
   freshness: 'none' | 'current' | 'best-effort' | 'stale';
   progress: string[];
 };
+
+/** The code of the notice that a project is Deno's while TypeScript's own server analyses it:
+ * the remedy is another analysis tool, not another environment. */
+export const denoProjectIssue = 'deno-project';
+/** Deno's own tool (`deno lsp`), by its id in the catalog. */
+export const denoTool = 'deno';

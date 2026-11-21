@@ -70,7 +70,14 @@ export type ToolRules = {
   notifications?: Record<string, (params: unknown) => ToolSignal | undefined>;
   /** The tool's own requests to its editor: the answer it gets, and what the person is shown. */
   requests?: Record<string, (params: unknown) => ToolAnswer | Promise<ToolAnswer>>;
+  /** The tool's notifications that are questions for another tool of the same project, which its
+   * editor passes on. `ask` sends that tool a request and rejects when the project has none that
+   * runs. What the rule returns is sent back to this tool as notifications; it always answers,
+   * with nothing where the other tool has none, so that this tool never waits for good. */
+  relays?: Record<string, (params: unknown, ask: AskTool) => Promise<{ method: string; params: unknown }[]>>;
 };
+/** Asks the project's tool of a family (`extension-rules.ts`, `toolFamily`) and resolves with its answer. */
+export type AskTool = (tool: string, method: string, params: unknown) => Promise<unknown>;
 
 /** `name`: the tool's name as the person sees it. `root`: the project folder the tool was started
  * in. `settings`: the tool's settings as written for this project, by their VS Code names, nested

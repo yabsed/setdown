@@ -22,6 +22,13 @@ export class LanguagePackageStore {
     }
     return pending;
   }
+  /** Whether this exact package is installed. Reads only. */
+  async present(pkg: ExtensionPackage): Promise<boolean> {
+    if (!/^[a-z0-9][a-z0-9._-]*$/.test(pkg.id)) return false;
+    const destination = path.join(this.directory, pkg.id);
+    return await readFile(path.join(destination, '.setdown-package'), 'utf8').catch(() => '') === JSON.stringify({ version: pkg.version, sha256: pkg.sha256 })
+      && !!await readFile(path.join(destination, 'extension.toml'), 'utf8').catch(() => '');
+  }
   private async install(pkg: ExtensionPackage): Promise<void> {
     if (!/^[a-z0-9][a-z0-9._-]*$/.test(pkg.id) || !/^[a-f0-9]{64}$/.test(pkg.sha256)) throw Error('Invalid language package identity.');
     const destination = path.join(this.directory, pkg.id), receipt = JSON.stringify({ version: pkg.version, sha256: pkg.sha256 });

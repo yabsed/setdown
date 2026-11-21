@@ -1,28 +1,26 @@
 <script lang="ts">
-  import type { CloseDecision } from '../../protocol/desktop-api';
-  import { view } from '../workspace/workspace-view.svelte';
-import type { AppActions } from '../ports/ui-actions';
+  import type { CloseDecision, ClosePromptRequest } from '../../protocol/desktop-api';
 
-  let { actions }: { actions: AppActions } = $props();
+  // One dialog, shown in two places: by the shell, and in the layer above a live web page
+  // (`close-prompt-overlay-runtime.ts`). The shell's own dialog cannot cover a native page, so
+  // there it announces itself and the page is replaced by its picture for the moment. The
+  // layer covers nothing with a picture and announces nothing.
+  let { prompt, choose, layer = false }: { prompt: ClosePromptRequest | null; choose: (decision: CloseDecision) => void; layer?: boolean } = $props();
   let dialog: HTMLDialogElement;
   let overlayVisible = false;
 
   function announce(open: boolean) {
-    if (overlayVisible === open) return;
+    if (layer || overlayVisible === open) return;
     overlayVisible = open;
     window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: open }));
   }
 
-  function choose(decision: CloseDecision) {
-    actions.resolveClosePrompt(decision);
-  }
-
   $effect(() => {
-    if (view.closePrompt && !dialog.open) {
+    if (prompt && !dialog.open) {
       announce(true);
       dialog.showModal();
       queueMicrotask(() => dialog.querySelector<HTMLButtonElement>('.close-save')?.focus());
-    } else if (!view.closePrompt && dialog.open) {
+    } else if (!prompt && dialog.open) {
       dialog.close();
       announce(false);
     }
@@ -38,7 +36,7 @@ import type { AppActions } from '../ports/ui-actions';
     // HTMLDialogElement queues close events. An old dismissal must not cancel
     // a new prompt opened before that event was delivered.
     if (dialog.open) return;
-    announce(false); if (view.closePrompt) choose('cancel');
+    announce(false); if (prompt) choose('cancel');
   }}
 >
   <form class="close-prompt-form" onsubmit={(event) => event.preventDefault()}>
@@ -47,12 +45,12 @@ import type { AppActions } from '../ports/ui-actions';
       <button class="dialog-close" type="button" aria-label="Cancel" onclick={() => choose('cancel')}>×</button>
     </header>
     <div class="close-prompt-body">
-      {#if view.closePrompt?.names.length === 1}
-        <p>Save changes to <strong>{view.closePrompt.names[0]}</strong>?</p>
+      {#if prompt?.names.length === 1}
+        <p>Save changes to <strong>{prompt.names[0]}</strong>?</p>
       {:else}
-        <p>Save changes to {view.closePrompt?.names.length ?? 0} documents?</p>
+        <p>Save changes to {prompt?.names.length ?? 0} documents?</p>
         <div class="close-document-list" aria-label="Unsaved documents">
-          {#each view.closePrompt?.names ?? [] as name}<div title={name}>{name}</div>{/each}
+          {#each prompt?.names ?? [] as name}<div title={name}>{name}</div>{/each}
         </div>
       {/if}
       <p class="close-prompt-warning">Unsaved changes will be lost.</p>
