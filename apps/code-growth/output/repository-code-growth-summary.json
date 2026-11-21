@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "ref": "main",
-  "resolved_commit": "b9fc97cf4f8939a2bf4693e748a2d074a5444ef8",
-  "committed_at": "2026-11-21T06:58:01+09:00",
+  "resolved_commit": "33ed086c7692757d4598c88e4c6568b2173e3b16",
+  "committed_at": "2026-11-21T13:13:30+09:00",
   "history": "first-parent",
-  "commit_count": 462,
+  "commit_count": 463,
   "metric": "Physical lines including blanks/comments; committed files only.",
   "limitations": "Code volume does not measure coverage, passing tests, quality or productivity.",
   "excluded": [
@@ -20,15 +20,15 @@
   "feature_scope": "Production source only; path-based responsibility, not dependency analysis",
   "test_scope": "Test source, support and code fixtures; no test execution results",
   "totals": {
-    "lines": 117983,
-    "production": 64620,
-    "testing": 50938,
-    "tooling": 2425
+    "lines": 118981,
+    "production": 65217,
+    "testing": 51334,
+    "tooling": 2430
   },
   "components": {
-    "tests": 50938,
-    "renderer": 26200,
-    "main": 26980,
+    "tests": 51334,
+    "renderer": 26699,
+    "main": 27068,
     "core": 5521,
     "language_host": 1275,
     "preview_runtime": 1862,
@@ -36,16 +36,16 @@
     "image_runtime": 35,
     "image_export_runtime": 23,
     "hwp_runtime": 0,
-    "protocol": 1363,
-    "preload": 438,
+    "protocol": 1365,
+    "preload": 439,
     "launcher": 27,
     "types": 15,
-    "tooling": 2425,
-    "other": 0
+    "tooling": 2430,
+    "other": 7
   },
   "features": {
-    "workspace": 8212,
-    "reading": 5794,
+    "workspace": 8239,
+    "reading": 5799,
     "editor": 3937,
     "browser": 7492,
     "language": 17847,
@@ -53,18 +53,20 @@
     "git": 5362,
     "project": 3271,
     "files": 3406,
-    "media": 1589,
+    "media": 2142,
     "hwp": 0,
     "terminal": 839,
     "theme": 1925,
-    "shared": 1795,
-    "other": 0
+    "shared": 1800,
+    "other": 7
   },
   "tests": {
-    "unit": 26803,
-    "integration": 22929,
+    "unit": 26874,
+    "integration": 23254,
     "support": 1095,
     "fixtures": 111
   },
-  "unclassified_files": []
+  "unclassified_files": [
+    "apps/desktop/src/office-export-runtime/preload.ts"
+  ]
 }
