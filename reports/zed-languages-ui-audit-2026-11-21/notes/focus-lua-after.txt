@@ -1,0 +1,13 @@
+[   0.7s] state: {"server":null,"chipText":"Lua⌄","turning":false}
+[   1.7s] state: {"server":"starting","chipText":"Lua⌄","turning":true}
+[   2.7s] state: {"server":"ready","chipText":"Lua⌄","turning":false}
+[   2.7s] ready=true
+[  16.1s] cursor at line 452 "sync": {"x":165,"y":776,"height":22,"text":"function Job:sync(timeout, wait_interval)"}
+[  22.1s] references: {"title":"job.lua<audit>/sources/plenary.nvim/lua/plenaryReferences (31)","rows":["curl.lua<repo>/target/validati","job.lua<repo>/target/validatio","function Job:sync(timeout, wait_interval)","test_harness.lua<repo>/target/","large_job_spec.lua<repo>/targe","job_spec.lua<repo>/target/vali"],"rowCount":6,"preview":["end","","function Job:start()","  self:_reset()","  self:_prepare_pipes()","  self:_execute()"],"message":""}
+[  22.2s] rows not of this file: 5
+[  24.7s] after opening the last file's rows: {"title":"job.lua<audit>/sources/plenary.nvim/lua/plenaryReferences (31)","rows":["curl.lua<repo>/target/validati","job.lua<repo>/target/validatio","function Job:sync(timeout, wait_interval)","test_harness.lua<repo>/target/","large_job_spec.lua<repo>/targe","job_spec.lua<repo>/target/vali","job:sync()","job:sync()","job:sync()","job:sync()","job:sync()","job:sync()","job:sync()","job:sync()"],"rowCount":16,"preview":["end","","function Job:start()","  self:_reset()","  self:_prepare_pipes()","  self:_execute()"],"message":""}
+[  27.4s] after choosing a reference in another file: title=job_spec.lua~/Documents/fall2 preview=["    it(\"should match systemlist\", function()","      local ls_results = vim.fn.systemlist \"ls -l\"","","      local job = Job:new {","        command = \"ls\",","        args = { \"-l\" },"]
+[  27.4s] type: {"row":"12px \"Monoplex KR\", D2Coding, ui-monospace, m","title":"13px \"Monoplex KR\", D2Coding, ui-monospace, m","code":"14px \"Monoplex KR\", D2Coding, ui-monospace, m","chip":"11px \"Monoplex KR\", D2Coding, ui-monospace, m"}
+[  28.7s] cursor at line 142 "if_nil": {"x":262,"y":776,"height":22,"text":"  obj.enable_handlers = F.if_nil(o.enable_handlers, true, o.enable_handlers)"}
+[  31.5s] while Ctrl is held: link decorations=1 hover=function f.if_nil(val: any, was_nil: any, was_not_nil: any) -> unknown
+[  34.6s] after Ctrl+click: tab=functional.lua cursor={"x":143,"y":452,"height":22,"text":"function f.if_nil(val, was_nil, was_not_nil)"}

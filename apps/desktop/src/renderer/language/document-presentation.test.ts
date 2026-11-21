@@ -71,6 +71,9 @@ test('each cause has one sentence and the one action that addresses it', () => {
   expect(stopped({ kind: 'crashed' })).toMatchObject({ title: 'Java support stopped unexpectedly.', action: { kind: 'restart', label: 'Restart' }, secondary: { kind: 'log' } });
   expect(stopped({ kind: 'download-failed', detail: 'error sending request: network is unreachable' })).toMatchObject({ title: "Couldn't download Java support.", action: { kind: 'restart', label: 'Try again' } });
   expect(stopped({ kind: 'download-failed', detail: 'extension returned an invalid command' }).title).toBe("Couldn't set up Java support.");
+  // An address inside a piece of advice is not a download that failed.
+  expect(stopped({ kind: 'download-failed', detail: 'The build of the tool ended early. See https://example.org/tool for what it needs.' }).title).toBe("Couldn't set up Java support.");
+  expect(stopped({ kind: 'download-failed', detail: 'HTTP 404 for https://example.org/tool.tar.gz' }).title).toBe("Couldn't download Java support.");
   expect(stopped({ kind: 'no-installer' })).toMatchObject({ label: 'Needs setup', title: "Java support isn't installed.", action: { kind: 'locate', label: 'I already have it…' } });
   expect(shortPath('/usr/bin/clangd')).toBe('/usr/bin/clangd');
 });
@@ -80,6 +83,9 @@ test('a missing tool asks for setup only when the person turned downloads off', 
   expect(missing({ kind: 'downloads-off' })).toMatchObject({ label: 'Needs setup', tone: 'warning', title: "Nix support isn't installed.", description: 'Downloads are off.', action: { kind: 'install', label: 'Install Nix support', server: 'nil' } });
   // A file whose tool Setdown cannot install opens quietly; the sentence waits in the status.
   expect(missing({ kind: 'no-installer', help: true })).toMatchObject({ label: '', tone: 'neutral', title: "Nix support isn't installed.", description: "Setdown can't install it by itself.",
+    action: { kind: 'help', label: 'How to install ↗' }, secondary: { kind: 'locate', label: 'I already have it…' } });
+  // What the tool's extension said to install takes the place of the general sentence.
+  expect(missing({ kind: 'no-installer', help: true, detail: 'nil must be installed manually.' })).toMatchObject({ title: "Nix support isn't installed.", description: 'nil must be installed manually.',
     action: { kind: 'help', label: 'How to install ↗' }, secondary: { kind: 'locate', label: 'I already have it…' } });
   expect(presentIssue(undefined, 'Nix support', 'nil', true)).toMatchObject({ title: "Nix support can't start.", action: { kind: 'restart', label: 'Try again' } });
 });

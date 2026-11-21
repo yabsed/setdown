@@ -63,6 +63,8 @@ export type HereMenuSource = {
   restore(): void;
   /** Called with the entry a person chose, after it ran. */
   chosen?(item: HereItem): void;
+  /** Called once the menu is gone, however it went, and when it never opened. */
+  closed?(): void;
 };
 /** How long the menu waits for every tool before it opens with what it has, and how long a
  * late answer may still fill in. A menu that opened complete never changes afterwards. */

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { dataIcon, faviconCandidates, iconType } from './favicon';
+import { dataIcon, declaredIcons, faviconCandidates, iconType } from './favicon';
 
 test('prefers small bitmaps, then vectors, then the classic icon, and tries at most three', () => {
   expect(faviconCandidates(['https://a.example/favicon.ico', 'https://a.example/icon.svg', 'https://a.example/apple-touch-180.png',
@@ -29,4 +29,15 @@ test('only SVG needs a declared type', () => {
   expect(iconType('https://a.example/icon.SVG?v=1', null)).toBe('image/svg+xml');
   expect(iconType('https://a.example/favicon.ico', 'image/x-icon')).toBe('');
   expect(iconType('https://a.example/svg/icon.png', 'text/html')).toBe('');
+});
+
+test('a page is asked for the icons it declares, and a page that names none has the site’s favicon.ico', () => {
+  const ask = (links: string[], selectors: string[] = []) => new Function('document', 'location', `return ${declaredIcons}`)(
+    { querySelectorAll: (selector: string) => { selectors.push(selector); return links.map(href => ({ href })); } }, { href: 'https://site.example/a/page?q=1' }) as string[];
+  const selectors: string[] = [];
+  expect(ask(['https://site.example/icon.png', 'https://cdn.example/icon.svg'], selectors)).toEqual(['https://site.example/icon.png', 'https://cdn.example/icon.svg']);
+  // `icon` as one word of rel, in any case: "shortcut icon" counts, "apple-touch-icon" and "mask-icon" are other words.
+  expect(selectors).toEqual(['link[rel~="icon" i][href]']);
+  expect(ask([])).toEqual(['https://site.example/favicon.ico']);
+  expect(ask(Array.from({ length: 40 }, (_, index) => `https://site.example/${index}.png`))).toHaveLength(16);
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,6 +7,18 @@ import { promisify } from 'node:util';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { hereMenu, runCommand } from '../../support/editor/commands';
 const exec = promisify(execFile);
+/** The middle of a letter inside `word`, on the line that has `line`, where the editor drew it.
+ * The caret glides to its place, so where it is drawn says nothing until it has arrived. */
+const drawnAt = (page: Page, line: string, word: string) => page.evaluate(([line, word]) => {
+  const row = [...document.querySelectorAll('.editor-surface .view-line')].find(item => (item.textContent ?? '').replace(/\u00a0/g, ' ').includes(line));
+  if (!row) return null;
+  const start = (row.textContent ?? '').indexOf(word) + 2, walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(), seen = 0; node; seen += node.textContent!.length, node = walker.nextNode()) if (seen + node.textContent!.length > start) {
+    const range = document.createRange(); range.setStart(node, start - seen); range.setEnd(node, start - seen + 1);
+    const box = range.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+  return null;
+}, [line, word]);
 
 test('Python diagnostics, completion, rename and Undo use the ordinary document', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-'));
@@ -122,6 +134,92 @@ test('a definition far away in the same file is shown where it is, by the key th
     await expect(menu).toBeHidden();
     await expect(lines).toContainText('def greeting(name: str)', { timeout: 15_000 });
     await expect(lines).not.toContainText('print(greeting("Setdown"))');
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
+test('a reference in a file that is not open is listed by its line of code and shown beside the list; its name is a link while Ctrl is held', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-references-'));
+  const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-references-config-'));
+  const main = path.join(root, 'main.py');
+  await writeFile(path.join(root, 'helpers.py'), 'def greeting(name: str) -> str:\n    return name.upper()\n');
+  await writeFile(path.join(root, 'other.py'), 'from helpers import greeting\n\nelsewhere = greeting("other file")\n');
+  await writeFile(main, 'from helpers import greeting\n\nprint(greeting("Setdown"))\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', main], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await application.firstWindow();
+    const errors: string[] = []; page.on('pageerror', error => errors.push(String(error)));
+    await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
+    const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
+    await editor.press('Control+End'); await editor.press('ArrowUp'); await editor.press('Home');
+    for (let i = 0; i < 8; i++) await editor.press('ArrowRight');
+    const list = page.locator('.peekview-widget .ref-tree');
+    // The other file's references are behind its name, as for every file but this one.
+    const file = list.locator('.monaco-list-row').filter({ hasText: 'other.py' });
+    // The tool answers from the files it has read so far, and the list keeps the answer it was given:
+    // asked in the tool's first moments, it names only the files it was shown. A person asks again.
+    await expect(async () => {
+      await page.keyboard.press('Escape');
+      await expect(list).toBeHidden();
+      await page.keyboard.press('Shift+F12');
+      await expect(file.first()).toBeVisible({ timeout: 4000 });
+    }).toPass({ timeout: 40_000 });
+    await file.first().click();
+    // The line of code, not "other.py:3:13".
+    const reference = list.locator('.monaco-list-row').filter({ hasText: 'elsewhere = greeting("other file")' });
+    await expect(reference).toBeVisible({ timeout: 15_000 });
+    await expect(list).not.toContainText(/other\.py:\d+:\d+/);
+    await reference.click();
+    await expect(page.locator('.peekview-widget .preview .view-lines')).toContainText('elsewhere = greeting("other file")');
+    // Looking does not open the file: there is still one tab.
+    await expect(page.getByRole('tab', { name: /other\.py/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(list).toBeHidden();
+    // The definition is in helpers.py, which is not open either: the name is a link while Ctrl is held.
+    const name = await drawnAt(page, 'print(', 'greeting');
+    expect(name).not.toBeNull();
+    const { x, y } = name!;
+    await page.mouse.move(x - 1, y); await page.keyboard.down('Control'); await page.mouse.move(x, y);
+    await expect(page.locator('.editor-surface .goto-definition-link')).toHaveCount(1, { timeout: 15_000 });
+    await page.keyboard.up('Control');
+    expect(errors).toEqual([]);
+  } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
+test('the menu at the cursor takes the place of what the pointer was told there, also when the pointer had just moved', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-menu-hover-'));
+  const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-menu-hover-config-'));
+  const file = path.join(root, 'main.py');
+  await writeFile(file, 'def greeting(name: str) -> str:\n    return name.upper()\n\nprint(greeting("Setdown"))\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const application = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await application.firstWindow();
+    await focusApplication(application);
+    await expect(page.locator('.editor-host')).toHaveAttribute('data-language-server', 'ready', { timeout: 25_000 });
+    const name = await drawnAt(page, 'print(', 'greeting');
+    expect(name).not.toBeNull();
+    const { x, y } = name!;
+    const told = page.locator('.editor-surface .monaco-hover:not(.hidden)').filter({ hasText: 'greeting' });
+    await page.mouse.move(x - 1, y); await page.mouse.move(x, y);
+    await expect(told).toBeVisible({ timeout: 15_000 });
+    // A person's hand is not still: the pointer moves once more, and then the menu is asked for.
+    // The editor meant to look at the place again a moment after that move.
+    await page.mouse.move(x + 1, y);
+    await page.mouse.click(x + 1, y, { button: 'right' });
+    const menu = hereMenu(page);
+    await expect(menu.getByRole('option', { name: /Go to Definition/ })).toBeVisible({ timeout: 15_000 });
+    await expect(told).toBeHidden();
+    // Longer than the moment the editor waits before it looks again and explains.
+    await page.waitForTimeout(1500);
+    await expect(told).toBeHidden();
+    await expect(menu).toBeVisible();
+    // With the menu gone, the pointer is told about the place again.
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await page.mouse.move(x - 2, y); await page.mouse.move(x, y);
+    await expect(told).toBeVisible({ timeout: 15_000 });
   } finally { await disposeApplication(application); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
 

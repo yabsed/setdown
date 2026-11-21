@@ -21,6 +21,7 @@ import { parseBookmarks } from './bookmark-import';
 import { serializeBookmarks } from '../../core/browser/bookmarks';
 import { BrowserPlaces } from './browser-places';
 import { BrowserFavicons } from './browser-favicons';
+import { declaredIcons } from '../../core/browser/favicon';
 import { BrowserDownloads } from './browser-downloads';
 import { BrowserPdf } from './browser-pdf';
 import { extractReaderArticle, restoreReaderAnchor } from './browser-reader';
@@ -49,7 +50,9 @@ type Entry = { lastUsed: number; edited?: boolean; popup?: boolean; sleeping?: S
   popups: number[]; externalRequests: number[]; externalPending?: boolean;
   historyUrls: string[]; historyIndex: number; canGoBack?: boolean; canGoForward?: boolean; closing?: (value: boolean) => void;
   /** The origin whose document supplied `page.favicon`. */
-  faviconOrigin?: string };
+  faviconOrigin?: string;
+  /** Counts this tab's icon lookups, so that only the newest labels it; and the `document` whose page was last asked for its icons. */
+  faviconLookup: number; faviconAsked?: number };
 type Options = { stateFor(id: number): WindowState | null; states(): Iterable<WindowState>; zoom: WorkspaceZoom;
   globalTabDragPointer?: boolean;
   memoryProtected?(id: string): boolean;
@@ -327,6 +330,35 @@ export class BrowserManager {
       zoomPercent: Math.round(this.pageZoom(entry) * 100) };
     this.send(entry.owner, { type: 'page', page: entry.page });
   }
+  /**
+   * Labels a tab with the first of a page's declared icons that loads. The lookup belongs to the
+   * site, not to one document: it may end after the site's next page has begun to load, and that
+   * page still wears it. Only the newest lookup counts, and never on another site.
+   */
+  private labelTab(entry: Entry, urls: readonly string[]) {
+    const url = this.live(entry) ? entry.contents.getURL() : '', origin = isWebURL(url) ? new URL(url).origin : undefined;
+    if (!origin) return;
+    const lookup = ++entry.faviconLookup;
+    void this.favicons.resolve(urls).then(icon => {
+      if (!this.live(entry) || entry.faviconLookup !== lookup || entry.faviconOrigin !== origin || entry.page.favicon === (icon ?? undefined)) return;
+      if (icon) entry.page.favicon = icon; else delete entry.page.favicon;
+      this.saved.set(entry.page.id, entry.page); this.publish(entry);
+    });
+  }
+  /**
+   * Asks a page that has no icon yet which icons it declares. Chromium reports a page's icons
+   * only when they differ from the ones the tab's previous page declared, and only once the page
+   * has loaded: without this, a tab whose first lookup failed or was overtaken stays unlabelled
+   * on every further page of the site, and so does a page of another site that shares the icon's
+   * address. The page's own report still follows and replaces what was found here.
+   */
+  private askIcons(entry: Entry) {
+    const wc = entry.contents, url = this.live(entry) ? wc.getURL() : '';
+    if (!isWebURL(url) || entry.page.favicon || entry.pdf) return;
+    void wc.executeJavaScriptInIsolatedWorld(991, [{ code: declaredIcons }]).then(urls => {
+      if (this.live(entry) && wc.getURL() === url && !entry.page.favicon && Array.isArray(urls)) this.labelTab(entry, urls.filter(item => typeof item === 'string'));
+    }).catch(() => {});
+  }
   private clearPdf(entry: Entry) {
     const pdf = entry.pdf;
     entry.pdf = undefined; delete entry.page.pdf;
@@ -450,7 +482,7 @@ export class BrowserManager {
     // Hidden initial navigation stays detached, preserving document IME focus.
     const wc = view.webContents;
     const entry: Entry = { lastUsed: Date.now(), popup: !!existing, owner, view, contents: wc, page: blankPage(id, url), navigation: 0, document: 0, menuGeneration: 0, popups: [], externalRequests: [],
-      historyUrls: [], historyIndex: -1 };
+      historyUrls: [], historyIndex: -1, faviconLookup: 0 };
     this.views.set(id, entry);
     this.options.zoom.track(wc, () => this.publish(entry), () => this.pageZoom(entry));
     wc.on('ipc-message', (event, channel, steps) => {
@@ -532,15 +564,7 @@ export class BrowserManager {
       const frame = webFrameMain.fromId(processId, routingId);
       if (frame && !frame.isDestroyed()) this.webThemes.apply(entry, frame);
     });
-    wc.on('page-favicon-updated', (_event, urls) => {
-      const document = entry.document, origin = isWebURL(wc.getURL()) ? new URL(wc.getURL()).origin : undefined;
-      if (!this.live(entry) || !origin) return;
-      void this.favicons.resolve(urls).then(icon => {
-        if (!this.live(entry) || entry.document !== document || entry.faviconOrigin !== origin || entry.page.favicon === (icon ?? undefined)) return;
-        if (icon) entry.page.favicon = icon; else delete entry.page.favicon;
-        this.saved.set(id, entry.page); this.publish(entry);
-      });
-    });
+    wc.on('page-favicon-updated', (_event, urls) => this.labelTab(entry, urls));
     wc.on('page-title-updated', (_event, title) => { if (!this.live(entry)) return; entry.page.title = title; this.publish(entry); this.saved.set(id, entry.page); this.persist(); });
     // A session webRequest listener disables Chromium extension request rules.
     // Read the committed document's MIME type in an isolated world instead;
@@ -548,12 +572,17 @@ export class BrowserManager {
     wc.on('dom-ready', () => {
       const document = entry.document, url = wc.getURL();
       if (!this.live(entry) || !isWebURL(url)) return;
+      this.askIcons(entry);
       void wc.executeJavaScriptInIsolatedWorld(991, [{ code: 'document.contentType' }]).then(type => {
         if (type === 'application/pdf' && this.live(entry) && entry.document === document && entry.page.url === url && !entry.pdf) this.openPdf(entry);
       }).catch(() => {});
     });
     wc.on('did-start-loading', () => this.publish(entry));
-    wc.on('did-stop-loading', () => this.publish(entry));
+    wc.on('did-stop-loading', () => {
+      this.publish(entry);
+      // Once more when the page is complete: a script may have declared the icon after the document was read.
+      if (this.live(entry) && entry.faviconAsked !== entry.document) { entry.faviconAsked = entry.document; this.askIcons(entry); }
+    });
     wc.on('did-finish-load', () => {
       if (!this.live(entry)) return;
       if (isWebURL(wc.getURL())) void this.places.update(wc.getURL(), wc.getTitle(), { visit: true })

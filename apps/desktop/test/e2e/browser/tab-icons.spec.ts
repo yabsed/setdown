@@ -24,6 +24,7 @@ const ICONS = { ico: { type: 'image/x-icon', colour: [39, 174, 96], bytes: ico(1
 
 async function site() {
   const held: ServerResponse[] = [];
+  let released = false;
   const server = createServer((request, response) => {
     const name = (request.url ?? '').slice(1), icon = /^icon\.(ico|png)$/.exec(name)?.[1] as keyof typeof ICONS | undefined;
     // A page that keeps loading until the test lets its last resource finish.
@@ -32,12 +33,18 @@ async function site() {
     if (icon) { response.writeHead(200, { 'content-type': ICONS[icon].type }).end(ICONS[icon].bytes); return; }
     if (name === 'ico' || name === 'png') { response.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Bitmap ${name}</title><link rel="icon" href="/icon.${name}"><p>${name}</p>`); return; }
     if (name === 'paper.pdf') { response.writeHead(200, { 'content-type': 'application/pdf' }).end(pdfFixture(2)); return; }
+    // Two pages of one site that declare the same icon, which the server keeps back until the test lets it go.
+    if (name === 'first' || name === 'second') { response.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>${name === 'first' ? 'First' : 'Second'} page</title><link rel="icon" href="/waiting.png"><p>${name}</p>`); return; }
+    if (name === 'waiting.png') { if (released) response.writeHead(200, { 'content-type': 'image/png' }).end(ICONS.png.bytes); else held.push(response); return; }
+    // A page that names its icon by a full address, as sites that share one icon do.
+    if (name.startsWith('shared?icon=')) { response.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Shared icon</title><link rel="icon" href="${decodeURIComponent(name.slice(12))}"><p>shared</p>`); return; }
     if (name === 'plain') { response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><title>Plain site</title><p>No icon.</p>'); return; }
     response.writeHead(404).end();
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-  const release = () => { for (const response of held.splice(0)) response.writeHead(200, { 'content-type': 'image/png' }).end(ICONS.png.bytes); };
-  return { origin: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, release,
+  const release = () => { released = true; for (const response of held.splice(0)) response.writeHead(200, { 'content-type': 'image/png' }).end(ICONS.png.bytes); };
+  const port = (server.address() as AddressInfo).port;
+  return { origin: `http://127.0.0.1:${port}`, sibling: `http://localhost:${port}`, release, waiting: () => held.length,
     close: () => { release(); return new Promise<void>(resolve => server.close(() => resolve())); } };
 }
 const displaySwitches = process.env.SETDOWN_E2E_HEADLESS ? ['--ozone-platform=headless', '--disable-gpu']
@@ -75,6 +82,48 @@ test('a site’s bitmap icon reaches its tab when no test driver keeps the decod
 });
 
 const tab = (page: Page, name: RegExp) => page.getByRole('tab', { name });
+
+test('a site’s icon also labels the page gone to before it arrived, and a page of another site that names the same icon', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-icon-kept-'));
+  const web = await site();
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: [...displaySwitches, '.'], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config'), SETDOWN_NATIVE_DIALOGS: '0' } });
+  try {
+    const page = await app.firstWindow();
+    await focusApplication(app);
+    const address = page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    const go = async (url: string) => { await address.fill(url); await address.press('Enter'); };
+    // The browser engine reports a page's icons once, and not again for a page that declares the same ones.
+    // So the icon asked for by the first page has to reach the tab although the person has gone on by then.
+    await page.evaluate(url => window.marktex.openLink(url), `${web.origin}/first`);
+    // The first page of a session waits for the content blocker to start.
+    await expect(tab(page, /First page/)).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => web.waiting(), { timeout: 30_000 }).toBeGreaterThan(0);
+    await go(`${web.origin}/second`);
+    const second = tab(page, /Second page/);
+    await expect(second).toBeVisible();
+    await expect(second).not.toHaveAttribute('aria-busy');
+    await expect(second.locator('svg[data-tab-icon="web"]')).toBeVisible();
+    web.release();
+    const icon = second.locator('img.tab-favicon');
+    await expect(icon).toBeVisible();
+    const picture = await icon.getAttribute('src');
+    expect(picture).toMatch(/^data:image\/png;base64,/);
+
+    // Another site (the same server under another host name) whose page names that very icon address:
+    // nothing is reported for it, and the first site's icon was taken off when the site changed.
+    await go(`${web.sibling}/shared?icon=${encodeURIComponent(`${web.origin}/waiting.png`)}`);
+    const shared = tab(page, /Shared icon/);
+    await expect(shared).toBeVisible();
+    await expect(shared.locator('img.tab-favicon')).toHaveAttribute('src', picture!);
+    await expect(shared.locator('svg')).toHaveCount(0);
+    // A site with no icon at all keeps the plain globe, and the previous site's icon does not stay on it.
+    await go(`${web.sibling}/plain`);
+    const plain = tab(page, /Plain site/);
+    await expect(plain.locator('svg[data-tab-icon="web"]')).toBeVisible();
+    await expect(plain.locator('img.tab-favicon')).toHaveCount(0);
+  } finally { await disposeApplication(app); await web.close(); await rm(root, { recursive: true, force: true }); }
+});
 
 test('every tab leads with an icon: the file type, a terminal, a folder, the website, or a spinner while it loads', async () => {
   test.skip(process.platform === 'win32', 'The terminal tab starts a POSIX shell.');

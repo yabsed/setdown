@@ -1,0 +1,10 @@
+[   0.7s] state: {"server":null,"chipText":"clojure⌄","turning":false}
+[   1.7s] state: {"server":"starting","chipText":"clojure⌄","turning":true}
+[   3.7s] state: {"server":"starting","chipText":"! clojure· Needs answer⌄","turning":false}
+[  50.0s] panel: ["clojure | × | clojure-lsp has a question. | Answer… | Language | clojure › | More…"]
+[  51.1s] after "Answer…": ["‹ | clojure-lsp | × | clojure-lsp | Starting | Starting | LSP classpath lookup failed when running `lein with-profile +test,+dev classpath`. Some features may not work properly if ignored. Error: Cannot run program \"lein\" (in directory \"<audit>/sources/ring/ring-core\"): error=2, No such file or directory Choose an option: | RetryIgnore Dismiss | Supported features and service context | Session for ring / ring-core. Restarting also reconnects files sharing this session in this window. | Restart clojure-lsp | Show log | Choose analysis tool… | Project connection settings…"]
+[  51.1s] buttons: ["‹","×","Retry","Ignore","Dismiss","Restart clojure-lsp","Show log","Choose analysis tool…","Project connection settings…"]
+[  51.1s] choosing "Ignore"
+[  51.2s] state: {"server":"ready","chipText":"clojure⌄","turning":false}
+[  51.2s] ready=true
+[  52.2s] panel at the end: ["clojure | × | ✓ | Working | Language | clojure › | More…"]

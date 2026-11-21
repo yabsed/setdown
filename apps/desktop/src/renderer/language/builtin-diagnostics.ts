@@ -5,6 +5,7 @@ import { diagnosticsFor } from './diagnostic-store';
 import { scriptKindForResource } from './typescript-resource';
 import { marker } from './language-conversion';
 import type { ProviderSupport } from './document-support';
+import { previewScheme } from '../editor/file-previews';
 
 export const hasBuiltinLanguageService = (language: string): boolean => localSupport(language).features.length > 0;
 type DiagnosticMessage = { messageText: string; next?: DiagnosticMessage[] };
@@ -71,7 +72,8 @@ export function installBuiltinDiagnostics(api: typeof M, validator?: LocalValida
     });
   });
   const attach = (model: M.editor.ITextModel) => {
-    if (states.has(model)) return;
+    // A file that is only shown beside another one is not a document: nothing checks it.
+    if (states.has(model) || model.uri.scheme === previewScheme) return;
     let generation = 0, timer: ReturnType<typeof setTimeout> | undefined;
     const lease = diagnosticsFor(api).lease(model, 'builtin', crypto.randomUUID());
     const changed = () => listeners.forEach(fn => fn(model));

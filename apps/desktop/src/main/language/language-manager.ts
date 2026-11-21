@@ -543,6 +543,11 @@ export class LanguageManager {
     }
     const uri = pathToFileURL(file).href;
     this.close(state.webContentsId, document.id);
+    // From here a tool is looked for, fetched or started for this document, which takes seconds
+    // when an extension is loaded first or the computer is searched. The document hears it now:
+    // until there is an answer, "nothing checks this file" would be a guess, and a wrong one.
+    this.emit(owner, { type: 'status', state: 'starting', server: { id: support.server, name: this.registry.definition(support.server).name },
+      documents: [{ id: document.id, generation: document.generation }] });
     const projects = this.projects;
     if (projects) {
       // The tool this language starts first. When Zed's project engine serves it, Zed opens
@@ -607,7 +612,9 @@ export class LanguageManager {
           if (current()) this.emit(owner, { type: 'status', state: 'starting', preparing: true, message, server: target, documents: [{ id: document.id, generation: document.generation }] });
         }).catch(error => {
           if (error instanceof AutomaticDownloadsDisabled || !current()) throw error;
-          return reject(String(error instanceof Error ? error.message : error), preparationIssue(error, false, java && { required: jdtlsJava, found: java.found }));
+          const issue = preparationIssue(error, false, java && { required: jdtlsJava, found: java.found });
+          return reject(String(error instanceof Error ? error.message : error), issue.kind === 'no-installer'
+            ? { ...issue, help: /^https?:\/\//.test(languageCatalog.find(item => item.id === support.server)?.homepage ?? '') } : issue);
         });
     };
     const ranked = <T extends { server: string; languageId: string }>(items: T[]) => [...items].sort((a, b) =>
@@ -799,9 +806,10 @@ export class LanguageManager {
           const facts = await ended.failureFacts?.();
           if (this.sessions.get(ended) !== info) return;
           const found = facts ? sessionIssue({ ...facts, pinned, runtimeFound }) : { kind: 'crashed' as const };
-          const issue = info.issue = found.kind === 'executable' ? { ...found, automatic: repair } : found;
-          // A program that is not a language tool, or a missing runtime, ends the same way every time.
-          const repeats = issue.kind === 'executable' || issue.kind === 'runtime';
+          const issue = info.issue = found.kind === 'executable' ? { ...found, automatic: repair }
+            : found.kind === 'no-installer' ? { ...found, help: /^https?:\/\//.test(languageCatalog.find(item => item.id === tool.id)?.homepage ?? '') } : found;
+          // A program that is not a language tool or is not on this computer, or a missing runtime, ends the same way every time.
+          const repeats = issue.kind === 'executable' || issue.kind === 'runtime' || issue.kind === 'no-installer';
           const recovering = repeats ? undefined : this.supervisor.schedule(recoveryKey, () => {
             if (this.sessions.has(ended) && this.owners.get(state.webContentsId) === owned)
               void this.reconnect(owned, ended).catch(error => console.warn('Language recovery failed', error));

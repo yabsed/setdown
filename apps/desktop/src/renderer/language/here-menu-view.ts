@@ -10,7 +10,7 @@ export async function openHereMenu(source: HereMenuSource): Promise<void> {
   let withdrawn = false;
   leave = () => { withdrawn = true; };
   const [{ mount, unmount }, { default: Component }, gathered] = await Promise.all([import('svelte'), import('./HereMenu.svelte'), gatherHere(source.probes)]);
-  if (withdrawn || !source.alive()) return;
+  if (withdrawn || !source.alive()) { source.closed?.(); return; }
   let closed = false;
   const close = (restore = true) => {
     if (closed) return;
@@ -18,6 +18,7 @@ export async function openHereMenu(source: HereMenuSource): Promise<void> {
     if (leave === dismiss) leave = undefined;
     void unmount(component);
     window.dispatchEvent(new CustomEvent('setdown:native-overlay-visibility', { detail: false }));
+    source.closed?.();
     if (restore) source.restore();
   };
   const dismiss = () => close(false);

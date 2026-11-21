@@ -20,6 +20,10 @@ declare module 'monaco-editor/platform/keybinding/common/keybinding' {
 declare module 'monaco-editor/platform/contextkey/common/contextkey' {
   export const IContextKeyService: unknown;
 }
+// The text of a file the editor shows without it being open (`editor/monaco-file-models.ts`).
+declare module 'monaco-editor/editor/common/services/resolverService' {
+  export const ITextModelService: unknown;
+}
 
 // Register the ported VS Code action with the real contribution registry so it
 // participates in keybindings, getAction() and Monaco's command palette.

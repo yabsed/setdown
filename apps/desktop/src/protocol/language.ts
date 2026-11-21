@@ -66,7 +66,8 @@ export type LanguageIssue =
   | { kind: 'download-failed'; detail?: string }
   /** `optional`: downloads are on, but this tool is outside the supported languages and waits to be asked for. */
   | { kind: 'downloads-off'; optional?: boolean }
-  | { kind: 'no-installer'; help?: boolean }
+  /** `detail`: what the tool's extension said the person has to install, in its words. */
+  | { kind: 'no-installer'; help?: boolean; detail?: string }
   | { kind: 'executable'; path: string; missing?: boolean; automatic?: boolean }
   | { kind: 'runtime'; runtime: string; required: string; found?: string }
   | { kind: 'startup'; detail?: string }

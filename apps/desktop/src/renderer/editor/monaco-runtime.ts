@@ -13,11 +13,19 @@ export function loadMonaco(): Promise<typeof Monaco> {
     import('./monaco-context-menu'),
     import('./monaco-hover-overlay'),
     import('./toggle-word-wrap'),
-  ]).then(([api, editor, { installMonacoContextMenus }, { installMonacoHovers }, { installToggleWordWrap }]) => {
+    import('./monaco-file-models'),
+    // The desktop bridge exists only in the window; it is asked for when the editor is, not when this file is read.
+    import('../adapters/electron-desktop'),
+  ]).then(([api, editor, { installMonacoContextMenus }, { installMonacoHovers }, { installToggleWordWrap }, { installFilePreviews }, { electronDesktop }]) => {
     window.MonacoEnvironment = { getWorker: (_id, label) => createLanguageWorker(label) ?? new editor.default() };
     installMonacoContextMenus();
     installMonacoHovers(api);
     installToggleWordWrap(api);
+    installFilePreviews(api, async path => {
+      const file = await electronDesktop.readDocumentLocation(path);
+      if (file.kind) throw Error('This file is not text.');
+      return file.text;
+    });
     installBuiltinDiagnostics(api);
     installEditorTools(api);
     installSyntaxHighlighting(api);

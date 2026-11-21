@@ -1,0 +1,39 @@
+[   0.8s] state: {"server":null,"chipText":"Lua⌄","turning":false}
+[   1.8s] state: {"server":"starting","chipText":"Lua⌄","turning":true}
+[   2.8s] state: {"server":"ready","chipText":"Lua⌄","turning":false}
+[   2.8s] ready=true
+[  16.2s] cursor at line 452 "sync": {"x":165,"y":776,"height":22,"text":"function Job:sync(timeout, wait_interval)"}
+[  22.2s] references: {"title":"job.lua<audit>/sources/plenary.nvim/lua/plenaryReferences (31)","rows":["curl.lua<repo>/target/validati","job.lua<repo>/target/validatio","function Job:sync(timeout, wait_interval)","test_harness.lua<repo>/target/","large_job_spec.lua<repo>/targe","job_spec.lua<repo>/target/vali"],"rowCount":6,"preview":["end","","function Job:start()","  self:_reset()","  self:_prepare_pipes()","  self:_execute()"],"message":""}
+[  22.3s] rows not of this file: 5
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  22.4s] PAGE ERROR Error: Model not found
+[  24.9s] after choosing the last row: {"title":"job.lua<audit>/sources/plenary.nvim/lua/plenaryReferences (31)","rows":["curl.lua<repo>/target/validati","job.lua<repo>/target/validatio","function Job:sync(timeout, wait_interval)","test_harness.lua<repo>/target/","large_job_spec.lua<repo>/targe","job_spec.lua<repo>/target/vali","job_spec.lua:137:12","job_spec.lua:155:12","job_spec.lua:173:12","job_spec.lua:189:12","job_spec.lua:205:12","job_spec.lua:221:12","job_spec.lua:237:12","job_spec.lua:253:12"],"rowCount":16,"preview":["end","","function Job:start()","  self:_reset()","  self:_prepare_pipes()","  self:_execute()"],"message":""}
+[  26.2s] cursor at line 142 "if_nil": {"x":262,"y":776,"height":22,"text":"  obj.enable_handlers = F.if_nil(o.enable_handlers, true, o.enable_handlers)"}
+[  26.5s] PAGE ERROR Error: Model not found
+[  29.0s] while Ctrl is held: link decorations=0 hover=function f.if_nil(val: any, was_nil: any, was_not_nil: any) -> unknown
+[  32.1s] after Ctrl+click: tab=functional.lua cursor={"x":143,"y":452,"height":22,"text":"function f.if_nil(val, was_nil, was_not_nil)"}

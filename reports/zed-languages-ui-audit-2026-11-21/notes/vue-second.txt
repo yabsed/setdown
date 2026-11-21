@@ -1,0 +1,24 @@
+[   4.6s] at rest: {"server":"ready","chip":"Language status: Vue","chipText":"Vue⌄","turning":false,"indicator":null} tab=Article.vue token colours=6
+[   5.7s] panel: ["Vue | × | ✓ | Working | Language | Vue › | More…"]
+[   5.7s] panel buttons: ["×","Language\nVue ›","More…"]
+[   5.8s] state: {"server":"ready","chip":"Language status: Vue","chipText":"Vue⌄","turning":false,"indicator":null,"panel":"Vue | × | ✓ | Working | Language | Vue › | More…"}
+[  11.8s] settled: {"server":"ready","chip":"Language status: Vue","chipText":"Vue⌄","turning":false,"indicator":null}
+[  20.2s] after waiting: {"server":"ready","chip":"Language status: Vue","chipText":"Vue⌄","turning":false,"indicator":null} squiggles in view={"error":0,"warning":0,"info":0,"hint":0}
+[  21.2s] panel now: ["Vue | × | ✓ | Working | Language | Vue › | More…"]
+[  21.9s] details: ["‹ | Document analysis | × | Language | Vue › | vue-language-server | Connected › | Results received for this open file | Restart | Show log | Problems"]
+[  23.0s] log (end): ‹ | Server output | × | Installed tool · vue-language-server | Executable: vue-language-server | <audit>/sources/vue3-realworld-example-app | Project marker: package.json | Server: @vue/language-server 3.3.14 | No server output. | Refresh output
+[  24.2s] problems: ["PROBLEMS · OPEN FILES | × | No diagnostics reported by the active checks. This does not establish project-wide coverage."]
+[  24.8s] focus is in: div.native-edit-context "Editor content"
+[  24.9s] arrow key: 2 ms per press over 30 presses
+[  25.4s] cursor: wanted line 28 "import ArticleDetail from 'src/components/ArticleDetail.vue'" word ArticleDetail; got {"x":121,"y":710,"height":22,"text":"import ArticleDetail from 'src/components/ArticleDetail.vue'","number":"28"}
+[  26.7s] hover: Loading...
+[  29.3s] menu at the cursor (3): subject=ArticleDetail rows=["Edit:Copy",":Paste",":All Commands… [F1]"] status=Asking Vue… hover still shown=0
+[  30.2s] completion (Ctrl+Space) at "import ArticleDetail from 'src/components/ArticleDetail.vue'": [] message=Loading...
+[  31.5s] F1, nothing typed: Commands | × | Type to search all 257 commands | HERE | Format Document | Ctrl+Shift+I | Go to Symbol... | Ctrl+Shift+O | Show Problems in Open Files | Language Support…
+[  32.0s] F1 "format": ["Format Document | Ctrl+Shift+I","Format Selection | Ctrl+K Ctrl+F","Toggle Format on Type","Show effective settings for this file | Settings · Values, sources, fo","Change completion preferences for this view… | Completion · Automatic ","Collect file locations from terminal output | Workspace · Uses the cur"]
+[  32.4s] F1 "rename": ["Rename Symbol | F2","Change completion preferences for this view… | Completion · Automatic ","Create a content checkpoint… | Session · Retains complete text of open","Decrement integer | Edit · Decimal and explicitly prefixed integers; p","Find literal text with smart case… | Search · Uppercase in the query e","Hide smart-search highlights | Search · Keeps the query for next/previ"]
+[  32.9s] F1 "symbol": ["Insert a symbol… | Completion · Explicit symbol insertion leaves IME c","Rename Symbol | F2","Trigger Symbol Highlight","Go to Symbol... | Ctrl+Shift+O","Choose a previous result list… | Results · Search, symbols, diagnostic","Next function or class | Navigation · Uses language-server symbol posi"]
+[  33.3s] F1 "restart": ["Restart Language Servers","Change completion preferences for this view… | Completion · Automatic ","Choose a previous result list… | Results · Search, symbols, diagnostic","Copy a structured target… | Selection · Choose one target; overlapping","Create a content checkpoint… | Session · Retains complete text of open","Decrement integer | Edit · Decimal and explicitly prefixed integers; p"]
+[  36.8s] go to definition (F12): tab=Article.vue cursor={"x":121,"y":710,"height":22,"text":"import ArticleDetail from 'src/components/ArticleDetail.vue'","number":"28"} peek=0 message=
+[  38.8s] Language Support view: LANGUAGE SUPPORT | Language settings | Set up language tools automatically | For the supported languages, a tool is downloaded the first time a file needs it. Other languages ask first. | Supported: Python, JavaScript and TypeScript, Svelte, C and C++, Rust, Go, PHP, Java, Kotlin, JSON, YAML, Dockerfile, Docker Compose, CSS, HTML. | READY | Astro | BibTeX | Clojure | cross-config | Elixir | git-cliff-config | Gleam | Glimmer JS | Glimmer TS | HashiCorp HCL | heex | JavaScript | jjconfig | LaTeX | Lua | miseconfig | Perl | pkgbuild | Protocol Buffer 3 | Python | Ruby | Shell | Terraform | TOML | TypeScript | Typst | Vue | XML | Zig | All languages… | Search every language Setdown recognizes. | Advanced | Choose a tool's program yourself, or change its settings.
+[  38.9s] end: ready=true {"server":"ready","chip":"Language status: Vue","chipText":"Vue⌄","turning":false,"indicator":null} squiggles in view={"error":0,"warning":0,"info":0,"hint":0}

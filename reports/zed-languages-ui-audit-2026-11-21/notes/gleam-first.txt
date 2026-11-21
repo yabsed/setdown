@@ -1,0 +1,27 @@
+[   4.6s] at rest: {"server":"unavailable","chip":"Language status: Gleam, Not installed","chipText":"Gleam· Not installed⌄","turning":false,"indicator":null} tab=list.gleam token colours=5
+[   5.7s] panel: ["Gleam | × | Gleam support isn't installed. | Setdown asks before it downloads a tool for this language. | Install Gleam support | Language | Gleam › | More…"]
+[   5.7s] panel buttons: ["×","Install Gleam support","Language\nGleam ›","More…"]
+[   5.8s] clicking "Install Gleam support"
+[   6.0s] state: {"server":"starting","chip":"Language status: Gleam","chipText":"Gleam⌄","turning":true,"indicator":"","panel":"Gleam | × | Starting… | Language | Gleam › | More…"}
+[  12.1s] state: {"server":"starting","chip":"Language status: Gleam, Setting up…","chipText":"Gleam· Setting up…⌄","turning":true,"indicator":"","panel":"Gleam | × | Setting up Gleam support… | Downloading… | Language | Gleam › | More…"}
+[  19.7s] state: {"server":"ready","chip":"Language status: Gleam","chipText":"Gleam⌄","turning":false,"indicator":null,"panel":"Gleam | × | ✓ | Working | Language | Gleam › | More…"}
+[  25.7s] settled: {"server":"ready","chip":"Language status: Gleam","chipText":"Gleam⌄","turning":false,"indicator":null}
+[  34.1s] after waiting: {"server":"ready","chip":"Language status: Gleam","chipText":"Gleam⌄","turning":false,"indicator":null} squiggles in view={"error":0,"warning":0,"info":0,"hint":0}
+[  34.1s] panel now: ["Gleam | × | ✓ | Working | Language | Gleam › | More…"]
+[  34.9s] details: ["‹ | Document analysis | × | Language | Gleam › | gleam | Connected › | Waiting for analysis results | Restart | Show log | Problems"]
+[  35.9s] log (end): ‹ | Server output | × | Installed tool · gleam | Executable: gleam | <audit>/sources/stdlib | Project marker: gleam.toml | No server output. | Refresh output
+[  37.1s] problems: ["PROBLEMS · OPEN FILES | × | No diagnostics reported. Some analysis results are still pending."]
+[  37.7s] focus is in: div.native-edit-context "Editor content"
+[  37.8s] arrow key: 2 ms per press over 30 presses
+[  38.3s] cursor: wanted line 28 "import gleam/order.{type Order}" word Order; got {"x":254,"y":710,"height":22,"text":"import gleam/order.{type Order}","number":"28"}
+[  39.1s] hover: order.Order | Represents the result of a single comparison to determine the precise ordering of two values.
+[  41.8s] menu at the cursor (6): subject=Order rows=["Understand:Go to Definition [F12]","Find:References [Shift+F12]","Change:Rename [F2]","Edit:Copy",":Paste",":All Commands… [F1]"] status= hover still shown=1
+[  42.6s] completion (Ctrl+Space) at "import gleam/order.{type Order}": [] message=No suggestions.
+[  44.0s] F1, nothing typed: Commands | × | Type to search all 261 commands | HERE | Go to Definition | F12 | References | Shift+F12 | Rename | F2 | Format Document | Ctrl+Shift+I | Go to Symbol... | Ctrl+Shift+O | Show Problems in Open Files | Language Support…
+[  44.4s] F1 "format": ["Format Document | Ctrl+Shift+I","Toggle Format on Type","Show effective settings for this file | Settings · Values, sources, fo","Change completion preferences for this view… | Completion · Automatic ","Collect file locations from terminal output | Workspace · Uses the cur","Complete a file path… | Completion · Uses the current document directo"]
+[  44.9s] F1 "rename": ["Rename Symbol | F2","Change completion preferences for this view… | Completion · Automatic ","Create a content checkpoint… | Session · Retains complete text of open","Decrement integer | Edit · Decimal and explicitly prefixed integers; p","Find literal text with smart case… | Search · Uppercase in the query e","Hide smart-search highlights | Search · Keeps the query for next/previ"]
+[  45.3s] F1 "symbol": ["Insert a symbol… | Completion · Explicit symbol insertion leaves IME c","Rename Symbol | F2","Go to Next Symbol Highlight | F7","Go to Previous Symbol Highlight | Shift+F7","Trigger Symbol Highlight","Go to Symbol... | Ctrl+Shift+O"]
+[  45.7s] F1 "restart": ["Restart Language Servers","Change completion preferences for this view… | Completion · Automatic ","Choose a previous result list… | Results · Search, symbols, diagnostic","Copy a structured target… | Selection · Choose one target; overlapping","Create a content checkpoint… | Session · Retains complete text of open","Decrement integer | Edit · Decimal and explicitly prefixed integers; p"]
+[  49.2s] go to definition (F12): tab=order.gleam cursor={"x":63,"y":198,"height":22,"text":"pub type Order {","number":"4"} peek=0 message=
+[  51.2s] Language Support view: LANGUAGE SUPPORT | Language settings | Set up language tools automatically | For the supported languages, a tool is downloaded the first time a file needs it. Other languages ask first. | Supported: Python, JavaScript and TypeScript, Svelte, C and C++, Rust, Go, PHP, Java, Kotlin, JSON, YAML, Dockerfile, Docker Compose, CSS, HTML. | READY | Astro | BibTeX | Clojure | cross-config | Elixir | git-cliff-config | Gleam | Glimmer JS | Glimmer TS | HashiCorp HCL | heex | JavaScript | jjconfig | LaTeX | Lua | miseconfig | Perl | pkgbuild | Protocol Buffer 3 | Python | Ruby | Shell | Terraform | TOML | TypeScript | Typst | Vue | XML | Zig | All languages… | Search every language Setdown recognizes. | Advanced | Choose a tool's program yourself, or change its settings.
+[  51.3s] end: ready=true {"server":"ready","chip":"Language status: Gleam","chipText":"Gleam⌄","turning":false,"indicator":null} squiggles in view={"error":0,"warning":0,"info":0,"hint":0}

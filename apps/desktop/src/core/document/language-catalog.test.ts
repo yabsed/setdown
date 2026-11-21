@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { catalogLanguage, languageDefinitions, languageDefinition } from './language-catalog';
+import { catalogLanguage, languageDefinitions, languageDefinition, languageDisplayName } from './language-catalog';
 import { documentLanguage } from './document-profile';
 import source from './catalog/languages.json';
 
@@ -19,4 +19,16 @@ test('complete upstream metadata preserves grammar-only languages and lazy exter
   expect(languageDefinitions.filter(l=>l.treeSitter).length).toBeGreaterThan(400);
   expect(languageDefinitions.some(l=>!l.servers?.length && l.grammar)).toBe(true);
   expect(languageDefinitions.filter(l=>l.blockComment).every(l=>l.blockComment!.length===2 && l.blockComment!.every(s=>typeof s==='string'))).toBe(true);
+});
+test('a language is called by a written name, not by its id in lower case', () => {
+  // The editor's own registration of Clojure names it "clojure" first.
+  expect(languageDisplayName('clojure', ['clojure', 'Clojure'])).toBe('Clojure');
+  // A catalog entry whose label only repeats the id: the name Zed gives the language.
+  expect(languageDisplayName('sway', ['sway', 'sway'])).toBe('Sway');
+  // A name that is already written stays as the editor has it.
+  expect(languageDisplayName('typescript', ['TypeScript', 'ts', 'typescript'])).toBe('TypeScript');
+  expect(languageDisplayName('shell', ['Shell', 'sh'])).toBe('Shell');
+  // Nobody wrote a name: the id is all there is.
+  expect(languageDisplayName('unknown-thing', ['unknown-thing'])).toBe('unknown-thing');
+  expect(languageDisplayName('unknown-thing')).toBe('unknown-thing');
 });

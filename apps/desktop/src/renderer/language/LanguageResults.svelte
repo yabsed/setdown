@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { LanguageCancellation } from './language-cancellation';
-  import type { LanguageResult, LanguageResultsSource } from './language-results';
+  import { resultPlace, type LanguageResult, type LanguageResultsSource } from './language-results';
   import { isComposingInput } from '../editor/composition-guard';
   import { resultGroup, recordEditorResults, editorToolsNow } from '../editor/tools/tools-runtime';
   let { source, close }: { source: LanguageResultsSource; close(): void } = $props();
@@ -52,8 +52,9 @@
   {#if error}<p role="alert">{error}</p>{/if}
   <div class="results" aria-label="Language results list">
     {#each rows as row, index}
+      {@const place = resultPlace(row.detail)}
       <div class:selected={selection === index} id={`language-result-${index}`} class="result">
-        <button class="location" onclick={() => open(row)} title={row.detail}><span>{row.label}</span><small>{row.detail}</small></button>
+        <button class="location" onclick={() => open(row)} title={`${row.label}\n${row.detail}`}><span>{row.label}</span><small><span class="before">{place.before}</span><span class="kept">{place.kept}</span></small></button>
         {#if row.children}<button class="expand" aria-label={`Explore ${row.label}`} onclick={() => children(row)}>›</button>{/if}
       </div>
     {:else}<p>{busy ? 'Loading…' : (typeof source.empty === 'function' ? source.empty() : source.empty) ?? 'No results.'}</p>{/each}
@@ -74,7 +75,10 @@
   .result.selected { background: var(--app-selected); }
   .location { padding: 6px 12px; min-width: 0; flex: 1; text-align: left; display: flex; flex-direction: column; }
   .location span, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-  small { color: var(--app-muted-text); font-size: 11px; margin-top: 3px; }
+  small { color: var(--app-muted-text); font-size: 11px; margin-top: 3px; display: flex; }
+  /* A long path loses its folders, not its file and line. */
+  small .before { flex: 0 1 auto; min-width: 0; white-space: pre; }
+  small .kept { flex: 0 0 auto; white-space: pre; }
   p { padding: 8px 12px; margin: 0; color: var(--app-muted-text); }
   .back { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--app-border); }
 </style>

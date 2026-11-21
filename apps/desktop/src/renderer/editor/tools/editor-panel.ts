@@ -1,4 +1,5 @@
 import { isComposingInput } from '../composition-guard';
+import { matchRank } from './panel-match';
 import './editor-panel.css';
 /** `section`: once any row has one, the rows with a section are what the list shows while nothing
  * is typed, under that heading; the others wait to be searched for. `only` keeps a row to the
@@ -70,12 +71,7 @@ export function choose<T>(title: string, items: PanelItem<T>[], placeholder = 'S
       const query = input.value.toLocaleLowerCase().trim();
       if (sectioned && !query) { filtered = opening(); headed = true; selected = 0; render(); return; }
       headed = false;
-      const score = (item: PanelItem<T>) => {
-        const label = item.label.toLocaleLowerCase(), haystack = `${label} ${item.keywords ?? ''} ${item.detail ?? ''}`.toLocaleLowerCase();
-        if (label.startsWith(query)) return 0;
-        if (haystack.includes(query)) return 1;
-        let at = 0; for (const character of query) { at = haystack.indexOf(character, at); if (at < 0) return Infinity; at++; } return 2;
-      };
+      const score = (item: PanelItem<T>) => matchRank(query, item.label, `${item.keywords ?? ''} ${item.detail ?? ''}`);
       filtered = items.filter(item => item.only !== 'empty').map((item, index) => ({ item, index, score: score(item) })).filter(row => Number.isFinite(row.score))
         .sort((a, b) => a.score - b.score || a.index - b.index).map(row => row.item);
       selected = 0; render();

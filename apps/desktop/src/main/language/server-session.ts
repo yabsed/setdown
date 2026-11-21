@@ -340,14 +340,21 @@ export class ServerSession {
           const abort = () => reject(new Error('Language request cancelled.'));
           cancel = token.token.onCancellationRequested(abort);
           if (token.token.isCancellationRequested) abort();
-          timeout = setTimeout(() => {
+          const expire = () => {
+            // A tool that asked the person something is waiting for them; it has not stopped
+            // answering. clojure-lsp asks while it initializes ("Classpath lookup failed"): the
+            // twenty seconds allowed for that ran out before anyone could read the question, the
+            // tool was stopped, started again and asked again. The question has its own limit;
+            // the time for this request starts again once it is answered or withdrawn.
+            if ([...this.messageRequests.values()].some(entry => entry.value.actions.length)) { timeout = setTimeout(expire, timeoutMs); return; }
             const reason = `Language request timed out: ${method}`;
             reject(new Error(reason));
             // A cold C++ preamble/index may outlive one UI request. Cancellation
             // retires that request; initialization failure still stops the process.
             token.cancel();
             if (method === 'initialize') this.fail(reason);
-          }, timeoutMs);
+          };
+          timeout = setTimeout(expire, timeoutMs);
         }),
       ]);
       const partial = partialToken && this.partialResults.get(partialToken);

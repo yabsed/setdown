@@ -142,6 +142,24 @@ test('changing an app default preserves a project-pinned live session and downlo
   await f.invoke('set-automatic-install', f.first, false);
   expect(mocks.servers[0].stop).not.toHaveBeenCalled();
 });
+test('a document hears that its tool is being started before the tool has been looked for or fetched', async () => {
+  const root = path.join(mocks.directory, 'project'); await mkdir(root);
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  let finish!: (value: any) => void; const waiting = new Promise<any>(resolve => { finish = resolve; });
+  const prepare = vi.fn(() => waiting), f = fixture(discovery, root, { ...noPackages, canPrepare: () => true, prepare });
+  const opening = f.invoke('open', f.first, f.document('fortran', 'hello.f90'));
+  await vi.waitFor(() => expect(prepare).toHaveBeenCalledOnce());
+  // Nothing has answered yet. Without this the document would read "No project checks are active" for as long as the fetch takes.
+  expect(f.first.sender.send).toHaveBeenCalledWith('language:event', { type: 'status', state: 'starting', server: { id: 'fortls', name: expect.any(String) },
+    documents: [{ id: 'fortran', generation: 'generation-fortran' }] });
+  finish({ executable: process.execPath, args: ['server.js'], settings: {}, initializationOptions: {}, languageId: 'fortran' });
+  await opening; discovery.dispose();
+});
+test('a file no tool is known for hears nothing: there is nothing to wait for', async () => {
+  const f = fixture();
+  expect(await f.invoke('open', f.first, f.document('make', 'Makefile'))).toEqual({ unavailable: 'missing' });
+  expect(f.first.sender.send).not.toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status' }));
+});
 test('closing a document during automatic installation prevents a late session and reopening uses the current revision',async()=>{
  const root=path.join(mocks.directory,'project');await mkdir(root);
  const discovery=new ServerDiscovery(new ServerEnvironment({HOME:mocks.directory,PATH:'',SETDOWN_LSP_INHERIT_ENV:'1'}));

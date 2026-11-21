@@ -20,7 +20,7 @@ import type { LanguageOptions } from '../language/language-client';
 import type { LanguageServices } from '../language/language-services';
 import { toolFamilies } from '../../protocol/language-tools';
 import { installSyntaxHighlighting } from '../language/syntax-runtime';
-import { updateLanguageDefinitions } from '../../core/document/language-catalog';
+import { languageDisplayName, updateLanguageDefinitions } from '../../core/document/language-catalog';
 import { documentSupport, openLanguageSupport, builtinSupport, onBuiltinSupport, retargetBuiltin, toolCommandList, toolContextKey, toolActionId, documentCommandIds, documentCommandNames, unlistedCommandIds,
   openHereMenu, gatherHere, arrangeHere, type HereItem } from '../language/language-runtime';
 import { isLanguageAnswer } from '../../protocol/language';
@@ -528,7 +528,7 @@ export class MonacoEditor {
     const resource = model.id + '\0' + path + '\0' + language;
     const valid = () => !model.isDisposed() && tab.document.path === path && model.getLanguageId() === language;
     const requireCurrent = () => { if (!valid()) throw Error('This document has changed. Reopen language support.'); };
-    const choices = api.languages.getLanguages().map(item => ({ id: item.id, name: item.aliases?.[0] ?? item.id })).sort((a, b) => a.name.localeCompare(b.name));
+    const choices = api.languages.getLanguages().map(item => ({ id: item.id, name: languageDisplayName(item.id, item.aliases) })).sort((a, b) => a.name.localeCompare(b.name));
     const ids = new Set([tab.id, ...(this.options.viewIds?.(tab) ?? this.options.tabs().filter(view => documentIdentity(view) === documentIdentity(tab)).map(view => view.id))]);
     for (const id of ids) documentSupport.set({ id, resource, language, name: choices.find(item => item.id === language)?.name ?? language, path: tab.document.path,
       choices, providers: this.languageClient?.supportFor(model) ?? (builtinSupport(model).features.length ? [builtinSupport(model)] : []),
@@ -606,13 +606,22 @@ export class MonacoEditor {
       ...own('setdown.insertLink', 'Insert URL'), ...own('setdown.insertTable', 'Insert Table'),
       { id: 'commands', group: 'edit', label: 'All Commands…', key: 'F1', run: () => { editor.focus(); return editor.getAction('setdown.commands')?.run(); } }];
     const tab = this.options.tabs().find(view => this.models.get(documentIdentity(view)) === model);
-    await openHereMenu({ at, fixed: keyed(fixed), probes: probes.map(probe => probe.then(keyed)),
+    // What the pointer was told about this place a moment ago would stay open under the menu and
+    // around it. Closing it is not enough: a pointer that moved while it was open made the editor
+    // promise to look at the place again in a moment, and it then opened the explanation under
+    // the menu that had appeared meanwhile. The promise is withdrawn too (the pinned editor's own
+    // `_cancelSchedulerAndHide`), now and for every move until the menu closes.
+    const hover = editor.getContribution('editor.contrib.contentHover') as { hideContentHover?(): void; _cancelSchedulerAndHide?(): void } | null;
+    const silence = () => { if (hover?._cancelSchedulerAndHide) hover._cancelSchedulerAndHide(); else hover?.hideContentHover?.(); };
+    silence();
+    const quiet = editor.onMouseMove(silence);
+    await openHereMenu({ at, fixed: keyed(fixed), probes: probes.map(probe => probe.then(keyed)), closed: () => quiet.dispose(),
       subject: (selected ? model.getValueInRange(selection!).trim().split(/\r?\n/, 1)[0] : model.getWordAtPosition(position)?.word)?.slice(0, 80) || undefined,
       language: tab && documentSupport.get(tab.id)?.name,
       alive: () => editor.getModel() === model && !model.isDisposed() && model.getVersionId() === version,
       restore: () => { if (editor.getModel() === model) editor.focus(); },
       // What was done here by name is offered first the next time the command list opens.
-      chosen: item => { if (item.action && item.id !== 'commands') recordRecentCommand(item.action); } });
+      chosen: item => { if (item.action && item.id !== 'commands') recordRecentCommand(item.action); } }).catch((error: unknown) => { quiet.dispose(); throw error; });
   }
   private installBindings(api: typeof Monaco, editor: Monaco.editor.IStandaloneCodeEditor): void {
     if (this.options.pythonCells) editor.addAction({ id: 'setdown.python-cells', label: 'Open Python # %% cells as interactive notebook…', precondition: 'editorLangId == python', run: async () => {

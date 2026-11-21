@@ -1,0 +1,19 @@
+[   1.5s] panel before: ["Swift | × | Starting… | Language | Swift › | More…"]
+[   2.5s] state: {"server":"failed","chipText":"Swift· Reconnecting…⌄","turning":true}
+[   7.5s] state: {"server":"failed","chipText":"Swift· Reconnecting…⌄","turning":true}
+[  12.6s] state: {"server":"failed","chipText":"! Swift· Not working⌄","turning":false}
+[  17.6s] state: {"server":"failed","chipText":"! Swift· Not working⌄","turning":false}
+[  22.6s] state: {"server":"failed","chipText":"! Swift· Not working⌄","turning":false}
+[  26.6s] event: {"state":"starting"}
+[  26.6s] event: {"state":"starting"}
+[  26.7s] event: {"state":"failed","message":"initialization: sourcekit-lsp: spawn /usr/bin/xcrun ENOENT. Open Edit → Language Support to select an installed executable.\nReconnecting (1/3)…","issue":{"kind":"startup"},"recovery":{"retrying":true,"attempt":1}}
+[  26.7s] event: {"state":"starting"}
+[  26.7s] event: {"state":"starting"}
+[  26.7s] event: {"state":"failed","message":"initialization: sourcekit-lsp: spawn /usr/bin/xcrun ENOENT. Open Edit → Language Support to select an installed executable.\nReconnecting (2/3)…","issue":{"kind":"startup"},"recovery":{"retrying":true,"attempt":2}}
+[  26.7s] event: {"state":"starting"}
+[  26.7s] event: {"state":"starting"}
+[  26.7s] event: {"state":"failed","message":"initialization: sourcekit-lsp: spawn /usr/bin/xcrun ENOENT. Open Edit → Language Support to select an installed executable.\nReconnecting (3/3)…","issue":{"kind":"startup"},"recovery":{"retrying":true,"attempt":3}}
+[  26.7s] event: {"state":"starting"}
+[  26.7s] event: {"state":"starting"}
+[  26.7s] event: {"state":"failed","message":"initialization: sourcekit-lsp: spawn /usr/bin/xcrun ENOENT. Open Edit → Language Support to select an installed executable.\nAutomatic recovery paused after repeated failures. Restart this service to try again.","issue":{"kind":"startup"},"recovery":{"retrying":false}}
+[  27.4s] panel after: ["Swift | × | Swift support can't start. | Show log | Try again | Language | Swift › | More…"]

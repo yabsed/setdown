@@ -192,6 +192,9 @@ While a tool is not ready yet (starting, being fetched, reconnecting, still
 reading the project) a ring turns beside the language name, and the same ring
 stands before **Starting…** or **Analyzing…** behind it. With reduced motion the
 ring is drawn and does not turn. Once the tool is ready there is only the name.
+The document hears **Starting…** as soon as a tool is looked for, before an
+extension is loaded or the computer is searched: until there is an answer,
+"No project checks are active" would be a guess.
 
 The first step is titled with the language. When something is wrong it states
 one sentence naming what the person lost ("Java support can't start."), the one
@@ -205,6 +208,7 @@ follows the cause, not the state:
 | Downloads are off | Java support isn't installed. | Install Java support | none |
 | The tool is outside the supported languages and was not asked for | Zig support isn't installed. | Install Zig support | none |
 | Setdown has no installer for it | Java support isn't installed. | How to install ↗ | I already have it… |
+| The tool's extension says the person installs it, or names a program that is not on the computer | Nix support isn't installed. The extension's own sentence follows ("nil must be installed manually."), without the part about Zed's settings. | How to install ↗ | I already have it… |
 | The chosen program does not start as a language tool | Java support can't start. | Use automatic setup | Show log |
 | The chosen program no longer exists | Java support can't start. | Use automatic setup | Choose program… |
 | A runtime is missing or too old | Java support needs Java 21 or newer. | How to install ↗ | Show log |
@@ -450,13 +454,19 @@ other files sharing that session. Other languages and other windows continue run
 matching sessions for that root across subscribed windows.
 
 An unexpected server exit schedules reconnects after 1, 3 and 5 seconds, at most
-three attempts in a minute for each window/provider/root. A subsequent failure
+three in a row for each window/provider/root. A failure belongs to the same row
+when it comes within three minutes of the last reconnection, which is longer
+than the longest wait for a tool to start: a tool that takes twenty seconds to
+fail each time is given up on after three reconnections too. A subsequent failure
 leaves the cause's sentence and its action. A session that ends is classified
 from what it recorded: whether it had answered `initialize`, its exit and its
-error output. Two causes repeat identically and are not retried: a program the
-person chose that ends before answering, and a runtime the tool itself reports
-as missing or too old. Their repair is a change of setup, so the status offers
-that instead of another attempt. Recovery resends current
+error output. Three causes repeat identically and are not retried: a program the
+person chose that ends before answering, a runtime the tool itself reports
+as missing or too old, and a program that is not on this computer and that
+nothing downloads (sourcekit-lsp comes with Swift). Their repair is a change of
+setup, so the status offers that instead of another attempt. A tool that asks
+the person a question while it starts has not stopped answering: no request to
+it times out while the question is open. Recovery resends current
 open buffers; it never replays editor commands or workspace edits. Requests from a
 server that offer choices appear in the status panel without a modal or focus
 change. Actions are bound to their original session and expire on shutdown or
@@ -715,6 +725,9 @@ holds what can be done with the thing under the cursor, and nothing else:
 - **Typing narrows it.** The keyboard is in the menu's field: each word typed
   must be in the entry's name, Enter runs the first entry left, Escape gives the
   keyboard back to the text. Composition is guarded.
+- **It takes the place of the hover.** What the pointer was told about the place
+  is withdrawn while the menu is open, also when the pointer had just moved and
+  the editor meant to look at the place again (`monaco-editor.ts`, `openHere`).
 - **The key beside an entry is the one that works here.** It is the editor's own
   answer for that key in that editor (`monaco-keys.ts`). The editor binds
   Ctrl+F12 to both "definition" and "implementations" and gives it to the
@@ -741,6 +754,10 @@ No line of the empty list starts with a tool's name, with one exception: a
 tool's inner view that this person ran by typing its name is remembered under
 that name. Everything else is one query away. A behaviour of a key is no row at
 all.
+
+A row whose name says the typed word comes before a row that only mentions it
+in its description (`panel-match.ts`): "symbol" finds the commands named after
+symbols before one whose small print lists "search, symbols, diagnostics".
 
 ### Answers as documents
 
@@ -1092,7 +1109,7 @@ capability cannot disable another provider's working command.
 | Feature | Where to use it |
 | --- | --- |
 | Semantic token colors (full, delta and range) | Automatically complements the existing syntax grammar and Setdown theme |
-| Definition, declaration, type definition, implementation, references | The menu at the cursor, where the tool has an answer; F12 and Shift+F12 |
+| Definition, declaration, type definition, implementation, references | The menu at the cursor, where the tool has an answer; F12 and Shift+F12. A reference in a file that is not open is listed by its line of code and shown beside the list, and a name whose definition is in such a file is a link while Ctrl is held: the editor is given the file's text as a model that is no document (`file-previews.ts`, `monaco-file-models.ts`) |
 | Document highlights, semantic selection expansion, folding | Cursor highlighting, Expand Selection and the folding gutter |
 | Document links and color presentations | Ctrl/Cmd-click links; color swatches and the color picker |
 | Code actions, quick fixes, refactorings, organize imports | Lightbulb, Ctrl/Cmd+. and F1; only server-provided kinds appear |

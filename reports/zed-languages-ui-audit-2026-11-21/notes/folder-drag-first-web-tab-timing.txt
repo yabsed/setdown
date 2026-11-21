@@ -1,0 +1,73 @@
+# folder-drag.spec.ts:63 - how long the first web tab of a fresh profile takes to show its title
+# Same steps as the test up to openLink; the local server logs each request. Seconds are since the test began.
+# Build: current sources (with the icon change).
+
+## machine idle (6 runs)
+=== drags=true ===
+1.79 openLink
+3.55 server GET /
+3.65 server GET /favicon.ico
+=== drags=true ===
+1.71 openLink
+3.43 server GET /
+3.54 server GET /favicon.ico
+=== drags=true ===
+1.69 openLink
+3.44 server GET /
+3.54 server GET /favicon.ico
+=== drags=true ===
+1.71 openLink
+3.42 server GET /
+3.53 server GET /favicon.ico
+=== drags=true ===
+1.74 openLink
+3.48 server GET /
+3.59 server GET /favicon.ico
+=== drags=true ===
+1.70 openLink
+6.11 server GET /
+6.21 server GET /favicon.ico
+3.78 title shown
+3.69 title shown
+3.68 title shown
+3.68 title shown
+3.74 title shown
+6.39 title shown
+
+## every core busy for the first 75 s (runs 1-2), idle afterwards (runs 3-6)
+=== drags=true ===
+10.96 openLink
+31.99 server GET /
+33.03 server GET /favicon.ico
+33.06 title shown 21.86s after openLink
+=== drags=true ===
+9.96 openLink
+25.26 server GET /
+25.36 server GET /favicon.ico
+25.76 title shown 15.69s after openLink
+=== drags=true ===
+1.71 openLink
+3.49 server GET /
+3.60 server GET /favicon.ico
+3.61 title shown 1.88s after openLink
+=== drags=true ===
+1.72 openLink
+3.45 server GET /
+3.56 server GET /favicon.ico
+3.62 title shown 1.87s after openLink
+=== drags=true ===
+1.72 openLink
+3.48 server GET /
+3.58 server GET /favicon.ico
+3.62 title shown 1.87s after openLink
+=== drags=true ===
+1.72 openLink
+3.50 server GET /
+3.60 server GET /favicon.ico
+3.64 title shown 1.90s after openLink
+
+## the test itself
+full preview-contract run (23:37): failed at line 112, tab still 'http://127.0.0.1:PORT/' with 'Stop loading' after 5 s
+3 runs right after (23:42), same build: 1 passed, 2 failed the same way
+6 runs with the icon change taken out of browser-manager.ts (23:43): 6 passed
+10 runs on the current build again (23:50): 10 passed

@@ -265,6 +265,33 @@ test('server action requests remain nonmodal, bounded to their session and cance
   await server.stop(); await pending; expect(server.messages).toEqual([]);
 });
 
+test('a tool that waits for the person\'s answer has not stopped answering: no request times out until the question is answered', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-question-')); roots.push(root);
+  const fixture = path.join(root, 'server.cjs');
+  await writeFile(fixture, `
+    const {createMessageConnection, StreamMessageReader, StreamMessageWriter} = require(${JSON.stringify(require.resolve('vscode-jsonrpc/node'))});
+    const c = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+    c.onRequest('initialize', () => ({capabilities:{}}));
+    c.onRequest('ask', () => c.sendRequest('window/showMessageRequest', {message:'Classpath lookup failed. Retry?',actions:[{title:'Retry'},{title:'Ignore'}]}));
+    c.onRequest('silent', () => new Promise(() => {}));
+    c.onRequest('shutdown', () => null); c.onNotification('exit', () => process.exit(0)); c.listen();
+  `);
+  const failures: string[] = [];
+  const server = new ServerSession({ executable: process.execPath, args: [fixture] }, root, () => {}, message => failures.push(message));
+  sessions.push(server); await server.ready;
+  const question = server.request('ask', {});
+  await expect.poll(() => server.messages.length).toBe(1);
+  let ended: string | undefined;
+  const silent = server.request('silent', {}, undefined, 150).then(() => { ended = 'answered'; }, (error: Error) => { ended = error.message; });
+  // Several times the limit of the request: the person is still reading the question.
+  await new Promise(resolve => setTimeout(resolve, 700));
+  expect(ended).toBeUndefined();
+  server.answerMessage(server.messages[0].id, 0);
+  expect(await question).toEqual({ title: 'Retry' });
+  // With no question open, the same limit ends a request the tool does not answer.
+  await silent; expect(ended).toMatch(/timed out: silent/);
+  expect(failures).toEqual([]);
+});
 test('a notice the server shows stays until it is dismissed, without repeats and within a bound', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-language-notices-')); roots.push(root);
   const fixture = path.join(root, 'server.cjs');

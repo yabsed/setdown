@@ -21,6 +21,17 @@ export function updateLanguageDefinitions(additional: readonly LanguageDefinitio
   for(const language of catalog){definitions.set(language.sourceId,language);if(!editors.has(language.id))editors.set(language.id,language);}
 }
 
+/** The name a person reads for a language. The editor's own first name for it is kept when it is
+ * written as a name ("TypeScript", "C++"). Some are only an id in lower case ("clojure", "sway"):
+ * then the catalog's label, the name Zed gives the language, or another of the editor's names
+ * says it properly, in that order. A language nobody wrote a name for keeps its id. */
+export function languageDisplayName(id: string, aliases: readonly string[] = []): string {
+  const written = (name?: string): name is string => !!name && name !== name.toLocaleLowerCase();
+  if (written(aliases[0])) return aliases[0];
+  const known = languageDefinition(id);
+  return [known?.label, known?.zedName, ...aliases].find(written) ?? aliases[0] ?? known?.label ?? id;
+}
+
 /** Independent of installed/available/enabled servers. Never loads a grammar. */
 export function catalogLanguage(file: string, firstLine = ''): LanguageDefinition | undefined {
   const normalized = file.replace(/\\/g, '/'), name = normalized.split('/').at(-1)!;

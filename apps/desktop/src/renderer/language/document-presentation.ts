@@ -31,12 +31,13 @@ export function presentIssue(issue: LanguageIssue | undefined, subject: string, 
   const log: SupportAction = { kind: 'log', label: 'Show log', server };
   const locate: SupportAction = { kind: 'locate', label: 'I already have it…', server };
   switch (issue?.kind) {
-    case 'download-failed': return { title: `Couldn't ${/download|network|fetch|connect|resolv|timed out|offline|dns|certificate|http|socket/i.test(issue.detail ?? '') ? 'download' : 'set up'} ${subject}.`,
+    // An address in a piece of advice ("install coursier (https://get-coursier.io/)") is not a download that failed.
+    case 'download-failed': return { title: `Couldn't ${/download|network|fetch|connect|resolv|timed out|offline|dns|certificate|http|socket/i.test((issue.detail ?? '').replace(/https?:\/\/\S+/g, '')) ? 'download' : 'set up'} ${subject}.`,
       description: issue.detail, action: { kind: 'restart', label: 'Try again', server } };
     // Outside the supported languages a tool waits to be asked for; the same button installs it.
     case 'downloads-off': return { title: `${subject} isn't installed.`,
       description: issue.optional ? 'Setdown asks before it downloads a tool for this language.' : 'Downloads are off.', action: { kind: 'install', label: `Install ${subject}`, server } };
-    case 'no-installer': return { title: `${subject} isn't installed.`, description: `Setdown can't install it by itself.`,
+    case 'no-installer': return { title: `${subject} isn't installed.`, description: issue.detail ?? `Setdown can't install it by itself.`,
       ...(issue.help ? { action: { kind: 'help', label: 'How to install ↗', server }, secondary: locate } : { action: locate }) };
     case 'executable': {
       const choose: SupportAction = { kind: 'locate', label: 'Choose program…', server };

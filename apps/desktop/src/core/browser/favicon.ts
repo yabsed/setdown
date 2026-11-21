@@ -17,6 +17,12 @@ export function faviconCandidates(urls: readonly string[]): string[] {
     .sort((a, b) => b.score - a.score || a.index - b.index).slice(0, FAVICON_LIMITS.candidates).map(item => item.url);
 }
 
+/** Run in a page: the icons it declares, as the browser engine reports them. A page of a website that names none has the site's `/favicon.ico`. */
+export const declaredIcons = `(() => {
+  const icons = [...document.querySelectorAll('link[rel~="icon" i][href]')].slice(0, 16).map(link => link.href);
+  return icons.length ? icons : [new URL('/favicon.ico', location.href).href];
+})()`;
+
 /** Bytes of a `data:image/…` icon, or null when it is not one this application decodes. */
 export function dataIcon(url: string): { bytes: Uint8Array; type: string } | null {
   const match = /^data:(image\/[\w.+-]+)((?:;[\w=.+-]+)*?)(;base64)?,(.*)$/is.exec(url);
