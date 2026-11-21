@@ -433,7 +433,8 @@ become text save destinations.
 flyfish-dev/file-viewer. Each family loads its renderer and parsing Worker on
 first use, so startup and other surfaces do not load them. Exactly one renderer
 is active per document, with no automatic renderer discovery. The viewer's
-download, print and HTML export actions are disabled. `OfficeSurface.svelte`
+download, print and HTML export actions are disabled in the reader; saving as PDF is
+Setdown's own action ([Office documents as PDF](#office-documents-as-pdf--2026-11-21)). `OfficeSurface.svelte`
 creates and destroys the viewer with the media cache entry.
 
 Document content is untrusted. A link inside a document never navigates the
@@ -458,3 +459,58 @@ appearance at the current position.
 bounded version-checked reads, the read-only boundary, zoom, find, every family in
 real Electron, link containment and position restoration.
 `scripts/office-viewer-notices.test.mjs` covers the bundled license notices.
+
+### Office documents as PDF — 2026-11-21
+
+Every Office family can be saved as a PDF: the address bar of an Office tab has a
+Save as PDF button, and File → Export as PDF… is enabled for these documents (not in
+Git review). The save dialog proposes `<name>.pdf` beside the document. The document
+itself stays read-only and byte-identical; Save and Save As are still unavailable.
+
+`main/documents/office-pdf-exporter.ts` reads the file again for the disk version the
+tab holds and renders it in a hidden window of its own: session partition
+`office-export`, sandboxed, with a preload (`office-export-runtime/preload.ts`) that
+offers only the job and its completion. That window is never shown or focused, is
+destroyed when the PDF is printed or the export fails, and its session cancels every
+request that is not `file:`, `data:`, `blob:` or the app's own dev server, so saving
+a PDF fetches nothing a document names. Exports run one at a time; one document has
+at most one export under way, during which its button is disabled and labelled
+Saving PDF…. The reading tab keeps its selection, position and focus throughout.
+A document that cannot be rendered, a file that changed on disk, a cancelled dialog
+or a closed window writes no file; failures are reported in an alert.
+
+The PDF is laid out for paper, not copied from the screen: light appearance, no
+zoom, every page.
+
+- **Word.** DOCX is paginated by the viewer (`docx.visualPagination`) into the
+  document's own sheets, including mixed sizes and orientations, with margins,
+  headers and footers on each. Page breaks Word stored from its last layout are
+  ignored (`ignoreLastRenderedPageBreak`), because honouring them with other fonts
+  leaves alternating half-empty pages; the page count can therefore differ from
+  Word's. Legacy `doc` is one flowing column on A4 whose margins are repeated on
+  every sheet.
+- **Slides.** One slide per page, the page exactly the slide's size. PPTX keeps
+  selectable text; a legacy `ppt` slide is the picture the viewer draws of it.
+- **Hangul.** The stated paper size, with the page margins on every sheet and placed
+  pictures where the reader shows them.
+- **Workbooks.** The viewer draws sheets on a canvas and cannot print them, so
+  `renderer/office/spreadsheet-print.ts` lays out tables from the same parsed model
+  (`@file-viewer/renderer-spreadsheet/worker/sheetjs`): every visible sheet from a new
+  page, trimmed to its content, with column widths, row heights, merged cells, cell
+  formats, rich text, pictures and charts. A sheet wider than upright A4 turns the
+  paper, then shrinks to fit the width down to 50%; beyond that its columns continue
+  in further bands (down, then over). More than 400,000 cells are refused rather than
+  laid out. Charts reuse the viewer's internal SVG chart renderer through the
+  `@file-viewer-spreadsheet-chart` alias in `vite.config.ts`; that path must be
+  re-checked when the package version changes.
+
+`renderer/office/office-paper.ts` holds the paper rules the viewer's print output
+lacks (slide-sized pages, per-sheet margins for flowing text) and depends on the
+viewer's class names as of 3.3.3. `office-runtime.ts` stays the only importer of the
+library.
+
+`media/office-pdf-export.spec.ts` saves real documents of every family in Electron and
+reads the PDFs back in the PDF reader: page count and shape, complete text in order,
+clear margins on every page, one slide per page, placed pictures, the hidden offline
+window, focus, cancel and failure, and unchanged sources. `spreadsheet-print.test.ts`
+covers the sheet plan (orientation, scale, bands, hidden tracks, trimmed range).

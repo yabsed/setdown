@@ -281,6 +281,7 @@ export function startWorkspace(desktop: DesktopPort) {
     toggleSurface: () => {
       if (project.gitDiffActive && project.gitDiff) projects.toggleGitDiffMode(); else surfaces.toggle();
     },
+    exportPdf: () => { if (!project.gitDiffActive) void documents.exportPdf(); },
     openTable: () => insertions.openTable(), openLink: () => insertions.openLink(),
     submitTable: () => insertions.submitTable(), closeTable: () => insertions.closeTable(),
     submitLink: () => insertions.submitLink(), closeLink: () => insertions.closeLink(),

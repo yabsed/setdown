@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "ref": "main",
-  "resolved_commit": "e0ac448fd6926095d968e5515f68a2292e169ffd",
-  "committed_at": "2026-11-21T06:27:45+09:00",
+  "resolved_commit": "b9fc97cf4f8939a2bf4693e748a2d074a5444ef8",
+  "committed_at": "2026-11-21T06:58:01+09:00",
   "history": "first-parent",
-  "commit_count": 460,
+  "commit_count": 462,
   "metric": "Physical lines including blanks/comments; committed files only.",
   "limitations": "Code volume does not measure coverage, passing tests, quality or productivity.",
   "excluded": [
@@ -20,15 +20,15 @@
   "feature_scope": "Production source only; path-based responsibility, not dependency analysis",
   "test_scope": "Test source, support and code fixtures; no test execution results",
   "totals": {
-    "lines": 117887,
-    "production": 64601,
-    "testing": 50861,
+    "lines": 117983,
+    "production": 64620,
+    "testing": 50938,
     "tooling": 2425
   },
   "components": {
-    "tests": 50861,
-    "renderer": 26190,
-    "main": 26973,
+    "tests": 50938,
+    "renderer": 26200,
+    "main": 26980,
     "core": 5521,
     "language_host": 1275,
     "preview_runtime": 1862,
@@ -36,7 +36,7 @@
     "image_runtime": 35,
     "image_export_runtime": 23,
     "hwp_runtime": 0,
-    "protocol": 1361,
+    "protocol": 1363,
     "preload": 438,
     "launcher": 27,
     "types": 15,
@@ -44,10 +44,10 @@
     "other": 0
   },
   "features": {
-    "workspace": 8207,
+    "workspace": 8212,
     "reading": 5794,
     "editor": 3937,
-    "browser": 7478,
+    "browser": 7492,
     "language": 17847,
     "notebook": 3151,
     "git": 5362,
@@ -61,8 +61,8 @@
     "other": 0
   },
   "tests": {
-    "unit": 26790,
-    "integration": 22865,
+    "unit": 26803,
+    "integration": 22929,
     "support": 1095,
     "fixtures": 111
   },

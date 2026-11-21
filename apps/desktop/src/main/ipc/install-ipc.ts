@@ -9,7 +9,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
-import { isMarkdownDocument, isOpenableDocument, isReadOnlyDocument } from '../../core/document/document-profile';
+import { isMarkdownDocument, isOfficeDocument, isOpenableDocument, isReadOnlyDocument } from '../../core/document/document-profile';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { ApplicationMenuEntry, CloseDecision, DocumentSnapshot, GitRemoteAction, GitReviewState,
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
@@ -47,12 +47,12 @@ type Options = {
 function assertMarkdown(filePath: string): void {
   if (!isMarkdownDocument(filePath)) throw new Error('This text document has no Markdown preview.');
 }
-function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review: boolean): ApplicationMenuEntry[] {
+function documentMenus(items: ApplicationMenuEntry[], markdown: boolean, review: boolean, office = false): ApplicationMenuEntry[] {
   return items.map((item) => ({ ...item,
-    enabled: item.enabled && (item.id === 'menu-export-pdf' ? markdown && !review
+    enabled: item.enabled && (item.id === 'menu-export-pdf' ? (markdown || office) && !review
       : item.id === 'menu-toggle-surface' ? markdown : true),
     label: item.id === 'preview-find' && !markdown ? 'Find' : item.label,
-    ...(item.submenu ? { submenu: documentMenus(item.submenu, markdown, review) } : {}),
+    ...(item.submenu ? { submenu: documentMenus(item.submenu, markdown, review, office) } : {}),
   }));
 }
 export function installIpc(options: Options): void {
@@ -83,7 +83,7 @@ export function installIpc(options: Options): void {
     const filePath = review ? state.rendererGitReview!.path : state.currentDocument?.path ?? '';
     const webId = previews.zoom.activeTab(state.webContentsId);
     const webReader = !!webId && options.browsers.readerReady(state.webContentsId, webId) && !options.browsers.views.get(webId)?.view.getVisible();
-    return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review).map((item) =>
+    return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review, isOfficeDocument(filePath)).map((item) =>
       item.id === 'menu-export-pdf' && webReader ? { ...item, enabled: true }
         : (state.explorerEditTarget && ['menu-undo', 'menu-redo'].includes(item.id)) || (isReadOnlyDocument(filePath) && !/\.(png|jpe?g|webp)$/i.test(filePath) && ['save', 'menu-save-as'].includes(item.id)) ? { ...item, enabled: false } : item);
   };

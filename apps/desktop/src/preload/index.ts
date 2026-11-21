@@ -174,6 +174,7 @@ const api: MarkTexApi = {
     save: request => ipcRenderer.invoke('image-edit:save', request) },
   readImageBytes: (path, version) => ipcRenderer.invoke('image:read', path, version),
   readOfficeBytes: (path, version) => ipcRenderer.invoke('office:read', path, version),
+  exportOfficePdf: (path, version) => ipcRenderer.invoke('office:export-pdf', path, version),
   mediaUrl: (path) => resourceUrl(path),
   terminal: {
     create: (id, size, cwd) => ipcRenderer.invoke('terminal:create', id, size, cwd),

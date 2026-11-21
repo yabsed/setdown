@@ -8,6 +8,7 @@ import { canonicalPath } from '../documents/file-system';
 import { readPdfRange } from '../documents/pdf-file';
 import { readImageBytes } from '../documents/image-file';
 import { readOfficeBytes } from '../documents/office-file';
+import { exportOfficePdf } from '../documents/office-pdf-exporter';
 import { validReadingRecord } from '../../core/reading/reading-position';
 import type { ReadingPositionStore } from './reading-position-store';
 
@@ -51,5 +52,9 @@ export function installReadingIpc(channels: WindowIpc, positions: ReadingPositio
   channels.handle('office:read', (state, file: string, version: DiskVersion) => {
     if (typeof file !== 'string' || !isOfficeDocument(file) || !owned(state, file)) throw new Error('Document is not open in this window.');
     return readOfficeBytes(canonicalPath(file), version);
+  });
+  channels.handle('office:export-pdf', (state, file: string, version: DiskVersion) => {
+    if (typeof file !== 'string' || !isOfficeDocument(file) || !owned(state, file)) throw new Error('Document is not open in this window.');
+    return exportOfficePdf(state, canonicalPath(file), version);
   });
 }

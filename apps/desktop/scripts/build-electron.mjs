@@ -24,6 +24,7 @@ await Promise.all([
   build({ ...shared, entryPoints: ['src/launcher/main.ts'], outfile: 'dist-electron/launcher.cjs', format: 'cjs' }),
   build({ ...shared, entryPoints: ['src/browser-runtime/tab-drag-preload.ts'], outfile: 'dist-electron/tab-drag-preload.cjs', format: 'cjs' }),
   build({ ...shared, entryPoints: ['src/image-export-runtime/preload.ts'], outfile: 'dist-electron/image-export-preload.cjs', format: 'cjs' }),
+  build({ ...shared, entryPoints: ['src/office-export-runtime/preload.ts'], outfile: 'dist-electron/office-export-preload.cjs', format: 'cjs' }),
   build({ bundle: true, platform: 'browser', target: 'chrome120', format: 'iife', entryPoints: ['src/image-export-runtime/index.ts'], outfile: 'dist-electron/image-export.js' }),
   copyFile('src/image-export-runtime/index.html', 'dist-electron/image-export.html'),
   build({ ...shared, entryPoints: ['src/main/main.ts'], outfile: 'dist-electron/main.cjs', format: 'cjs' }),

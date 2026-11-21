@@ -45,6 +45,7 @@ async function familyOptions(family: OfficeFamily): Promise<Pick<ViewerOptions, 
   return { renderers: renderers(presentationRenderer), presentation: {
     workerUrl: new URL(pptx.default, window.location.href).href, pptWorkerUrl: new URL(ppt.default, window.location.href).href } };
 }
+const wholeBuffer = (bytes: Uint8Array) => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 const message = (error: unknown): string => error instanceof Error ? error.message : typeof error === 'string' ? error : 'This document could not be displayed.';
 
 export async function mountOfficeViewer(input: OfficeViewerInput): Promise<OfficeViewer> {
@@ -64,7 +65,7 @@ export async function mountOfficeViewer(input: OfficeViewerInput): Promise<Offic
     ui: { density: 'compact', surfaceBackground: 'transparent' },
   });
   // A view of the IPC buffer may not start at offset 0; the viewer takes a whole ArrayBuffer.
-  const buffer = input.bytes.buffer.slice(input.bytes.byteOffset, input.bytes.byteOffset + input.bytes.byteLength) as ArrayBuffer;
+  const buffer = wholeBuffer(input.bytes);
   const source = { buffer, filename: input.name, size: buffer.byteLength };
   const position = (): OfficeReadingPosition | undefined => {
     const state = controller.getViewState();
@@ -85,4 +86,65 @@ export async function mountOfficeViewer(input: OfficeViewerInput): Promise<Offic
     setAppearance(appearance) { void controller.update({ ...source, options: options(appearance, position() ?? input.initial) }); },
     destroy() { controller.destroy(); },
   };
+}
+
+export type OfficePrintInput = { host: HTMLElement; family: OfficeFamily; name: string; bytes: Uint8Array; target: Window };
+/**
+ * Renders a document for paper and replaces `target`'s document with the printable result:
+ * every page, light, at the paper size the file states. Word, slides and Hangul are printed by
+ * the viewer from its own rendering; a workbook, which it draws on a canvas and cannot print,
+ * is laid out from the same parsed model instead.
+ */
+export async function printOfficeDocument(input: OfficePrintInput): Promise<void> {
+  if (input.family === 'spreadsheet') return printWorkbook(input);
+  const [{ mountViewer }, family] = await Promise.all([import('@file-viewer/web'), familyOptions(input.family)]);
+  const buffer = wholeBuffer(input.bytes);
+  let controller!: ReturnType<typeof mountViewer>;
+  await new Promise<void>((resolve, reject) => {
+    controller = mountViewer(input.host, { buffer, filename: input.name, size: buffer.byteLength,
+      options: { ...family, rendererMode: 'replace', builtinRenderers: 'none', autoRenderers: false,
+        // No shadow tree here: the viewer gathers a slide deck's styles from the document it is mounted in.
+        theme: 'light', locale: 'en-US', styleIsolation: 'none', zoomGestures: false, toolbar: false,
+        ui: { surfaceBackground: 'transparent' },
+        // Reading uses one continuous flow; paper needs the document's own pages, each with its margins, header and footer.
+        ...(input.family === 'word' ? { docx: { ...family.docx, visualPagination: true, progressive: false, ignoreLastRenderedPageBreak: true } } : {}) },
+      onStateChange: state => { if (state.error) reject(new Error(message(state.error))); else if (state.ready) resolve(); } });
+  });
+  if (!controller.getOperationAvailability()?.print) throw new Error('This kind of document cannot be saved as PDF yet.');
+  await controller.printRenderedHtml({ printWindow: input.target, autoPrint: false, title: input.name });
+  if (!input.target.document.querySelector('.viewer-export-content')) throw new Error('The document could not be laid out for printing.');
+  (await import('./office-paper')).layOutPaper(input.target.document);
+  await input.target.document.fonts?.ready;
+}
+
+async function printWorkbook(input: OfficePrintInput): Promise<void> {
+  const [{ createSpreadsheetParserContext, handleSpreadsheetWorkerRequest }, { renderSpreadsheetChart }, { writeSpreadsheetDocument }] =
+    await Promise.all([import('@file-viewer/renderer-spreadsheet/worker/sheetjs'), import('@file-viewer-spreadsheet-chart'), import('./spreadsheet-print')]);
+  const context = createSpreadsheetParserContext();
+  const ask = async (type: string, payload: Record<string, unknown>) => {
+    const responses = await handleSpreadsheetWorkerRequest(context, { type, payload });
+    const failure = responses.find(response => response.type === 'parseError');
+    if (failure) throw new Error(message(failure.payload?.message));
+    return responses[0]?.payload;
+  };
+  const document = input.target.document;
+  const workbook = await ask('parseWorkbook', { workbook: wholeBuffer(input.bytes), filename: input.name,
+    fileType: /\.([a-z0-9]+)$/i.exec(input.name)?.[1].toLowerCase() });
+  const definitions = (workbook?.sheets ?? []) as { id: number; name: string; hidden?: boolean; rowCount?: number }[];
+  const sheets: import('./spreadsheet-print').PrintSheet[] = [];
+  for (const definition of definitions) {
+    if (definition.hidden) continue;
+    const data = (await ask('parseSheet', { sheet: definition.id, startRow: 0, pageSize: Math.max(1, definition.rowCount ?? 0) }))?.sheetData;
+    if (!data) continue;
+    const structure = data.structure ?? {};
+    sheets.push({ name: definition.name, data: data.data ?? [], cell: data.cell ?? {}, merge: structure.merge ?? data.merge ?? [],
+      colWidths: structure.colWidths ?? data.colWidths, rowHeights: structure.rowHeights ?? data.rowHeights,
+      hiddenColumns: new Set(((structure.columns ?? data.columns ?? []) as { hidden?: boolean }[]).flatMap((column, index) => column.hidden ? [index] : [])),
+      defaults: data.defaults, images: structure.images ?? [],
+      charts: ((structure.charts ?? []) as (import('./spreadsheet-print').PrintPicture & { id: string })[])
+        .map(chart => ({ left: chart.left, top: chart.top, width: chart.width, height: chart.height, row: chart.row, col: chart.col,
+          element: renderSpreadsheetChart(document, chart) })) });
+  }
+  if (!sheets.length) throw new Error('This workbook has no visible sheet.');
+  await writeSpreadsheetDocument(document, input.name, sheets);
 }

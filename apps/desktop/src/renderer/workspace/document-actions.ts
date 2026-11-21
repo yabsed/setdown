@@ -103,9 +103,21 @@ export class DocumentActions {
   }
   async exportPdf() {
     const tab = this.options.active();
-    if (!tab || !hasMarkdownPreview(tab.document)) return;
+    if (!tab) return;
+    if (tab.document.kind === 'office') return this.exportOfficePdf(tab);
+    if (!hasMarkdownPreview(tab.document)) return;
     try { await this.options.desktop.exportPdf(this.options.text(tab), tab.revision, tab.document.path); }
     catch (error) { window.alert(`Could not export the PDF.\n${error instanceof Error ? error.message : String(error)}`); }
+  }
+  /** Office files are laid out again for paper in the main process; one export per document at a time. */
+  private async exportOfficePdf(tab: WorkspaceTab) {
+    if (view.pdfExports[tab.id]) return;
+    view.pdfExports[tab.id] = true;
+    try { await this.options.desktop.exportOfficePdf(tab.document.path, { ...tab.document.diskVersion }); }
+    catch (error) {
+      const reason = (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
+      window.alert(`Could not export the PDF.\n${reason}`);
+    } finally { delete view.pdfExports[tab.id]; }
   }
   keepExternalChange() {
     const tab = this.options.active();

@@ -413,6 +413,8 @@ export type MarkTexApi = {
   finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;
   exportPdf(text: string, revision: number, documentPath: string): Promise<ExportPdfResult>;
+  /** Saves an open Office document (Word, workbook, slides, Hangul) as a PDF at a path the person chooses. */
+  exportOfficePdf(path: string, version: DiskVersion): Promise<ExportPdfResult>;
   pasteClipboardImage(): Promise<PasteImageResult>;
   pickLinkTarget(documentPath: string): Promise<PickLinkTargetResult>;
   pathForFile(file: File): string;

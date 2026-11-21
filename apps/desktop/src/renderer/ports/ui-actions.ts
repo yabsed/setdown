@@ -85,6 +85,8 @@ export type AppActions = BrowserActions & TerminalActions & FolderActions & {
   commitProjectGit(message: string): void;
   runProjectGitRemote(action: GitRemoteAction): void;
   toggleSurface(): void;
+  /** Writes the focused document as a PDF: Markdown through its preview, Office files through a print layout. */
+  exportPdf(): void;
   openTable(): void;
   openLink(): void;
   submitTable(): void;

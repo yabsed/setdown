@@ -44,6 +44,8 @@ export const view = $state({
   notebookTabs: [] as { id: string; path: string; entry: import('../notebook/document-content').NotebookEntry }[],
   mediaTabs: [] as import('./media-cache').MediaTab[],
   activeMediaId: null as string | null,
+  /** Tabs whose document is being written as a PDF right now. */
+  pdfExports: {} as Record<string, true>,
   documentNotices: {} as Record<string, { message: string; unavailable?: boolean; diskVersion?: import('../../core/document/document').DiskVersion }>,
   noticeMessage: '',
   notice: false,
