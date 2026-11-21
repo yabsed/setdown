@@ -3,6 +3,7 @@ import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../test/support/electron/electron-app';
+import { openApplicationMenu } from '../test/support/electron/application-menu';
 
 // A one-off look at what the app shows around a code file. Not a test of record; removed after the run.
 // AUDIT_PROJECT, AUDIT_FILE, AUDIT_TOOL (name=path), AUDIT_PREFIX (F1 prefix), AUDIT_OUT, AUDIT_WORD (a word to act on),
@@ -73,7 +74,7 @@ test('audit: what is shown around one code file', async () => {
       await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await page.waitForTimeout(300);
     }
     // The Language Support side view.
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click(); await page.waitForTimeout(1500);
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     note(`language support view: ${(await sidebar.innerText().catch(() => '(not found)')).replace(/\s*\n\s*/g, ' | ').slice(0, 1800)}`);

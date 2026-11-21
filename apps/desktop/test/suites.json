@@ -394,6 +394,9 @@
     "workspace/text-workspace.spec.ts": {
       "previewContract": false
     },
+    "workspace/window-chrome.spec.ts": {
+      "previewContract": true
+    },
     "workspace/workspace-zoom.spec.ts": {
       "previewContract": true
     },
@@ -474,7 +477,8 @@
       "files": [
         "test/wayland/tab-drag.spec.ts",
         "test/wayland/folder-drag.spec.ts",
-        "test/wayland/clipboard-paste.spec.ts"
+        "test/wayland/clipboard-paste.spec.ts",
+        "test/wayland/window-move.spec.ts"
       ]
     },
     "language-servers": {

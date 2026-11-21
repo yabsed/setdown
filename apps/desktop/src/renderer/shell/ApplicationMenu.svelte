@@ -17,7 +17,8 @@
     overlay: import('../../protocol/desktop-api').MarkTexApi['menuOverlay'];
   } = $props();
 
-  const menus = ['File', 'View', 'Edit', 'Window'] as const;
+  /** One button holds File, View, Edit and Window as its submenus. */
+  const ROOT = 'application-menu-root';
   let root: HTMLElement;
   let popup: HTMLElement;
   let submenuPopups: HTMLElement[] = [];
@@ -67,7 +68,7 @@
     entries = loaded;
     await tick();
     const bounds = button.getBoundingClientRect();
-    popup.style.left = `${Math.round(Math.min(bounds.left, Math.max(6, innerWidth - 292)))}px`;
+    popup.style.left = `${Math.round(Math.min(bounds.left, Math.max(6, innerWidth - popup.offsetWidth - 6)))}px`;
     popup.style.top = `${Math.round(bounds.bottom + 2)}px`;
   }
 
@@ -78,11 +79,12 @@
     if (submenus[depth]?.id !== entry.id || !submenuPopups[depth]) return;
     const bounds = button.getBoundingClientRect();
     const popupBounds = submenuPopups[depth].getBoundingClientRect();
-    const right = bounds.right + 2;
+    const right = bounds.right + 2, left = bounds.left - popupBounds.width - 2;
     submenus[depth] = {
       ...submenus[depth],
-      left: Math.round(Math.max(6, right + popupBounds.width <= innerWidth - 6
-        ? right : bounds.left - popupBounds.width - 2)),
+      // Beside its row where it fits; in a narrow window it stays whole and covers the parent instead.
+      left: Math.round(right + popupBounds.width <= innerWidth - 6 ? right
+        : left >= 6 ? left : Math.max(6, innerWidth - popupBounds.width - 6)),
       top: Math.round(Math.max(6, Math.min(bounds.top - 4, innerHeight - popupBounds.height - 6))),
     };
   }
@@ -155,24 +157,15 @@
 
 <svelte:window onpointerdown={outside} onkeydown={keydown} />
 
-<nav bind:this={root} class="application-menu" aria-label="Application menu"
+<div bind:this={root} class="application-menu"
   style:display={contextMode ? 'none' : undefined}
   style:position={nativeLayer ? 'fixed' : undefined} style:left={nativeLayer ? `${placement.x}px` : undefined}
   style:top={nativeLayer ? `${placement.y}px` : undefined}>
-  {#each menus as label}
-    <button
-      type="button"
-      data-menu-id={`application-menu-${label.toLowerCase()}`}
-      class:is-open={openId === `application-menu-${label.toLowerCase()}`}
-      aria-haspopup="menu"
-      aria-expanded={openId === `application-menu-${label.toLowerCase()}`}
-      onclick={(event) => open(event.currentTarget)}
-      onpointerover={(event) => openId && openId !== event.currentTarget.dataset.menuId
-        ? open(event.currentTarget)
-        : undefined}
-    >{label}</button>
-  {/each}
-</nav>
+  <button type="button" data-menu-id={ROOT} class:is-open={openId === ROOT} title="Menu" aria-label="Application menu"
+    aria-haspopup="menu" aria-expanded={openId === ROOT} onclick={(event) => open(event.currentTarget)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+</div>
 
 <div
   bind:this={popup}
@@ -194,6 +187,7 @@
   <div
     bind:this={submenuPopups[depth]}
     class="application-submenu-popup"
+    class:is-menu={!contextMode && depth === 0}
     class:context-menu={contextMode}
     style:left={`${submenu.left}px`}
     style:top={`${submenu.top}px`}

@@ -11,7 +11,6 @@
   import ProjectSidebar from './project/ProjectSidebar.svelte';
   import EditorGroups from './workspace/groups/EditorGroups.svelte';
   import { groupLayout } from '../core/workspace/editor-groups';
-  import TitleBar from './shell/TitleBar.svelte';
   import ClosePrompt from './shell/ClosePrompt.svelte';
   import BrowserAuthDialog from './browser/BrowserAuthDialog.svelte';
   import { webPdfPositions } from './browser/web-pdf-positions';
@@ -40,7 +39,6 @@ import type { AppActions } from './ports/ui-actions';
   const geometry = (box: typeof focused) => `left:${box.x}%;top:${box.y}%;width:${box.width}%;height:${box.height}%`;
 </script>
 
-<TitleBar {actions} />
 <section class="shell" data-surface="empty" data-tabs="false">
   <ProjectSidebar {actions} languageApi={desktop.language} />
   <div class="editor-area" class:split={view.groups.length > 1}>

@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { markRepositoryRoot } from '../../support/project/repository-marker';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 const require = createRequire(import.meta.url), execute = promisify(execFile);
 /** One entry of an environment choice: its name, and where needed what it is said to be. */
 const named = (list: Locator, name: string | RegExp, detail?: string) => {
@@ -347,7 +348,7 @@ test('a chosen program that is not a language tool is not retried; the status an
     await expect(repair).toBeVisible();
     await panel.getByRole('button', { name: 'Close language status' }).click();
     // The sidebar reports the same tool with the same sentence and the same repair.
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(sidebar.getByRole('heading', { name: 'Needs attention' })).toBeVisible();

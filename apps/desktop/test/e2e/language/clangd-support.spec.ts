@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { runCommand } from '../../support/editor/commands';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 const exec = promisify(execFile);
 
 // These are real clangd tests: install clangd on PATH or set SETDOWN_CLANGD_PATH.
@@ -189,7 +190,7 @@ test('missing clangd keeps C editable and a native executable selection repairs 
     const inspection = page.getByRole('dialog', { name: 'Current file language support' });
     await expect(inspection).toBeVisible();
     await inspection.getByRole('button', { name: 'Close language status' }).click();
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('button', { name: /^Advanced/ }).click();

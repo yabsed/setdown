@@ -7,6 +7,7 @@ import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 
 type ContextOptions = { source?: WebContents; point?: { x: number; y: number }; closed?: () => void };
 type ContextMenu = { items: ApplicationMenuEntry[]; actions: Map<string, MenuItem>; source?: WebContents; closed?: () => void };
+const APPLICATION_MENU = /^application-menu-(root|file|view|edit|window)$/;
 let presentContext: ((state: WindowState, template: Array<MenuItem | MenuItemConstructorOptions>, options: ContextOptions) => Promise<boolean>) | undefined;
 export async function showContextMenu(state: WindowState, template: Array<MenuItem | MenuItemConstructorOptions>, options: ContextOptions = {}): Promise<boolean> {
   try {
@@ -28,9 +29,12 @@ export class MenuOverlay {
     ipcMain.handle('menu-overlay:entries', (event, id: string) => {
       const entry = owned(event.sender.id);
       if (entry?.contextMenu) return id === entry.context.menuId ? entry.contextMenu.items : [];
-      if (entry && /^application-menu-(file|view|edit|window)$/.test(id)) entry.context.menuId = id;
-      return entry ? entries(entry.state, id).map(item => entry.explorerTarget && ['menu-undo', 'menu-redo'].includes(item.id)
-        ? { ...item, enabled: false } : item) : [];
+      if (entry && APPLICATION_MENU.test(id)) entry.context.menuId = id;
+      // Undo and Redo sit one level down, under Edit, when the menu button opens the menu.
+      const withoutHistory = (rows: ApplicationMenuEntry[]): ApplicationMenuEntry[] => rows.map(row => ({ ...row,
+        ...(['menu-undo', 'menu-redo'].includes(row.id) ? { enabled: false } : {}),
+        ...(row.submenu ? { submenu: withoutHistory(row.submenu) } : {}) }));
+      return !entry ? [] : entry.explorerTarget ? withoutHistory(entries(entry.state, id)) : entries(entry.state, id);
     });
     ipcMain.on('menu-overlay:close', event => {
       const entry = owned(event.sender.id) ?? this.owners.get(event.sender.id);
@@ -77,7 +81,7 @@ export class MenuOverlay {
       { items: rows(menu.items, token), actions, source, closed: options.closed });
   }
   async open(state: WindowState, context: MenuOverlayContext, contextMenu?: ContextMenu): Promise<boolean> {
-    if ((!contextMenu && !/^application-menu-(file|view|edit|window)$/.test(context.menuId))
+    if ((!contextMenu && !APPLICATION_MENU.test(context.menuId))
       || !Number.isFinite(context.x) || !Number.isFinite(context.y)) return false;
     const owner = state.webContentsId;
     this.close(owner, false);

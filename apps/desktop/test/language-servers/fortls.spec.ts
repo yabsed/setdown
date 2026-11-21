@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
 import { runCommand } from '../support/editor/commands';
+import { openApplicationMenu } from '../support/electron/application-menu';
 
 test('installed fortls connects without registration and supplies hover and completion after rescan', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-fortls-'));
@@ -20,7 +21,7 @@ test('installed fortls connects without registration and supplies hover and comp
     await runCommand(page, editor, 'Show or Focus Hover');
     await expect(page.locator('.monaco-hover:visible')).toContainText(/square/i, { timeout: 15_000 });
     await editor.press('Escape');
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });

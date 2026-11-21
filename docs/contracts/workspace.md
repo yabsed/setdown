@@ -280,7 +280,9 @@ and Alt+Left/Right share the same route, including native reader/page focus.
 New web tabs open Google with page focus and a collapsed address selection;
 explicit mouse/keyboard address focus selects the complete value. Web title and
 loading-label updates preserve tab widths while available space is unchanged.
-Tabs still shrink and scroll when needed, with creation buttons after the list.
+Tabs still shrink to their least width and then scroll, with creation buttons after
+the list; a strip too narrow for those buttons beside one tab scrolls them along
+with the tabs (see [Window chrome without a title bar](#window-chrome-without-a-title-bar)).
 `tab-navigation.test.ts`,
 `text-workspace.test.ts`, `preview-tabs.spec.ts`, and `test/e2e/browser/*.spec.ts` cover this
 behavior in the focused gate.
@@ -389,11 +391,12 @@ software canvas, never for `image.decode()`, which stays pending for a bitmap
 (ICO, PNG) and settles only for SVG. A test driver attached to the host keeps it
 rendering and hides this, so `browser/tab-icons.spec.ts` starts the application
 without one (`test/support/electron/plain-app.ts`) and asks only the shell.
-Every tab leads with one 16 px icon left of its title, without changing the
+A tab leads with one 16 px icon left of its title, without changing the
 strip's height: a document or diff the Seti file-type icon of the Explorer and
 folder tabs (`FileIcon`), a terminal and a folder tab a solid glyph in Seti's
-palette, a web tab its site's icon, a spinner while it loads (`aria-busy`; the
-title carries no loading marker) and a plain globe when the site declares none.
+palette, a web tab its site's icon and a spinner while it loads (`aria-busy`; the
+title carries no loading marker). A site that declares no icon gets no stand-in
+(decided 2026-11-22, replacing the plain globe): its title starts the tab.
 HTTP(S) addresses among launch
 arguments open as web tabs, also beside a document named by the same request and
 through the single-instance handoff. A second launch that names nothing to open
@@ -777,8 +780,11 @@ multi-item drag, conflicts, pinned batch opens, and unsaved text after moving.
 
 Like [Chrome tab movement](https://support.google.com/chrome/answer/2391819), tab
 strips accept drops over tabs, padding, and unused space, with an insertion marker
-and edge scrolling. Their unused space is not a native window-drag region; the
-application title bar still moves the window. A strip drop inserts without
+and edge scrolling. The strip itself is never a native window-drag region. A strip
+on the window's top edge ends in a free space that moves the window (see
+[Window chrome without a title bar](#window-chrome-without-a-title-bar)); while a
+tab or file is dragged that space stops being a drag region, so a drop there
+inserts like a drop on the rest of the strip. A strip drop inserts without
 splitting, while body-edge drops retain their split behavior. Drop completion and
 cancellation clear feedback and release native overlays.
 A source drag keeps its native captures until drop/end/cancel: a null
@@ -790,6 +796,53 @@ a native-boundary leave signal, order, group collapse, and Undo. `test/e2e/brows
 checks the same boundary signal during a real web-tab split;
 `tab-detach.spec.ts` checks cross-window strip drops even when source dragend
 precedes the destination claim, preserving the live native reader and position.
+
+
+## Window chrome without a title bar
+
+Decided 2026-11-22 (`reports/2026_11_22_03_26_top_bar_removal.md`): the 36px title
+bar held three things and wasted the rest of its row, so it is gone and the tab
+strips on the window's top edge carry its parts. Chrome above a document is the
+tab strip and the location bar only.
+
+- **Setdown button.** It is the first item of the top-left tab strip and toggles the
+  folder tools together with their icon column, as before. It stays there whether
+  they show or not; the icon column keeps its 48px width and holds only its views.
+- **Menu button.** One button after it in the top-left strip opens File, View, Edit
+  and Window as its submenus (`application-menu-root`). Their entries, ids,
+  shortcuts and per-document enabling are unchanged; over a live web page the menu
+  still paints in the native menu layer.
+- **Window buttons.** Electron draws them in the window's top-right corner at the
+  strip's height and chrome color (`main/windows/window-manager.ts`,
+  `main/theme/theme-manager.ts`, unchanged). The strip that touches that corner
+  keeps its tabs and buttons 24px short of them. Their width is read from the
+  platform (`env(titlebar-area-width)`), not assumed: a fixed reserve wider than
+  the buttons left a strip of dead space beside them.
+- **Moving the window.** Every strip on the top edge ends in a free space of at
+  least 24px that is the native window-drag region. It starts after the new-tab
+  buttons and covers the strip's top and right padding, so the window's top edge
+  moves it too. In the top-right strip it runs on under the window buttons to the
+  window's edge: the space right beside the buttons and between them moves the
+  window. Tabs and buttons keep their pointer input.
+- **Narrow strips.** The tabs and the new-tab buttons share one row. With room for
+  the buttons beside one tab at its least width (96px), the tabs scroll in their
+  list and the buttons stay put after it. Narrower than that, the tabs are not
+  squeezed away: they keep their least width and the row scrolls the tabs and the
+  buttons together, by wheel, by a dragged tab held at its edge, and to show the
+  selected tab. The Setdown button, the menu button and the free end do not scroll.
+- **Which strip.** Top-left, top-right and top-edge are read from the group layout
+  (`renderer/workspace/groups/EditorGroups.svelte`); a strip below another group
+  carries none of these parts. One unsplit group carries all of them.
+- **No tabs.** The strip stays visible above the empty state, since it holds the
+  Setdown button, the menu button, the window buttons' room and the drag space.
+
+`workspace/window-chrome.spec.ts` checks the order of the parts, the drag regions
+before and during a tab drag and at the points beside, between and under the
+window buttons, the Setdown button, the menu button's four menus and a command run
+from them, split layouts in both axes, the empty state, and a narrow strip's shared
+scrolling. `test/wayland/window-move.spec.ts` presses those points under a real
+window manager and reads the window's new position. Menu-driven specs open a menu
+through `test/support/electron/application-menu.ts`.
 
 
 ## Git file decorations

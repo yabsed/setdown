@@ -6,6 +6,7 @@ import path from 'node:path';
 import { findOverlay, findOverlayVisible } from '../../support/browser/browser-fixture';
 import { previews } from '../../support/preview/preview-view';
 import { disposeApplication } from '../../support/electron/electron-app';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 test('preview find keeps Unicode offsets and excludes authored hidden text', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-find-boundaries-'));
@@ -16,8 +17,8 @@ test('preview find keeps Unicode offsets and excludes authored hidden text', asy
   try {
     const page = await app.firstWindow(), reading = previews(app);
     await expect.poll(() => reading.evaluate("document.querySelector('.markdown-preview')?.textContent || ''")).toContain('İxvisible');
-    await page.locator('.application-menu button', { hasText: 'View' }).click();
-    await page.locator('.application-menu-popup button', { hasText: 'Find in Preview' }).click();
+    await openApplicationMenu(page, 'View');
+    await page.locator('.application-submenu-popup button', { hasText: 'Find in Preview' }).click();
     const panel = await findOverlay(app);
     const input = panel.getByRole('textbox', { name: 'Find in rendered document' });
     await input.fill('xvisible');
@@ -62,15 +63,16 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
     const window = await application.firstWindow();
     await expect(window.locator('.viewer-surface')).toBeVisible();
     await expect(window.locator('.reader-toolbar')).toHaveCount(0);
-    await expect(window.locator('.product-titlebar')).toBeVisible();
-    await expect(window.locator('.application-menu button')).toHaveText([
-      'File', 'View', 'Edit', 'Window',
-    ]);
+    // There is no title bar: the Setdown button and one menu button sit on the window's top-left.
+    await expect(window.locator('.product-titlebar')).toHaveCount(0);
+    await expect(window.locator('.product-identity')).toHaveText('Setdown');
+    await expect(window.locator('.tab-strip > .application-menu button')).toHaveCount(1);
     expect(await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]?.isMenuBarVisible())).toBe(false);
-    await window.locator('.application-menu button', { hasText: 'View' }).click();
+    await openApplicationMenu(window, 'View');
     await expect(window.locator('.application-menu-popup')).toBeVisible();
-    await expect(window.locator('.application-menu-popup')).toContainText('Find in Preview');
+    await expect(window.locator('.application-menu-popup .product-menu-label')).toHaveText(['File', 'View', 'Edit', 'Window']);
+    await expect(window.locator('.application-submenu-popup')).toContainText('Find in Preview');
     expect(await window.locator('.application-menu-popup').evaluate((element) => ({
       radius: getComputedStyle(element).borderRadius,
       background: getComputedStyle(element).backgroundColor,
@@ -81,7 +83,7 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       background: 'rgb(255, 255, 255)',
       themedBackground: '#ffffff',
     });
-    await window.locator('.application-menu-popup button', { hasText: 'Find in Preview' }).click();
+    await window.locator('.application-submenu-popup button', { hasText: 'Find in Preview' }).click();
     await expect(window.locator('.application-menu-popup')).toBeHidden();
     const panel = await findOverlay(application);
     await expect.poll(() => findOverlayVisible(application)).toBe(true);
@@ -234,16 +236,19 @@ test('uses the rendered document for TOC, search, and Crossnote themes', async (
       shell: 'rgb(47, 52, 57)',
       editor: 'rgb(54, 59, 64)',
     });
-    await window.locator('.application-menu button', { hasText: 'View' }).click();
+    await openApplicationMenu(window, 'View');
     await expect(window.locator('.application-menu-popup')).toBeVisible();
     expect(await window.locator('.application-menu-popup').evaluate((element) =>
       getComputedStyle(element).backgroundColor)).toBe('rgb(65, 71, 77)');
     await window.locator('[data-menu-item-id="menu-theme"]').hover();
-    await expect(window.locator('.application-submenu-popup')).toBeVisible();
-    await expect(window.locator('.application-submenu-popup')).toContainText('Night');
-    expect(await window.locator('.application-menu-popup').evaluate((element) =>
+    // The View menu is the menu button's first level; Theme opens beside it as the second.
+    const viewMenu = window.locator('.application-submenu-popup.is-menu');
+    const themeMenu = window.locator('.application-submenu-popup:not(.is-menu)');
+    await expect(themeMenu).toBeVisible();
+    await expect(themeMenu).toContainText('Night');
+    expect(await viewMenu.evaluate((element) =>
       element.scrollWidth <= element.clientWidth)).toBe(true);
-    const submenuBounds = await window.locator('.application-submenu-popup').boundingBox();
+    const submenuBounds = await themeMenu.boundingBox();
     expect(submenuBounds).toBeTruthy();
     expect((submenuBounds?.x ?? 0) + (submenuBounds?.width ?? 0))
       .toBeLessThanOrEqual(await window.evaluate(() => innerWidth));

@@ -7,6 +7,7 @@ const execFile = promisify(execFileCallback);
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
 import { nativeInput } from '../../support/electron/native-input';
 import { waylandInput } from '../../support/electron/wayland-input';
+import { applicationMenuButton, openApplicationMenu } from '../../support/electron/application-menu';
 
 test('fast right-edge drops split two live websites instead of tearing off a window', async () => {
   test.setTimeout(90_000);
@@ -376,7 +377,7 @@ test('application menus preserve live video frames, playback and web view visibi
       video.requestVideoFrameCallback(count); return video.play();
     })()`);
     await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(3);
-    await f.page.getByRole('button', { name: 'View', exact: true }).click();
+    await openApplicationMenu(f.page, 'View');
     await expect.poll(() => f.app.windows().some(page => page.url().includes('menu-overlay=1'))).toBe(true);
     const menu = f.app.windows().find(page => page.url().includes('menu-overlay=1'))!;
     await expect(menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true })).toBeVisible();
@@ -392,8 +393,8 @@ test('application menus preserve live video frames, playback and web view visibi
     await expect.poll(() => evaluatePage<number>(f.app, f.origin, 'window.presentedFrames')).toBeGreaterThan(duringSubmenu + 5);
     await menu.screenshot({ path: test.info().outputPath('menu-layer.png'), omitBackground: true });
     await menu.keyboard.press('Escape');
-    await expect(f.page.getByRole('button', { name: 'View', exact: true })).toHaveAttribute('aria-expanded', 'false');
-    await f.page.getByRole('button', { name: 'View', exact: true }).click();
+    await expect(applicationMenuButton(f.page)).toHaveAttribute('aria-expanded', 'false');
+    await openApplicationMenu(f.page, 'View');
     await expect(menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true })).toBeVisible();
     await menu.getByRole('menuitem', { name: 'Toggle Folder Tools', exact: true }).click();
     await expect(f.page.getByRole('button', { name: 'Toggle Folder Tools', exact: true })).toHaveAttribute('aria-expanded', 'true');

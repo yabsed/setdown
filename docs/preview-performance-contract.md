@@ -386,8 +386,8 @@ address its own tab. Updates from wheels and menus keep the addressed tab's perc
 or layout polling. `test/e2e/browser/*.spec.ts`, `workspace-zoom.spec.ts`, and
 `terminal.spec.ts` cover the toolbar routing alongside the existing zoom checks.
 
-Top-level application menus over live web pages use a transparent, owned native
-menu view above the page. They do not capture, hide, pause or replace the page.
+The application menu (one button; File, View, Edit and Window are its submenus)
+over live web pages uses a transparent, owned native menu view above the page. They do not capture, hide, pause or replace the page.
 Menu/submenu selection, Escape and dismissal preserve the live view and video
 frame delivery. `test/e2e/browser/*.spec.ts` verifies advancing video frames while selecting
 these menus and unchanged page identity/visibility. The overlay runs only trusted
@@ -407,6 +407,8 @@ address without starting a query for it: the list stays that of the typed text.
 Stepping past either end of the list restores the typed text. Editing the shown
 address is typing again, so Enter opens the edited text and never the row it came
 from; rows that arrive under a selected row clear it and restore the typed text.
+The selected row is outlined in the text color, because a background tint alone
+cannot be told apart from its neighbours in dark themes.
 The compact panel's own field follows the same rule
 (`renderer/workspace/location/suggestion-selection.ts`), and
 `browser/address-selection.spec.ts` covers both fields.
@@ -843,6 +845,10 @@ Current guarantees, ownership and required coverage: [Preview tabs](contracts/wo
 ## Explorer selection and tab-strip drops
 
 Current guarantees, ownership and required coverage: [Explorer selection and tab-strip drops](contracts/workspace.md#explorer-selection-and-tab-strip-drops).
+
+## Window chrome without a title bar
+
+Current guarantees, ownership and required coverage: [Window chrome without a title bar](contracts/workspace.md#window-chrome-without-a-title-bar).
 
 ## Browser library: passwords, bookmark export, page developer tools, clearing data
 

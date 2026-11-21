@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../test/support/electron/electron-app';
+import { openApplicationMenu } from '../test/support/electron/application-menu';
 
 // A one-off look at what a person sees around a file of a language Setdown does not answer for
 // itself: the tool comes from the imported Zed catalog and is installed only after they ask.
@@ -358,7 +359,7 @@ for (const item of cases) {
         await page.keyboard.press('Escape');
       });
       await step('language support view', async () => {
-        await page.getByRole('button', { name: 'Edit', exact: true }).click();
+        await openApplicationMenu(page, 'Edit');
         await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click(); await page.waitForTimeout(1800);
         const view = page.getByRole('region', { name: 'Language Support', exact: true });
         note(`Language Support view: ${await view.count() ? flat(await view.innerText(), 1500) : `(not found) dialogs=${JSON.stringify(await dialogs(page))}`}`);

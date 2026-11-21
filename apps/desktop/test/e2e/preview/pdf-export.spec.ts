@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { themeProfile, type ThemeId } from '../../../src/core/theme/theme-catalog';
 import { fixture } from '../../support/browser/browser-fixture';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 // Include tinted light, dark, an imported theme, and the white control theme.
 const themes: ThemeId[] = ['solarized-light', 'github-dark', 'paper', 'vscode-dark-2026', 'github-light'];
@@ -35,7 +36,7 @@ for (const theme of themes) for (const source of ['Markdown', 'Web Reader'] as c
       await f.app.evaluate(({ dialog }, target) => {
         dialog.showSaveDialog = (async () => ({ canceled: false, filePath: target })) as typeof dialog.showSaveDialog;
       }, target);
-      await f.page.getByRole('button', { name: 'File', exact: true }).click();
+      await openApplicationMenu(f.page, 'File');
       await f.page.getByRole('menuitem', { name: 'Export as PDF…', exact: true }).click();
       await expect.poll(() => readFile(target).then(data => data.subarray(0, 5).toString()).catch(() => ''), { timeout: 20_000 }).toBe('%PDF-');
       await expect(original).toHaveAttribute('aria-selected', 'true');

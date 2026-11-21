@@ -6,6 +6,7 @@ import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, findOverla
 import { THEME_IDS } from '../../../src/core/theme/theme-catalog';
 import { previews } from '../../support/preview/preview-view';
 import { nativeInput } from '../../support/electron/native-input';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 test('reading surfaces offer native copy/search menus and local Markdown PDF export', async () => {
   const f = await fixture();
@@ -94,7 +95,7 @@ test('web reader searches the visible article and exports its snapshot as Markdo
     await expect.poll(() => readFile(pdf).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');
     await expect(reader).toBeVisible(); await expect(tab).toHaveAttribute('aria-selected', 'true');
     await rm(pdf);
-    await f.page.getByRole('button', { name: 'File', exact: true }).click();
+    await openApplicationMenu(f.page, 'File');
     await expect(f.page.getByRole('menuitem', { name: 'Export as PDF…', exact: true })).toBeEnabled();
     await f.page.getByRole('menuitem', { name: 'Export as PDF…', exact: true }).click();
     await expect.poll(() => readFile(pdf).then(data => data.subarray(0, 5).toString()).catch(() => '')).toBe('%PDF-');

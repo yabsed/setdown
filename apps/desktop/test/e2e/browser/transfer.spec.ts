@@ -144,10 +144,18 @@ test('native web tab drag into another window preserves the page and uses the in
       const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
       return { x: Math.round(bounds.x + (box.x + 35) * zoom), y: Math.round(bounds.y + (box.y + 15) * zoom) };
     }, tabBox);
-    const to = await destinationNative.evaluate((window, box) => {
+    // The strip's free end, right beside the window buttons it runs under: over the buttons themselves
+    // the platform owns the pointer, and that end is the window-drag region until a tab is dragged.
+    const free = await destination.evaluate(() => {
+      const area = (navigator as Navigator & { windowControlsOverlay: { getTitlebarAreaRect(): DOMRect } }).windowControlsOverlay.getTitlebarAreaRect();
+      return area.x + area.width;
+    });
+    expect(free).toBeLessThan(stripBox.x + stripBox.width - 20);
+    await expect(destination.locator('.tab-strip > .window-drag-space')).toHaveCount(1);
+    const to = await destinationNative.evaluate((window, point) => {
       const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
-      return { x: Math.round(bounds.x + (box.x + box.width - 20) * zoom), y: Math.round(bounds.y + (box.y + 15) * zoom) };
-    }, stripBox);
+      return { x: Math.round(bounds.x + point.x * zoom), y: Math.round(bounds.y + point.y * zoom) };
+    }, { x: free - 12, y: stripBox.y + 15 });
     await execFile('python3', ['-c', `
 import ctypes, ctypes.util, sys, time
 x=ctypes.CDLL(ctypes.util.find_library('X11')); t=ctypes.CDLL(ctypes.util.find_library('Xtst'))
@@ -180,7 +188,11 @@ d=x.XOpenDisplay(None); t.XTestFakeButtonEvent(d,1,0,0); x.XFlush(d); x.XCloseDi
     expect(await f.app.evaluate(async ({ webContents }, id) => webContents.fromId(id)!.executeJavaScript('document.querySelector("#draft").value'), pageId)).toBe('KEEP_WEB_FORM');
     await expect(destination.locator('.tab-drop-indicator')).toBeHidden();
     await sourceNative.dispose(); await destinationNative.dispose();
-  } finally { await f.dispose(); }
+  } finally {
+    // A failure before the release must not leave the display's pointer pressed for the tests after this one.
+    await nativeInput({ button: 'up' }).catch(() => {});
+    await f.dispose();
+  }
 });
 
 test('a popup moved to another window survives closing its original window', async () => {

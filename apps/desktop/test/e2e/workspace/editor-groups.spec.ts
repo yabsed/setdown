@@ -7,6 +7,7 @@ import type { WebContentsView } from 'electron';
 import type { MarkTexApi } from '../../../src/protocol/desktop-api';
 import { dragTerminal } from '../../support/terminal/terminal-drag';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 async function open(page: Page, file: string) {
   await page.evaluate(file => (window as unknown as { marktex: MarkTexApi }).marktex.openLink(`marktex-resource://file${file}`), file);
@@ -150,7 +151,7 @@ test('wheel scrolls without selection; nested groups retain live native readers 
 
     // DOM menus cover native readers only after every visible group has a
     // painted replacement, so neither the focused nor background group blanks.
-    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await openApplicationMenu(page, 'View');
     await expect(page.locator('.preview-frames[data-frozen="true"]')).toBeVisible();
     await expect(page.locator('.group-body[data-native-preview-frozen="true"]')).toHaveCount(1);
     expect(await page.locator('.group-body[data-native-preview-frozen="true"]').evaluate(node =>

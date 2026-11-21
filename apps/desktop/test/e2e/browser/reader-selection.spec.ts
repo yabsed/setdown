@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fixture, evaluatePage, findOverlay } from '../../support/browser/browser-fixture';
 import { dragTerminal } from '../../support/terminal/terminal-drag';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 test('Reader Select All stays inside the article with a terminal sibling, including native Ctrl+A and menus', async () => {
   test.skip(process.platform === 'win32', 'Terminal commands use a POSIX shell.');
@@ -39,8 +40,8 @@ test('Reader Select All stays inside the article with a terminal sibling, includ
     });
     await expectArticle();
     await f.page.evaluate(() => window.getSelection()?.removeAllRanges());
-    await f.page.locator('.application-menu button', { hasText: 'Edit' }).click();
-    await f.page.locator('.application-menu-popup [data-menu-item-id="menu-select-all"]').click();
+    await openApplicationMenu(f.page, 'Edit');
+    await f.page.locator('.application-submenu-popup [data-menu-item-id="menu-select-all"]').click();
     await expectArticle();
     await f.page.screenshot({ path: test.info().outputPath('reader-selection-isolated.png') });
     // An address field keeps its own native Select All while Reader is active.

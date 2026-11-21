@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { markRepositoryRoot } from '../../support/project/repository-marker';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 test('global language defaults preserve project choices, unsaved text and Make editing support', async ({}, testInfo) => {
   test.setTimeout(120_000);
@@ -39,7 +40,7 @@ test('global language defaults preserve project choices, unsaved text and Make e
     await expect(popup).not.toContainText('Analysis selection'); await chooseTool();
     await expect(popup.getByRole('combobox', { name: 'Analysis provider' })).toHaveValue('pyright');
     await popup.getByRole('button', { name: 'Close language status' }).click();
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();
@@ -173,7 +174,7 @@ test('compact inspection has keyboard steps; project settings remain pinned whil
     await popup.getByRole('button', { name: 'Close language status', exact: true }).click();
     await expect(leftInstance.locator('.view-lines')).toContainText('unsaved = 42');
     await editor.press('Control+z'); await expect(leftInstance.locator('.view-lines')).not.toContainText('unsaved = 42');
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const sidebar = page.getByRole('region', { name: 'Language Support', exact: true });
     await expect(sidebar.getByRole('heading', { name: 'Language settings' })).toBeVisible();

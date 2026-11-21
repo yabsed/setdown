@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { hereMenu, runCommand } from '../../support/editor/commands';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 const exec = promisify(execFile);
 /** The middle of a letter inside `word`, on the line that has `line`, where the editor drew it.
  * The caret glides to its place, so where it is drawn says nothing until it has arrived. */
@@ -325,7 +326,7 @@ test('server crash preserves unsaved edits; restart recovers and window close re
     await expect(inspection).toContainText('Working');
     await inspection.getByRole('button', { name: 'More…', exact: true }).click(); await expect(inspection).toContainText('Results received for this open file');
     await inspection.getByRole('button', { name: 'Close language status', exact: true }).click();
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });

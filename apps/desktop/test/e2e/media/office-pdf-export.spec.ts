@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, electron, focusApplication } from '../../support/electron/electron-app';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 // The same generated and corpus documents as media/office-reader.spec.ts (see the fixture README).
 const fixtures = path.join(import.meta.dirname, '../../fixtures/office');
@@ -56,7 +57,7 @@ async function session(prefix: string, first: string, prepare?: (root: string) =
     const before = (await record()).asked.length;
     if (via === 'button') await button.click();
     else {
-      await page.getByRole('button', { name: 'File', exact: true }).click();
+      await openApplicationMenu(page, 'File');
       await page.getByRole('menuitem', { name: 'Export as PDF…', exact: true }).click();
     }
     await expect.poll(async () => (await record()).asked.length).toBe(before + 1);

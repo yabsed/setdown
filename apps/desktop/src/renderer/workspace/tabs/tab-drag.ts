@@ -74,11 +74,13 @@ export function createTabDrag(options: Options) {
       && event.clientX < innerWidth && event.clientY < innerHeight) return;
     leaveTarget(terminal);
   }
+  /** What scrolls a strip's tabs: their list, or the row they share with the new-tab buttons while it is cramped. */
+  const tabScroller = (strip: HTMLElement) => strip.querySelector<HTMLElement>('.tab-row.is-cramped') ?? strip.querySelector<HTMLElement>('.tab-list')!;
   function stripTarget(strip: HTMLElement, x: number): Target {
     detachTarget = null; retainedTarget = null;
     if (activeStrip !== strip) activeStrip?.classList.remove('is-drop-target');
     activeStrip = strip; strip.classList.add('is-drop-target');
-    const list = strip.querySelector<HTMLElement>('.tab-list')!;
+    const list = tabScroller(strip);
     const tabs = Array.from(list.querySelectorAll<HTMLElement>('[data-tab-id]'));
     const index = tabs.findIndex(tab => { const rect = tab.getBoundingClientRect(); return x < rect.left + rect.width / 2; });
     const at = index < 0 ? tabs.length : index;
@@ -237,7 +239,7 @@ export function createTabDrag(options: Options) {
     if (ownFiles(event)) fileGuide = true; else setDragging(true);
     options.shell.classList.add('is-tab-dragging');
     if (activeStrip) {
-      scrollList = activeStrip.querySelector<HTMLElement>('.tab-list'); scrollPointer = event.clientX;
+      scrollList = tabScroller(activeStrip); scrollPointer = event.clientX;
       if (!scrollFrame) scrollFrame = requestAnimationFrame(scrollStrip);
     }
   };

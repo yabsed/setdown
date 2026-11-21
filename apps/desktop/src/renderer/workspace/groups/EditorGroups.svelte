@@ -36,7 +36,8 @@ import type { AppActions } from '../../ports/ui-actions';
   <section class="editor-group" data-group-id={box.id} data-tab-kind={tab?.kind ?? 'document'} class:focused={view.focusedGroupId === box.id}
     aria-label="Editor group" style:left={`${box.x}%`} style:top={`${box.y}%`}
     style:width={`${box.width}%`} style:height={`${box.height}%`}>
-    <TabChrome {actions} groupId={box.id} />
+    <TabChrome {actions} groupId={box.id} lead={box.y < .01 && box.x < .01} top={box.y < .01}
+      windowControls={box.y < .01 && box.x + box.width > 99.99} />
     <LocationBar {actions} groupId={box.id} />
     <div class="group-body" data-group-id={box.id} data-zoom-tab={tab?.id}>
       {#if tab?.previewFailure && view.focusedGroupId !== box.id}

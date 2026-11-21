@@ -66,9 +66,12 @@ test(`native drag ${outcome} the window after showing an insertion guide`, async
         const bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
         return { x: bounds.x + (box.x + 30) * zoom, y: bounds.y + (box.y + box.height / 2) * zoom };
       }, first);
-      await nativeInput({ pointer: [1, 2, 3, 4].map(step => ({
+      // The strip is the window's top edge, so the way back in crosses no other part of the window.
+      // A pointer keeps moving once it is inside: X11 refuses a release sent in the instant of re-entry,
+      // before the page has answered its first position.
+      await nativeInput({ pointer: [...[1, 2, 3, 4].map(step => ({
         x: outside.x + (back.x - outside.x) * step / 4, y: outside.y + (back.y - outside.y) * step / 4,
-      })) });
+      })), { x: back.x + 4, y: back.y }] });
       await expect(page.locator('.tab-drop-indicator')).toBeVisible();
       await expect.poll(async () => (await page.locator('.tab-drop-indicator').boundingBox())!.x).toBeCloseTo(first.x - 1, 0);
     }
@@ -603,13 +606,15 @@ test('a guide is cleared by cancellation, a rejected area, or a real window exit
       const source = page.locator('.document-tab').last();
       const data = await page.evaluateHandle(() => new DataTransfer());
       await source.dispatchEvent('dragstart', { dataTransfer: data });
-      const box = (await page.locator('.document-tab').first().boundingBox())!;
+      const box = (await page.locator('.document-tab').first().boundingBox())!, bar = (await page.locator('.location-bar').first().boundingBox())!;
       await source.dispatchEvent('dragover', { dataTransfer: data, clientX: box.x + 2, clientY: box.y + box.height / 2 });
       await expect(page.locator('.tab-drop-indicator')).toBeVisible();
       if (outcome === 'cancel') await page.keyboard.press('Escape');
-      else await source.dispatchEvent(outcome === 'reject' ? 'dragover' : 'dragleave', {
-        dataTransfer: data, clientX: outcome === 'outside' ? -10 : 0, clientY: 0, relatedTarget: null,
+      // The location bar between the strip and the body takes no tab; the strip itself reaches the window's corner.
+      else if (outcome === 'reject') await source.dispatchEvent('dragover', {
+        dataTransfer: data, clientX: bar.x + bar.width / 2, clientY: bar.y + bar.height / 2, relatedTarget: null,
       });
+      else await source.dispatchEvent('dragleave', { dataTransfer: data, clientX: -10, clientY: 0, relatedTarget: null });
       await expect(page.locator('.tab-drop-indicator')).toBeHidden();
       await source.dispatchEvent('dragend', { dataTransfer: data,
         clientX: outcome === 'outside' ? -10 : box.x, clientY: box.y, screenX: 700, screenY: 400 });

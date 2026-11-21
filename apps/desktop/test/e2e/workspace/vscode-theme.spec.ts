@@ -4,9 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { previews } from '../../support/preview/preview-view';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 async function chooseTheme(page: Page, id: string) {
-  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await openApplicationMenu(page, 'View');
   await page.locator('[data-menu-item-id="menu-theme"]').hover();
   await page.locator(`[data-menu-item-id="preview-theme-${id}"]`).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', id);
@@ -30,7 +31,7 @@ test('VS Code Dark 2026 matches workbench and syntax colors, retains edits and p
     await page.evaluate(() => { (window as any).__themeEditor = document.querySelector('.editor-surface .monaco-editor'); });
     await chooseTheme(page, 'vscode-dark-2026');
     await expect(page.locator('.monaco-editor').first()).toHaveCSS('background-color', 'rgb(18, 19, 20)');
-    await expect(page.locator('.product-titlebar')).toHaveCSS('background-color', 'rgb(25, 26, 27)');
+    await expect(page.locator('.tab-strip').first()).toHaveCSS('background-color', 'rgb(25, 26, 27)');
     await expect(page.locator('.project-sidebar')).toHaveCSS('background-color', 'rgb(25, 26, 27)');
     await expect(page.locator('.activity-bar')).toHaveCSS('background-color', 'rgb(25, 26, 27)');
     await expect(page.locator('.document-tab[aria-selected="true"]')).toHaveCSS('background-color', 'rgb(18, 19, 20)');
@@ -46,7 +47,7 @@ test('VS Code Dark 2026 matches workbench and syntax colors, retains edits and p
     await expect.poll(() => colorOf('42')).toMatchObject({ color: 'rgb(181, 206, 168)' });
     await expect.poll(() => colorOf('"Dark 2026"')).toMatchObject({ color: 'rgb(165, 214, 255)' });
     await expect(page.locator('.view-lines').first()).toContainText('themeEdit');
-    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await openApplicationMenu(page, 'View');
     await page.locator('[data-menu-item-id="menu-theme"]').hover();
     // Eight built-in themes plus Night Owl and Dracula (THEME_IDS in theme-catalog.test.ts).
     await expect(page.locator('[data-menu-item-id^="preview-theme-"]')).toHaveCount(10);
@@ -139,7 +140,7 @@ for (const theme of communityThemes) test(`${theme.id} colors editor and retaine
     const appearance = 'dark';
     await expect(page.locator('html')).toHaveAttribute('data-appearance', appearance);
     await expect(page.locator('.monaco-editor').first()).toHaveCSS('background-color', theme.background);
-    for (const region of ['.product-titlebar', '.tab-strip']) await expect(page.locator(region).first()).toHaveCSS('border-bottom-color', theme.separator);
+    await expect(page.locator('.tab-strip').first()).toHaveCSS('border-bottom-color', theme.separator);
     await expect(page.locator('.view-line span span').filter({ hasText: 'A theme comment' }).first()).toHaveCSS('color', theme.comment);
     await expect(page.locator('.view-line span span').filter({ hasText: '"palette"' }).first()).toHaveCSS('color', theme.string);
     expect(await identity!.evaluate(node => node === document.querySelector('.editor-surface .monaco-editor'))).toBe(true);

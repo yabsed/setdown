@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { electron, disposeApplication, focusApplication } from '../support/electron/electron-app';
 import { runCommand } from '../support/editor/commands';
+import { openApplicationMenu } from '../support/electron/application-menu';
 
 test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, navigation and restart through the common registry', async () => {
   const executable = process.env.SETDOWN_RUST_ANALYZER_PATH;
@@ -21,7 +22,7 @@ test('real rust-analyzer supplies completion, hover, diagnostics, rename/Undo, n
     const page = await application.firstWindow(); await focusApplication(application);
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await expect(editor).toBeVisible();
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });

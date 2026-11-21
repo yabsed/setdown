@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { markRepositoryRoot } from '../../support/project/repository-marker';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 const require = createRequire(import.meta.url);
 const catalogSize = new Set([
   ...require('../../../src/main/language/catalog/mason.json').packages,
@@ -27,7 +28,7 @@ test('the tool list holds what is set up, a search reaches every tool, and an im
     SETDOWN_LSP_INHERIT_ENV: '1' } });
   try {
     const page = await application.firstWindow(); await focusApplication(application);
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const panel = page.getByRole('region', { name: 'Language Support', exact: true });
@@ -142,7 +143,7 @@ test('installing a server while editing and rescanning connects the current mode
       c.onRequest('shutdown', () => {log('shutdown',null); return null});
       c.onNotification('exit', () => process.exit(0)); c.listen();
     `); await chmod(executable, 0o755);
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
@@ -254,7 +255,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
     const page = await application.firstWindow(); await focusApplication(application);
     const editor = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' });
     await editor.press('Control+End'); await editor.pressSequentially('// unsaved');
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
@@ -290,7 +291,7 @@ test('Edit menu imports a new server, negotiates Full sync, and reconnects the s
       expect(message.params.contentChanges).toHaveLength(1); expect(message.params.contentChanges[0]).not.toHaveProperty('range');
     }
     // Reconfigure through the real management screen, then Undo the preceding edit.
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     await management.getByRole('searchbox').fill('fixture-custom'); await management.locator('.server-list button').click();
@@ -343,7 +344,7 @@ test('an imported npm profile starts automatically and supplies completion witho
     await editor.press('Control+End'); await editor.press('Control+Space');
     await expect(page.locator('.suggest-widget')).toContainText('profileCompletion');
     await editor.press('Escape'); await editor.pressSequentially('unsaved');
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     await page.getByRole('region', { name: 'Language Support', exact: true }).getByRole('button', { name: /^Advanced/ }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication, type TestApplication } from '../support/electron/electron-app';
 import { commandList, hereMenu, hereRows, runCommand } from '../support/editor/commands';
+import { openApplicationMenu } from '../support/electron/application-menu';
 
 // The commands of a tool's own extension, used by hand in the real app on a copy of a real
 // project. SETDOWN_GOPLS_PATH and SETDOWN_CLANGD_PATH name installed tools (`go` is on PATH);
@@ -257,7 +258,7 @@ test('the lint tool the Go settings name is installed and run when a file of spf
   try {
     await ready(page);
     // `go.lintTool` is a setting of the Go tool, written where a person writes it.
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: 'Language Support…', exact: true }).click();
     const management = page.getByRole('region', { name: 'Language Support', exact: true });
     await management.getByRole('button', { name: /^Advanced/ }).click();

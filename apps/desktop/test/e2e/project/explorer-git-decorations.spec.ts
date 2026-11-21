@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { electron, disposeApplication, focusApplication } from '../../support/electron/electron-app';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 const exec = promisify(execFile);
 
@@ -73,7 +74,7 @@ test('Explorer renders upstream Git states, ignores and collapsed ancestors, and
     await expect(deletion.locator('.git-change-name')).toHaveCSS('color', 'rgb(173, 7, 7)');
     expect(await deletion.locator('small').evaluate(element => getComputedStyle(element).color)).not.toBe('rgb(173, 7, 7)');
     await page.locator('.project-sidebar').screenshot({ path: test.info().outputPath('source-control-colors-light.png') });
-    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await openApplicationMenu(page, 'View');
     await page.locator('[data-menu-item-id="menu-theme"]').hover();
     await page.locator('[data-menu-item-id="preview-theme-vscode-dark-2026"]').click();
     // This imported theme overrides the extension's generic dark defaults.
@@ -135,7 +136,7 @@ test('Explorer shows declared submodule folders in the upstream submodule color,
     await expect(row('dirty').locator('.explorer-entry-name')).toHaveCSS('color', 'rgb(18, 88, 167)');
     expect(await row('plain').locator('.explorer-entry-name').evaluate(element => getComputedStyle(element).color)).not.toBe('rgb(18, 88, 167)');
     await page.locator('.project-sidebar').screenshot({ path: test.info().outputPath('submodules-light.png') });
-    await page.getByRole('button', { name: 'View', exact: true }).click();
+    await openApplicationMenu(page, 'View');
     await page.locator('[data-menu-item-id="menu-theme"]').hover();
     await page.locator('[data-menu-item-id="preview-theme-github-dark"]').click();
     await expect(row('clean').locator('.explorer-entry-name')).toHaveCSS('color', 'rgb(141, 185, 226)');

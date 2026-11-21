@@ -103,7 +103,8 @@ test('a site’s icon also labels the page gone to before it arrived, and a page
     const second = tab(page, /Second page/);
     await expect(second).toBeVisible();
     await expect(second).not.toHaveAttribute('aria-busy');
-    await expect(second.locator('svg[data-tab-icon="web"]')).toBeVisible();
+    // Until its icon arrives the tab shows none; there is no stand-in.
+    await expect(second.locator('svg, img.tab-favicon')).toHaveCount(0);
     web.release();
     const icon = second.locator('img.tab-favicon');
     await expect(icon).toBeVisible();
@@ -117,15 +118,16 @@ test('a site’s icon also labels the page gone to before it arrived, and a page
     await expect(shared).toBeVisible();
     await expect(shared.locator('img.tab-favicon')).toHaveAttribute('src', picture!);
     await expect(shared.locator('svg')).toHaveCount(0);
-    // A site with no icon at all keeps the plain globe, and the previous site's icon does not stay on it.
+    // A site with no icon at all shows none, and the previous site's icon does not stay on it.
     await go(`${web.sibling}/plain`);
     const plain = tab(page, /Plain site/);
-    await expect(plain.locator('svg[data-tab-icon="web"]')).toBeVisible();
-    await expect(plain.locator('img.tab-favicon')).toHaveCount(0);
+    await expect(plain).toBeVisible();
+    await expect(plain).not.toHaveAttribute('aria-busy');
+    await expect(plain.locator('svg, img.tab-favicon')).toHaveCount(0);
   } finally { await disposeApplication(app); await web.close(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('every tab leads with an icon: the file type, a terminal, a folder, the website, or a spinner while it loads', async () => {
+test('a tab leads with an icon: the file type, a terminal, a folder, the site\'s own, or a spinner while it loads; a site without one shows none', async () => {
   test.skip(process.platform === 'win32', 'The terminal tab starts a POSIX shell.');
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-tab-kinds-'));
   const home = path.join(root, 'home');
@@ -161,9 +163,12 @@ test('every tab leads with an icon: the file type, a terminal, a folder, the web
     await page.getByRole('button', { name: 'New folder tab', exact: true }).click();
     const folder = page.locator('.document-tab[aria-selected="true"]');
     await expect(folder.locator('svg[data-tab-icon="folder"]')).toBeVisible();
-    // A site without an icon of its own still has one: the tab strip never shows a bare title.
+    // A site without an icon of its own gets no stand-in: once it has loaded, its title starts the tab.
     await page.evaluate(url => window.marktex.openLink(url), `${web.origin}/plain`);
-    await expect(tab(page, /Plain site/).locator('svg[data-tab-icon="web"]')).toBeVisible();
+    const bare = tab(page, /Plain site/);
+    await expect(bare).toBeVisible();
+    await expect(bare).not.toHaveAttribute('aria-busy');
+    await expect(bare.locator('svg, img, .file-type-icon')).toHaveCount(0);
     await page.evaluate(url => window.marktex.openLink(url), `${web.origin}/png`);
     const site = tab(page, /Bitmap png/);
     await expect(site.locator('img.tab-favicon')).toBeVisible();
@@ -183,20 +188,24 @@ test('every tab leads with an icon: the file type, a terminal, a folder, the web
     await expect(spinner).toBeVisible();
     await expect(slow).toHaveAttribute('aria-busy', 'true');
     await expect(slow.locator('.tab-name')).toHaveText('Slow site');
-    await expect(slow.locator('.tab-favicon, svg[data-tab-icon="web"]')).toHaveCount(0);
+    await expect(slow.locator('.tab-favicon')).toHaveCount(0);
     expect(await spinner.evaluate(node => node.getAnimations().map(animation => animation.playState))).toEqual(['running']);
     web.release();
     await expect(slow.locator('img.tab-favicon')).toBeVisible();
     await expect(spinner).toHaveCount(0);
     await expect(slow).not.toHaveAttribute('aria-busy');
 
-    // One icon per tab, 16px wide, left of the title, and the strip keeps its height.
+    // One icon per tab, 16px wide, left of the title; the site without one has its title at the tab's
+    // padding instead. The strip keeps its height.
     await expect(page.locator('.document-tab')).toHaveCount(9);
-    expect(await page.locator('.document-tab').evaluateAll(tabs => tabs.map(tab => {
-      const icons = [...tab.querySelectorAll('.file-type-icon, .tab-glyph, .tab-favicon')], name = tab.querySelector('.tab-name')!.getBoundingClientRect();
-      const box = icons[0]?.getBoundingClientRect();
-      return { icons: icons.length, width: box && Math.round(box.width), before: !!box && box.right <= name.left && box.left >= tab.getBoundingClientRect().left };
-    }))).toEqual(Array.from({ length: 9 }, () => ({ icons: 1, width: 16, before: true })));
+    const leads = await page.locator('.document-tab').evaluateAll(tabs => tabs.map(tab => {
+      const icons = [...tab.querySelectorAll('.file-type-icon, .tab-glyph, .tab-favicon')], title = tab.querySelector('.tab-name')!;
+      const name = title.getBoundingClientRect(), edge = tab.getBoundingClientRect().left, box = icons[0]?.getBoundingClientRect();
+      return { bare: title.textContent!.includes('Plain site'), icons: icons.length, width: box ? Math.round(box.width) : 0,
+        placed: box ? box.right <= name.left && box.left >= edge : name.left - edge === parseFloat(getComputedStyle(tab).paddingLeft) };
+    }));
+    expect(leads.filter(lead => lead.bare)).toHaveLength(1);
+    expect(leads).toEqual(leads.map(lead => lead.bare ? { bare: true, icons: 0, width: 0, placed: true } : { bare: false, icons: 1, width: 16, placed: true }));
     expect((await strip.boundingBox())!.height).toBe(height);
     await page.screenshot({ path: test.info().outputPath('tab-icons.png'), clip: { x: 0, y: 0, width: 1280, height: 80 } });
   } finally { await disposeApplication(app); await web.close(); await rm(root, { recursive: true, force: true }); }

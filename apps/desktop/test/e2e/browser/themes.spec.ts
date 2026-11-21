@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { fixture, evaluatePage } from '../../support/browser/browser-fixture';
 import { THEME_IDS, themeProfile } from '../../../src/core/theme/theme-catalog';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
 // Keep the upstream engine's private-address/CORS guards intact. Chromium's
@@ -96,7 +97,7 @@ test('Theme menu toggles web colors live, preserves site exceptions and persists
     await expect.poll(background).toBe('rgb(255, 255, 255)');
     await f.page.evaluate(origin => window.marktex.browser.updateThemeSettings({ restoreSite: origin }), f.origin);
     await expect.poll(background).toBe(themed);
-    await f.page.getByRole('button', { name: 'View', exact: true }).click();
+    await openApplicationMenu(f.page, 'View');
     await expect.poll(() => f.app.windows().some(page => page.url().includes('menu-overlay=1'))).toBe(true);
     const menu = f.app.windows().find(page => page.url().includes('menu-overlay=1'))!;
     await menu.getByRole('menuitem', { name: /^Theme/ }).hover();

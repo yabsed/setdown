@@ -56,9 +56,15 @@ function find(items: readonly MenuItem[], id: string): MenuItem | null {
   return null;
 }
 
+/** The single menu button: File, View, Edit and Window as its submenus. */
+export const APPLICATION_MENU_ROOT = 'application-menu-root';
+
 export function applicationMenuEntries(menuId: unknown): ApplicationMenuEntry[] {
-  if (typeof menuId !== 'string' || !TOP_LEVEL_IDS.has(menuId)) return [];
-  const item = Menu.getApplicationMenu()?.getMenuItemById(menuId);
+  const menu = Menu.getApplicationMenu();
+  if (!menu || typeof menuId !== 'string') return [];
+  if (menuId === APPLICATION_MENU_ROOT) return serialize(menu.items.filter(item => TOP_LEVEL_IDS.has(item.id)), menuId);
+  if (!TOP_LEVEL_IDS.has(menuId)) return [];
+  const item = menu.getMenuItemById(menuId);
   return item?.submenu ? serialize(item.submenu.items, menuId) : [];
 }
 

@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { disposeApplication, focusApplication, type TestApplication } from '../../support/electron/electron-app';
 import { pngFixture } from '../../support/media/png-fixture';
+import { openApplicationMenu } from '../../support/electron/application-menu';
 
 const entry = (page: Page, name: string) => page.getByRole('treeitem', { name, exact: true });
 const selected = (page: Page) => page.locator('.explorer-row[aria-selected="true"]');
@@ -82,9 +83,9 @@ test('Explorer clipboard shortcuts, Edit menu, duplicate and cut use real files 
     // Main Edit-menu execution must use the tree target even after its button takes focus.
     await expect(selected(page)).toHaveAttribute('data-path', path.join(root, 'destination', 'a.txt'));
     await selected(page).focus();
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: /^Copy\b/ }).click();
-    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await openApplicationMenu(page, 'Edit');
     await page.getByRole('menuitem', { name: /^Paste\b/ }).click();
     await expect.poll(() => readdir(path.join(root, 'destination'))).toEqual(['a copy.txt', 'a.txt']);
     await entry(page, 'a copy.txt').press('Control+d');

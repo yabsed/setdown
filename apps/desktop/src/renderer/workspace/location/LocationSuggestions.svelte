@@ -75,7 +75,9 @@
   :global(#app) { display: block; }
   .location-suggestions { box-sizing: border-box; padding: 5px; border: 1px solid var(--app-border); border-radius: 0 0 8px 8px; background: var(--app-chrome); color: var(--app-text); max-height: 100vh; overflow: auto; }
   button { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; height: 46px; padding: 8px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; font-size: 16px; }
-  button:hover, .selected { background: var(--app-hover); }
+  button:hover { background: var(--app-hover); }
+  /* The row the arrow keys chose is outlined: a background tint cannot be told apart in dark themes. */
+  .selected { outline: 1px solid var(--app-text); outline-offset: -1px; }
   .suggestion-text { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
   strong, small { font: 12px var(--app-font-family); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   small { opacity: .55; font-size: 11px; }

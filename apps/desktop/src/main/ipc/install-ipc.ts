@@ -15,7 +15,7 @@ import type { ApplicationMenuEntry, CloseDecision, ClosePromptRequest, DocumentS
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
 import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
-import { applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
+import { APPLICATION_MENU_ROOT, applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
 import { BrowserFindOverlay } from '../browser/find-overlay';
 import { LocationOverlay } from '../browser/location-overlay';
 import { showReadingMenu } from '../menu/reading-menu';
@@ -79,7 +79,9 @@ export function installIpc(options: Options): void {
         else if (command === 'export-pdf') state.window.webContents.send('preview:message', { tabId, message: { type: 'marktex:reader-export' } });
       });
   });
-  const menuEntries = (state: WindowState, menuId: unknown) => {
+  const menuEntries = (state: WindowState, menuId: unknown): ApplicationMenuEntry[] => {
+    // Under the menu button each menu keeps the rows it has for this window's document.
+    if (menuId === APPLICATION_MENU_ROOT) return applicationMenuEntries(menuId).map(menu => ({ ...menu, submenu: menuEntries(state, menu.id) }));
     const review = state.rendererGitReview?.active === true;
     const filePath = review ? state.rendererGitReview!.path : state.currentDocument?.path ?? '';
     const webId = previews.zoom.activeTab(state.webContentsId);

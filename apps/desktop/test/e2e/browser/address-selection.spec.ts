@@ -35,6 +35,10 @@ test('arrow keys show the selected suggestion in the address field and return to
     expect(await address.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])).toEqual([urls[0].length, urls[0].length]);
     await address.press('ArrowDown');
     await expect(address).toHaveValue(urls[1]); await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true');
+    // The chosen row is outlined in the text colour; a background tint alone is lost in dark themes.
+    await expect(options.nth(1)).toHaveCSS('outline-style', 'solid');
+    expect(await options.nth(1).evaluate(row => getComputedStyle(row).outlineColor === getComputedStyle(row).color)).toBe(true);
+    await expect(options.nth(0)).toHaveCSS('outline-style', 'none');
     await address.press('ArrowUp'); await expect(address).toHaveValue(urls[0]);
     // Past either end of the list the typed text comes back, and the list is still its list.
     await address.press('ArrowUp');
