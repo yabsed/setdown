@@ -12,6 +12,10 @@ const region = (page: Page, selector: string) => page.locator(selector).first()
   .evaluate(node => getComputedStyle(node).getPropertyValue('-webkit-app-region'));
 const box = async (page: Page, selector: string) => (await page.locator(selector).first().boundingBox())!;
 
+async function openFile(page: Page, file: string) {
+  await page.evaluate(file => (window as unknown as { marktex: MarkTexApi }).marktex.openLink(`marktex-resource://file${file}`), file);
+  await expect(page.getByRole('tab', { name: new RegExp(path.basename(file).replaceAll('.', '\\.')) })).toHaveAttribute('aria-selected', 'true');
+}
 async function launch(names: string[]) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-window-chrome-'));
   for (const name of names) await writeFile(path.join(root, name), `${name}\n`);
@@ -21,8 +25,8 @@ async function launch(names: string[]) {
   const page = await app.firstWindow();
   // The first file comes with the launch; the others open after it, each in a tab of its own.
   for (const name of names) {
-    if (name !== names[0]) await page.evaluate(file => (window as unknown as { marktex: MarkTexApi }).marktex.openLink(`marktex-resource://file${file}`), path.join(root, name));
-    await expect(page.getByRole('tab', { name: new RegExp(name.replaceAll('.', '\\.')) })).toHaveAttribute('aria-selected', 'true');
+    if (name !== names[0]) await openFile(page, path.join(root, name));
+    else await expect(page.getByRole('tab', { name: new RegExp(name.replaceAll('.', '\\.')) })).toHaveAttribute('aria-selected', 'true');
   }
   return { root, app, page };
 }
@@ -41,12 +45,17 @@ test('the top-left tab strip starts with Setdown and the menu, and its free end 
     const strip = await box(page, '.tab-strip');
     expect(strip.y).toBe(0);
 
-    // Setdown, the menu button, the tabs, the new-tab buttons, then the free end, in that order.
-    const order = ['.tab-strip > .product-identity', '.tab-strip > .application-menu', '.tab-strip .document-tab',
-      '.tab-strip .tab-creation-actions', '.tab-strip > .window-drag-space'];
+    // Setdown, the menu button, the tabs and the new-tab buttons share one row; the free end follows it.
+    expect(await page.locator('.tab-strip > *').evaluateAll(nodes => nodes.map(node => node.classList[0]))).toEqual(['tab-row', 'window-drag-space']);
+    const order = ['.tab-row > .product-identity', '.tab-row > .application-menu', '.tab-row > .tab-list .document-tab',
+      '.tab-row > .tab-creation-actions', '.tab-strip > .window-drag-space'];
     const boxes = await Promise.all(order.map(selector => box(page, selector)));
     for (let index = 1; index < boxes.length; index++) expect(boxes[index].x).toBeGreaterThanOrEqual(boxes[index - 1].x + boxes[index - 1].width);
     await expect(page.locator('.product-identity')).toHaveText('Setdown');
+    // With room for all of it the row does not scroll, the tab has its full width, and Setdown is not cut off at the row's start.
+    expect(await page.locator('.tab-row').evaluate(node => node.scrollWidth > node.clientWidth)).toBe(false);
+    expect(boxes[2].width).toBe(210);
+    expect(boxes[0].x).toBeGreaterThanOrEqual((await box(page, '.tab-row')).x);
 
     // Only the free end drags the window. The strip and everything on it keep their own pointer input.
     expect(await region(page, '.window-drag-space')).toBe('drag');
@@ -98,7 +107,7 @@ test('the top-left tab strip starts with Setdown and the menu, and its free end 
     await expect(page.locator('.activity-bar .product-identity')).toHaveCount(0);
     expect((await box(page, '.activity-bar')).width).toBe(48);
     expect((await box(page, '.tab-strip')).x).toBeGreaterThanOrEqual(48);
-    expect((await box(page, '.tab-strip > :first-child')).x).toBe((await box(page, '.tab-strip > .product-identity')).x);
+    expect((await box(page, '.tab-row > :first-child')).x).toBe((await box(page, '.product-identity')).x);
     await identity.click();
     await expect(page.locator('.project-sidebar')).toBeHidden();
     await expect(identity).toHaveAttribute('aria-expanded', 'false');
@@ -170,73 +179,130 @@ test('without tabs the strip stays: Setdown, the menu and room for the window bu
   } finally { await dispose(app, root); }
 });
 
-test('a strip too narrow for the new-tab buttons beside a tab scrolls them along with the tabs', async () => {
+test('everything on a strip scrolls as one row: Setdown, the menu, the tabs and the new-tab buttons', async () => {
   const names = Array.from({ length: 12 }, (_, index) => `file-${index}.txt`);
-  const { root, app, page } = await launch(names);
+  const { root, app, page } = await launch(names.slice(0, 5));
   try {
-    await expect(page.locator('.document-tab')).toHaveCount(12);
-    const row = page.locator('.tab-row'), list = page.locator('.tab-list'), creation = page.locator('.tab-creation-actions');
+    const row = page.locator('.tab-row'), list = page.locator('.tab-list');
     const overflows = (node: Element) => node.scrollWidth > node.clientWidth;
-    const inside = async (inner: string, outer: string) => {
+    const inside = async (inner: string, outer = '.tab-row') => {
       const a = await box(page, inner), b = await box(page, outer);
       return a.x >= b.x - .5 && a.x + a.width <= b.x + b.width + .5;
     };
+    const scroll = () => row.evaluate(node => node.scrollLeft);
+    const selectedId = () => page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
+    const frames = () => page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 
-    // With room, more tabs than fit scroll in their list at their least width and the buttons stay put beside them.
-    await expect(row).not.toHaveClass(/is-cramped/);
-    expect(await list.evaluate(overflows)).toBe(true);
+    // Five tabs do not fit at their full width. They give up width first, and nothing scrolls yet.
+    await expect(page.locator('.document-tab')).toHaveCount(5);
+    const five = (await box(page, '.document-tab')).width;
+    expect(five).toBeGreaterThan(96);
+    expect(five).toBeLessThan(210);
     expect(await row.evaluate(overflows)).toBe(false);
-    expect((await box(page, '.document-tab')).width).toBe(96);
-    await expect(creation.locator('button')).toHaveCount(4);
-    expect(await inside('.tab-creation-actions', '.tab-row')).toBe(true);
+
+    // Twelve do not fit at their least width either. They stop shrinking there and the whole row scrolls;
+    // the list inside it does not, and no part is held in place over the others.
+    for (const name of names.slice(5)) { await writeFile(path.join(root, name), `${name}\n`); await openFile(page, path.join(root, name)); }
+    await expect(page.locator('.document-tab')).toHaveCount(12);
+    expect((await box(page, '.document-tab')).width).toBeCloseTo(96, 1);
+    expect(await row.evaluate(overflows)).toBe(true);
+    expect(await list.evaluate(overflows)).toBe(false);
+    await expect(page.locator('.tab-creation-actions button')).toHaveCount(4);
+    // The row stays on the strip and stops 24px short of the window buttons.
     const free = await page.evaluate(() => {
       const area = (navigator as Navigator & { windowControlsOverlay: { getTitlebarAreaRect(): DOMRect } }).windowControlsOverlay.getTitlebarAreaRect();
       return area.x + area.width;
     });
-    const buttons = await box(page, '.tab-creation-actions');
-    expect(buttons.x + buttons.width).toBeLessThanOrEqual(free - 24 + 1);
-
-    // Narrower than the buttons plus one tab, the tabs are not squeezed away: they keep their least width
-    // and one row scrolls the tabs and the buttons together.
-    await page.evaluate(() => { const style = document.createElement('style'); style.id = 'narrow-group'; style.textContent = '.editor-group{max-width:420px}'; document.head.append(style); });
-    await expect(row).toHaveClass(/is-cramped/);
-    expect(await row.evaluate(overflows)).toBe(true);
-    expect(await list.evaluate(overflows)).toBe(false);
-    expect((await box(page, '.document-tab')).width).toBe(96);
+    const rowBox = await box(page, '.tab-row');
     expect(await inside('.tab-row', '.tab-strip')).toBe(true);
-    expect((await box(page, '.tab-row')).width).toBeLessThan(buttons.width + 96);
-    // The selected tab is still brought into view.
-    expect(await inside('.document-tab[aria-selected="true"]', '.tab-row')).toBe(true);
-    // The wheel scrolls the row from the first tab to the last new-tab button, without selecting a tab.
-    const selected = await page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
-    await row.evaluate(node => { node.scrollLeft = 0; });
-    expect(await inside('.document-tab', '.tab-row')).toBe(true);
-    expect(await inside('.new-folder-tab-button', '.tab-row')).toBe(false);
-    await row.hover(); await page.mouse.wheel(0, 300);
-    await expect.poll(() => row.evaluate(node => node.scrollLeft)).toBeGreaterThan(0);
+    expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(free - 24 + 1);
+    // The tab that just opened at the end shows with the new-tab buttons after it. Setdown has scrolled away with the first tabs.
+    await expect.poll(() => inside('.tab-creation-actions')).toBe(true);
+    expect(await inside('.document-tab[aria-selected="true"]')).toBe(true);
+    expect(await inside('.product-identity')).toBe(false);
+
+    // The wheel scrolls the row from Setdown to the last new-tab button, without selecting a tab.
+    const selected = await selectedId();
+    await row.hover(); await page.mouse.wheel(0, -5000);
+    await expect.poll(scroll).toBe(0);
+    for (const part of ['.product-identity', '.application-menu', '.document-tab']) expect(await inside(part), part).toBe(true);
+    expect(await inside('.new-folder-tab-button')).toBe(false);
+    await page.mouse.wheel(0, 300);
+    await expect.poll(scroll).toBeGreaterThan(0);
     await page.mouse.wheel(0, 5000);
-    await expect.poll(() => inside('.new-folder-tab-button', '.tab-row')).toBe(true);
-    expect(await inside('.tab-creation-actions', '.tab-row')).toBe(true);
-    expect(await page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id')).toBe(selected);
-    // A button reached that way works, and the tab it opens is shown.
+    await expect.poll(() => inside('.new-folder-tab-button')).toBe(true);
+    expect(await inside('.tab-creation-actions')).toBe(true);
+    expect(await inside('.product-identity')).toBe(false);
+    expect(await selectedId()).toBe(selected);
+
+    // A new-tab button stays under the pointer while it adds tabs: each tab it opens shows with the buttons after it.
+    const button = await box(page, '.new-tab-button');
     await page.locator('.new-tab-button').click();
     await expect(page.locator('.document-tab')).toHaveCount(13);
-    await expect.poll(() => inside('.document-tab[aria-selected="true"]', '.tab-row')).toBe(true);
-    // A dragged tab held at the row's edge scrolls the row, as it scrolls the list when there is room.
+    await expect.poll(async () => Math.abs((await box(page, '.new-tab-button')).x - button.x)).toBeLessThan(1);
+    expect(await inside('.document-tab[aria-selected="true"]')).toBe(true);
+
+    // Picking a tab that already shows does not move the row under the pointer. Nor does picking the last tab
+    // while the buttons after it are out of view: only a tab that arrives brings them along.
+    const end = await scroll();
+    await page.locator('.document-tab').nth(8).click();
+    await expect(page.locator('.document-tab').nth(8)).toHaveAttribute('aria-selected', 'true');
+    await frames();
+    expect(await scroll()).toBe(end);
+    const creation = await box(page, '.tab-creation-actions');
+    await row.evaluate((node, left) => { node.scrollLeft = left; }, end - creation.width);
+    const held = await scroll();
+    expect(await inside('.new-folder-tab-button')).toBe(false);
+    await page.locator('.document-tab').last().click();
+    await expect(page.locator('.document-tab').last()).toHaveAttribute('aria-selected', 'true');
+    await frames();
+    expect(await scroll()).toBe(held);
+    // A tab picked while it is out of view is brought in.
+    await row.evaluate(node => { node.scrollLeft = 0; });
+    expect(await inside('.document-tab[aria-selected="true"]')).toBe(false);
+    await openApplicationMenu(page, 'View');
+    await page.locator('[data-menu-item-id="menu-previous-tab"]').click();
+    await expect(page.locator('.document-tab').nth(11)).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(() => inside('.document-tab[aria-selected="true"]')).toBe(true);
+    expect(await inside('.new-folder-tab-button')).toBe(false);
+
+    // The menu button scrolls with the rest. Asked to open while it is cut off at the row's edge, it comes into
+    // view whole first, so the menu hangs from the button and stays in the window.
+    await row.evaluate(node => { node.scrollLeft = 0; });
+    const menu = await box(page, '.application-menu');
+    await row.evaluate((node, left) => { node.scrollLeft = left; }, menu.x - rowBox.x + menu.width / 2);
+    expect(await inside('.application-menu')).toBe(false);
+    await applicationMenuButton(page).evaluate(node => (node as HTMLElement).click());
+    await expect(page.locator('.application-menu-popup .product-menu-label')).toHaveText(['File', 'View', 'Edit', 'Window']);
+    expect(await inside('.application-menu')).toBe(true);
+    expect((await box(page, '.application-menu-popup')).x).toBeGreaterThanOrEqual((await box(page, '.application-menu')).x - 1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.application-menu-popup')).toBeHidden();
+
+    // A dragged tab held at the row's end scrolls the row.
     await row.evaluate(node => { node.scrollLeft = 0; });
     const transfer = await page.evaluateHandle(() => new DataTransfer());
     await page.locator('.document-tab').first().dispatchEvent('dragstart', { dataTransfer: transfer });
-    const rowBox = await box(page, '.tab-row');
-    await row.dispatchEvent('dragover', { clientX: rowBox.x + rowBox.width - 5, clientY: rowBox.y + 12, dataTransfer: transfer });
+    // Measured during the drag: the window cannot be resized meanwhile, so it has one window button fewer and the row is wider.
+    const dragged = await box(page, '.tab-row');
+    await row.dispatchEvent('dragover', { clientX: dragged.x + dragged.width - 5, clientY: dragged.y + 12, dataTransfer: transfer });
     await expect(page.locator('.tab-drop-indicator')).toBeVisible();
-    await expect.poll(() => row.evaluate(node => node.scrollLeft)).toBeGreaterThan(100);
+    await expect.poll(scroll).toBeGreaterThan(100);
     await page.locator('.document-tab').first().dispatchEvent('dragend', { dataTransfer: transfer });
     await transfer.dispose();
 
-    // With room again the buttons return beside the list.
-    await page.evaluate(() => document.getElementById('narrow-group')!.remove());
-    await expect(row).not.toHaveClass(/is-cramped/);
-    expect(await row.evaluate(overflows)).toBe(false);
-    expect(await inside('.tab-creation-actions', '.tab-row')).toBe(true);
+    // A narrow group is the same row with less of it showing: the tabs keep their least width and every
+    // part is still reached by scrolling.
+    await page.evaluate(() => { const style = document.createElement('style'); style.textContent = '.editor-group{max-width:420px}'; document.head.append(style); });
+    await expect.poll(async () => (await box(page, '.tab-row')).width).toBeLessThan(420);
+    expect((await box(page, '.document-tab')).width).toBeCloseTo(96, 1);
+    expect(await inside('.tab-row', '.tab-strip')).toBe(true);
+    await row.hover(); await page.mouse.wheel(0, -20000);
+    await expect.poll(scroll).toBe(0);
+    expect(await inside('.product-identity')).toBe(true);
+    await page.mouse.wheel(0, 20000);
+    await expect.poll(() => inside('.new-folder-tab-button')).toBe(true);
+    await page.locator('.new-folder-tab-button').click();
+    await expect(page.locator('.document-tab')).toHaveCount(14);
   } finally { await dispose(app, root); }
 });

@@ -44,7 +44,7 @@ input, select, textarea { font-family: inherit; }
   flex: 0 0 auto;
   align-self: flex-start;
   height: 28px;
-  margin: 0 5px 0 -2px;
+  margin: 0 5px 0 0;
   padding: 0 4px;
   color: var(--app-text);
   border: 0;
@@ -180,17 +180,15 @@ input, select, textarea { font-family: inherit; }
   background: var(--app-chrome);
   -webkit-app-region: no-drag;
 }
-/* The tabs and the new-tab buttons share a row. With room for the buttons beside one tab, the tabs
-   scroll in their list and the buttons stay put. Narrower than that (TabChrome measures it), the tabs
-   keep their least width and the buttons scroll along with them instead of squeezing the tabs away. */
-.tab-row { display: flex; flex: 0 1 auto; min-width: 0; scrollbar-width: none; -webkit-app-region: no-drag; }
-.tab-row.is-cramped { overflow-x: auto; }
-.tab-row.is-cramped .tab-list { flex: 0 0 auto; overflow: visible; }
-.tab-row.is-cramped .document-tab { flex: 0 0 var(--tab-min-width); width: var(--tab-min-width); }
-.tab-row.is-cramped .new-resource-button:focus-visible { outline-offset: -1px; }
+/* Everything a strip carries is one row that scrolls as a whole: Setdown and the menu button in the
+   top-left strip, the tabs, then the new-tab buttons. The tabs give up width first, down to their least.
+   Past that nothing is squeezed further or held in place over the rest: the row scrolls. */
+.tab-row { display: flex; flex: 0 1 auto; min-width: 0; overflow: auto hidden; scrollbar-width: none; -webkit-app-region: no-drag; }
 .tab-row::-webkit-scrollbar { display: none; }
-.tab-list { display: flex; flex: 0 1 auto; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-app-region: no-drag; }
-.tab-list::-webkit-scrollbar { display: none; }
+/* Setdown sits 2px into the strip's padding. The row takes that step: a scrolling row cuts off what hangs out of it. */
+.tab-row.has-lead { margin-left: -2px; }
+/* The list's least width is every tab at its least (TabChrome counts them), with the gaps between them. */
+.tab-list { display: flex; flex: 0 1 auto; gap: 2px; min-width: max(0px, calc(var(--tab-count, 0) * (var(--tab-min-width) + 2px) - 2px)); -webkit-app-region: no-drag; }
 .document-tab {
   display: flex;
   align-items: center;
@@ -246,7 +244,8 @@ input, select, textarea { font-family: inherit; }
 }
 .new-resource-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
 .new-resource-button:hover { color: var(--app-text); background: var(--app-hover); }
-.new-resource-button:focus-visible { outline: 1px solid var(--app-accent); outline-offset: 1px; }
+/* Drawn inside the button: the scrolling row cuts off what is drawn outside it. */
+.new-resource-button:focus-visible { outline: 1px solid var(--app-accent); outline-offset: -1px; }
 .tab-creation-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; -webkit-app-region: no-drag; }
 .tab-creation-actions { padding-left: 4px; }
 .editor-action, .viewer-action {

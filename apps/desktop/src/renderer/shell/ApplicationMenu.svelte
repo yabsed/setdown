@@ -54,6 +54,8 @@
     const menuId = button.dataset.menuId!;
     if (openId === menuId) return close();
     if (!nativeLayer) {
+      // The button scrolls with its tab strip. The menu hangs from the whole button, not from a part cut off at the strip's edge.
+      button.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       const bounds = root.getBoundingClientRect();
       if (await overlay.open(menuId, { x: bounds.left, y: bounds.top })) {
         nativeOpen = true; openId = menuId; return;

@@ -74,18 +74,19 @@ export function createTabDrag(options: Options) {
       && event.clientX < innerWidth && event.clientY < innerHeight) return;
     leaveTarget(terminal);
   }
-  /** What scrolls a strip's tabs: their list, or the row they share with the new-tab buttons while it is cramped. */
-  const tabScroller = (strip: HTMLElement) => strip.querySelector<HTMLElement>('.tab-row.is-cramped') ?? strip.querySelector<HTMLElement>('.tab-list')!;
+  /** What scrolls a strip's tabs: the row they share with the strip's buttons. */
+  const tabScroller = (strip: HTMLElement) => strip.querySelector<HTMLElement>('.tab-row')!;
   function stripTarget(strip: HTMLElement, x: number): Target {
     detachTarget = null; retainedTarget = null;
     if (activeStrip !== strip) activeStrip?.classList.remove('is-drop-target');
     activeStrip = strip; strip.classList.add('is-drop-target');
-    const list = tabScroller(strip);
+    const list = strip.querySelector<HTMLElement>('.tab-list')!;
     const tabs = Array.from(list.querySelectorAll<HTMLElement>('[data-tab-id]'));
     const index = tabs.findIndex(tab => { const rect = tab.getBoundingClientRect(); return x < rect.left + rect.width / 2; });
     const at = index < 0 ? tabs.length : index;
-    const bounds = list.getBoundingClientRect(), stripBounds = strip.getBoundingClientRect();
-    const edge = tabs[at]?.getBoundingClientRect().left ?? tabs.at(-1)?.getBoundingClientRect().right ?? bounds.left;
+    // The guide stays inside the part of the row that shows.
+    const bounds = tabScroller(strip).getBoundingClientRect(), stripBounds = strip.getBoundingClientRect();
+    const edge = tabs[at]?.getBoundingClientRect().left ?? tabs.at(-1)?.getBoundingClientRect().right ?? list.getBoundingClientRect().left;
     Object.assign(indicator.style, { left: `${Math.max(bounds.left, Math.min(edge, bounds.right)) - 1}px`,
       top: `${stripBounds.top + 5}px`, height: `${stripBounds.height - 7}px` });
     indicator.hidden = false; overlay.hidden = true;

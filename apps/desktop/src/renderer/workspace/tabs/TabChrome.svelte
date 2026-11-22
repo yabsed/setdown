@@ -11,8 +11,6 @@ import type { AppActions } from '../../ports/ui-actions';
   let { actions, groupId = 'group-0', lead = false, top = false, windowControls = false }:
     { actions: AppActions; groupId?: string; lead?: boolean; top?: boolean; windowControls?: boolean } = $props();
   let list: HTMLDivElement, row: HTMLDivElement, creation: HTMLDivElement;
-  /** Too narrow to keep the new-tab buttons beside one tab: the buttons then scroll along with the tabs. */
-  let cramped = $state(false);
   const group = $derived(view.groups.find(g => g.id === groupId));
   const selected = $derived(group?.activeId);
   const tabs = $derived((group?.tabs ?? []).flatMap(id => view.tabs.find(tab => tab.id === id) ?? []));
@@ -21,48 +19,41 @@ import type { AppActions } from '../../ports/ui-actions';
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault(); event.stopPropagation(); run();
   };
-  $effect(() => {
-    // Shown again when the row changes what scrolls: the scroll position does not carry over.
-    const id = selected; void cramped;
-    void tick().then(() => {
-      const tab = Array.from(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? []).find(el => el.dataset.tabId === id);
-      if (!tab || !list) return;
-      // The tabs scroll in their list, or with the new-tab buttons when the row is cramped.
-      for (const scroller of [list, row]) {
-        const rect = tab.getBoundingClientRect(), bounds = scroller.getBoundingClientRect();
-        if (rect.left < bounds.left) scroller.scrollLeft += rect.left - bounds.left;
-        else if (rect.right > bounds.right) scroller.scrollLeft += rect.right - bounds.right;
-      }
-    });
-  });
-  // The row's width is the room the strip leaves it, whichever way it is laid out, so this cannot flip back and forth.
-  const measure = () => {
-    if (!row || !creation || !list) return;
-    const tab = list.querySelector<HTMLElement>('[data-tab-id]');
-    cramped = row.clientWidth < creation.offsetWidth + (tab ? parseFloat(getComputedStyle(tab).minWidth) || 0 : 0);
+  /** Brings a tab into the part of the row that shows; the last tab optionally with the new-tab buttons after it. */
+  const reveal = (id: string, withButtons: boolean) => {
+    const all = Array.from(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? []);
+    const tab = all.find(el => el.dataset.tabId === id);
+    if (!tab || !row) return;
+    const bounds = row.getBoundingClientRect();
+    const end = (withButtons && tab === all.at(-1) ? creation : tab).getBoundingClientRect().right;
+    if (end > bounds.right) row.scrollLeft += end - bounds.right;
+    // Where both do not fit, the tab itself comes first.
+    const left = tab.getBoundingClientRect().left;
+    if (left < bounds.left) row.scrollLeft += left - bounds.left;
   };
+  /** The tab the pointer picked last, until the selection has answered it. */
+  let pointed: string | null = null;
   $effect(() => {
-    // Measured on the next frame: a layout change made while sizes are being reported is itself reported as an error.
-    let frame = 0;
-    const observer = new ResizeObserver(() => { frame ||= requestAnimationFrame(() => { frame = 0; measure(); }); });
-    observer.observe(row); observer.observe(creation);
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+    // A tab picked with the pointer moves the row only as far as it takes to show the tab: nothing else shifts
+    // under the pointer. A last tab selected any other way (opened, moved in, reached by a command) shows with
+    // the new-tab buttons after it, so the next tab opens from the same place.
+    const id = selected, byPointer = pointed === id;
+    pointed = null;
+    if (id) void tick().then(() => reveal(id, !byPointer));
   });
-  $effect(() => { void tabs.length; void tick().then(measure); });
-
 </script>
 
 <nav class="tab-strip" class:has-window-controls={windowControls} data-group-id={groupId} aria-label="Open documents">
+  <!-- Everything the strip carries is one row that scrolls as a whole: Setdown and the menu button in the
+       top-left strip, the tabs, then the new-tab buttons. Nothing in it is held in place over the rest. -->
+  <div class="tab-row" class:has-lead={lead} bind:this={row} use:tabScroll>
   {#if lead}
     <button class="product-identity" type="button" title="Toggle Folder Tools"
       aria-label="Toggle Folder Tools" aria-expanded={project.visible}
       onclick={actions.toggleProjectSidebar}>Setdown</button>
     <ApplicationMenu overlay={actions.menuOverlay} load={actions.loadMenu} execute={actions.executeMenuItem} />
   {/if}
-  <!-- The tabs and the new-tab buttons share one row. With room for the buttons beside a tab, the tabs
-       scroll in their list and the buttons stay put; narrower than that, the whole row scrolls. -->
-  <div class="tab-row" class:is-cramped={cramped} bind:this={row} use:tabScroll>
-  <div class="tab-list" role="tablist" bind:this={list} use:tabScroll>
+  <div class="tab-list" role="tablist" style:--tab-count={tabs.length} bind:this={list}>
     {#each tabs as tab (tab.id)}
       <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id} class:git-diff-tab={tab.kind === 'diff'}
         type="button" role="tab" aria-selected={tab.id === selected}
@@ -70,7 +61,7 @@ import type { AppActions } from '../../ports/ui-actions';
         draggable="true" data-sleeping={tab.page?.sleeping || undefined} data-tab-id={tab.id} data-preview={tab.preview}
         aria-busy={tab.page?.loading && !tab.page.sleeping || undefined}
         data-pinned={pinned.has(tab.id) || undefined}
-        onclick={() => actions.activateTab(tab.id)}
+        onclick={() => { pointed = tab.id; void actions.activateTab(tab.id); }}
         oncontextmenu={(event) => { event.preventDefault(); actions.showTabMenu(tab.id, { x: event.clientX, y: event.clientY }); }}
         ondblclick={() => actions.pinTab(tab.id)}
         ondragstart={(event) => actions.startTabDrag(tab.id, event)} ondragend={actions.endTabDrag}>

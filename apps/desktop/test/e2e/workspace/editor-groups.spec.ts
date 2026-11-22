@@ -225,11 +225,11 @@ test('wheel scrolls without selection; nested groups retain live native readers 
     await expect(page.locator('.editor-group')).toHaveCount(2);
     await drop(page, 'second.md', 0, 'strip');
     await expect(page.locator('.editor-group')).toHaveCount(1);
-    // Fill a strip beyond its viewport; vertical wheel changes scrollLeft only.
+    // Fill a strip beyond its viewport; vertical wheel changes scrollLeft only. The strip's row is what scrolls.
     for (let i = 0; i < 14; i++) {
       const file = path.join(root, `document-${i}.txt`); await writeFile(file, `Document ${i}`); await open(page, file);
     }
-    const list = page.locator('.tab-list');
+    const list = page.locator('.tab-row');
     const selected = await page.locator('.document-tab[aria-selected="true"]').getAttribute('data-tab-id');
     await list.evaluate(node => { node.scrollLeft = 0; });
     await list.hover(); await page.mouse.wheel(0, 500);
@@ -359,7 +359,7 @@ test('real tab drags use strip padding and insertion positions while preserving 
     for (let i = 0; i < 12; i++) {
       const file = path.join(root, `overflow-${i}.txt`); await writeFile(file, `${i}`); await open(page, file);
     }
-    const list = page.locator('.tab-list');
+    const list = page.locator('.tab-row');
     await list.evaluate(node => node.scrollLeft = 0);
     const transfer = await page.evaluateHandle(() => new DataTransfer());
     await thirdTab.dispatchEvent('dragstart', { dataTransfer: transfer });

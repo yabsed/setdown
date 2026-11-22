@@ -280,9 +280,9 @@ and Alt+Left/Right share the same route, including native reader/page focus.
 New web tabs open Google with page focus and a collapsed address selection;
 explicit mouse/keyboard address focus selects the complete value. Web title and
 loading-label updates preserve tab widths while available space is unchanged.
-Tabs still shrink to their least width and then scroll, with creation buttons after
-the list; a strip too narrow for those buttons beside one tab scrolls them along
-with the tabs (see [Window chrome without a title bar](#window-chrome-without-a-title-bar)).
+Tabs still shrink to their least width, with creation buttons after the list; past
+that the whole strip scrolls as one row, buttons included
+(see [Window chrome without a title bar](#window-chrome-without-a-title-bar)).
 `tab-navigation.test.ts`,
 `text-workspace.test.ts`, `preview-tabs.spec.ts`, and `test/e2e/browser/*.spec.ts` cover this
 behavior in the focused gate.
@@ -824,12 +824,20 @@ tab strip and the location bar only.
   moves it too. In the top-right strip it runs on under the window buttons to the
   window's edge: the space right beside the buttons and between them moves the
   window. Tabs and buttons keep their pointer input.
-- **Narrow strips.** The tabs and the new-tab buttons share one row. With room for
-  the buttons beside one tab at its least width (96px), the tabs scroll in their
-  list and the buttons stay put after it. Narrower than that, the tabs are not
-  squeezed away: they keep their least width and the row scrolls the tabs and the
-  buttons together, by wheel, by a dragged tab held at its edge, and to show the
-  selected tab. The Setdown button, the menu button and the free end do not scroll.
+- **One scrolling row.** Everything a strip carries is one row: the Setdown button
+  and the menu button (top-left strip only), the tabs, then the new-tab buttons.
+  The tabs give up width first, down to their least (96px). Past that nothing is
+  squeezed further and nothing is held in place over the rest: the whole row
+  scrolls, by wheel and by a dragged tab held at its edge. Only the free end stays.
+  Decided 2026-11-22, replacing two earlier forms the same day: buttons pinned
+  beside a scrolling tab list, which covered tabs in a narrow strip, and a row
+  that joined them only below a measured width.
+  - A tab picked with the pointer moves the row only as far as it takes to show
+    that tab, so nothing else shifts under the pointer. A last tab selected any
+    other way (opened, moved in, reached by a command) is shown with the new-tab
+    buttons after it: a new-tab button stays where it is while it adds tabs.
+  - The menu button, asked to open while cut off at the row's edge, comes into
+    view whole first; the menu hangs from the whole button.
 - **Which strip.** Top-left, top-right and top-edge are read from the group layout
   (`renderer/workspace/groups/EditorGroups.svelte`); a strip below another group
   carries none of these parts. One unsplit group carries all of them.
@@ -839,8 +847,10 @@ tab strip and the location bar only.
 `workspace/window-chrome.spec.ts` checks the order of the parts, the drag regions
 before and during a tab drag and at the points beside, between and under the
 window buttons, the Setdown button, the menu button's four menus and a command run
-from them, split layouts in both axes, the empty state, and a narrow strip's shared
-scrolling. `test/wayland/window-move.spec.ts` presses those points under a real
+from them, split layouts in both axes, the empty state, and the row's scrolling:
+tabs shrinking before it starts, every part reached by wheel, both ways of showing
+a selected tab, the menu button at the edge, a dragged tab, and a narrow group.
+`test/wayland/window-move.spec.ts` presses those points under a real
 window manager and reads the window's new position. Menu-driven specs open a menu
 through `test/support/electron/application-menu.ts`.
 
