@@ -198,7 +198,7 @@ for (const right of ['markdown', 'reader', 'web'] as const) test(`address sugges
       await expect(f.page.getByRole('tab', { name: /Long article/ })).toBeVisible();
       if (right === 'reader') await f.page.getByRole('button', { name: 'Enter reader mode', exact: true }).last().click();
     }
-    await f.page.evaluate(url => window.marktex.browser.bookmark(url, 'Chosen destination', true), `${f.origin}/second`);
+    await f.page.evaluate(url => window.marktex.browser.bookmark(url, 'Chosen destination 한', true), `${f.origin}/second`);
     await evaluatePage(f.app, `${f.origin}/first`, `(() => {
       const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 480;
       const ctx = canvas.getContext('2d'); let frame = 0;
@@ -249,8 +249,15 @@ for (const right of ['markdown', 'reader', 'web'] as const) test(`address sugges
       window.addEventListener('blur', () => { (window as any).__addressIme.blur++; });
     });
     const cdp = await f.app.context().newCDPSession(f.page);
+    // The rows follow the composing text. It is typed over the address and the bookmark carries
+    // it, so the dropdown changes to that one row and stays up beside the open composition.
+    await address.evaluate((input: HTMLInputElement) => input.select());
     await cdp.send('Input.imeSetComposition', { text: '한', selectionStart: 1, selectionEnd: 1 });
     await expect(address).toBeFocused();
+    await expect(popup.getByRole('option')).toHaveText([/Chosen destination 한/]);
+    const dropdownVisible = () => f.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children
+      .some(view => 'webContents' in view && (view as Electron.WebContentsView).webContents.getURL().includes('location-overlay=1') && view.getVisible()));
+    expect(await dropdownVisible()).toBe(true);
     const composingFrame = await evaluatePage<number>(f.app, `${f.origin}/first`, 'window.presentedFrames');
     await expect.poll(() => evaluatePage<number>(f.app, `${f.origin}/first`, 'window.presentedFrames')).toBeGreaterThan(composingFrame + 5);
     expect(await f.page.evaluate(() => (window as any).__addressIme)).toEqual({ starts: 1, ends: 0, blur: 0 });
@@ -259,6 +266,8 @@ for (const right of ['markdown', 'reader', 'web'] as const) test(`address sugges
     await address.fill(f.origin);
     const row = popup.getByRole('option', { name: /Chosen destination/ });
     await expect(row).toBeVisible();
+    // The rows are those of the origin again, no longer the single row of the composed text.
+    await expect.poll(() => popup.getByRole('option').count()).toBeGreaterThan(1);
     const rowBounds = (await row.boundingBox())!;
     const click = await f.app.evaluate(({ BrowserWindow }, point) => {
       const owner = BrowserWindow.getAllWindows()[0];

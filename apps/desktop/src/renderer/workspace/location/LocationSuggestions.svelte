@@ -9,19 +9,33 @@
   let input = $state<HTMLInputElement>(), draft = $state(''), selected = $state(-1), composing = false;
   // The panel's own input follows LocationBar: it shows the selected row's address, else this typed text.
   let typed = '';
+  // The rows come from the shell, which learns of each edit of this field by message. `sent` counts
+  // them: the rows are those of the typed text once the shell has taken in the last one and answered it.
+  let sent = 0;
+  const answered = (value: LocationSuggestionsContext) => !!value.panel && value.panel.edit === sent && !value.panel.pending;
+  // Arrow presses made before that. They walk the rows of the typed text when those arrive.
+  let held = 0;
+  function select(steps: number) {
+    selected = stepSuggestion(selected, context!.rows.length, steps);
+    draft = selected >= 0 ? context!.rows[selected].url : typed;
+  }
   const show = (value: LocationSuggestionsContext) => {
     if (!value) return;
     const opening = value.token !== context?.token;
     if (!opening && value.panel && selected >= 0) draft = typed;
     applyShellTheme(value.theme); context = value; selected = value.selected;
+    if (opening) held = sent = 0;
     if (opening && value.panel) {
       draft = typed = value.panel.draft;
       void tick().then(() => { if (context?.token === value.token) { input?.focus(); input?.select(); } });
     }
+    if (held && answered(value)) { const steps = held; held = 0; select(steps); }
   };
   function edit() {
-    typed = draft; selected = -1;
-    if (context && !composing) desktop.locationSuggestions.panelAction({ token: context.token, type: 'edit', value: draft });
+    const changed = draft !== typed;
+    typed = draft; selected = -1; held = 0;
+    // Sent while an input method composes too, so the rows follow Hangul as they follow Latin typing.
+    if (context && changed) desktop.locationSuggestions.panelAction({ token: context.token, type: 'edit', value: draft, edit: ++sent });
   }
   function key(event: KeyboardEvent) {
     if (!context?.panel || composing || event.isComposing) return;
@@ -29,9 +43,9 @@
     else if (event.key === 'Enter' && event.target === input) {
       event.preventDefault(); desktop.locationSuggestions.panelAction({ token: context.token, type: 'submit', value: context.rows[selected]?.url ?? draft });
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      if (!context.rows.length) return;
-      event.preventDefault(); selected = stepSuggestion(selected, context.rows.length, event.key === 'ArrowDown' ? 1 : -1);
-      draft = selected >= 0 ? context.rows[selected].url : typed;
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      if (!answered(context)) { event.preventDefault(); held += step; }
+      else if (context.rows.length) { event.preventDefault(); select(step); }
     }
   }
   onMount(() => {

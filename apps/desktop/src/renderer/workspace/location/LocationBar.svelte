@@ -15,6 +15,7 @@ import type { AppActions } from '../../ports/ui-actions';
   import { fileLocation, isFileLocation, readableFileLocation } from '../../../core/document/file-location';
   import { isMarkdownPath } from '../../editor/markdown-editor-port';
   import { stepSuggestion } from './suggestion-selection';
+  import { hangulContinuation } from './hangul-continuation';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
   const tab = $derived(view.tabs.find(t => t.id === group?.activeId));
@@ -27,6 +28,12 @@ import type { AppActions } from '../../ports/ui-actions';
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
   // What the user typed. While the arrow keys are on a row the input shows that row's address instead.
   let typed = '';
+  // `shown` is the text the rows on screen answer; `asked` the text whose rows are on their way, if any.
+  let shown: string | undefined, asked = $state<string>();
+  // Arrow presses made while rows are on their way. They walk those rows, not the ones being replaced.
+  let held = 0;
+  // The compact panel has its own field. This is the last of its edits taken in here.
+  let panelEdit = $state(0);
   let error = $state('');
   let selectOnClick = false;
   let activeTabId: string | undefined;
@@ -87,28 +94,35 @@ import type { AppActions } from '../../ports/ui-actions';
     void actions.locationSuggestions.show({ token: popupToken, selected,
       rows: suggestions.map(({ url, title, bookmarked }) => ({ url, title, bookmarked })),
       bounds: { x, y, width, height: Math.min(height, innerHeight - y - 8) },
-      ...(panelMode ? { panel: { mode: panelMode, location, draft, actions: [] } } : {}),
+      ...(panelMode ? { panel: { mode: panelMode, location, draft, edit: panelEdit, pending: asked !== undefined, actions: [] } } : {}),
     }).catch(reason => { error = String(reason); });
   });
-  function present(rows: BrowserPlace[]) {
-    // Rows that arrive under a selected one replace it: back to the typed text they answer.
-    if (selected >= 0) draft = typed;
-    suggestions = rows; selected = -1;
+  function present(rows: BrowserPlace[], text?: string) {
+    suggestions = rows; selected = -1; shown = text; asked = undefined;
+    if (held) { const steps = held; held = 0; select(steps); }
   }
-  function select(step: 1 | -1) {
-    selected = stepSuggestion(selected, suggestions.length, step);
+  function select(steps: number) {
+    selected = stepSuggestion(selected, suggestions.length, steps);
     draft = selected >= 0 ? suggestions[selected].url : typed;
   }
+  function forget() { clearTimeout(timer); generation++; shown = asked = undefined; held = 0; }
+  // Rows follow the text while an input method composes it, as they do for Latin typing.
   function search() {
+    const text = typed = draft; selected = -1; held = 0;
+    if (text === asked) return;
     clearTimeout(timer); const request = ++generation;
-    typed = draft; selected = -1;
-    if (composing) return;
+    // Committing a Hangul syllable takes its text out and puts the same text back. The rows on screen
+    // already answer it, so the arrow key that committed it walks them at once.
+    if (text === shown) { asked = undefined; return; }
+    asked = text;
     // Typed paths complete from the filesystem (shell-like), web input from Browser places.
-    const typedPath = isFileLocation(draft) && !/^file:/i.test(draft.trim());
+    const typedPath = isFileLocation(text) && !/^file:/i.test(text.trim());
+    const continued = typedPath ? undefined : hangulContinuation(text);
     timer = setTimeout(() => void (typedPath
-      ? actions.completePath(draft.trim()).then(rows => rows.map(row => ({ url: row.directory ? `${row.path}/` : row.path, title: row.name, bookmarked: false, lastVisit: 0, visits: 0 })))
-      : actions.browserPlaces(draft)).then(rows => {
-      if (request === generation && editing) present(rows.slice(0, 8));
+      ? actions.completePath(text.trim()).then(rows => rows.map(row => ({ url: row.directory ? `${row.path}/` : row.path, title: row.name, bookmarked: false, lastVisit: 0, visits: 0 })))
+      : Promise.all([actions.browserPlaces(text), continued ? actions.browserPlaces(continued) : []])
+        .then(([exact, more]) => [...exact, ...more.filter(row => !exact.some(match => match.url === row.url))])).then(rows => {
+      if (request === generation && editing) present(rows.slice(0, 8), text);
     }).catch(() => { if (request === generation) present([]); }), typedPath ? 40 : 100);
   }
   async function go(value = selected >= 0 ? suggestions[selected].url : draft) {
@@ -118,12 +132,11 @@ import type { AppActions } from '../../ports/ui-actions';
     try { await actions.navigateLocation(groupId, value); }
     catch (reason) { error = String(reason); }
   }
-  function blur() { editing = false; panelMode = null; suggestions = []; generation++; clearTimeout(timer); void tick().then(measure); }
+  function blur() { editing = false; panelMode = null; suggestions = []; forget(); void tick().then(measure); }
   function inputBlur() {
     if (!editing) return;
     if (!popupRequested) { blur(); return; }
-    const request = ++generation;
-    clearTimeout(timer);
+    forget(); const request = generation;
     // The popup lives in a separate native view. Ask its owner whether focus
     // moved there before canceling the edit and invalidating its selection.
     void actions.locationSuggestions.blur(popupToken).then(cancel => {
@@ -133,9 +146,9 @@ import type { AppActions } from '../../ports/ui-actions';
   async function focus() { if (groupId !== view.focusedGroupId) return; await tick(); if (compact) openPanel(); else { input?.focus(); input?.select(); } }
   function openPanel() {
     if (popupRequested) actions.locationSuggestions.hide(popupToken);
-    popupToken = crypto.randomUUID(); panelMode = 'address'; editing = true; selected = -1;
+    popupToken = crypto.randomUUID(); panelMode = 'address'; editing = true; selected = -1; panelEdit = 0;
     draft = location === 'about:blank' ? '' : location;
-    search();
+    forget(); search();
   }
   function measure() {
     placement++;
@@ -162,7 +175,7 @@ import type { AppActions } from '../../ports/ui-actions';
     const offHidden = actions.locationSuggestions.onHidden(token => { if (token === popupToken) { popupRequested = false; blur(); } });
     const offPanel = actions.locationSuggestions.onPanelAction(action => {
       if (action.token !== popupToken || !editing || !panelMode) return;
-      if (action.type === 'edit') { draft = action.value; search(); }
+      if (action.type === 'edit') { panelEdit = action.edit; draft = action.value; search(); }
       else if (action.type === 'submit') void go(action.value);
       else if (action.type === 'dismiss') { blur(); actions.focusLocationContent(groupId); }
     });
@@ -200,7 +213,7 @@ import type { AppActions } from '../../ports/ui-actions';
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={inputBlur}
       onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
       onmouseup={event => { if (selectOnClick) { event.preventDefault(); input?.select(); selectOnClick = false; } }}
-      oninput={search} oncompositionstart={() => { composing = true; clearTimeout(timer); generation++; }} oncompositionend={() => { composing = false; search(); }}
+      oninput={search} oncompositionstart={() => { composing = true; }} oncompositionend={() => { composing = false; search(); }}
       onkeydown={event => {
         if (event.isComposing || composing) return;
         if (event.key === 'Enter') { event.preventDefault(); void go(); }
@@ -208,7 +221,11 @@ import type { AppActions } from '../../ports/ui-actions';
         else if (event.key === 'Tab' && !event.shiftKey && suggestions.length && isFileLocation(draft) && !/^file:/i.test(draft.trim())) {
           event.preventDefault(); draft = suggestions[Math.max(0, selected)].url; search();
         }
-        else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && suggestions.length) { event.preventDefault(); select(event.key === 'ArrowDown' ? 1 : -1); }
+        else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          const step = event.key === 'ArrowDown' ? 1 : -1;
+          if (asked !== undefined) { event.preventDefault(); held += step; }
+          else if (suggestions.length) { event.preventDefault(); select(step); }
+        }
       }} />
     {#if web}
       {#if web.pdf}

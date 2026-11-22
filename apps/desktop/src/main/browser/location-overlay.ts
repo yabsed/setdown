@@ -25,6 +25,7 @@ export class LocationOverlay {
         || entry.state.window.isDestroyed()) return;
       if (action.type === 'copy') { clipboard.writeText(entry.context.panel.location); return; }
       if ((action.type === 'edit' || action.type === 'submit') && (typeof action.value !== 'string' || action.value.length > 16384)) return;
+      if (action.type === 'edit' && !Number.isSafeInteger(action.edit)) return;
       if (action.type === 'action' && !entry.context.panel.actions.some(item => item.id === action.id && !item.disabled)) return;
       if (!['edit', 'submit', 'action', 'dismiss'].includes(action.type)) return;
       entry.state.window.webContents.send('location-overlay:panel-action', action);
@@ -63,6 +64,7 @@ export class LocationOverlay {
     if (request.panel && (!['address', 'actions'].includes(request.panel.mode)
       || typeof request.panel.location !== 'string' || request.panel.location.length > 32768
       || typeof request.panel.draft !== 'string' || request.panel.draft.length > 16384
+      || !Number.isSafeInteger(request.panel.edit) || request.panel.edit < 0 || typeof request.panel.pending !== 'boolean'
       || !Array.isArray(request.panel.actions) || request.panel.actions.length > 64
       || !request.panel.actions.every(item => typeof item.id === 'string' && item.id.length < 100
         && typeof item.label === 'string' && item.label.length < 300 && typeof item.disabled === 'boolean'))) return;

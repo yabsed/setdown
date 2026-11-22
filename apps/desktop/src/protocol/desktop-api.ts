@@ -238,9 +238,12 @@ export type PreviewMessage = { tabId: string; message: Record<string, unknown> }
 export type LocationSuggestionsRequest = {
   token: string; bounds: import('./preview-preparation').PreviewBounds;
   rows: Pick<import('./browser').BrowserPlace, 'url' | 'title' | 'bookmarked'>[]; selected: number;
-  panel?: { mode: 'address' | 'actions'; location: string; draft: string; actions: Array<{ id: string; label: string; disabled: boolean }> };
+  /** `edit`: the last edit of the panel's own field that the shell has taken in (0: none yet).
+   * `pending`: the rows answer an earlier text; those of `draft` are on their way. */
+  panel?: { mode: 'address' | 'actions'; location: string; draft: string; edit: number; pending: boolean; actions: Array<{ id: string; label: string; disabled: boolean }> };
 };
-export type LocationPanelAction = { token: string } & ({ type: 'edit' | 'submit'; value: string } | { type: 'action'; id: string } | { type: 'dismiss' | 'copy' });
+/** `edit` counts the edits of one panel, so its rows can be told from those of an edit still on its way. */
+export type LocationPanelAction = { token: string } & ({ type: 'edit'; value: string; edit: number } | { type: 'submit'; value: string } | { type: 'action'; id: string } | { type: 'dismiss' | 'copy' });
 export type LocationSuggestionsContext = LocationSuggestionsRequest & { theme: PreviewThemeId };
 
 export type MenuOverlayContext = { menuId: string; x: number; y: number; theme: PreviewThemeId };
