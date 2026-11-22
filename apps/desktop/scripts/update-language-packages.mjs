@@ -81,6 +81,13 @@ for (const pkg of [...zed.packages].sort((a,b) => b.downloads - a.downloads || a
   if (input.grammar) record.treeSitter ??= { extension: pkg.id, config: input.file };
   zedLanguages.set(input.name, record);
 }
+// Indentation policy over upstream snapshots: Helix gives C and C++ two columns, while Zed
+// leaves them on its global default of four (vendor/zed/assets/settings/default.json).
+for (const [id, indent] of Object.entries(overrides.indent ?? {})) {
+  const record = languages.find(l => l.id === id);
+  if (!record) throw Error(`Indent override names an unknown language: ${id}`);
+  Object.assign(record, indent);
+}
 // Make every bundled grammar selectable, including languages outside upstream snapshots.
 for (const grammar of grammars.values()) if (!languages.some(l => l.id === grammar.name)) {
   languages.push({ id: grammar.name, sourceId: grammar.name, name: grammar.name, label: grammar.label,

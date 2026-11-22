@@ -83,6 +83,23 @@ test('editor commands preserve Unicode targets, repeat intent, copy shape, Undo 
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
 });
 
+test('C++ without an EditorConfig indents four columns, matching Zed’s default', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-cpp-indent-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-cpp-indent-config-'));
+  const file = path.join(root, 'main.cpp'); await writeFile(file, 'int main() {}\n');
+  const { ELECTRON_RUN_AS_NODE: _ignored, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: config } });
+  try {
+    const page = await app.firstWindow(); await focusApplication(app);
+    const input = page.locator('.editor-surface').getByRole('textbox', { name: 'Editor content' }); await input.press('Control+Home');
+    await command(page, 'Show effective settings for this file');
+    const settings = page.getByRole('dialog', { name: 'Effective editor settings' });
+    await expect(settings).toContainText('Tab width: 4'); await expect(settings).toContainText('Insert spaces: true');
+    await settings.getByRole('searchbox').press('Escape'); await expect(settings).not.toBeVisible();
+    await input.focus(); await input.press('Control+Home'); await input.press('Tab');
+    await expect.poll(() => apiText(page)).toBe('    int main() {}\n');
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true }); }
+});
+
 test('F1 and the menu at the cursor open the app’s command list in the editor of a group made later, never the editor’s own list', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-later-group-')), config = await mkdtemp(path.join(os.tmpdir(), 'setdown-later-group-config-'));
   const file = path.join(root, 'notes.txt'); await writeFile(file, 'first\nsecond\n');
