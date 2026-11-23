@@ -64,13 +64,16 @@ test('plain launch: side panel opens beside the group in use; focus changes do n
     // Work in the left group, then use the side panel.
     await click('.document-tab .tab-name', 'package.json');
     await expect.poll(async () => (await groups()).map(group => group.focused)).toEqual([true, false]);
+    // PLAIN_NO_WAIT: go on at once, as a quick hand does, instead of letting the split settle.
+    if (!process.env.PLAIN_NO_WAIT) { await new Promise(resolve => setTimeout(resolve, 1500)); await shot('0-split'); }
+    await click('button', 'Toggle Folder Tools');
+    await click('button', 'Explorer');
+    await expect.poll(() => rect('[role="treeitem"]', 'History.md')).not.toBeNull();
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    await shot('1-before');
+    if (process.env.PLAIN_STOP_EARLY) return;
     // The older build this is compared with has no side-panel placement; only its focus changes are recorded.
     if (!process.env.PLAIN_ONLY_FOCUS) {
-      await click('button', 'Toggle Folder Tools');
-      await click('button', 'Explorer');
-      await expect.poll(() => rect('[role="treeitem"]', 'History.md')).not.toBeNull();
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      await shot('1-before');
       const seen: unknown[] = [];
       for (const [step, file] of [['2-history', 'History.md'], ['3-index', 'index.js'], ['4-license', 'LICENSE']] as const) {
         await click('[role="treeitem"]', file);

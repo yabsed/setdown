@@ -108,6 +108,30 @@ test('the top-left tab strip starts with Setdown and the menu, and its free end 
     expect((await box(page, '.activity-bar')).width).toBe(48);
     expect((await box(page, '.tab-strip')).x).toBeGreaterThanOrEqual(48);
     expect((await box(page, '.tab-row > :first-child')).x).toBe((await box(page, '.product-identity')).x);
+
+    // The icon column's free space, from below its last view to the window's bottom edge, moves the
+    // window as well. The views above it keep their pointer input.
+    const column = await box(page, '.activity-bar'), space = await box(page, '.activity-drag-space');
+    const views = await page.locator('.activity-bar button').evaluateAll(nodes => nodes.map(node => { const rect = node.getBoundingClientRect(); return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, bottom: rect.bottom }; }));
+    expect(await region(page, '.activity-drag-space')).toBe('drag');
+    expect(space.y).toBeCloseTo(Math.max(...views.map(view => view.bottom)), 0);
+    expect(space.y + space.height).toBeCloseTo(await page.evaluate(() => innerHeight), 0);
+    expect(space.height).toBeGreaterThan(100);
+    const columnMoves = (x: number, y: number) => page.evaluate(([x, y]) => {
+      const node = document.elementFromPoint(x, y);
+      return !!node?.classList.contains('activity-drag-space') && getComputedStyle(node).getPropertyValue('-webkit-app-region') === 'drag';
+    }, [x, y]);
+    for (const [x, y] of [[column.x + 24, space.y + 2], [column.x + 2, space.y + space.height / 2], [column.x + column.width - 3, space.y + space.height - 2]])
+      expect(await columnMoves(x, y), `window moves from ${x},${y}`).toBe(true);
+    for (const view of views) expect(await columnMoves(view.x, view.y), `a view at ${view.x},${view.y} takes the pointer`).toBe(false);
+    for (const selector of ['.activity-bar', '.activity-bar button']) expect(await region(page, selector)).not.toBe('drag');
+    await page.locator('.document-tab').first().dispatchEvent('dragstart', { dataTransfer: await page.evaluateHandle(() => new DataTransfer()) });
+    await expect(page.locator('.shell')).toHaveClass(/is-tab-dragging/);
+    expect(await region(page, '.activity-drag-space')).toBe('no-drag');
+    await page.locator('.document-tab').first().dispatchEvent('dragend', { dataTransfer: await page.evaluateHandle(() => new DataTransfer()) });
+    await expect(page.locator('.shell')).not.toHaveClass(/is-tab-dragging/);
+    expect(await region(page, '.activity-drag-space')).toBe('drag');
+
     await identity.click();
     await expect(page.locator('.project-sidebar')).toBeHidden();
     await expect(identity).toHaveAttribute('aria-expanded', 'false');

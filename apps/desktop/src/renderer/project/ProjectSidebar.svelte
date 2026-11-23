@@ -69,6 +69,8 @@
       aria-label="Files" aria-expanded={project.open && project.activeView === 'files'} title="File manager tabs" onclick={() => select('files')}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4.1a1 1 0 0 1 .8.4l1.6 2.1H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
     </button>
+    <!-- The column's free space below its views moves the window. -->
+    <div class="activity-drag-space" aria-hidden="true"></div>
   </nav>
 
   <section class="side-view" aria-label={project.activeView} hidden={!project.open}>

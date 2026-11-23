@@ -892,6 +892,11 @@ tab strip and the location bar only.
   moves it too. In the top-right strip it runs on under the window buttons to the
   window's edge: the space right beside the buttons and between them moves the
   window. Tabs and buttons keep their pointer input.
+  The icon column's free space, from below its last view to the window's bottom
+  edge, is a drag region as well (`.activity-drag-space`, decided 2026-11-23: a
+  tall empty strip at the window's edge that did nothing when pulled). Its views
+  keep their pointer input. Like the strips' free ends it stops being a drag
+  region while a tab or file is dragged.
 - **One scrolling row.** Everything a strip carries is one row: the Setdown button
   and the menu button (top-left strip only), the tabs, then the new-tab buttons.
   The tabs give up width first, down to their least (96px). Past that nothing is
@@ -914,12 +919,14 @@ tab strip and the location bar only.
 
 `workspace/window-chrome.spec.ts` checks the order of the parts, the drag regions
 before and during a tab drag and at the points beside, between and under the
-window buttons, the Setdown button, the menu button's four menus and a command run
+window buttons, the icon column's free space and its views, the Setdown button,
+the menu button's four menus and a command run
 from them, split layouts in both axes, the empty state, and the row's scrolling:
 tabs shrinking before it starts, every part reached by wheel, both ways of showing
 a selected tab, the menu button at the edge, a dragged tab, and a narrow group.
-`test/wayland/window-move.spec.ts` presses those points under a real
-window manager and reads the window's new position. Menu-driven specs open a menu
+`test/wayland/window-move.spec.ts` presses those points, and three in the icon
+column's free space, under a real window manager and reads the window's new
+position; a press on one of the column's views leaves the window where it is. Menu-driven specs open a menu
 through `test/support/electron/application-menu.ts`.
 
 

@@ -7,7 +7,7 @@ import { waylandInput } from '../support/electron/wayland-input';
 
 // Only the compatibility run can read a window's position back: there the app is an X11 client of the
 // private compositor, which moves it as a desktop's window manager does.
-if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('the free end of the top strip moves the window, right up to the window buttons', async () => {
+if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('the free end of the top strip and the free space of the icon column move the window', async () => {
   const input = await waylandInput();
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-window-move-'));
   await writeFile(path.join(root, 'one.txt'), 'one\n');
@@ -55,6 +55,22 @@ if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('the free end of the t
       await expect.poll(async () => { const after = await bounds(); return { left: before.x - after.x >= 25, down: after.y - before.y >= 15, size: [after.width, after.height] }; },
         { message: `pressed at ${point.x},${point.y}` }).toEqual({ left: true, down: true, size: [before.width, before.height] });
     }
+
+    // The icon column's free space below its views: just under the last view, the middle, near the window's bottom edge.
+    await page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    const space = (await page.locator('.activity-drag-space').boundingBox())!;
+    for (const point of [{ x: space.x + 24, y: space.y + 6 }, { x: space.x + 24, y: space.y + space.height / 2 }, { x: space.x + 24, y: space.y + space.height - 6 }]) {
+      const before = await bounds();
+      await press(point, { x: 60, y: -40 });
+      await expect.poll(async () => { const after = await bounds(); return { right: after.x - before.x >= 25, up: before.y - after.y >= 15, size: [after.width, after.height] }; },
+        { message: `pressed at ${point.x},${point.y}` }).toEqual({ right: true, up: true, size: [before.width, before.height] });
+    }
+    // A view of the column still takes its press: the window stays and the view opens.
+    const still = await bounds(), search = page.getByRole('button', { name: 'Search', exact: true }), view = (await search.boundingBox())!;
+    await expect(search).toHaveAttribute('aria-expanded', 'false');
+    await press({ x: view.x + view.width / 2, y: view.y + view.height / 2 }, { x: 0, y: 0 });
+    await expect(search).toHaveAttribute('aria-expanded', 'true');
+    expect(await bounds()).toEqual(still);
   } finally {
     await disposeApplication(app); await input.close();
     await rm(root, { recursive: true, force: true });
