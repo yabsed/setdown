@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 const memory = vi.hoisted(() => ({ items: [] as { types: string[]; getType(type: string): Promise<Blob> }[] }));
 vi.mock('electron', () => ({
   ClipboardItem: class {
@@ -13,10 +13,20 @@ vi.mock('electron', () => ({
     clear: () => { memory.items = []; },
   },
 }));
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { ExplorerClipboardStore } from './explorer-clipboard';
+import { ExplorerService } from './explorer-service';
+import { ProjectPaths } from './project-paths';
+import { FileBrowserService } from '../files/file-browser-service';
+import type { LanguageFileOperation } from '../language/file-operations';
+import type { WindowState } from '../windows/window-state';
 import type { ExplorerOperationResult } from '../../protocol/explorer';
 
+const temporary: string[] = [];
 beforeEach(() => { memory.items = []; });
+afterEach(async () => { await Promise.all(temporary.splice(0).map(directory => rm(directory, { recursive: true, force: true }))); });
 const moved = (from: string): ExplorerOperationResult => ({ kind: 'move', undoable: false,
   items: [{ from, to: `/target${from}`, status: 'completed' }] });
 
@@ -115,4 +125,51 @@ test('a pending Setdown selection is replaced by a newer image copy', async () =
   await store.paste(target as never, {} as never, '/folder');
   expect(target.transfer).not.toHaveBeenCalled();
   expect(target.createFile).toHaveBeenCalledWith({}, '/folder', 'Pasted image.png', PNG);
+});
+
+test('files copied or cut in a folder tab paste into the folder the sidebar shows, and Undo sends a cut file back', async () => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'setdown-clipboard-')); temporary.push(base);
+  const root = path.join(base, 'workspace'), elsewhere = path.join(base, 'elsewhere');
+  await mkdir(path.join(root, 'src'), { recursive: true }); await mkdir(path.join(elsewhere, 'kit'), { recursive: true });
+  const copied = path.join(elsewhere, 'main.cpp'), cut = path.join(elsewhere, 'kit');
+  await writeFile(copied, 'int main() {}'); await writeFile(path.join(cut, 'tool.py'), 'pass');
+  const store = new ExplorerClipboardStore();
+  const tabs = new FileBrowserService({ clipboard: store, beforeMutation() {} });
+  const sidebar = new ExplorerService(new ProjectPaths(), file => rm(file, { recursive: true }));
+  const events: string[] = [];
+  sidebar.languageOperation = async (_state, operation: LanguageFileOperation, phase) => {
+    events.push(`${phase}:${operation.kind}:${operation.files.map(file => path.relative(base, file.path)).join()}`);
+  };
+  const state = { projectRoot: root, webContentsId: 1, rendererTabs: [], window: { webContents: { send() {} } } } as unknown as WindowState;
+
+  await tabs.setClipboard([copied], false);
+  expect(await store.paste(sidebar, state, path.join(root, 'src'))).toEqual({ kind: 'copy', undoable: true,
+    items: [{ from: copied, to: path.join(root, 'src', 'main.cpp'), status: 'completed' }] });
+  expect(await readFile(path.join(root, 'src', 'main.cpp'), 'utf8')).toBe('int main() {}');
+  expect(await readFile(copied, 'utf8')).toBe('int main() {}');
+  // A second paste meets the first one's file and asks, like any other paste.
+  await expect(store.paste(sidebar, state, path.join(root, 'src'))).rejects.toThrow('already exists');
+
+  await tabs.setClipboard([cut], true);
+  const moved = await store.paste(sidebar, state, root);
+  expect(moved.items).toEqual([{ from: cut, to: path.join(root, 'kit'), status: 'completed' }]);
+  expect(await readFile(path.join(root, 'kit', 'tool.py'), 'utf8')).toBe('pass');
+  expect(await readdir(elsewhere)).toEqual(['main.cpp']);
+  expect(await store.read()).toBeNull();
+  // The servers of the open folder never knew the old path: what arrives is a new file, not a rename.
+  expect(events).toEqual(['will:create:workspace/src/main.cpp', 'did:create:workspace/src/main.cpp',
+    'will:create:workspace/kit', 'did:create:workspace/kit']);
+
+  expect((await sidebar.transfer(state, { kind: 'undo', paths: [] })).items).toEqual([{ from: path.join(root, 'kit'), to: cut, status: 'completed' }]);
+  expect(await readFile(path.join(cut, 'tool.py'), 'utf8')).toBe('pass');
+  expect(await readdir(root)).toEqual(['src']);
+
+  // The paste target is still held to the open folder, and so is a request that names its own sources.
+  await tabs.setClipboard([copied], false);
+  await expect(store.paste(sidebar, state, elsewhere)).rejects.toThrow('outside the open folder');
+  await expect(sidebar.transfer(state, { kind: 'move', paths: [copied], target: root })).rejects.toThrow('outside the open folder');
+  await expect(sidebar.transfer(state, { kind: 'copy', paths: [copied], target: root })).rejects.toThrow('outside the open folder');
+  // A folder that holds the open folder cannot be pasted into it.
+  await tabs.setClipboard([base], false);
+  await expect(store.paste(sidebar, state, root)).rejects.toThrow('into itself');
 });

@@ -156,10 +156,14 @@
     });
   });
   // Only a visible folder is watched; returning to it re-lists once.
+  // The watch follows the folder, not the tab object: a workspace update that hands this tab a
+  // new object for the same folder (a file moved by the sidebar) must not replace the watch,
+  // because replacing it discards the change it was about to report.
   let wasActive = false;
+  const watched = $derived(active ? tab.path : null);
   $effect(() => {
-    const path = tab.path;
-    if (!active) { wasActive = false; desktop.files.watch(token, null); return; }
+    const path = watched;
+    if (path === null) { wasActive = false; desktop.files.watch(token, null); return; }
     untrack(() => { if (!wasActive && listing) void load('refresh'); wasActive = true; });
     desktop.files.watch(token, path);
     return () => desktop.files.watch(token, null);
@@ -184,7 +188,12 @@
     // Activation may announce focus before this lazily loaded surface mounted.
     if (active && focused) void tick().then(focusList);
     void refreshPlaces(); void refreshClipboard();
-    const stopChanges = desktop.files.onChanged(event => { if (event.token === token && active) void load('refresh'); });
+    const stopChanges = desktop.files.onChanged(event => {
+      if (event.token !== token || !active) return;
+      void load('refresh');
+      // The sidebar may have pasted what was cut here. A row that returns (Undo) is no longer cut.
+      if (clipboard?.cut) void refreshClipboard();
+    });
     const stopProgress = ops.onProgress(value => { if (busy) progress = value; });
     const command = (event: Event) => { if (owns() && active) void fileCommand((event as CustomEvent<ExplorerEditCommand>).detail); };
     const focusRequest = (event: Event) => { if ((event as CustomEvent<string>).detail === tab.id) void tick().then(focusList); };

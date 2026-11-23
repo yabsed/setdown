@@ -291,6 +291,66 @@ test('new web tabs take selection without selecting the address, including after
   } finally { await f.dispose(); }
 });
 
+test('an address selected by a click gives up focus and its selection when a click hands the keyboard to a page or a preview', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first`);
+    await expect(f.page.getByRole('tab', { name: /Research page/ })).toBeVisible();
+    const address = f.page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    const selection = () => address.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd]);
+    const screen = (x: number, y: number) => f.app.evaluate(({ BrowserWindow }, point) => {
+      const window = BrowserWindow.getAllWindows()[0], bounds = window.getContentBounds(), zoom = window.webContents.getZoomFactor();
+      return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+    }, { x, y });
+    const shellHasKeyboard = () => f.app.evaluate(({ BrowserWindow, webContents }) =>
+      webContents.getFocusedWebContents()?.id === BrowserWindow.getAllWindows()[0].webContents.id);
+    const clickAddress = async () => {
+      const field = (await address.boundingBox())!;
+      await nativeInput({ click: await screen(field.x + field.width / 2, field.y + field.height / 2) });
+    };
+    const clickContent = async () => {
+      const body = (await f.page.locator('.group-body').first().boundingBox())!;
+      await nativeInput({ click: await screen(body.x + body.width / 2, body.y + body.height * .75) });
+    };
+    const url = `${f.origin}/first`;
+    await clickAddress();
+    await expect(address).toBeFocused();
+    await expect.poll(selection).toEqual([0, url.length]);
+    await f.page.locator('.location-bar').screenshot({ path: test.info().outputPath('address-selected.png') });
+
+    // The page is another native view. The shell document is not told that it lost the keyboard,
+    // so the field has to hear it from the page's focus.
+    await clickContent();
+    await expect.poll(() => f.app.evaluate(({ webContents }) => webContents.getFocusedWebContents()?.getURL())).toBe(url);
+    await expect(address).not.toBeFocused();
+    await expect(address).toHaveValue(url);
+    await f.page.locator('.location-bar').screenshot({ path: test.info().outputPath('address-after-page-click.png') });
+
+    // The next click is a fresh one: it selects the whole address, and typing replaces it.
+    await clickAddress();
+    await expect(address).toBeFocused();
+    await expect.poll(selection).toEqual([0, url.length]);
+    await nativeInput({ text: 'typed' });
+    await expect(address).toHaveValue('typed');
+    await address.press('Escape');
+
+    // A Markdown preview is a native view as well.
+    await f.page.getByRole('tab', { name: /notes.md/ }).click();
+    await expect(address).toHaveValue(/notes\.md$/);
+    await clickAddress();
+    await expect(address).toBeFocused();
+    const file = await address.inputValue();
+    await expect.poll(selection).toEqual([0, file.length]);
+    await clickContent();
+    await expect.poll(shellHasKeyboard).toBe(false);
+    await expect(address).not.toBeFocused();
+    await clickAddress();
+    await expect(address).toBeFocused();
+    await expect.poll(selection).toEqual([0, file.length]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
 test('address click and menu select the whole URL while Ctrl+L stays with native content', async () => {
   const f = await fixture();
   try {

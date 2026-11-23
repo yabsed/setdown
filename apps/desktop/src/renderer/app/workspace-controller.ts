@@ -581,6 +581,8 @@ export function startWorkspace(desktop: DesktopPort) {
           typeof payload.message.failure === 'string' ? payload.message.failure : undefined, payload.message.retry !== false);
         return;
       }
+      // A visible preview took the keyboard, as a web page does in browser-runtime.ts.
+      if (payload.message.type === 'marktex:focus') window.dispatchEvent(new Event('setdown:content-focused'));
       if (payload.message.type === 'marktex:focus' && payload.tabId !== workspace.activeId
         && workspace.groups.groups.some(group => group.activeId === payload.tabId)) {
         actions.activateTab(payload.tabId); return;

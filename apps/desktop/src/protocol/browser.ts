@@ -34,7 +34,8 @@ export type BrowserCommand = 'back' | 'forward' | 'reload' | 'stop' | 'activate'
 export type BrowserEvent =
   | { type: 'page'; page: BrowserPage }
   | { type: 'open'; page: BrowserPage; background: boolean }
-  | { type: 'focus'; id: string }
+  /** The tab was selected. `keyboard`: its own native view took the keyboard, which the shell document is not told otherwise. */
+  | { type: 'focus'; id: string; keyboard?: boolean }
   | { type: 'close'; id: string }
   | { type: 'navigation'; id: string }
   | { type: 'document'; id: string }

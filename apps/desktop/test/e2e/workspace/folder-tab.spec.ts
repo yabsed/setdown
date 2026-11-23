@@ -140,6 +140,62 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
+test('files copied or cut in a folder tab paste into the workspace the sidebar shows, and Undo there sends a cut file back', async () => {
+  const { root, home, app, page } = await launch();
+  try {
+    const work = path.join(home, 'Projects', 'alpha'), elsewhere = path.join(home, 'Documents');
+    await writeFile(path.join(elsewhere, 'main.cpp'), 'int main() {}\n');
+    await writeFile(path.join(elsewhere, 'moved.txt'), 'moved\n');
+    await page.evaluate(folder => window.marktex.restoreProjectFolder(folder), work);
+    await page.reload();
+    await page.getByRole('button', { name: 'Toggle Folder Tools' }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    const notes = page.getByRole('treeitem', { name: 'notes', exact: true });
+    await expect(notes).toBeVisible();
+    await focusApplication(app);
+    await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
+    const address = page.locator('.location-bar input').first();
+    await address.click(); await address.fill(elsewhere); await address.press('Enter');
+    await expect.poll(() => labels(page)).toEqual(['main.cpp', 'moved.txt']);
+
+    // Copy outside the workspace, paste into a folder of the sidebar: the file is copied in.
+    await row(page, 'main.cpp').click();
+    await page.keyboard.press('Control+c');
+    await notes.click();
+    await notes.press('Control+v');
+    await expect.poll(() => readdir(path.join(work, 'notes'))).toEqual(['main.cpp']);
+    expect(await readFile(path.join(work, 'notes', 'main.cpp'), 'utf8')).toBe('int main() {}\n');
+    expect(await readdir(elsewhere)).toEqual(['main.cpp', 'moved.txt']);
+    const pasted = page.getByRole('treeitem', { name: 'main.cpp', exact: true });
+    await expect(pasted).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.project-error')).toHaveCount(0);
+
+    // Cut moves it in; the folder tab follows the disk.
+    await row(page, 'moved.txt').click();
+    await page.keyboard.press('Control+x');
+    await notes.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: /^Paste\b/ }).click();
+    await expect.poll(async () => (await readdir(path.join(work, 'notes'))).sort()).toEqual(['main.cpp', 'moved.txt']);
+    await expect.poll(() => readdir(elsewhere)).toEqual(['main.cpp']);
+    await expect.poll(() => labels(page)).toEqual(['main.cpp']);
+    await expect(page.locator('.project-error')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.marktex.explorer.clipboard())).toBeNull();
+
+    // Undo belongs to the view that pasted: the Explorer returns the file to where it was cut.
+    const moved = page.getByRole('treeitem', { name: 'moved.txt', exact: true });
+    await expect(moved).toHaveAttribute('aria-selected', 'true');
+    await page.locator('.project-sidebar').getByRole('button', { name: 'More Actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Undo File Operation', exact: true }).click();
+    await expect.poll(async () => (await readdir(elsewhere)).sort()).toEqual(['main.cpp', 'moved.txt']);
+    await expect.poll(() => readdir(path.join(work, 'notes'))).toEqual(['main.cpp']);
+    await expect(moved).toHaveCount(0);
+    await expect.poll(() => labels(page)).toEqual(['main.cpp', 'moved.txt']);
+    await expect(row(page, 'moved.txt')).not.toHaveClass(/\bcut\b/);
+    await expect(page.locator('.project-error')).toHaveCount(0);
+    await page.screenshot({ path: test.info().outputPath('folder-tab-to-explorer-paste.png') });
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
 test('an image copied from another application pastes into a folder tab as a new file', async () => {
   const { root, home, app, page } = await launch();
   try {

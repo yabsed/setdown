@@ -26,7 +26,11 @@ export class ExplorerClipboardStore {
     conflict?: ExplorerTransfer['conflict']): Promise<ExplorerOperationResult> {
     const selection = await this.snapshot();
     if (selection) {
-      const result = await explorer.transfer(state, { kind: selection.external ? 'import' : selection.cut ? 'move' : 'copy', paths: selection.paths, target, conflict });
+      const { paths } = selection;
+      // Another program's files are only ever copied in. Our own selection is moved or copied
+      // from wherever it was made: a folder tab is not limited to the folder the sidebar shows.
+      const result = selection.external ? await explorer.transfer(state, { kind: 'import', paths, target, conflict })
+        : await explorer.transfer(state, { kind: selection.cut ? 'move' : 'copy', paths, target, conflict }, 'clipboard');
       await this.consume(selection, result);
       return result;
     }

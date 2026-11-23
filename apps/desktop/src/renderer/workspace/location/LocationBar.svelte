@@ -184,7 +184,12 @@ import type { AppActions } from '../../ports/ui-actions';
     const reposition = measure;
     window.addEventListener('resize', reposition);
     window.addEventListener('setdown:focus-location', focus);
-    return () => { resize.disconnect(); moved.disconnect(); offChoice(); offHidden(); offPanel(); window.removeEventListener('pointerdown', outside, true); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); };
+    // A web page or a preview is a native view of its own. When one takes the keyboard this
+    // document hears nothing: the field would stay focused and keep painting its selection,
+    // and the next click on it would place a caret instead of selecting the address.
+    const contentFocused = () => { if (document.activeElement === input) { blur(); input?.blur(); } };
+    window.addEventListener('setdown:content-focused', contentFocused);
+    return () => { resize.disconnect(); moved.disconnect(); offChoice(); offHidden(); offPanel(); window.removeEventListener('pointerdown', outside, true); actions.locationSuggestions.hide(popupToken); window.removeEventListener('resize', reposition); clearTimeout(timer); window.removeEventListener('setdown:focus-location', focus); window.removeEventListener('setdown:content-focused', contentFocused); };
   });
 </script>
 

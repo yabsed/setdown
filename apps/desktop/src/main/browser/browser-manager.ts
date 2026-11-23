@@ -601,7 +601,7 @@ export class BrowserManager {
       this.error(entry, browserFailureMessage(entry.page.failure));
     });
     wc.on('audio-state-changed', () => this.publish(entry));
-    wc.on('focus', () => { if (this.live(entry) && view.getVisible()) this.send(entry.owner, { type: 'focus', id }); });
+    wc.on('focus', () => { if (this.live(entry) && view.getVisible()) this.send(entry.owner, { type: 'focus', id, keyboard: true }); });
     wc.on('found-in-page', (_event, result) => {
       if (entry.find?.request === result.requestId) this.send(entry.owner, { type: 'find', id, query: entry.find.query,
         active: result.activeMatchOrdinal, matches: result.matches });

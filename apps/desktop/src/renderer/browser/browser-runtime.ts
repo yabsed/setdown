@@ -80,6 +80,9 @@ export function createBrowserRuntime(workspace: WorkspaceState, desktop: Desktop
       // tab. Only its current page may claim command focus; obsolete events
       // must not switch the newly opened tab back to the previous page.
       if (workspace.find(event.id)?.kind !== 'web' || workspace.groups.owner(event.id)?.activeId !== event.id) return;
+      // The page's view has the keyboard. The address field hears of it only from here (LocationBar.svelte);
+      // a tab that is merely selected, as under an address being edited in its split, leaves the field alone.
+      if (event.keyboard) window.dispatchEvent(new Event('setdown:content-focused'));
       if (workspace.activeId !== event.id || project.gitDiffActive) activate(event.id);
     } else if (event.type === 'close') {
       const tab = workspace.find(event.id);

@@ -6,11 +6,21 @@ import type { ProjectEntry, ProjectEntryKind, ProjectEntryMove } from '../../pro
 import type { WindowState } from '../windows/window-state';
 import { isOpenableDocument, isMarkdownDocument } from '../../core/document/document-profile';
 import { readTextFile } from '../documents/text-file';
+import { isInside } from '../documents/file-system';
 import { ProjectPaths } from './project-paths';
 import type { ExplorerOperationItem, ExplorerOperationResult, ExplorerTransfer } from '../../protocol/explorer';
 import type { LanguageFileOperation } from '../language/file-operations';
 import { copyExclusive, copyName, ensureMissing, exists, moveExclusive, sequenceName, treeVersion, writeExclusive } from './file-transfer';
 const HIDDEN_DIRECTORIES = new Set(['.git', '.hg', '.svn']);
+/**
+ * Who named a transfer's sources. A renderer request is held to this service's
+ * boundary. A Cut/Copy selection was validated and kept by the main process
+ * (explorer-clipboard.ts) and may come from a folder tab, anywhere on disk;
+ * only the paste target has to be inside the boundary.
+ */
+export type TransferOrigin = 'request' | 'clipboard';
+
+type LanguageFile = LanguageFileOperation['files'][number];
 
 export class ExplorerService {
   languageOperation?: (state: WindowState, operation: LanguageFileOperation, phase: 'will' | 'did') => Promise<void>;
@@ -80,10 +90,10 @@ export class ExplorerService {
     const operation: LanguageFileOperation = { kind: 'delete', files: [{ path: source, directory: (await fs.lstat(source)).isDirectory() }] };
     await this.languageOperation?.(state, operation, 'will'); await this.trash(source); await this.did(state, operation);
   });
-  transfer = (state: WindowState, request: ExplorerTransfer) => this.scoped(state, async state => {
+  transfer = (state: WindowState, request: ExplorerTransfer, origin: TransferOrigin = 'request') => this.scoped(state, async state => {
     if (request.kind === 'undo') return this.undo(state);
     const controller = new AbortController(); this.active.set(state.webContentsId, controller);
-    try { return await this.remember(state, await this.transferEntries(state, request, controller.signal)); }
+    try { return await this.remember(state, await this.transferEntries(state, request, controller.signal, origin)); }
     finally { this.active.delete(state.webContentsId); }
   });
   /** Data with no source file (a pasted clipboard image). A free name is allocated; Undo trashes the new file. */
@@ -192,13 +202,14 @@ export class ExplorerService {
     await this.remember(state, { kind: 'move', items: moves.map(move => ({ ...move, status: 'completed' })), undoable: false });
     return { moves };
   }
-  private async transferEntries(state: WindowState, request: ExplorerTransfer, signal?: AbortSignal): Promise<ExplorerOperationResult> {
+  private async transferEntries(state: WindowState, request: ExplorerTransfer, signal?: AbortSignal, origin: TransferOrigin = 'request'): Promise<ExplorerOperationResult> {
     if (!request || !['copy', 'move', 'duplicate', 'import'].includes(request.kind)
       || !Array.isArray(request.paths) || !request.paths.length || request.paths.length > 10000
       || request.paths.some(item => typeof item !== 'string')
       || (request.conflict !== undefined && !['error', 'keep-both', 'skip'].includes(request.conflict))) throw new Error('Invalid file operation.');
+    const anywhere = request.kind === 'import' || origin === 'clipboard';
     const sources = [...new Set(request.paths.map(item => {
-      if (request.kind !== 'import') return this.mutableEntry(state, item);
+      if (!anywhere) return this.mutableEntry(state, item);
       if (!path.isAbsolute(item) || item.includes('\0')) throw new Error('Invalid imported file path.');
       return path.resolve(item);
     }))];
@@ -227,8 +238,18 @@ export class ExplorerService {
       reserved.add(to);
       items.push({ from, to, status: 'not-started' });
     }
-    const operation: LanguageFileOperation = { kind: request.kind === 'move' ? 'rename' : 'create', files: await Promise.all(items.filter(item => item.status === 'not-started').map(async item => ({ path: request.kind === 'move' ? item.from : item.to, to: request.kind === 'move' ? item.to : undefined, directory: (await fs.lstat(item.from)).isDirectory() }))) };
-    await this.languageOperation?.(state, operation, 'will');
+    // Language servers follow a rename inside the folder they serve. A file that
+    // moves in from elsewhere (a Cut in a folder tab) is a new file to them.
+    const root = this.paths.root(state);
+    const renames = new Map<ExplorerOperationItem, LanguageFile>(), creations = new Map<ExplorerOperationItem, LanguageFile>();
+    for (const item of items) {
+      if (item.status !== 'not-started') continue;
+      const directory = (await fs.lstat(item.from)).isDirectory();
+      if (request.kind === 'move' && isInside(root, item.from)) renames.set(item, { path: item.from, to: item.to, directory });
+      else creations.set(item, { path: item.to, directory });
+    }
+    if (renames.size) await this.languageOperation?.(state, { kind: 'rename', files: [...renames.values()] }, 'will');
+    if (creations.size) await this.languageOperation?.(state, { kind: 'create', files: [...creations.values()] }, 'will');
     for (const item of items) {
       if (item.status !== 'not-started') continue;
       try {
@@ -237,7 +258,8 @@ export class ExplorerService {
         if (request.kind === 'move') await moveExclusive(item.from, item.to, signal);
         else await copyExclusive(item.from, item.to, signal);
         item.status = 'completed';
-        await this.did(state, { ...operation, files: operation.files.filter(file => file.path === (request.kind === 'move' ? item.from : item.to)) });
+        const renamed = renames.get(item);
+        await this.did(state, renamed ? { kind: 'rename', files: [renamed] } : { kind: 'create', files: [creations.get(item)!] });
       } catch (error) {
         item.status = 'failed'; item.error = error instanceof Error ? error.message : String(error);
         break;

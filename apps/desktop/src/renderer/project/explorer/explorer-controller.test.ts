@@ -59,3 +59,20 @@ test('rename maps selected and focused paths before refresh and document retarge
   expect(tree.selection.paths).toEqual(['/root/z']); expect(tree.focused).toBe('/root/z');
   expect(f.options.pathMoved).toHaveBeenCalledWith('/root/a', '/root/z');
 });
+
+test('a file cut in a folder tab is selected where it lands, and Undo leaves nothing of it in the tree', async () => {
+  const f = fixture(); await f.controller.reset(project.folder!); selectPaths(['/root/a']);
+  const receipt = (from: string, to: string) => ({ kind: 'move' as const, undoable: true, items: [{ from, to, status: 'completed' as const }] });
+  Object.assign(f.desktop, { explorer: { paste: vi.fn(async () => receipt('/elsewhere/n', '/root/n')),
+    transfer: vi.fn(async () => receipt('/root/n', '/elsewhere/n')) } });
+  f.desktop.readProjectDirectory.mockResolvedValue([file('/root/a'), file('/root/n')]);
+  await f.controller.transfer({ kind: 'paste', target: '/root' });
+  expect(tree.selection.paths).toEqual(['/root/n']);
+  expect(f.options.pathMoved).toHaveBeenLastCalledWith('/elsewhere/n', '/root/n');
+  // Undo moves it back out: open tabs follow it, the tree selects a row it still has.
+  f.desktop.readProjectDirectory.mockResolvedValue([file('/root/a')]);
+  await f.controller.transfer({ kind: 'undo', paths: [] });
+  expect(f.options.pathMoved).toHaveBeenLastCalledWith('/root/n', '/elsewhere/n');
+  expect(tree.selection.paths).toEqual(['/root/a']); expect(tree.focused).toBe('/root/a');
+  expect(project.expanded).toEqual(['/root']);
+});

@@ -158,15 +158,20 @@ export class ExplorerController {
 
   private async applyResult(result: ExplorerOperationResult): Promise<void> {
     const completed = result.items.filter(item => item.status === 'completed');
+    // A file cut in a folder tab arrives from outside the open folder, and Undo sends it back
+    // there. The tree follows only what stays in it; the reload drops rows that left.
+    const root = project.folder?.path ?? '';
+    const landed = completed.map(item => item.to).filter(target => root && under(target, root));
     for (const item of completed) {
-      this.expanded.add(parentPath(item.to));
+      const stays = landed.includes(item.to);
+      if (stays) this.expanded.add(parentPath(item.to));
       if (result.kind === 'move') {
-        this.remapExpanded(item.from, item.to);
+        if (stays) this.remapExpanded(item.from, item.to);
         await this.options.pathMoved(item.from, item.to);
       }
     }
     if (project.folder) await this.reload(project.folder);
-    if (completed.length && result.kind !== 'undo') selectPaths(completed.map(item => item.to));
+    if (landed.length && result.kind !== 'undo') selectPaths(landed);
     if (result.warning) this.fail(new Error(result.warning));
     const failed = result.items.find(item => item.status === 'failed');
     if (failed) this.fail(new Error(`${completed.length} completed. ${failed.error} Remaining items were not changed.`));
