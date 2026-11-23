@@ -8,7 +8,7 @@
 
 Setdown is a desktop Markdown reader and editor. Write in plain text, then read
 your words as a beautifully typeset document. Keep your references and tools
-close, with your writing at the center.
+close, with your writing at the center. 
 
 > **Security notice:** This software was not written by a professional developer
 > and may not be sufficiently secure.
