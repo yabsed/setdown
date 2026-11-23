@@ -1135,7 +1135,11 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   can also be collapsed in wide panes (F9); that choice is a per-viewer preference.
 - **Chooser.** `main/dialogs/path-picker.ts` keeps Electron's `showOpenDialog` /
   `showSaveDialog` signatures for every call site but answers them with a transient
-  picker-mode folder tab in the requesting window. Acceptance follows GNOME Files'
+  picker-mode folder tab in the requesting window. With another editor group on
+  screen the tab opens in the group beside the focused one (right, then left, below,
+  above; `EditorGroups.beside`), so the tab in use stays in view; a single or
+  maximized group has to take it. A chooser asked for from a chooser joins that
+  chooser's group. Acceptance follows GNOME Files'
   modes (`core/files/picker-rules.ts`): the selection when it fits the request,
   otherwise the current folder for folder requests; filters never hide folders; a
   save name is validated live and overwriting asks first. A file that cannot answer
@@ -1151,7 +1155,9 @@ empty workspace's Browse Files, an address-bar folder path (including `~`),
   in a browser tab beside it; neither answers nor cancels the request. Closing the
   tab, Escape, Cancel or closing the window cancels. Main re-validates every reply (kind, count, existing
   parent) and ignores replies from another window. Focus returns to the requesting
-  tab before the chooser closes. Picker tabs are not transferable or restorable.
+  tab before the chooser closes, and the chooser's group selects the tab it covered
+  again rather than the chooser's neighbor in the strip; closing the chooser's tab
+  restores both the same way. Picker tabs are not transferable or restorable.
   `SETDOWN_NATIVE_DIALOGS=1` keeps the platform dialog; the shared E2E launcher
   sets it so specs that replace `electron.dialog` are unchanged.
 - **Downloads** save directly into the Downloads folder under a reserved unique
@@ -1168,8 +1174,8 @@ Checks: `core/files/*.test.ts`, `main/files/*.test.ts`,
 `renderer/files/file-command-target.test.ts` and
 `test/e2e/workspace/folder-tab.spec.ts` (browse, Back/Forward selection, address
 completion, file operations outside a workspace, chooser accept/cancel/save, file
-operations inside a chooser, search, grid, properties, the Files side view, narrow
-panes, launch with a folder).
+operations inside a chooser, chooser placement and restoration with two groups,
+search, grid, properties, the Files side view, narrow panes, launch with a folder).
 `renderer/files/file-drag.test.ts` and `test/e2e/workspace/folder-drag.spec.ts`
 cover drag and drop with real pointer input: moving a file and a document into a
 subfolder, a web page receiving the dragged files' contents, a tab-strip drop,

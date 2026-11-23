@@ -457,6 +457,133 @@ test('a chooser manages files like any folder tab and still answers its request'
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 
+test('with two groups a chooser opens beside the tab in use, and closing it gives both groups back', async () => {
+  test.setTimeout(120_000);
+  const { root, home, app, page } = await launch();
+  // The page counts the frames it draws: a hidden or detached view draws none.
+  const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html');
+    response.end('<!doctype html><title>Live page</title><p>Playing.</p><script>window.drawn = 0; (function draw() { window.drawn++; requestAnimationFrame(draw); })();</script>'); });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const site = () => app.evaluate(async ({ BrowserWindow }, origin) => {
+    const view = BrowserWindow.getAllWindows()[0].contentView.children.find(view => (view as WebContentsView).webContents?.getURL().startsWith(origin)) as WebContentsView | undefined;
+    return { shown: !!view?.getVisible(), drawn: view ? await view.webContents.executeJavaScript('window.drawn') as number : -1 };
+  }, origin);
+  const playing = async () => {
+    expect((await site()).shown).toBe(true);
+    const before = (await site()).drawn; await expect.poll(async () => (await site()).drawn).toBeGreaterThan(before + 5);
+  };
+  /** Which web contents of the window has the keyboard: the shell, or the website's own view. */
+  const keyboard = () => app.evaluate(({ BrowserWindow }, origin) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    const view = window.contentView.children.find(view => (view as WebContentsView).webContents?.getURL().startsWith(origin)) as WebContentsView | undefined;
+    return view?.webContents.isFocused() ? 'site' : window.webContents.isFocused() ? 'shell' : 'none';
+  }, origin);
+  try {
+    const alpha = path.join(home, 'Projects', 'alpha');
+    await writeFile(path.join(alpha, 'later.md'), '# Later\n');
+    await page.evaluate(url => window.marktex.openLink(url), `${origin}/`);
+    await expect(page.getByRole('tab', { name: /Live page/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    // A second group to the right of the website. Its selected document has a tab after it,
+    // so closing a tab opened next to it would select that one unless the group is restored.
+    await page.getByRole('button', { name: 'New folder tab', exact: true }).click();
+    const folder = page.locator('.document-tab[aria-selected="true"]').filter({ hasText: 'home' });
+    await expect(folder).toBeVisible();
+    await folder.click({ button: 'right' }); await chooseNativeMenu(app, ['Split & Move', 'Move Right']);
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const left = page.locator('.editor-group').first(), right = page.locator('.editor-group').nth(1);
+    const selected = (group: Locator) => group.locator('.document-tab[aria-selected="true"] .tab-name');
+    const address = page.locator('.editor-group.focused .location-bar input');
+    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await row(page, 'later.md').dblclick();
+    await expect(selected(right)).toHaveText('later.md');
+    await right.locator('.document-tab').filter({ hasText: 'alpha' }).click();
+    await row(page, 'README.md').dblclick();
+    await expect(right.locator('.document-tab .tab-name')).toHaveText(['alpha', 'README.md', 'later.md']);
+    await expect(selected(right)).toHaveText('README.md');
+    // The website is the tab in use; the workspace is opened from the sidebar.
+    await left.getByRole('tab', { name: /Live page/ }).click();
+    await expect(left).toHaveClass(/focused/);
+    const ask = async () => {
+      await page.getByRole('button', { name: 'Workspace folder', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Open Folder…' }).click();
+    };
+    const choosers = right.getByRole('tab', { name: /Open Folder/ });
+    const restored = async () => {
+      await expect(page.getByRole('tab', { name: /Open Folder/ })).toHaveCount(0);
+      await expect(selected(right)).toHaveText('README.md');
+      await expect(left).toHaveClass(/focused/);
+      await expect(selected(left)).toHaveText('Live page');
+      await playing();
+    };
+
+    await ask();
+    // The chooser covers the other group and takes the keyboard there; the website keeps playing.
+    await expect(choosers).toHaveAttribute('aria-selected', 'true');
+    await expect(right).toHaveClass(/focused/);
+    await expect(left.getByRole('tab', { name: /Open Folder/ })).toHaveCount(0);
+    await expect(selected(left)).toHaveText('Live page');
+    await expect.poll(() => labels(page)).toEqual(['Documents', 'Projects']);
+    await playing();
+    await page.screenshot({ path: test.info().outputPath('chooser-beside.png') });
+    // Escape cancels: the covered document is selected again and the website has focus.
+    await list(page).focus();
+    await page.keyboard.press('Escape');
+    await restored();
+    await page.screenshot({ path: test.info().outputPath('chooser-cancelled.png') });
+
+    // So does closing the chooser's tab.
+    await ask();
+    await expect(choosers).toHaveAttribute('aria-selected', 'true');
+    await choosers.hover();
+    await choosers.locator('.tab-close').click();
+    await restored();
+
+    // A second chooser asked for while one waits joins it instead of covering the website.
+    await ask();
+    await expect(choosers).toHaveCount(1);
+    await ask();
+    await expect(choosers).toHaveCount(2);
+    await expect(left.getByRole('tab', { name: /Open Folder/ })).toHaveCount(0);
+    await playing();
+    await list(page).focus();
+    await page.keyboard.press('Escape');
+    await expect(choosers).toHaveCount(1);
+    await expect(choosers).toHaveAttribute('aria-selected', 'true');
+    await expect(right).toHaveClass(/focused/);
+    await list(page).focus();
+    await page.keyboard.press('Escape');
+    await restored();
+
+    // An answer is delivered from there too.
+    await ask();
+    await expect(choosers).toHaveAttribute('aria-selected', 'true');
+    await row(page, 'Projects').click();
+    const bar = page.getByRole('form', { name: 'Open Folder' });
+    await expect(bar).toContainText('Choose “Projects”');
+    await bar.getByRole('button', { name: 'Select Folder' }).click();
+    await restored();
+    await expect(page.getByRole('button', { name: 'Workspace folder', exact: true })).toHaveAttribute('title', path.join(home, 'Projects'));
+
+    // Asked for with the keyboard in the page and no click in the shell, as a menu accelerator
+    // does: the page stays on screen, so the chooser has to take the keyboard from it.
+    await expect.poll(keyboard).toBe('site');
+    void page.evaluate(() => { void window.marktex.chooseProjectFolder(); });
+    await expect(choosers).toHaveAttribute('aria-selected', 'true');
+    await expect(list(page)).toBeFocused();
+    await expect.poll(keyboard).toBe('shell');
+    await playing();
+    await page.keyboard.press('Escape');
+    await restored();
+    await expect.poll(keyboard).toBe('site');
+  } finally {
+    await page.screenshot({ path: test.info().outputPath('chooser-groups.png') }).catch(() => {});
+    await disposeApplication(app); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('the file manager searches subfolders, shows a grid, properties and stays usable in a narrow pane', async () => {
   const { root, home, app, page } = await launch();
   try {

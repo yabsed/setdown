@@ -43,8 +43,8 @@ type Options = {
   shouldFocusWeb?(): boolean;
   reviewZoomId?(): string | null;
   autoSave?: { schedule(tab: DocumentContent): void; cancel(tabId?: string): void };
-  /** A picker-mode folder tab closed without accepting. */
-  pickerClosed?(requestId: string): void;
+  /** A picker-mode folder tab is about to be removed, answered or not. Its group still holds it. */
+  pickerClosing?(tabId: string, requestId: string): void;
 };
 const TRANSFER_ANNOUNCE_GRACE_MS = 150;
 
@@ -558,10 +558,10 @@ export class TabController {
     index = workspace.tabs.findIndex((candidate) => candidate.id === tabId);
     if (index < 0 || workspace.tabs[index] !== tab) return true;
     if (workspace.activeId === tab.id) this.saveActiveState();
+    if (tab.kind === 'folder' && tab.picker) this.options.pickerClosing?.(tab.id, tab.picker.id);
     const removed = workspace.remove(tab.id);
     if (!removed) return true;
     this.release(tab);
-    if (tab.kind === 'folder' && tab.picker) this.options.pickerClosed?.(tab.picker.id);
     if (!removed.wasActive) { this.render(); return true; }
     const replacement = workspace.replacement(removed.index);
     if (replacement) { await this.activate(replacement.id); return true; }

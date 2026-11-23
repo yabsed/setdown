@@ -10,12 +10,13 @@ import { installPathPicker, pathDialog, pendingPickerCount } from './path-picker
 
 let result: ((state: WindowState, ...args: unknown[]) => void) | undefined;
 const sent: PathPickerRequest[] = [];
+let shellFocused = 0;
 const closers = new Set<() => void>();
 const window = {
   isDestroyed: () => false, isMinimized: () => false, restore() {}, focus() {},
   once: (_event: string, listener: () => void) => { closers.add(listener); },
   removeListener: (_event: string, listener: () => void) => { closers.delete(listener); },
-  webContents: { id: 7, send: (_channel: string, request: PathPickerRequest) => { sent.push(request); } },
+  webContents: { id: 7, send: (_channel: string, request: PathPickerRequest) => { sent.push(request); }, focus() { shellFocused++; } },
 } as unknown as BrowserWindow;
 const owner = { webContentsId: 7, rendererTabsReady: true, window } as unknown as WindowState;
 const stranger = { ...owner, webContentsId: 8 } as WindowState;
@@ -47,6 +48,8 @@ describe('in-app path picker gateway', () => {
     await answer([path.join(root, 'docs')]);
     expect(await pending).toEqual({ canceled: false, filePaths: [path.join(root, 'docs')] });
     expect(sent[0]).toMatchObject({ kind: 'open', files: false, folders: true, multiple: false, title: 'Open Folder', folder: path.join(root, 'docs') });
+    // The chooser may open beside a page that would otherwise keep the keyboard.
+    expect(shellFocused).toBe(1);
   });
 
   test('rejects a reply whose kind, count or owner does not match the request', async () => {

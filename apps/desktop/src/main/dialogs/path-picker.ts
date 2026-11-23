@@ -70,6 +70,9 @@ function ask(state: WindowState, request: Omit<PathPickerRequest, 'id'>): Promis
     state.window.webContents.send('picker:request', { ...request, id });
     if (state.window.isMinimized()) state.window.restore();
     state.window.focus();
+    // The chooser is a shell surface. A page it replaces is hidden and gives the keyboard up, but
+    // with another editor group on screen the chooser opens beside the page, which keeps it.
+    state.window.webContents.focus();
   });
 }
 

@@ -128,6 +128,18 @@ export class EditorGroups {
     return found ? this.groups.find(group => group.id === found.id)! : null;
   }
   side(targetId: string): Group { return this.neighbor(targetId, 'right') ?? this.split(targetId, 'right'); }
+  /**
+   * A group on screen next to the target, for a transient tab that should leave the target's
+   * tab in view: right, then left, below, above. Null when the target is the only group shown.
+   */
+  beside(targetId: string): Group | null {
+    if (this.maximized) return null;
+    for (const direction of ['right', 'left', 'down', 'up'] as const) {
+      const found = this.neighbor(targetId, direction);
+      if (found) return found;
+    }
+    return null;
+  }
   remove(tabId: string) {
     const group = this.owner(tabId);
     if (!group) return;

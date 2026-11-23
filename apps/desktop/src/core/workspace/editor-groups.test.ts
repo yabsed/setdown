@@ -184,4 +184,22 @@ describe('editor groups', () => {
     expect(groups.neighbor(below, 'right')).toBeNull();
     expect(groups.side('group-0').id).toBe(right);
   });
+  it('offers a group beside the target only while another group is on screen', () => {
+    const groups = new EditorGroups();
+    for (const id of ['a', 'b', 'c']) groups.add(id);
+    expect(groups.beside('group-0')).toBeNull();
+    groups.move('b', 'group-0', 'right');
+    const right = groups.focusedId;
+    groups.move('c', right, 'down');
+    const below = groups.focusedId;
+    expect(groups.beside('group-0')?.id).toBe(right);
+    expect(groups.beside(right)?.id).toBe('group-0');
+    expect(groups.beside(below)?.id).toBe('group-0');
+    expect(groups.groups).toHaveLength(3);
+    // A maximized group is the only one shown; the others cannot take the tab.
+    groups.toggleMaximize();
+    expect(groups.beside(below)).toBeNull();
+    groups.toggleMaximize();
+    expect(groups.beside(below)?.id).toBe('group-0');
+  });
 });

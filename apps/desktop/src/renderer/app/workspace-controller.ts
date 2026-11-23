@@ -394,7 +394,7 @@ export function startWorkspace(desktop: DesktopPort) {
     activateReview: id => projects.activateGitDiff(id), closeReview: (id, confirmed) => projects.closeGitDiff(id, confirmed),
     confirmClose: (names) => closePrompt.request('tab', names), workspaceChanged: () => projectContextChanged(), groupsChanged: syncGroupLayout,
     autoSave: { schedule: (tab) => autoSave.schedule(workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab), cancel: (tabId) => autoSave.cancel(tabId) },
-    pickerClosed: id => picker.closed(id) });
+    pickerClosing: (tabId, requestId) => picker.closing(tabId, requestId) });
   const picker = createPickerController({ desktop, workspace, tabs, projectFolder: () => project.folder?.path ?? null });
   const stopFileCommands = installFileCommandTarget(desktop.explorer, () => project.open && project.visible);
   /** Folders requested by the launch arguments, a second instance or another application's "Show in folder". */
