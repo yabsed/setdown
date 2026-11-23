@@ -544,6 +544,23 @@ history aligned with installed native content; a superseded uninstalled render
 cannot become a later patch base. Background preparation and early real tab
 split tests cover this ownership boundary.
 
+A file the side panel opens beside the group in use
+([workspace contract](contracts/workspace.md#what-the-side-panel-opens)) is such
+a background document from its first frame: `TabController.reveal` only selects
+the tab in its group, and `workspace/groups/group-runtime.ts` prepares and shows
+it. The focused document's preview session, activation and watcher are not
+involved. `workspace/sidebar-placement.spec.ts` checks both groups' live readers
+while files, search results and reviews are opened this way.
+
+A change of the focused group changes which reader is the foreground one, not any
+reader's rectangle. The foreground rectangle is read only after the shell has laid
+its host out for the focused group
+([workspace contract](contracts/workspace.md#editor-groups)); the request that
+follows places the document in its own group, where it already is as a background
+reader, so main never writes another group's bounds to it. This removes one
+request from the focus change and adds none: the correct one was already sent
+after that render.
+
 Ordinary document position/scroll settlement owns only its last applied scroll
 offset. A later scroll or positioning request supersedes it; its delayed layout
 callback must not jump back to the old anchor. `scroll-settlement.test.ts` and

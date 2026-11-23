@@ -745,7 +745,7 @@ test('terminal creation targets the requested group while another editor activat
   assert.deepEqual(target.tabs, [second, terminal.id]);
   assert.equal(target.activeId, terminal.id);
 
-  // Sidebar creation, which has no explicit group, still uses the focused group.
+  // Creation without an explicit group uses the focused group.
   await f.controller.openTerminal();
   assert.deepEqual(source.tabs, [first]);
   assert.deepEqual(target.tabs, [second, terminal.id, f.workspace.activeId]);
@@ -992,4 +992,114 @@ test('pinned tabs lead their strip, keep a preview open and are published to the
   assert.deepEqual(f.workspace.groups.focused.tabs.length, 3);
   f.controller.stick(b.id, false);
   assert.deepEqual([view.groups[0].tabs[0], view.groups[0].sticky], [b.id, 0]);
+});
+
+/** Two groups side by side: `used` has command focus on the left, `other` is selected on the right. */
+async function sideBySide() {
+  const f = fixture();
+  await f.controller.show(snapshot('/project/used.txt'));
+  const used = f.workspace.activeId!, left = f.workspace.groups.focused;
+  await f.controller.show(snapshot('/project/other.txt'));
+  const other = f.workspace.activeId!;
+  f.workspace.groups.move(other, left.id, 'right');
+  const right = f.workspace.groups.owner(other)!;
+  await f.controller.activate(used);
+  calls.length = 0;
+  const inUse = () => {
+    assert.equal(f.workspace.activeId, used);
+    assert.equal(f.workspace.groups.focusedId, left.id);
+    assert.equal(left.activeId, used);
+    assert.deepEqual(left.tabs, [used]);
+  };
+  return { ...f, used, other, left, right, inUse, place: { groupId: right.id, preserveFocus: true } };
+}
+
+test('a file opened without focus is shown in its group and leaves the tab in use alone', async () => {
+  const f = await sideBySide();
+  const activate = vi.spyOn(f.options.desktop, 'activateDocument');
+  const select = vi.spyOn(f.options.editor, 'selectGroup'), load = vi.spyOn(f.options.editor, 'load');
+
+  await f.controller.show(snapshot('/project/a.txt'), 'viewer', 'document', undefined, { ...f.place, pinned: false });
+  const slot = f.right.activeId!;
+  assert.notEqual(slot, f.other);
+  assert.deepEqual(f.right.tabs, [f.other, slot]);
+  assert.equal(f.right.previewId, slot);
+  f.inUse();
+  // The group's source editor needs Monaco, but no editor is handed the keyboard's group.
+  assert.equal(load.mock.calls.length, 1);
+  assert.equal(select.mock.calls.length, 0);
+
+  // The next file from the panel lands in that same group and reuses its preview slot.
+  await f.controller.show(snapshot('/project/b.md'), 'viewer', 'document', undefined, { ...f.place, pinned: false });
+  assert.equal(f.right.activeId, slot);
+  assert.deepEqual(f.right.tabs, [f.other, slot]);
+  const shown = f.workspace.find(slot)!;
+  assert.ok('document' in shown && shown.document.path === '/project/b.md');
+  f.inUse();
+  // Its reader is created for the group runtime to prepare; the foreground preview session is untouched.
+  assert.ok(calls.includes('create'));
+  for (const operation of ['session', 'reset', 'ensure', 'position']) assert.ok(!calls.includes(operation), operation);
+
+  // A file that group already holds is selected there, pinned by an explicit open.
+  await f.controller.show(snapshot('/project/other.txt'), 'viewer', 'document', undefined, f.place);
+  assert.equal(f.right.activeId, f.other);
+  assert.deepEqual(f.right.tabs, [f.other, slot]);
+  f.inUse();
+  assert.equal(activate.mock.calls.length, 0);
+});
+
+test('terminals, pages and folders opened without focus are selected beside the tab in use', async () => {
+  const f = await sideBySide();
+  const dispatch = vi.spyOn(window, 'dispatchEvent'), command = vi.spyOn(f.options.desktop.browser, 'command');
+
+  await f.controller.openTerminal('/project', f.right.id, undefined, true);
+  const terminal = f.workspace.find(f.right.activeId!)!;
+  assert.equal(terminal.kind, 'terminal');
+  f.inUse();
+
+  await f.controller.openWeb('https://example.com/', false, f.place);
+  const page = f.workspace.find(f.right.activeId!)!;
+  assert.equal(page.kind, 'web');
+  f.inUse();
+
+  const folder = (await f.controller.openFolder('/project', f.place))!;
+  assert.equal(f.right.activeId, folder.id);
+  f.inUse();
+
+  // A session that already has a tab is selected where that tab is.
+  await f.controller.openTerminalSession(terminal.id, f.place);
+  assert.equal(f.right.activeId, terminal.id);
+  // A session without a tab gets one in the given group instead of replacing the active tab.
+  await f.controller.close(terminal.id, true);
+  await f.controller.openTerminalSession(terminal.id, f.place);
+  const reopened = f.workspace.find(f.right.activeId!)!;
+  assert.ok(reopened.kind === 'terminal' && reopened.sessionId === terminal.id && reopened.id !== terminal.id);
+  f.inUse();
+
+  // A new tab follows the one its group was showing.
+  assert.deepEqual(f.right.tabs, [f.other, page.id, reopened.id, folder.id]);
+  assert.equal(f.session.surface, 'editor');
+  assert.equal(command.mock.calls.length, 0);
+  assert.equal(dispatch.mock.calls.some(([event]) => /^setdown:focus-/.test(event.type)), false);
+});
+
+test('showing without focus activates a tab that can only be seen that way', async () => {
+  const f = await sideBySide();
+  // A tab of the focused group.
+  await f.controller.show(snapshot('/project/behind.txt'));
+  const behind = f.workspace.activeId!;
+  await f.controller.activate(f.used);
+  await f.controller.reveal(behind);
+  assert.equal(f.workspace.activeId, behind);
+  assert.equal(f.right.activeId, f.other);
+
+  // A tab of a group that the maximized one hides.
+  await f.controller.show(snapshot('/project/second.txt'), 'viewer', 'document', undefined, f.place);
+  const second = f.right.activeId!;
+  assert.equal(f.workspace.activeId, behind);
+  f.workspace.groups.toggleMaximize();
+  await f.controller.reveal(f.other);
+  assert.equal(f.workspace.activeId, f.other);
+  assert.equal(f.workspace.groups.focusedId, f.right.id);
+  assert.deepEqual(f.right.tabs, [f.other, second]);
 });

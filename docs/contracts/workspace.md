@@ -254,6 +254,22 @@ occupies 34 CSS pixels below the tab strip; both document preparation and visibl
 readers use the resulting group body. Existing viewport, IME, revision and timing
 guarantees still apply.
 
+Moving command focus to another group moves no native reader. The focused
+document's reader is measured from one host, which the shell lays out over the
+focused group when it next renders; between the focus change and that render the
+host still has the rectangle of the group that was left. `ReaderController.syncView`
+places the focused reader only once that host (`.focused-content`,
+`data-focused-group`) is laid out for the focused group, and until then leaves
+every native view where it is: the newly focused document is already shown in its
+group as that group's background document. A reader placed by the earlier
+rectangle covered the other group's document and left its own group empty for a
+frame or more. Source-mode priming waits for the same layout. A host that the
+render does not move is used as it is, so a focused document cannot stay without
+its reader. `workspace/editor-groups.spec.ts` records every rectangle the shell
+asks main for while real clicks on the tab and on the reader move focus between
+a text file and Markdown and between two Markdown documents;
+`reader-preparation.test.ts` covers the wait, the priming and the unmoved host.
+
 Local addresses display `file:///` URLs while document state retains filesystem
 paths. The address bar shows a file's name as a file manager does: Hangul and
 other non-ASCII text, spaces and brackets are literal, and only what would read
@@ -759,6 +775,58 @@ the preparation, focus, revision or visual guarantees above.
 replacement, promotion, resource release, saved edits, independent groups and
 explicit opens. They are included in the focused gate; ordinary and Git review
 latency retain the same 48-bucket comparison.
+
+## What the side panel opens
+
+A side panel is used next to a tab that is being read or worked in. While another
+editor group is on screen, what the panel opens is shown in the group beside the
+focused one (right, then left, below, above: `EditorGroups.beside`) and command
+focus stays where it was. The focused group keeps its tab and the keyboard's
+commands (Close Tab, Save, Find), so the next item from the panel lands in that
+same other group; clicking into that group moves focus as usual, and the panel
+then opens beside it. With one group on screen, or one maximized, the panel opens
+in it and the tab takes focus, as every other command does.
+
+This holds for Explorer opens (click, double click, Enter, Open, "Reveal in
+Folder Tab", "Open in Terminal"), Search results, Source Control changes and
+history entries, the Browser panel's new tab, bookmarks, history and a download's
+"Show in folder", new and listed Terminal sessions, and new and listed file
+manager tabs. Explicit
+placements keep their meaning: "Open to the Side" opens to the right of the
+focused group and takes focus, and a middle click on a bookmark or history entry
+adds an unselected tab to the focused group, which covers nothing. An extension
+page opened from the Browser panel is created by the main process and still opens
+in the focused group.
+
+A tab that already exists is selected where it is. A file open in the other
+group is selected there instead of opened twice; a picture, PDF, Office file or
+notebook (one view per file), a terminal session's tab or a file manager tab
+that lives in the focused group is activated in it. A terminal session without a
+tab gets a new tab in the other group instead of replacing the active tab.
+
+`TabController.reveal` shows a tab without focus: it selects the tab in its group
+and leaves presentation to the group runtimes. `group-runtime.ts` prepares a
+Markdown reader from the tab's own file, `MonacoEditor.syncGroups` gives the
+group a source editor even when it never had focus or Monaco had not loaded yet,
+`browser-runtime.ts` lays the page out and `ReviewWorkspaceController` mounts the
+comparison. The focused document, its preview session, its watcher and an active
+review's command projection are not touched, and the preview slot rules of
+[Preview tabs](#preview-tabs) apply to the group the tab opens in. A Search
+result opened this way is reached in its own tab once that tab has the document
+(`ReaderController.searchIn`, `MonacoEditor.revealMatch`); the document in use
+keeps its marks, selection and position. Opening a result changes the workspace,
+which runs the same query again; that re-run does not cancel the jump to the
+result, with one group or several.
+
+`sidebarActions` in `app/workspace-controller.ts` is the one place that decides
+this placement; the panels call the same actions as the rest of the shell.
+`editor-groups.test.ts`, `text-workspace.test.ts`, `review-workspace.test.ts` and
+`reader-preparation.test.ts` cover the group choice, focus-preserving opens of
+each tab kind and the deferred search jump. `workspace/sidebar-placement.spec.ts`
+drives every panel in real Electron with two groups, checks the live readers,
+editors and pages of both groups, that Close Tab still closes the tab in use,
+the one-group fallback, a group that never had a source editor, and that "Open
+to the Side" still takes focus.
 
 ## Explorer selection and tab-strip drops
 

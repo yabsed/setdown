@@ -7,6 +7,7 @@ import {
 } from '../../core/preview/preview-preferences';
 import type { DocumentTab as WorkspaceTab } from '../../core/workspace/workspace-state';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
+import { tick } from 'svelte';
 import type { DesktopPort } from '../ports/desktop-port';
 import { view } from '../workspace/workspace-view.svelte';
 import {
@@ -29,6 +30,8 @@ type Options = {
   anchorChanged: () => void;
   syncBackgrounds?: () => Array<{ tabId: string; bounds: PreviewBounds }>;
   layoutGuide?: (previews: Array<{ tabId: string; bounds: PreviewBounds }>) => PreviewLayoutGuide | undefined;
+  /** The group with command focus, which `frames` is laid out over (see `hostBehind`). */
+  focusedGroup?: () => string;
 };
 
 type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
@@ -36,6 +39,7 @@ type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
 export class ReaderController {
   themeId: PreviewThemeId;
   awaiting = false;
+  private readonly backgroundSearches = new Map<string, { query: string; target: SearchTarget }>();
   layoutHidden = false;
   private appliedThemeRevision: number;
   private transitionTabId: string | null = null;
@@ -45,6 +49,7 @@ export class ReaderController {
   private frozen = false;
   private freezeToken = 0;
   private suspended = false;
+  private placement: Promise<void> | null = null;
 
   constructor(private readonly options: Options) {
     this.themeId = options.initialTheme.id;
@@ -68,6 +73,7 @@ export class ReaderController {
   }
 
   destroy(tabId: string) {
+    this.backgroundSearches.delete(tabId);
     this.options.desktop.destroyPreview(tabId);
   }
 
@@ -134,6 +140,23 @@ export class ReaderController {
       this.syncView();
     }
     this.restoreSearch(tab, target);
+  }
+
+  /**
+   * Go to a project search result in a preview that is shown without command focus. A preview
+   * still being prepared for its group gets the request once it has the document (`backgroundReady`).
+   */
+  searchIn(tab: WorkspaceTab, query: string, target: SearchTarget) {
+    this.backgroundSearches.set(tab.id, { query: query.slice(0, 512), target });
+    this.backgroundReady(tab);
+  }
+
+  backgroundReady(tab: WorkspaceTab) {
+    const search = this.backgroundSearches.get(tab.id);
+    if (!search || !tab.previewUrl || tab.previewRevision !== tab.revision) return;
+    this.backgroundSearches.delete(tab.id);
+    this.send(tab.id, { command: 'marktex:find', query: search.query, direction: 'forward', findNext: false,
+      sourceLine: search.target.line, sourceOccurrence: search.target.lineOccurrence, searchOrdinal: search.target.ordinal });
   }
 
   restoreSearch(
@@ -267,7 +290,20 @@ export class ReaderController {
     };
   }
 
-  syncView = () => {
+  syncView = () => this.place(false);
+
+  /**
+   * The shell lays `frames` out over the focused group when it next renders. Between a focus
+   * change and that render the element still has the rectangle of the group that was left, and a
+   * preview placed by it is shown in that group, over its document, until the render corrects it.
+   */
+  private hostBehind() {
+    const focused = this.options.focusedGroup?.();
+    const laidOutFor = focused && this.options.frames.closest<HTMLElement>('[data-focused-group]')?.dataset.focusedGroup;
+    return !!laidOutFor && laidOutFor !== focused;
+  }
+
+  private place(rendered: boolean) {
     const backgrounds = this.options.syncBackgrounds?.() ?? [];
     // Relinquish this reader's foreground contribution. The layout coordinator
     // keeps every other visible group's independent contribution intact.
@@ -284,9 +320,13 @@ export class ReaderController {
       && !this.layoutHidden
       && !this.frozen
       && !this.awaiting;
+    // Measure the host once it is over the focused group. A render that never moves it there
+    // (`rendered`) must not leave the focused document without its preview.
+    const behind = !rendered && this.hostBehind();
+    if (behind) this.placement ??= tick().then(() => { this.placement = null; this.place(true); });
     if (!visible || !tab) {
       this.options.desktop.showPreview(null, null, backgrounds, this.options.layoutGuide?.(backgrounds));
-      if (tab?.surface === 'editor' && hasMarkdownPreview(tab.document)) {
+      if (!behind && tab?.surface === 'editor' && hasMarkdownPreview(tab.document)) {
         // The reader keeps its layout while the source editor covers it. Prepare
         // at that size without showing/focusing the native preview.
         const rect = this.options.frames.getBoundingClientRect();
@@ -296,11 +336,14 @@ export class ReaderController {
       }
       return;
     }
+    // Every native view stays where it is: the preview of the group that received focus is
+    // already shown there as that group's background document.
+    if (behind) return;
     const rect = this.options.frames.getBoundingClientRect();
     const bounds = { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
     this.options.desktop.showPreview(tab.id, bounds, backgrounds,
       this.options.layoutGuide?.([...backgrounds, { tabId: tab.id, bounds }]));
-  };
+  }
 
   setSuspended(value: boolean) {
     this.suspended = value;

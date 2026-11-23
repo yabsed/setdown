@@ -14,7 +14,7 @@ import { SourceControlController } from './source-control/source-control-control
 import { ReviewWorkspaceController, type ReviewWorkspaceOptions } from './source-control/review-workspace';
 import type { ExplorerTransfer } from '../../protocol/explorer';
 
-type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
+type SearchTarget = Pick<ProjectSearchResult, 'path' | 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
   reviewWorkspace?: Omit<ReviewWorkspaceOptions, keyof import('./source-control/source-control-controller').SourceControlOptions>;
   folderChanged?(root: string | null): void;
@@ -50,7 +50,7 @@ export class ProjectController {
       pathMoved: options.pathMoved, prepareRemove: options.prepareRemove, commitRemove: options.commitRemove, runMutation: options.runMutation });
     this.searcher = new SearchController({ desktop: options.desktop, documents: options.searchDocuments,
       // The composition root deactivates the old review only after a successful read.
-      open: (path) => this.explorer.open(path), highlight: options.highlight });
+      open: (path, placement) => this.explorer.open(path, placement), highlight: options.highlight });
     const sourceOptions = { desktop: options.desktop,
       openWorkingTree: options.openWorkingTree, activateWorkingTree: options.activateWorkingTree,
       workingTreeBuffer: options.workingTreeBuffer, workingTreeChanged: options.workingTreeChanged,
@@ -141,7 +141,7 @@ export class ProjectController {
   transferEntries = (request: ExplorerTransfer | { kind: 'paste'; target: string; conflict?: ExplorerTransfer['conflict'] }) => this.explorer.transfer(request);
   revealEntry = (path: string) => this.explorer.reveal(path);
   trashEntry = (path: string): Promise<boolean> => this.explorer.trash(path);
-  openSearchResult = (result: ProjectSearchResult): Promise<void> => this.searcher.open(result);
+  openSearchResult = (result: ProjectSearchResult, options?: EditorOpenOptions): Promise<void> => this.searcher.open(result, options);
   search = (query: string): void => this.searcher.search(query);
   toggleSearchGroup = (path: string): void => this.searcher.toggleGroup(path);
   contextChanged = (): void => this.searcher.contextChanged();
@@ -164,7 +164,8 @@ export class ProjectController {
       ? project.collapsedGitGroups.filter((candidate) => candidate !== title) : [...project.collapsedGitGroups, title];
     rememberProjectState();
   };
-  reviewGitHistory = (selection: GitHistorySelection): Promise<void> => this.sourceControl.reviewHistory(selection);
+  reviewGitHistory = (selection: GitHistorySelection, options?: EditorOpenOptions): Promise<void> => this.sourceControl instanceof ReviewWorkspaceController
+    ? this.sourceControl.reviewHistory(selection, options) : this.sourceControl.reviewHistory(selection);
   reviewGitChange = (path: string, staged: boolean, options?: EditorOpenOptions): Promise<void> => this.sourceControl instanceof ReviewWorkspaceController
     ? this.sourceControl.review(path, staged, options) : this.sourceControl.review(path, staged);
   syncReviews = (): void => { if (this.sourceControl instanceof ReviewWorkspaceController) this.sourceControl.sync(); };

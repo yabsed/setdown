@@ -67,10 +67,10 @@ export class ReviewWorkspaceController {
   review = (path: string, staged: boolean, options?: EditorOpenOptions): Promise<void> => {
     const groups = this.options.workspace.groups, origin = options?.groupId ?? groups.focusedId;
     const target = options?.side ? groups.side(origin).id : origin;
-    return this.open(path, staged, undefined, target);
+    return this.open(path, staged, undefined, target, !!options?.preserveFocus);
   };
-  reviewHistory = (selection: GitHistorySelection): Promise<void> => this.open(/^(?:\/|[a-z]:[\\/])/i.test(selection.path)
-    ? selection.path : `${selection.root.replace(/[\\/]$/, '')}/${selection.path}`, false, selection);
+  reviewHistory = (selection: GitHistorySelection, options?: EditorOpenOptions): Promise<void> => this.open(/^(?:\/|[a-z]:[\\/])/i.test(selection.path)
+    ? selection.path : `${selection.root.replace(/[\\/]$/, '')}/${selection.path}`, false, selection, options?.groupId, !!options?.preserveFocus);
   copyToGroup = async (id: string, groupId: string, direction: import('../../../core/workspace/editor-groups').SplitDirection | null): Promise<void> => {
     const tab = this.options.workspace.find(id);
     if (tab?.kind !== 'diff' || !this.options.workspace.groups.groups.some(group => group.id === groupId)) return;
@@ -84,19 +84,24 @@ export class ReviewWorkspaceController {
     }
     this.options.workspace.groups.pruneEmpty(); this.options.render();
   };
-  private open(path: string, staged: boolean, history?: GitHistorySelection, targetGroup = this.options.workspace.groups.focusedId): Promise<void> {
-    const key = JSON.stringify([targetGroup, path, staged, history]);
+  /** `preserveFocus`: the review is shown in a group other than the focused one, which keeps command focus. */
+  private open(path: string, staged: boolean, history?: GitHistorySelection, targetGroup = this.options.workspace.groups.focusedId, preserveFocus = false): Promise<void> {
+    const key = JSON.stringify([targetGroup, path, staged, history, preserveFocus]);
     const prior = this.pending.get(key); if (prior) return prior;
     const request = Symbol(); this.openRequests.set(targetGroup, request);
-    const task = this.openView(path, staged, history, targetGroup, request).finally(() => { if (this.pending.get(key) === task) this.pending.delete(key); });
+    const task = this.openView(path, staged, history, targetGroup, request, preserveFocus).finally(() => { if (this.pending.get(key) === task) this.pending.delete(key); });
     this.pending.set(key, task); return task;
   }
-  private async openView(path: string, staged: boolean, history: GitHistorySelection | undefined, groupId: string, request: symbol): Promise<void> {
+  private async openView(path: string, staged: boolean, history: GitHistorySelection | undefined, groupId: string, request: symbol, preserveFocus: boolean): Promise<void> {
     const { workspace } = this.options;
     const group = workspace.groups.groups.find(group => group.id === groupId); if (!group) return;
+    const select = (id: string) => { group.activeId = id; this.options.render(); this.sync(); };
     const existing = workspace.tabs.find(tab => tab.kind === 'diff' && group.tabs.includes(tab.id)
       && tab.filePath === path && tab.staged === staged && JSON.stringify(tab.history) === JSON.stringify(history));
-    if (existing) { await this.options.activate(existing.id); return; }
+    if (existing) {
+      if (preserveFocus && workspace.groups.focusedId !== groupId) select(existing.id); else await this.options.activate(existing.id);
+      return;
+    }
     const generation = this.generation, id = crypto.randomUUID(), focused = workspace.groups.focusedId, active = workspace.activeId;
     const current = () => generation === this.generation && this.openRequests.get(groupId) === request && workspace.groups.groups.includes(group);
     let content: DocumentContent | undefined;
@@ -136,8 +141,8 @@ export class ReviewWorkspaceController {
         workspace.remove(id); controller.dispose(); this.entries.delete(id); reviewViews.entries = [...this.entries.values()]; return;
       }
       this.options.render();
-      if (workspace.groups.focusedId === focused && workspace.activeId === active) await this.options.activate(id);
-      else if (workspace.groups.focusedId !== groupId) { group.activeId = id; this.options.render(); this.sync(); }
+      if (preserveFocus ? workspace.groups.focusedId === groupId : workspace.groups.focusedId === focused && workspace.activeId === active) await this.options.activate(id);
+      else if (workspace.groups.focusedId !== groupId) select(id);
     } catch (error) {
       project.error = error instanceof Error ? error.message : String(error);
       if (workspace.find(id)) { workspace.remove(id); this.entries.get(id)?.controller.dispose(); this.entries.delete(id); reviewViews.entries = [...this.entries.values()]; }

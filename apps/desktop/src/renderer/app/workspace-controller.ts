@@ -15,7 +15,8 @@ import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import { isFileLocation } from '../../core/document/file-location';
 import { isMarkdownDocument, isNotebookDocument } from '../../core/document/document-profile';
-import { createTabSession, isDocumentTab, WorkspaceState } from '../../core/workspace/workspace-state';
+import { createTabSession, isDocumentTab, WorkspaceState, type DocumentTab } from '../../core/workspace/workspace-state';
+import type { EditorOpenOptions } from '../../core/workspace/editor-groups';
 import type { ThemeSnapshot } from '../../protocol/desktop-api';
 import { mount, tick } from 'svelte';
 import App from '../App.svelte';
@@ -306,7 +307,72 @@ export function startWorkspace(desktop: DesktopPort) {
     showRenderError: () => void surfaces.enterEditor(),
     retryPreview: () => void preview.retry(),
   };
-  mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, terminalApi: desktop.terminal, desktop,
+  /**
+   * What the side panel opens goes beside the group in use while another group is on screen, and
+   * leaves command focus alone: the tab being used stays in view and keeps the keyboard, so the
+   * next item from the panel lands in that same other group. With one group shown (or one
+   * maximized) the panel opens in it, like every other command. An explicit group or "to the
+   * Side" request is the caller's own placement.
+   */
+  const beside = (options: EditorOpenOptions = {}): EditorOpenOptions => {
+    if (options.groupId || options.side) return options;
+    const group = workspace.groups.beside(workspace.groups.focusedId);
+    return group ? { ...options, groupId: group.id, preserveFocus: true } : options;
+  };
+  /** A review keeps its command projection unless the open moved focus off it after all. */
+  const leftReview = () => { if (workspace.active?.kind !== 'diff') projects.deactivateGitDiff(); };
+  const failed = (error: unknown) => { browser.error = String(error); };
+  const sidebarActions: AppActions = { ...actions,
+    openProjectFile: (path, options) => void projects.openFile(path, beside(options)),
+    openProjectFiles: async paths => { const place = beside({ pinned: true }); for (const path of paths) await projects.openFile(path, place); },
+    openProjectSearchResult: result => void projects.openSearchResult(result, beside()),
+    reviewProjectGitChange: (path, staged, options) => void projects.reviewGitChange(path, staged, beside(options)),
+    reviewGitHistory: selection => void projects.reviewGitHistory(selection, beside()),
+    newWebTab: (input, background) => {
+      const place = beside();
+      // A background tab covers nothing: it joins the group in use, unselected.
+      if (background || !place.preserveFocus) return actions.newWebTab(input, background);
+      void tabs.openWeb(input, false, place).then(leftReview, failed);
+    },
+    newTerminal: groupId => {
+      const place = beside({ groupId });
+      if (!place.preserveFocus) return actions.newTerminal(groupId);
+      projectOpenRequest++; void tabs.openTerminal('', place.groupId, undefined, true).then(leftReview, failed);
+    },
+    openProjectTerminal: path => {
+      const place = beside();
+      if (!place.preserveFocus) return actions.openProjectTerminal(path);
+      void tabs.openTerminal(path, place.groupId, undefined, true).then(leftReview, failed);
+    },
+    openTerminalSession: id => {
+      const place = beside();
+      if (!place.preserveFocus) return actions.openTerminalSession(id);
+      void tabs.openTerminalSession(id, place).then(leftReview, failed);
+    },
+    newFolderTab: groupId => {
+      const place = beside({ groupId });
+      if (!place.preserveFocus) return actions.newFolderTab(groupId);
+      projectOpenRequest++;
+      void (async () => tabs.openFolder(project.folder?.path ?? await desktop.files.home(), { groupId: place.groupId, reuse: false, preserveFocus: true }))()
+        .then(leftReview, failed);
+    },
+    openFolder: async (path, options = {}) => {
+      const place = beside({ groupId: options.groupId, side: options.side });
+      if (!place.preserveFocus) return actions.openFolder(path, options);
+      projectOpenRequest++;
+      const location = await desktop.files.resolve(path);
+      if (location.kind !== 'folder') throw Error(`No folder exists at ${path}.`);
+      await tabs.openFolder(location.path, { groupId: place.groupId, selection: options.selection, reuse: !options.newTab, preserveFocus: true });
+      leftReview();
+    },
+    // A row of the panel selects a tab where it already is: without focus when that is another group.
+    activateTab: id => {
+      const group = workspace.groups.owner(id);
+      if (!group || group.id === workspace.groups.focusedId || !workspace.groups.shown(group.id)) return actions.activateTab(id);
+      projectOpenRequest++; return tabs.reveal(id).then(leftReview);
+    },
+  };
+  mount(App, { target: document.querySelector<HTMLDivElement>('#app')!, props: { actions, sidebarActions, terminalApi: desktop.terminal, desktop,
     mediaPosition: (id: string, position: import('../../core/reading/reading-position').ReadingPosition) => { const tab = workspace.find(id); if (tab && isDocumentTab(tab) && workspace.groups.groups.some(group => group.activeId === id) && !(workspace.activeId === id && project.gitDiffActive)) positions.remember(tab, position); } } });
   const shell = document.querySelector<HTMLElement>('.shell')!;
   restorePanelWidths(shell);
@@ -326,7 +392,7 @@ export function startWorkspace(desktop: DesktopPort) {
   let browsers: ReturnType<typeof createBrowserRuntime> | undefined;
   const syncGroupLayout = () => { groups?.sync(); projects?.syncReviews(); browsers?.sync(true); };
   const reader = new ReaderController({ desktop: layouts.port('documents'), shell, frames: previewFrames, get tabs() { return workspace.documents; }, active,
-    activeId: () => workspace.activeId, initialTheme,
+    activeId: () => workspace.activeId, initialTheme, focusedGroup: () => workspace.groups.focusedId,
     syncBackgrounds: () => groups?.backgrounds() ?? [],
     layoutGuide: (previews) => groups?.layoutGuide(previews),
     applyProductTheme: (themeId) => { applyShellTheme(themeId); editor.setTheme(themeId); },
@@ -474,8 +540,10 @@ export function startWorkspace(desktop: DesktopPort) {
       const request = ++projectOpenRequest;
       const documentSnapshot = await desktop.readDocumentLocation(fileLocation(path));
       if (!documentSnapshot || request !== projectOpenRequest) return false;
-      projects.deactivateGitDiff();
+      // A file shown beside the group in use leaves that group's review as it is.
+      if (!options.preserveFocus) projects.deactivateGitDiff();
       await tabs.show(documentSnapshot, 'viewer', 'document', undefined, options);
+      if (options.preserveFocus) leftReview();
       return request === projectOpenRequest;
     },
     openWorkingTree: async (path) => {
@@ -495,6 +563,18 @@ export function startWorkspace(desktop: DesktopPort) {
       if (activeReview) preview.cancelSchedule();
     },
     highlight: (query, target) => {
+      // A result opened beside the group in use is not the active tab. The marks of the document in
+      // use stay as they are; the tab that shows the result goes to it, without taking the keyboard.
+      const shown = target && workspace.activeContent?.document.path !== target.path
+        ? workspace.groups.groups.filter(group => group.id !== workspace.groups.focusedId && workspace.groups.shown(group.id))
+          .map(group => workspace.find(group.activeId ?? '')).find((tab): tab is DocumentTab => !!tab && isDocumentTab(tab) && tab.document.path === target.path)
+        : null;
+      if (shown && target) {
+        if (shown.surface === 'viewer' && target.surface === 'viewer') reader.searchIn(shown, query, target);
+        // The group's editor takes the tab on the layout pass that follows its selection.
+        else if (shown.surface === 'editor' && target.surface === 'editor') void tick().then(() => { groups?.sync(); editor.revealMatch(shown.id, query, target); });
+        return;
+      }
       const editing = workspace.active?.surface === 'editor';
       const currentTarget = target?.surface === (editing ? 'editor' : 'viewer') ? target : undefined;
       reader.projectSearch(editing ? '' : query, editing ? undefined : currentTarget);

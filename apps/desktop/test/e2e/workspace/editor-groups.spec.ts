@@ -8,6 +8,7 @@ import type { MarkTexApi } from '../../../src/protocol/desktop-api';
 import { dragTerminal } from '../../support/terminal/terminal-drag';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { openApplicationMenu } from '../../support/electron/application-menu';
+import { nativeInput } from '../../support/electron/native-input';
 
 async function open(page: Page, file: string) {
   await page.evaluate(file => (window as unknown as { marktex: MarkTexApi }).marktex.openLink(`marktex-resource://file${file}`), file);
@@ -323,6 +324,71 @@ test('editing another visible source group preserves scroll and the newly clicke
     await expect(firstEditor.locator('.view-lines')).toContainText('CLICKED_FIRST');
   } catch (error) {
     await page.screenshot({ path: test.info().outputPath('group-focus.png') }).catch(() => {});
+    throw error;
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a preview is only ever placed in its own group while focus moves between groups', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-group-focus-preview-'));
+  const text = path.join(root, 'package.json'), beside = path.join(root, 'beside.md'), readme = path.join(root, 'README.md');
+  await writeFile(text, JSON.stringify({ name: 'focus', scripts: { start: 'run' } }, null, 2));
+  await writeFile(beside, '# Beside\n\nThe reader of the left group.\n');
+  await writeFile(readme, '# Readme\n\nThe reader of the right group.\n');
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', text], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const page = await app.firstWindow();
+  type Placement = { tabId: string; x: number; foreground: boolean };
+  try {
+    await focusApplication(app);
+    await open(page, beside); await open(page, readme);
+    await drop(page, 'README.md', 0, 'right');
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const left = page.locator('.editor-group').first(), right = page.locator('.editor-group').nth(1);
+    const tabId = async (name: string) => (await page.locator('.document-tab').filter({ hasText: name }).getAttribute('data-tab-id'))!;
+    const ids = { beside: await tabId('beside.md'), readme: await tabId('README.md') };
+    // The shell is laid out for a newly focused group a moment after focus moves. A preview placed
+    // by the previous layout is over the other group's document until then, so every rectangle
+    // the shell asks main for is checked, not only where the previews end up.
+    await app.evaluate(({ ipcMain }) => {
+      const placements: Placement[] = [];
+      (globalThis as unknown as { previewPlacements: Placement[] }).previewPlacements = placements;
+      ipcMain.on('preview:show', (_event, message: { tabId: string | null; bounds: { x: number } | null; backgrounds?: Array<{ tabId: string; bounds: { x: number } }> }) => {
+        for (const entry of message.backgrounds ?? []) placements.push({ tabId: entry.tabId, x: entry.bounds.x, foreground: false });
+        if (message.tabId && message.bounds) placements.push({ tabId: message.tabId, x: message.bounds.x, foreground: true });
+      });
+    });
+    const placements = () => app.evaluate(() => (globalThis as unknown as { previewPlacements: Placement[] }).previewPlacements);
+    const role = async (id: string) => (await placements()).filter(placement => placement.tabId === id).pop()?.foreground;
+    const body = (await right.locator('.group-body').boundingBox())!;
+    // Real pointer input throughout: a native reader reports focus only when the window system
+    // gives it focus, and a click sent to the shell page alone never takes it away again.
+    const click = async (target: Locator | { x: number; y: number }) => {
+      const box = 'x' in target ? { ...target, width: 0, height: 0 } : (await target.boundingBox())!;
+      await nativeInput({ click: await app.evaluate(({ BrowserWindow }, point) => {
+        const owner = BrowserWindow.getAllWindows()[0], bounds = owner.getContentBounds(), zoom = owner.webContents.getZoomFactor();
+        return { x: bounds.x + point.x * zoom, y: bounds.y + point.y * zoom };
+      }, { x: box.x + box.width / 2, y: box.y + box.height / 2 }) });
+    };
+    const focusRight = {
+      tab: () => click(right.locator('.document-tab .tab-name').filter({ hasText: 'README.md' })),
+      reader: () => click({ x: body.x + body.width / 2, y: body.y + body.height / 2 }),
+    };
+    for (const shown of ['package.json', 'beside.md']) for (const how of ['tab', 'reader'] as const) {
+      await click(left.locator('.document-tab .tab-name').filter({ hasText: shown }));
+      await expect(left, `${shown} takes focus`).toHaveClass(/focused/);
+      await expect(left.locator('.document-tab[aria-selected="true"] .tab-name')).toHaveText(shown);
+      await expect.poll(() => role(ids.readme), `README.md beside ${shown}`).toBe(false);
+      if (shown === 'beside.md') await expect.poll(() => role(ids.beside)).toBe(true);
+      await focusRight[how]();
+      await expect(right, `focus moved by the ${how} from ${shown}`).toHaveClass(/focused/);
+      await expect.poll(() => role(ids.readme), `README.md focused by its ${how} from ${shown}`).toBe(true);
+      if (shown === 'beside.md') await expect.poll(() => role(ids.beside)).toBe(false);
+    }
+    const all = await placements();
+    expect(all.filter(placement => placement.tabId === ids.readme && placement.x < body.x)).toEqual([]);
+    expect(all.filter(placement => placement.tabId === ids.beside && placement.x >= body.x)).toEqual([]);
+  } catch (error) {
+    await page.screenshot({ path: test.info().outputPath('group-focus-preview.png') }).catch(() => {});
     throw error;
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

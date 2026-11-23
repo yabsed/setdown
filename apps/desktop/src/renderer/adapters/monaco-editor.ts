@@ -179,46 +179,7 @@ export class MonacoEditor {
     this.groupId = id;
     const api = this.apiValue;
     if (!api || (!this.loading && !this.editorValue)) return;
-    let entry = this.groupEditors.get(id);
-    if (!entry) {
-      const host = document.createElement('div');
-      host.className = 'group-monaco-instance';
-      this.options.host.append(host);
-      const editor = api.editor.create(host, {
-        // Group/surface containers clip their contents. Fixed widgets keep LSP
-        // hovers and suggestions visible when Monaco places them beyond a pane.
-        fixedOverflowWidgets: true,
-        // The menu at the cursor is the app's own (`openHere`): it holds the tools' answers for
-        // that position instead of the editor's fixed list. What a tool's lens offers is an entry
-        // of that menu, so lenses are not drawn between the lines.
-        contextmenu: false,
-        automaticLayout: true, 'semanticHighlighting.enabled': true, codeLens: false, inlayHints: { enabled: 'offUnlessPressed' }, linkedEditing: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
-        wordWrap: 'off', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: true },
-        scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
-        fontFamily: APP_FONT_FAMILY,
-        ...textZoomOptions(), padding: { top: 26, bottom: 60 },
-        renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
-      });
-
-      // A find button's default mouse focus activates a background group and
-      // reparents its editor before click can reach the button. Let the action
-      // run first (Close then focuses the editor itself). Keyboard focus and
-      // activation still use Monaco's normal tabindex/keydown handling.
-      const keepFindActionTarget = (event: MouseEvent) => {
-        if (event.button === 0 && event.target instanceof Element
-          && event.target.closest('.find-widget [role="button"]')) event.preventDefault();
-      };
-      host.addEventListener('mousedown', keepFindActionTarget, true);
-      editor.onDidDispose(() => host.removeEventListener('mousedown', keepFindActionTarget, true));
-
-      this.installBindings(api, editor);
-      editor.onDidFocusEditorText(() => {
-        const tab = this.options.tabs().find(t => t.id === this.groupEditors.get(id)?.tabId);
-        if (tab && tab.id !== this.options.active()?.id) this.options.focusTab?.(tab.id);
-      });
-      entry = { host, editor, tabId: null };
-      this.groupEditors.set(id, entry);
-    }
+    const entry = this.groupEditor(api, id);
     if (this.editorValue !== entry.editor) {
       this.projectDecorations?.clear();
       this.editorValue = entry.editor;
@@ -230,6 +191,49 @@ export class MonacoEditor {
       if (focused && !entry.editor.hasTextFocus()) entry.editor.focus();
     }
   }
+  /** Each group keeps one editor instance for as long as it exists. */
+  private groupEditor(api: typeof Monaco, id: string) {
+    let entry = this.groupEditors.get(id);
+    if (entry) return entry;
+    const host = document.createElement('div');
+    host.className = 'group-monaco-instance';
+    this.options.host.append(host);
+    const editor = api.editor.create(host, {
+      // Group/surface containers clip their contents. Fixed widgets keep LSP
+      // hovers and suggestions visible when Monaco places them beyond a pane.
+      fixedOverflowWidgets: true,
+      // The menu at the cursor is the app's own (`openHere`): it holds the tools' answers for
+      // that position instead of the editor's fixed list. What a tool's lens offers is an entry
+      // of that menu, so lenses are not drawn between the lines.
+      contextmenu: false,
+      automaticLayout: true, 'semanticHighlighting.enabled': true, codeLens: false, inlayHints: { enabled: 'offUnlessPressed' }, linkedEditing: true, language: 'markdown', theme: monacoThemeName(this.options.theme()),
+      wordWrap: 'off', wrappingIndent: 'same', lineNumbers: 'on', minimap: { enabled: true },
+      scrollBeyondLastLine: false, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
+      fontFamily: APP_FONT_FAMILY,
+      ...textZoomOptions(), padding: { top: 26, bottom: 60 },
+      renderWhitespace: 'selection', bracketPairColorization: { enabled: true }, stickyScroll: { enabled: false },
+    });
+
+    // A find button's default mouse focus activates a background group and
+    // reparents its editor before click can reach the button. Let the action
+    // run first (Close then focuses the editor itself). Keyboard focus and
+    // activation still use Monaco's normal tabindex/keydown handling.
+    const keepFindActionTarget = (event: MouseEvent) => {
+      if (event.button === 0 && event.target instanceof Element
+        && event.target.closest('.find-widget [role="button"]')) event.preventDefault();
+    };
+    host.addEventListener('mousedown', keepFindActionTarget, true);
+    editor.onDidDispose(() => host.removeEventListener('mousedown', keepFindActionTarget, true));
+
+    this.installBindings(api, editor);
+    editor.onDidFocusEditorText(() => {
+      const tab = this.options.tabs().find(t => t.id === this.groupEditors.get(id)?.tabId);
+      if (tab && tab.id !== this.options.active()?.id) this.options.focusTab?.(tab.id);
+    });
+    entry = { host, editor, tabId: null };
+    this.groupEditors.set(id, entry);
+    return entry;
+  }
   private moveHost(host: HTMLElement, parent: HTMLElement): void {
     // Removing/reinserting a focused editor can detach Chromium's EditContext
     // during its focus event. An atomic DOM move retains focus, caret and IME.
@@ -238,16 +242,21 @@ export class MonacoEditor {
     else parent.append(host);
   }
   syncGroups(groups: readonly { id: string; activeId: string | null }[], focusedId: string): void {
-    if (!this.editorValue) return;
-    for (const [id, entry] of this.groupEditors) {
-      if (!groups.some(group => group.id === id)) {
-        entry.editor.dispose(); entry.host.remove(); this.groupEditors.delete(id); continue;
-      }
-      const tab = this.options.tabs().find(tab => tab.id === groups.find(g => g.id === id)?.activeId);
+    const api = this.apiValue;
+    if (!this.editorValue || !api) return;
+    for (const [id, entry] of this.groupEditors) if (!groups.some(group => group.id === id)) {
+      entry.editor.dispose(); entry.host.remove(); this.groupEditors.delete(id);
+    }
+    for (const { id, activeId } of groups) {
       if (id === focusedId) continue;
+      const tab = this.options.tabs().find(tab => tab.id === activeId);
+      const host = document.querySelector<HTMLElement>(`.group-editor-host[data-group-id="${id}"]`);
+      // A group that never had command focus has no editor yet. A source tab shown in it without
+      // focus (`TabController.reveal`) gets one here, once the group's own host is laid out.
+      const entry = this.groupEditors.get(id) ?? (tab?.surface === 'editor' && host ? this.groupEditor(api, id) : null);
+      if (!entry) continue;
       if (entry.tabId && entry.tabId !== tab?.id) this.views.set(entry.tabId, entry.editor.saveViewState());
       entry.tabId = tab?.id ?? null;
-      const host = document.querySelector<HTMLElement>(`.group-editor-host[data-group-id="${id}"]`);
       if (host && entry.host.parentElement !== host) this.moveHost(entry.host, host);
       entry.host.style.visibility = tab?.surface === 'editor' ? 'visible' : 'hidden';
       const model = tab?.surface === 'editor' ? this.ensureModel(tab) : null;
@@ -425,6 +434,22 @@ export class MonacoEditor {
       editor.revealRangeInCenterIfOutsideViewport(matches[active].range);
       editor.focus();
     }
+  }
+  /**
+   * Select a project search result in the editor of a group other than the focused one. The focused
+   * editor keeps the keyboard and the marks of `projectSearch`.
+   */
+  revealMatch(tabId: string, query: string, target: SearchTarget): boolean {
+    const entry = [...this.groupEditors.values()].find(entry => entry.tabId === tabId && entry.editor !== this.editorValue);
+    const model = entry?.editor.getModel();
+    if (!entry || !model || !query) return false;
+    const matches = model.findMatches(query, false, false, false, null, false, 10_000);
+    const match = matches.find(({ range }) => range.startLineNumber === target.line && range.startColumn === target.column)
+      ?? matches[Math.min(Math.max(0, target.ordinal), matches.length - 1)];
+    if (!match) return false;
+    entry.editor.setSelection(match.range);
+    entry.editor.revealRangeInCenterIfOutsideViewport(match.range);
+    return true;
   }
   projectMatches(tab: DocumentContent, query: string, limit = 300): ProjectMatch[] {
     const model = this.models.get(documentIdentity(tab));
