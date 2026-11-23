@@ -52,6 +52,31 @@ filter/settings checks.
 Explorer commands are scoped to the tree. Native accelerators, the main Edit
 menu, and context-menu actions must agree on the selected files; inline name
 inputs, Monaco, terminals and reading surfaces retain their own text clipboard.
+
+A file shown in a tab can always be copied as a file. In a tab that shows a file
+as a whole (an image, a video, a PDF, an office document, HWP included) Copy with
+nothing selected (Ctrl/Cmd+C, Edit ▸ Copy) takes the file itself, wherever it is
+on the filesystem, exactly as Copy on an Explorer or folder-tab row does. Selected
+text (a PDF's, a document's) and a focused text field keep the text Copy, and so
+does the side panel. A text document's Ctrl/Cmd+C is always its editor's or
+reader's; its file, like any saved file's or folder's, is copied with Copy in the
+tab's context menu. `renderer/files/tab-file-copy.ts` takes `beforecopy` and
+`copy` while capturing: Blink offers Copy without a selection only to a document
+that takes `beforecopy`, and PDF.js answers every `copy` in its text layer before
+it could bubble. It decides by what holds the keyboard, not by the event's target,
+which with nothing focused is wherever the last click left the caret. It writes
+nothing itself; main owns the clipboard through `files:copy`.
+
+A copy offers `text/uri-list` and `x-special/gnome-copied-files` (`copy`) beside
+the nonce and the plain paths, so it pastes as files in the Explorer, in a folder
+tab, in another Setdown window and in a file manager. A Cut offers only the URI
+list: it stays this window's to finish, and pastes elsewhere as a copy.
+`media/file-copy.spec.ts` presses the real shortcut in an image, a video, a PDF, a
+DOCX and an HWP tab of files outside the open folder, reads the formats back and
+pastes each into the Explorer; it also covers Edit ▸ Copy, the tab menu on a
+background Markdown tab, and the editor keeping its text Copy.
+`test/wayland/clipboard-paste.spec.ts` copies from an image tab of the XWayland
+window and pastes in a native Wayland application.
 The native menu overlay retains the originating tree target across its focus
 change. Tree-owned Undo reverses the latest recorded file operation in that
 window; it must not undo the active editor. Redo is not provided.
@@ -778,55 +803,37 @@ latency retain the same 48-bucket comparison.
 
 ## What the side panel opens
 
-A side panel is used next to a tab that is being read or worked in. While another
-editor group is on screen, what the panel opens is shown in the group beside the
-focused one (right, then left, below, above: `EditorGroups.beside`) and command
-focus stays where it was. The focused group keeps its tab and the keyboard's
-commands (Close Tab, Save, Find), so the next item from the panel lands in that
-same other group; clicking into that group moves focus as usual, and the panel
-then opens beside it. With one group on screen, or one maximized, the panel opens
-in it and the tab takes focus, as every other command does.
+What the side panel opens goes to the focused group and takes command focus, as
+in VS Code and as every other command does. This holds with one group or several,
+and for every view of the panel: Explorer opens (click, double click, Enter,
+Open, "Reveal in Folder Tab", "Open in Terminal"), Search results, Source Control
+changes and history entries, the Browser panel's new tab, bookmarks, history and
+a download's "Show in folder", new and listed Terminal sessions, and new and
+listed file manager tabs. The group that is clicked into is the one the next item
+opens in; another group on screen keeps its tabs, its selected tab and its
+reading position.
 
-This holds for Explorer opens (click, double click, Enter, Open, "Reveal in
-Folder Tab", "Open in Terminal"), Search results, Source Control changes and
-history entries, the Browser panel's new tab, bookmarks, history and a download's
-"Show in folder", new and listed Terminal sessions, and new and listed file
-manager tabs. Explicit
-placements keep their meaning: "Open to the Side" opens to the right of the
-focused group and takes focus, and a middle click on a bookmark or history entry
-adds an unselected tab to the focused group, which covers nothing. An extension
-page opened from the Browser panel is created by the main process and still opens
-in the focused group.
+Explicit placements keep their meaning: "Open to the Side" opens to the right of
+the focused group and takes focus, and a middle click on a bookmark or history
+entry adds an unselected tab to the focused group. A picture, PDF, Office file or
+notebook has one view per file: opening one that lives in another group selects
+it there, and focus follows. A text file already open in another group gets its
+own tab in the focused group, over the same document.
 
-A tab that already exists is selected where it is. A file open in the other
-group is selected there instead of opened twice; a picture, PDF, Office file or
-notebook (one view per file), a terminal session's tab or a file manager tab
-that lives in the focused group is activated in it. A terminal session without a
-tab gets a new tab in the other group instead of replacing the active tab.
+An earlier rule showed what the panel opened in the group beside the focused one
+and left focus where it was (2026-11-23). It was replaced on 2026-11-24: a file
+picked while looking at one group appeared in the other one.
+`workspace/sidebar-placement.spec.ts` opens from each view of the panel with two
+groups on screen and checks that the focused group takes the tab while the other
+group stays as it was.
 
-`TabController.reveal` shows a tab without focus: it selects the tab in its group
-and leaves presentation to the group runtimes. `group-runtime.ts` prepares a
-Markdown reader from the tab's own file, `MonacoEditor.syncGroups` gives the
-group a source editor even when it never had focus or Monaco had not loaded yet,
-`browser-runtime.ts` lays the page out and `ReviewWorkspaceController` mounts the
-comparison. The focused document, its preview session, its watcher and an active
-review's command projection are not touched, and the preview slot rules of
-[Preview tabs](#preview-tabs) apply to the group the tab opens in. A Search
-result opened this way is reached in its own tab once that tab has the document
-(`ReaderController.searchIn`, `MonacoEditor.revealMatch`); the document in use
-keeps its marks, selection and position. Opening a result changes the workspace,
-which runs the same query again; that re-run does not cancel the jump to the
-result, with one group or several.
+Opening a Search result changes the workspace, which runs the same query again;
+that re-run does not cancel the jump to the result.
 
-`sidebarActions` in `app/workspace-controller.ts` is the one place that decides
-this placement; the panels call the same actions as the rest of the shell.
-`editor-groups.test.ts`, `text-workspace.test.ts`, `review-workspace.test.ts` and
-`reader-preparation.test.ts` cover the group choice, focus-preserving opens of
-each tab kind and the deferred search jump. `workspace/sidebar-placement.spec.ts`
-drives every panel in real Electron with two groups, checks the live readers,
-editors and pages of both groups, that Close Tab still closes the tab in use,
-the one-group fallback, a group that never had a source editor, and that "Open
-to the Side" still takes focus.
+The panels call the same actions as the rest of the shell
+(`app/workspace-controller.ts`); nothing chooses a group on their behalf. The
+spec also covers a file with one view that lives in the other group and "Open to
+the Side".
 
 ## Explorer selection and tab-strip drops
 
@@ -1020,6 +1027,19 @@ insertion target. Returning from another split activates that target before
 inserting, and stale or closed documents cannot receive the insertion. Table
 insertion keeps outside-click and Escape dismissal. Popup positioning follows
 the original command button in the originating group.
+
+Focus moving between groups never moves what a location bar shows. Only the
+focused group's bar has the Markdown actions (outline, mode, insertions), and the
+box that holds them leaves the row when it has nothing to show, as for a web page,
+a terminal or a folder: an empty flex item would still take the row's gap and
+shift the address and the buttons beside it by 3 CSS pixels on every click into
+another group. The compact measurement counts only what is laid out.
+`browser/layout.spec.ts` compares every button's place in two web groups across
+focus changes. A group without focus still marks its selected tab: the tab keeps
+the selected background and only its title is quieter (VS Code themes use
+`tab.unfocusedActiveBackground`/`Foreground` where they define them). The hover
+color, used there before, is 2/255 from the strip in Solarized Light
+(`workspace/editor-groups.spec.ts`).
 
 Every resource uses the shared location bar. When fixed controls leave less than
 120 CSS pixels for the address, the inline input becomes an icon-only Search

@@ -1,6 +1,6 @@
 import { electron } from '../../support/electron/electron-app';
 import { expect, test, type Page, type Locator } from '@playwright/test';
-import { mkdtemp, rm, writeFile, copyFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { WebContentsView } from 'electron';
@@ -324,6 +324,44 @@ test('editing another visible source group preserves scroll and the newly clicke
     await expect(firstEditor.locator('.view-lines')).toContainText('CLICKED_FIRST');
   } catch (error) {
     await page.screenshot({ path: test.info().outputPath('group-focus.png') }).catch(() => {});
+    throw error;
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a group without focus still marks its selected tab', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-unfocused-tab-'));
+  const first = path.join(root, 'first.md'), second = path.join(root, 'second.md'), third = path.join(root, 'third.md');
+  for (const file of [first, second, third]) await writeFile(file, `# ${path.basename(file)}\n`);
+  // Solarized Light: its hover color is 2/255 off the strip, which once painted an unfocused group's selected tab.
+  await mkdir(path.join(root, 'config/Setdown'), { recursive: true });
+  await writeFile(path.join(root, 'config/Setdown/reader-settings.json'), JSON.stringify({ previewTheme: 'solarized-light' }));
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', first], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  const page = await app.firstWindow();
+  try {
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'solarized-light');
+    await open(page, second); await open(page, third);
+    await drop(page, 'third.md', 0, 'right');
+    await expect(page.locator('.editor-group')).toHaveCount(2);
+    const left = page.locator('.editor-group').first(), right = page.locator('.editor-group').nth(1);
+    await expect(right).toHaveClass(/focused/);
+    await expect(left).not.toHaveClass(/focused/);
+    const paint = (group: Locator, selector: string) => group.locator(selector).first().evaluate(node => {
+      const style = getComputedStyle(node);
+      return { background: style.backgroundColor, color: style.color };
+    });
+    const strip = await paint(left, '.tab-strip');
+    const selected = await paint(left, '.document-tab[aria-selected="true"]');
+    const other = await paint(left, '.document-tab[aria-selected="false"]');
+    const focusedSelected = await paint(right, '.document-tab[aria-selected="true"]');
+    // The selected tab stands out from the strip and its neighbours as it does in the focused group;
+    // only its title is quieter there.
+    expect(selected.background).toBe(focusedSelected.background);
+    expect(selected.background).not.toBe(strip.background);
+    expect(selected.background).not.toBe(other.background);
+    expect(selected.color).not.toBe(focusedSelected.color);
+  } catch (error) {
+    await page.screenshot({ path: test.info().outputPath('unfocused-selected-tab.png') }).catch(() => {});
     throw error;
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

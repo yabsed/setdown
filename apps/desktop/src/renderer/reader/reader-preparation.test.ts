@@ -61,30 +61,6 @@ test('reader link messages remove only the transport encoding and preserve URL e
   expect(f.links).toHaveLength(2);
 });
 
-test('a search result for a preview shown without focus waits for that preview to have the document', () => {
-  const f=fixture();
-  const other={id:'beside',document:{path:'/other.md'},surface:'viewer',revision:3,text:'a\nneedle',
-    anchor:{sourceLine:1,yRatio:.5},find:{open:false},previewUrl:null as string|null,previewRevision:null as number|null};
-  const target={line:2,lineOccurrence:0,ordinal:4};
-  type Tab=Parameters<typeof f.controller.searchIn>[0];
-  f.controller.searchIn(other as unknown as Tab,'needle',target);
-  expect(f.commands).toEqual([]);
-  // The group runtime reports each prepared revision. An older one is not the document that was searched.
-  Object.assign(other,{previewUrl:'marktex-preview://document/2',previewRevision:2});
-  f.controller.backgroundReady(other as unknown as Tab);
-  expect(f.commands).toEqual([]);
-  other.previewRevision=3; f.controller.backgroundReady(other as unknown as Tab);
-  expect(f.commands).toEqual([{command:'marktex:find',query:'needle',direction:'forward',findNext:false,
-    sourceLine:2,sourceOccurrence:0,searchOrdinal:4}]);
-  // The request is spent; a later preparation does not move the preview again.
-  f.controller.backgroundReady(other as unknown as Tab);
-  expect(f.commands).toHaveLength(1);
-  // A preview that is already current goes to the result at once.
-  f.controller.searchIn(other as unknown as Tab,'needle',{...target,line:1});
-  expect(f.commands).toHaveLength(2);
-});
-
-
 test('the focused preview is placed once its host is laid out for the group that received focus', async () => {
   // Focus moved to group-1; the shell still has the host over group-0 until it renders.
   const layout={host:'group-0',focused:'group-1'};

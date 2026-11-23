@@ -10,27 +10,14 @@ import path from 'node:path';
 import type { WebContentsView } from 'electron';
 import { chooseNativeMenu } from '../../support/browser/browser-fixture';
 import { pngFixture } from '../../support/media/png-fixture';
-import { openApplicationMenu } from '../../support/electron/application-menu';
 
 const exec = promisify(execFile);
 const entry = (page: Page, name: string) => page.getByRole('treeitem', { name, exact: true });
 const names = (group: Locator) => group.locator('.document-tab .tab-name');
 const selected = (group: Locator) => group.locator('.document-tab[aria-selected="true"] .tab-name');
 const panel = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
-
-/** File menu → an item. Over a live web page the menu is painted in its own native layer. */
-async function fileMenu(page: Page, id: string) {
-  await openApplicationMenu(page, 'File');
-  const item = async () => {
-    for (const layer of [page, ...page.context().pages().filter(layer => layer !== page && layer.url().includes('menu-overlay=1'))]) {
-      const found = layer.locator(`[data-menu-item-id="${id}"]`);
-      if (await found.isVisible().catch(() => false)) return found;
-    }
-    return null;
-  };
-  await expect.poll(async () => !!await item()).toBe(true);
-  await (await item())!.click();
-}
+/** The source editor of the group with command focus: the shared foreground surface draws it over that group. */
+const focusedEditor = (page: Page) => page.locator('.focused-content .monaco-editor .view-lines:visible');
 
 async function project() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-sidebar-placement-'));
@@ -80,152 +67,145 @@ async function launch(root: string, kind: 'md' | 'png' = 'md') {
       text: String(await (view as WebContentsView).webContents.executeJavaScript('document.body.innerText').catch(() => '')).trim().split('\n')[0],
       scrollY: Number(await (view as WebContentsView).webContents.executeJavaScript('window.scrollY').catch(() => 0)) }))))
     .sort((a, b) => a.x - b.x));
-  /** The left group still has command focus and still shows the tab that was being used. */
-  const inUse = async () => {
+  /** The left group has command focus and took what the panel opened; the right group is as it was. */
+  const besideUntouched = async () => {
     await expect(left).toHaveClass(/focused/);
     await expect(right).not.toHaveClass(/focused/);
-    await expect(names(left)).toHaveText([used]);
-    await expect(selected(left)).toHaveText(used);
-    if (kind === 'md') await expect.poll(async () => (await views())[0]?.text).toBe('In use');
-    else await expect(page.locator('.media-content:not(.inactive) .image-surface')).toHaveCount(2);
+    await expect(names(right)).toHaveText([other]);
+    await expect(selected(right)).toHaveText(other);
+    if (kind === 'md') await expect.poll(async () => (await views()).at(-1)).toEqual(expect.objectContaining({ text: 'Other', scrollY: 0 }));
   };
   const dispose = async () => { await disposeApplication(app); for (const folder of [root, config]) await rm(folder, { recursive: true, force: true }); };
-  return { app, page, left, right, views, inUse, dispose };
+  return { app, page, left, right, views, besideUntouched, dispose };
 }
 
-test('with two groups the side panel opens beside the tab in use and leaves command focus with it', async () => {
+test('with two groups the side panel opens in the focused group, as every other command does', async () => {
   test.setTimeout(240_000);
   const root = await project();
   const server = createServer((_request, response) => { response.setHeader('content-type', 'text/html');
     response.end('<!doctype html><title>Placed page</title><p>From the browser panel.</p>'); });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const { page, left, right, views, inUse, dispose } = await launch(root);
+  const { page, left, right, views, besideUntouched, dispose } = await launch(root);
   try {
-    // Explorer: a single click previews beside the tab in use, and the next one reuses that slot.
+    // Explorer: a single click previews in the group in use, and the next one reuses that slot.
     await entry(page, 'first.md').click();
-    await expect(names(right)).toHaveText(['other.md', 'first.md']);
-    await expect(selected(right)).toHaveText('first.md');
-    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['In use', 'First']);
-    await inUse();
+    await expect(names(left)).toHaveText(['used.md', 'first.md']);
+    await expect(selected(left)).toHaveText('first.md');
+    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['First', 'Other']);
+    await besideUntouched();
     await entry(page, 'second.md').click();
-    await expect(names(right)).toHaveText(['other.md', 'second.md']);
-    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['In use', 'Second']);
-    await inUse();
-    // The keyboard stays in the panel: the arrow keys keep walking the tree.
-    expect(await page.evaluate(() => !!document.activeElement?.closest('.project-sidebar'))).toBe(true);
-    await page.screenshot({ path: test.info().outputPath('explorer-preview-beside.png') });
+    await expect(names(left)).toHaveText(['used.md', 'second.md']);
+    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['Second', 'Other']);
+    await besideUntouched();
+    await page.screenshot({ path: test.info().outputPath('explorer-preview-focused.png') });
 
-    // A double click keeps the file open there. A text file gets that group's source editor.
+    // A double click opens a tab that stays, after the preview. A text file is shown in the focused group's source editor.
     await entry(page, 'notes.txt').dblclick();
-    await expect(selected(right)).toHaveText('notes.txt');
-    await expect(right.locator('.document-tab[aria-selected="true"]')).toHaveAttribute('data-preview', 'false');
-    await expect(right.locator('.monaco-editor .view-lines')).toContainText('notes line 1');
-    await expect(right.locator('.monaco-editor.focused')).toHaveCount(0);
-    await inUse();
+    await expect(names(left)).toHaveText(['used.md', 'second.md', 'notes.txt']);
+    await expect(left.locator('.document-tab[aria-selected="true"]')).toHaveAttribute('data-preview', 'false');
+    await expect(focusedEditor(page)).toContainText('notes line 1');
+    await besideUntouched();
 
-    // Search: the result's tab goes to the match; the tab in use neither moves nor loses its place.
+    // Search: the result opens in the focused group and goes to the match.
     await panel(page, 'Search').click();
     await page.getByRole('button', { name: 'All text', exact: true }).click();
     await page.getByLabel('Search in folder').fill('needle');
     for (const file of ['notes.txt', 'deep.md']) await page.locator('.search-file-heading').filter({ hasText: file }).click();
     await page.locator('.search-result[title^="notes.txt:300"]').click();
-    await expect(selected(right)).toHaveText('notes.txt');
-    await expect(right.locator('.monaco-editor .view-lines')).toContainText('needle in the text file');
-    await inUse();
+    await expect(selected(left)).toHaveText('notes.txt');
+    await expect(focusedEditor(page)).toContainText('needle in the text file');
+    await besideUntouched();
     await page.locator('.search-result[title^="deep.md:"]').click();
-    await expect(selected(right)).toHaveText('deep.md');
-    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['In use', 'Deep']);
-    await expect.poll(async () => (await views())[1]?.scrollY ?? 0).toBeGreaterThan(1000);
-    expect((await views())[0].scrollY).toBe(0);
-    await inUse();
-    await page.screenshot({ path: test.info().outputPath('search-result-beside.png') });
+    await expect(selected(left)).toHaveText('deep.md');
+    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['Deep', 'Other']);
+    await expect.poll(async () => (await views())[0]?.scrollY ?? 0).toBeGreaterThan(1000);
+    await besideUntouched();
+    await page.screenshot({ path: test.info().outputPath('search-result-focused.png') });
     await page.getByLabel('Search in folder').fill('');
 
-    // Source Control: a change is compared beside the tab in use.
+    // Source Control: a change is compared in the focused group.
     await panel(page, 'Source Control').click();
     await page.locator('.git-change-open').filter({ hasText: 'changed.txt' }).click();
-    await expect(selected(right)).toHaveText(/changed\.txt/);
-    await expect(right.getByRole('tab', { name: /changed\.txt.*Working Tree/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(left.getByRole('tab', { name: /changed\.txt.*Working Tree/ })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('.review-content:not(.inactive)')).toContainText('working tree line');
-    await inUse();
+    await besideUntouched();
 
-    // Terminal: a new session, and a session row, show in the other group.
+    // Terminal and Files: a new session or file manager tab, and a row of either list, show in the focused group.
     await panel(page, 'Terminal').click();
     await page.getByRole('button', { name: 'New terminal session' }).click();
-    await expect(selected(right)).toHaveText(/Terminal 1/);
+    await expect(selected(left)).toHaveText(/Terminal 1/);
     await expect(page.locator('.terminal-content:not(.inactive) .xterm')).toBeVisible();
-    await inUse();
-
-    // Files: a new file manager tab shows in the other group.
+    await besideUntouched();
     await panel(page, 'Files').click();
     await page.getByRole('button', { name: 'New file manager tab' }).click();
-    await expect(selected(right)).toHaveText(path.basename(root));
+    await expect(selected(left)).toHaveText(path.basename(root));
     await expect(page.locator('.folder-content:not(.inactive)')).toBeVisible();
-    await inUse();
+    await besideUntouched();
     await panel(page, 'Terminal').click();
     await page.locator('.terminal-list .session .select').click();
-    await expect(selected(right)).toHaveText(/Terminal 1/);
-    await inUse();
+    await expect(selected(left)).toHaveText(/Terminal 1/);
+    await besideUntouched();
     await panel(page, 'Files').click();
     await page.locator('.folder-sessions .session .select').click();
-    await expect(selected(right)).toHaveText(path.basename(root));
-    await inUse();
+    await expect(selected(left)).toHaveText(path.basename(root));
+    await besideUntouched();
 
-    // Browser: a visited page opened from History shows its live view in the other group.
+    // Browser: a visited page opened from History shows its live view in the focused group.
     await page.evaluate(url => window.marktex.openLink(url), `${origin}/`);
     // The first page of a fresh profile waits for the built-in extensions to start.
     await expect(left.getByRole('tab', { name: /Placed page/ })).toBeVisible({ timeout: 60_000 });
     await left.getByRole('tab', { name: /Placed page/ }).locator('.tab-close').click();
     await expect(page.getByRole('tab', { name: /Placed page/ })).toHaveCount(0);
-    await inUse();
     await panel(page, 'Browser').click();
     await page.getByRole('button', { name: 'History', exact: true }).click();
     await page.locator('.open-place').filter({ hasText: 'Placed page' }).click();
-    await expect(right.getByRole('tab', { name: /Placed page/ })).toHaveAttribute('aria-selected', 'true');
-    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['In use', 'From the browser panel.']);
-    await inUse();
-    await page.screenshot({ path: test.info().outputPath('browser-history-beside.png') });
+    await expect(left.getByRole('tab', { name: /Placed page/ })).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['From the browser panel.', 'Other']);
+    await besideUntouched();
+    await page.screenshot({ path: test.info().outputPath('browser-history-focused.png') });
 
-    // Commands still act on the tab in use: Close Tab closes it, not what the panel opened.
-    const opened = await names(right).allTextContents();
-    await fileMenu(page, 'menu-close-tab');
-    await expect(page.getByRole('tab', { name: /used\.md/ })).toHaveCount(0);
-    await expect(page.locator('.editor-group')).toHaveCount(1);
-    await expect(names(page.locator('.editor-group'))).toHaveText(opened);
-    // With one group left, the panel opens in it and the file takes focus as before.
+    // The group that is clicked into is the one in use from then on.
+    const opened = await names(left).allTextContents();
+    await right.getByRole('tab', { name: 'other.md' }).click();
+    await expect(right).toHaveClass(/focused/);
     await panel(page, 'Explorer').click();
     await entry(page, 'first.md').click();
-    await expect(selected(page.locator('.editor-group'))).toHaveText('first.md');
-    await expect(page.locator('.editor-group')).toHaveCount(1);
-    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['First']);
+    await expect(names(right)).toHaveText(['other.md', 'first.md']);
+    await expect(selected(right)).toHaveText('first.md');
+    await expect(right).toHaveClass(/focused/);
+    await expect(names(left)).toHaveText(opened);
+    await expect.poll(async () => (await views()).map(view => view.text)).toEqual(['From the browser panel.', 'First']);
   } finally { await dispose(); server.close(); }
 });
 
-test('a group that never had a source editor shows the text file the panel opens in it', async () => {
+test('a file with one view is selected where it is, and "Open to the Side" stays an explicit placement', async () => {
   test.setTimeout(120_000);
   const root = await project();
-  // Two pictures: no document has asked for the source editor yet, in either group.
-  const { page, right, inUse, dispose } = await launch(root, 'png');
+  const { page, left, right, besideUntouched, dispose } = await launch(root, 'png');
   try {
-    await inUse();
-    expect(await page.locator('.monaco-editor').count()).toBe(0);
+    await besideUntouched();
+    // A text file opens in the focused group, beside the picture it had.
     await entry(page, 'notes.txt').dblclick();
-    await expect(selected(right)).toHaveText('notes.txt');
-    await expect(right.locator('.monaco-editor .view-lines')).toContainText('notes line 1');
-    await expect(page.locator('.media-content:not(.inactive) .image-surface')).toHaveCount(1);
-    await expect(page.locator('.editor-group').first()).toHaveClass(/focused/);
-    await expect(selected(page.locator('.editor-group').first())).toHaveText('used.png');
-    // The picture is a document with one view: selecting it again from the panel shows it where it is.
+    await expect(names(left)).toHaveText(['used.png', 'notes.txt']);
+    await expect(selected(left)).toHaveText('notes.txt');
+    await expect(focusedEditor(page)).toContainText('notes line 1');
+    await besideUntouched();
+    // A picture has one view per file: opening the one in the other group selects it there, and focus follows.
     await entry(page, 'other.png').dblclick();
-    await expect(selected(right)).toHaveText('other.png');
-    await inUse();
-    // "Open to the Side" stays an explicit placement: it takes focus in the group on the right.
+    await expect(right).toHaveClass(/focused/);
+    await expect(names(right)).toHaveText(['other.png']);
+    await expect(names(left)).toHaveText(['used.png', 'notes.txt']);
+    // "Open to the Side" opens to the right of the focused group and takes focus.
+    await left.getByRole('tab', { name: 'notes.txt' }).click();
+    await expect(left).toHaveClass(/focused/);
     await page.getByRole('treeitem', { name: /^changed\.txt/ }).click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Open to the Side' }).click();
     await expect(selected(right)).toHaveText('changed.txt');
     await expect(right).toHaveClass(/focused/);
-    // The focused group's editor is drawn by the shared foreground surface, over that group.
-    await expect(page.locator('.monaco-editor .view-lines:visible')).toContainText('working tree line');
+    await expect(names(left)).toHaveText(['used.png', 'notes.txt']);
+    // The focused group's editor has the new file; the group that was left keeps showing its own.
+    await expect(focusedEditor(page)).toContainText('working tree line');
+    await expect(page.locator('.group-editor-host .monaco-editor .view-lines:visible')).toContainText('notes line 1');
   } finally { await dispose(); }
 });

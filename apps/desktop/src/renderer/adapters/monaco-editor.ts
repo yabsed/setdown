@@ -251,8 +251,8 @@ export class MonacoEditor {
       if (id === focusedId) continue;
       const tab = this.options.tabs().find(tab => tab.id === activeId);
       const host = document.querySelector<HTMLElement>(`.group-editor-host[data-group-id="${id}"]`);
-      // A group that never had command focus has no editor yet. A source tab shown in it without
-      // focus (`TabController.reveal`) gets one here, once the group's own host is laid out.
+      // A group that never had command focus has no editor yet. A source tab selected in it without
+      // focus gets one here, once the group's own host is laid out.
       const entry = this.groupEditors.get(id) ?? (tab?.surface === 'editor' && host ? this.groupEditor(api, id) : null);
       if (!entry) continue;
       if (entry.tabId && entry.tabId !== tab?.id) this.views.set(entry.tabId, entry.editor.saveViewState());
@@ -434,22 +434,6 @@ export class MonacoEditor {
       editor.revealRangeInCenterIfOutsideViewport(matches[active].range);
       editor.focus();
     }
-  }
-  /**
-   * Select a project search result in the editor of a group other than the focused one. The focused
-   * editor keeps the keyboard and the marks of `projectSearch`.
-   */
-  revealMatch(tabId: string, query: string, target: SearchTarget): boolean {
-    const entry = [...this.groupEditors.values()].find(entry => entry.tabId === tabId && entry.editor !== this.editorValue);
-    const model = entry?.editor.getModel();
-    if (!entry || !model || !query) return false;
-    const matches = model.findMatches(query, false, false, false, null, false, 10_000);
-    const match = matches.find(({ range }) => range.startLineNumber === target.line && range.startColumn === target.column)
-      ?? matches[Math.min(Math.max(0, target.ordinal), matches.length - 1)];
-    if (!match) return false;
-    entry.editor.setSelection(match.range);
-    entry.editor.revealRangeInCenterIfOutsideViewport(match.range);
-    return true;
   }
   projectMatches(tab: DocumentContent, query: string, limit = 300): ProjectMatch[] {
     const model = this.models.get(documentIdentity(tab));

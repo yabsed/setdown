@@ -24,8 +24,7 @@ import type { AppActions } from './ports/ui-actions';
   import type { DesktopPort } from './ports/desktop-port';
   import type { ReadingPosition } from '../core/reading/reading-position';
   import { project } from './project/project-state.svelte';
-  // `sidebarActions`: the same commands with the side panel's placement of what it opens.
-  let { actions, sidebarActions, terminalApi, desktop, mediaPosition }: { actions: AppActions; sidebarActions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
+  let { actions, terminalApi, desktop, mediaPosition }: { actions: AppActions; terminalApi: TerminalApi; desktop: DesktopPort;
     mediaPosition(id: string, position: ReadingPosition): void } = $props();
   onMount(() => {
     const show = (event: Event) => {
@@ -41,7 +40,7 @@ import type { AppActions } from './ports/ui-actions';
 </script>
 
 <section class="shell" data-surface="empty" data-tabs="false">
-  <ProjectSidebar actions={sidebarActions} languageApi={desktop.language} />
+  <ProjectSidebar {actions} languageApi={desktop.language} />
   <div class="editor-area" class:split={view.groups.length > 1}>
   {#if view.recoveryCount && view.tabs.length === 0}
     <div class="notice recovery-notice"><span>{view.recoveryCount} unsaved workspace recovery {view.recoveryCount === 1 ? 'snapshot is' : 'snapshots are'} available.</span><button type="button" onclick={actions.restoreWorkspace}>Review Recovery</button></div>

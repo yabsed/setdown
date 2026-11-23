@@ -544,12 +544,11 @@ history aligned with installed native content; a superseded uninstalled render
 cannot become a later patch base. Background preparation and early real tab
 split tests cover this ownership boundary.
 
-A file the side panel opens beside the group in use
-([workspace contract](contracts/workspace.md#what-the-side-panel-opens)) is such
-a background document from its first frame: `TabController.reveal` only selects
-the tab in its group, and `workspace/groups/group-runtime.ts` prepares and shows
-it. The focused document's preview session, activation and watcher are not
-involved. `workspace/sidebar-placement.spec.ts` checks both groups' live readers
+A file the side panel opens goes to the focused group
+([workspace contract](contracts/workspace.md#what-the-side-panel-opens)) and is
+activated there like any other open. The document of another group on screen
+stays that group's background document: its reader keeps its rectangle and its
+position. `workspace/sidebar-placement.spec.ts` checks both groups' live readers
 while files, search results and reviews are opened this way.
 
 A change of the focused group changes which reader is the foreground one, not any

@@ -104,24 +104,6 @@ test('a late background comparison keeps the group focused by the user', async (
   expect(selected?.kind === 'diff' && selected.filePath).toBe('/p/slow.txt');
 });
 
-test('a comparison opened without focus is shown beside the tab in use, and again when it is already there', async () => {
-  const f = fixture();
-  const used = createWorkspaceTab('used', { ...snapshot, path: '/p/used.txt', name: 'used.txt' }, 'editor', { sourceLine: 1, yRatio: .5, reason: 'empty-document', confidence: 'fallback' });
-  f.workspace.add(used); f.workspace.activeId = used.id;
-  const left = f.workspace.groups.focusedId, right = f.workspace.groups.split(left, 'right');
-  const other = createWorkspaceTab('other', { ...snapshot, path: '/p/b.txt', name: 'b.txt' }, 'editor', { sourceLine: 1, yRatio: .5, reason: 'empty-document', confidence: 'fallback' });
-  f.workspace.add(other, true, right.id); right.activeId = other.id;
-  const place = { groupId: right.id, preserveFocus: true };
-  await f.manager.review('/p/a.txt', false, place);
-  const review = f.workspace.find(right.activeId!)!;
-  expect(review.kind === 'diff' && review.filePath).toBe('/p/a.txt');
-  expect(f.workspace.activeId).toBe(used.id); expect(f.workspace.groups.focusedId).toBe(left);
-  // Covered by another tab of that group, the same comparison is selected again instead of opened twice.
-  right.activeId = other.id;
-  await f.manager.review('/p/a.txt', false, place);
-  expect(right.activeId).toBe(review.id); expect(right.tabs).toEqual([other.id, review.id]);
-  expect(f.workspace.activeId).toBe(used.id); expect(f.workspace.groups.focusedId).toBe(left);
-});
 
 test('renderer Reload restores the native window checkpoint without a fake ordinary tab', async () => {
   const f = fixture();

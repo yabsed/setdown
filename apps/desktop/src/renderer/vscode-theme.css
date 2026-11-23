@@ -10,6 +10,10 @@
 :root[data-vscode-theme="true"] .document-tab { background: var(--vscode-tab-inactiveBackground); color: var(--vscode-tab-inactiveForeground); }
 :root[data-vscode-theme="true"] .document-tab:hover { background: var(--vscode-tab-hoverBackground); color: var(--vscode-tab-hoverForeground); }
 :root[data-vscode-theme="true"] .document-tab[aria-selected="true"] { background: var(--vscode-tab-activeBackground); color: var(--vscode-tab-activeForeground); }
+:root[data-vscode-theme="true"] .editor-group:not(.focused) .document-tab[aria-selected="true"] {
+  background: var(--vscode-tab-unfocusedActiveBackground, var(--vscode-tab-activeBackground));
+  color: var(--vscode-tab-unfocusedActiveForeground, var(--vscode-tab-inactiveForeground));
+}
 :root[data-vscode-theme="true"] .explorer-row.is-selected { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
 :root[data-vscode-theme="true"] .explorer-tree:focus-within .explorer-row.is-selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
 :root[data-vscode-theme="true"] :is(.application-menu-popup, .application-submenu-popup, .project-context-menu) {

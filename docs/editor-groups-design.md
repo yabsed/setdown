@@ -78,6 +78,7 @@ The menu acts on the clicked tab without selecting it.
 | --- | --- |
 | Close, Close Others, Close to the Right, Close Saved, Close All | Same, scoped to the tab's group. Bulk closes ask once for every document whose last view is closing, and stop at Cancel or at an edit made while the prompt was open. |
 | Copy Path, Copy Relative Path | Same for files and folder tabs; relative to the open project folder. A web tab offers Copy Address. |
+| — | Copy, above them, puts the file or folder itself on the clipboard, as Copy on an Explorer row does; see "Explorer file operations" in the workspace contract. Every tab with a saved file or a folder has it; web pages, terminals and unsaved documents do not. |
 | Open Containing Folder, Reveal in Explorer View | Reveal in Folder Tab opens the parent folder with the file selected; Reveal in Explorer View needs the file inside the project folder. |
 | Keep Open | Same: turns a replaceable preview tab into an ordinary one. |
 | Pin, Unpin | Same; see below. |
@@ -91,7 +92,8 @@ Window and Find File References have no counterpart and are not offered.
 (`renderer/workspace/tabs/tab-menu.ts`), main shows the model in the native menu
 layer, so it stays above live readers and web pages, and resolves with the chosen
 command for the renderer to run. Main writes the clipboard itself: the shell
-document does not hold focus while the menu layer is open.
+document does not hold focus while the menu layer is open. Copy goes through
+`files:copy`, where main checks that the path exists before owning the clipboard.
 
 Pinned tabs follow VS Code's `EditorGroupModel` sticky editors. `Group.sticky`
 counts the leading pinned tabs. They keep the order in which they were pinned, new

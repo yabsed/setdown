@@ -120,3 +120,52 @@ if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') for (const scenario of scen
     await input.close();
   }
 });
+
+/**
+ * The other direction: a file shown in a tab of the XWayland window is copied with the physical
+ * shortcut and pasted in a native Wayland application, as into a file manager. The formats a file
+ * manager reads (`text/uri-list`, `x-special/gnome-copied-files`) have to cross the same bridge.
+ */
+if (process.env.SETDOWN_TEST_DISPLAY === 'xwayland') test('a file copied from an image tab of the XWayland window pastes into a native Wayland application', async () => {
+  test.setTimeout(120_000);
+  const input = await waylandInput();
+  const fixtures: Fixture[] = [];
+  try {
+    const source = await launch('x11', home => writeFile(path.join(home, '여름 사진.png'), photo));
+    fixtures.push(source);
+    const file = path.join(source.home, '여름 사진.png');
+    await source.page.evaluate(file => window.marktex.openLink(`marktex-resource://file${file}`), file);
+    const viewer = source.page.locator('.image-surface:not(.inactive)[data-image-ready="true"]');
+    await expect(viewer).toBeVisible();
+    await source.page.evaluate(() => addEventListener('keydown', event => { if (event.isTrusted) (globalThis as { realKey?: boolean }).realKey = true; }, true));
+    await expect.poll(async () => {
+      await input.send({ keys: ['Shift_L'] });
+      return source.page.evaluate(() => (globalThis as { realKey?: boolean }).realKey === true);
+    }).toBe(true);
+    await viewer.locator('.image-viewport').click();
+    await input.send({ keyDown: ['Control_L'], keys: ['c'], keyUp: ['Control_L'] });
+    await expect.poll(() => source.page.evaluate(() => window.marktex.explorer.clipboard())).toEqual({ paths: [file], cut: false });
+
+    const target = await launch('wayland');
+    fixtures.push(target);
+    expect(await target.app.evaluate(({ app }) => app.commandLine.getSwitchValue('ozone-platform'))).toBe('wayland');
+    const formats = () => target.app.evaluate(async ({ clipboard }) => (await clipboard.read()).flatMap(item => item.types));
+    await expect.poll(async () => (await formats()).filter(format => /uri-list|gnome-copied-files/.test(format)).length,
+      { message: `clipboard formats: ${(await formats()).join(', ')}` }).toBe(2);
+    await expect.poll(() => target.page.evaluate(() => window.marktex.explorer.clipboard())).toEqual({ paths: [file], cut: false });
+    await list(target.page).focus();
+    await target.page.keyboard.press('Control+v');
+    await expect(row(target.page, '여름 사진.png')).toHaveAttribute('aria-selected', 'true');
+    expect(await readFile(path.join(target.home, '여름 사진.png'))).toEqual(photo);
+    // Copied, not moved.
+    expect(await readFile(file)).toEqual(photo);
+    await expect(failure(target.page)).toHaveCount(0);
+    expect(fixtures.flatMap(fixture => fixture.errors)).toEqual([]);
+  } finally {
+    for (const [index, fixture] of fixtures.entries()) {
+      await fixture.page.screenshot({ path: test.info().outputPath(`wayland-file-copy-${index}.png`) }).catch(() => {});
+      await disposeApplication(fixture.app); await rm(fixture.root, { recursive: true, force: true });
+    }
+    await input.close();
+  }
+});

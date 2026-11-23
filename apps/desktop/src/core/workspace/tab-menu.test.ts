@@ -10,7 +10,7 @@ const rows = (items: TabMenuItem[]): string[] => items.flatMap(item => item.type
 it('lists the tab commands in VS Code order', () => {
   expect(rows(tabMenu(context))).toEqual([
     'Close [CmdOrCtrl+W]', 'Close Others', 'Close to the Right', 'Close Saved', 'Close All', '-',
-    'Copy Path', 'Copy Relative Path', '-',
+    'Copy', 'Copy Path', 'Copy Relative Path', '-',
     'Reveal in Folder Tab', 'Reveal in Explorer View', '-',
     'Keep Open', 'Pin', '-',
     'Split Right', 'Split & Move >', '  Split Up', '  Split Down', '  Split Left', '  Split Right', '  -',
@@ -27,6 +27,8 @@ it('disables commands without a target and omits the sections a tab has no locat
     'Keep Open (off)', 'Unpin', '-', 'Split Right (off)', 'Split & Move >', '-', 'Move into New Window (off)',
   ]);
   expect(rows(tabMenu({ ...sole, location: 'address' }))).toContain('Copy Address');
+  // Only a file or a folder can be copied as one.
+  expect(rows(tabMenu({ ...sole, location: 'address' }))).not.toContain('Copy');
   expect(rows(tabMenu({ ...context, inProject: false }))).toEqual(expect.arrayContaining(['Copy Relative Path (off)', 'Reveal in Explorer View (off)']));
 });
 

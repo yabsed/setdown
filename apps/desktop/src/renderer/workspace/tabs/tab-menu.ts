@@ -9,6 +9,8 @@ type Options = {
   tabs: Pick<TabController, 'close' | 'closeMany' | 'pin' | 'stick' | 'dirty' | 'copyToGroup' | 'moveToGroup'>;
   /** The open project folder: the base of relative paths and the Explorer's root. */
   root(): string | null;
+  /** Puts the file or folder itself on the clipboard, as the Explorer's Copy does. */
+  copyFile(path: string): Promise<unknown>;
   revealInFolder(path: string, groupId: string): Promise<void>;
   revealInExplorer(path: string): Promise<void>;
   moveToWindow(id: string): void;
@@ -54,6 +56,7 @@ export function createTabMenu(options: Options) {
     if (command === 'close') await tabs.close(id);
     else if (command === 'close-others' || command === 'close-right' || command === 'close-saved' || command === 'close-all')
       await tabs.closeMany(tabCloseTargets(command, group, id, dirty));
+    else if (command === 'copy-file' && context.location === 'file') await options.copyFile(tabLocation(tab));
     else if (command === 'reveal-folder' && context.location === 'file')
       await options.revealInFolder(tabLocation(tab), group.id);
     else if (command === 'reveal-explorer' && context.inProject) await options.revealInExplorer(tabLocation(tab));

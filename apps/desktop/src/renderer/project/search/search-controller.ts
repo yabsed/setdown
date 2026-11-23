@@ -1,15 +1,12 @@
 import type { ProjectSearchDocument, ProjectSearchResult } from '../../../protocol/desktop-api';
 import type { DesktopPort } from '../../ports/desktop-port';
-import type { EditorOpenOptions } from '../../../core/workspace/editor-groups';
 import { project, rememberProjectState } from '../project-state.svelte';
 import { searchScope } from './search-scope.svelte';
 import { resultGroup, recordEditorResults, editorToolsNow } from '../../editor/tools/tools-runtime';
-type SearchTarget = Pick<ProjectSearchResult, 'path' | 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
+type SearchTarget = Pick<ProjectSearchResult, 'surface' | 'line' | 'column' | 'lineOccurrence' | 'ordinal'>;
 type Options = {
   desktop: DesktopPort; documents(query: string): ProjectSearchDocument[];
-  open(path: string, placement?: EditorOpenOptions): Promise<boolean>;
-  /** Marks the query in the document in use. A `target` is the result just opened, which may be shown in another group. */
-  highlight(query: string, target?: SearchTarget): void;
+  open(path: string): Promise<boolean>; highlight(query: string, target?: SearchTarget): void;
 };
 export class SearchController {
   private timer?: number;
@@ -30,12 +27,12 @@ export class SearchController {
     project.searching = true;
     this.timer = window.setTimeout(() => void this.run(query, request, group), 200);
   };
-  open = async (result: ProjectSearchResult, placement?: EditorOpenOptions): Promise<void> => {
+  open = async (result: ProjectSearchResult): Promise<void> => {
     editorToolsNow()?.rememberJump();
     // Opening a tab changes the workspace, which runs the same query again (`contextChanged`). That
     // is not a newer request for this result: only another result or another query replaces it.
     const query = project.searchQuery, opening = ++this.opening;
-    if (await this.options.open(result.path, placement) && opening === this.opening && query === project.searchQuery)
+    if (await this.options.open(result.path) && opening === this.opening && query === project.searchQuery)
       this.options.highlight(query.trim(), result);
   };
   contextChanged = (): void => { if (project.searchQuery.trim()) this.search(project.searchQuery); };

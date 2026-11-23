@@ -36,6 +36,18 @@ test('an OS clipboard replacement invalidates Cut instead of resurrecting a pers
   memory.items = [];
   expect(await store.read()).toBeNull();
 });
+test('a copy names its files for other applications; a Cut offers them only as a copy', async () => {
+  const store = new ExplorerClipboardStore(), raw = (format: string) => `electron application/osclipboard;format="${format}"`;
+  const text = async (format: string) => (await memory.items[0].getType(format)).text();
+  await store.write(['/photos/a b.jpg', '/notes/회의.hwp'], false);
+  expect(await text(raw('text/uri-list'))).toBe('file:///photos/a%20b.jpg\r\nfile:///notes/%ED%9A%8C%EC%9D%98.hwp');
+  expect(await text(raw('x-special/gnome-copied-files'))).toBe('copy\nfile:///photos/a%20b.jpg\nfile:///notes/%ED%9A%8C%EC%9D%98.hwp');
+  expect(await text('text/plain')).toBe('/photos/a b.jpg\n/notes/회의.hwp');
+  expect(await store.read()).toEqual({ paths: ['/photos/a b.jpg', '/notes/회의.hwp'], cut: false });
+  await store.write(['/photos/a b.jpg'], true);
+  expect(memory.items[0].types).toContain(raw('text/uri-list'));
+  expect(memory.items[0].types).not.toContain(raw('x-special/gnome-copied-files'));
+});
 test('only committed moves consume Cut and another copy of the same paths has a different identity', async () => {
   const store = new ExplorerClipboardStore(); await store.write(['/a', '/b'], true);
   const first = (await store.snapshot())!;

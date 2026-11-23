@@ -12,7 +12,7 @@ function fixture(root: string | null = '/project') {
   const shown: Array<{ context: TabMenuContext; copy: { path: string; relative: string }; point: { x: number; y: number } }> = [];
   const tabs = { close: vi.fn(async () => true), closeMany: vi.fn(async () => true), pin: vi.fn(), stick: vi.fn(),
     dirty: (tab: { id: string }) => dirty.has(tab.id), copyToGroup: vi.fn(async () => {}), moveToGroup: vi.fn(async () => {}) };
-  const options = { workspace, tabs, root: () => root, revealInFolder: vi.fn(async () => {}), revealInExplorer: vi.fn(async () => {}),
+  const options = { workspace, tabs, root: () => root, copyFile: vi.fn(async () => {}), revealInFolder: vi.fn(async () => {}), revealInExplorer: vi.fn(async () => {}),
     moveToWindow: vi.fn(), failed: vi.fn(),
     desktop: { showTabMenu: async (context: TabMenuContext, copy: { path: string; relative: string }, point: { x: number; y: number }) => { shown.push({ context, copy, point }); return choice; } } };
   const menu = createTabMenu(options);
@@ -68,6 +68,8 @@ test('runs each command against the tab the menu was opened on', async () => {
   await f.choose(id, 'move-window'); expect(f.options.moveToWindow).toHaveBeenCalledExactlyOnceWith(id);
   // Main already copied; the renderer has nothing left to do.
   await f.choose(id, 'copy-path'); await f.choose(id, 'copy-relative-path');
+  // The file itself is copied from here: main checks the path and owns the clipboard.
+  await f.choose(id, 'copy-file'); expect(f.options.copyFile).toHaveBeenCalledExactlyOnceWith(id);
   expect(f.tabs.close).toHaveBeenCalledOnce(); expect(f.options.failed).not.toHaveBeenCalled();
 });
 

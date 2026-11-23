@@ -13,7 +13,7 @@ const exec = promisify(execFile);
 const source = process.env.PLAIN_SOURCE!, out = process.env.PLAIN_OUT!;
 type Rect = { x: number; y: number; width: number; height: number };
 
-test('plain launch: side panel opens beside the group in use; focus changes do not move a reader', async () => {
+test('plain launch: side panel opens in the focused group; focus changes do not move a reader', async () => {
   test.setTimeout(240_000);
   const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-plain-verify-'));
   const config = await mkdtemp(path.join(os.tmpdir(), 'setdown-plain-verify-config-'));
@@ -72,24 +72,24 @@ test('plain launch: side panel opens beside the group in use; focus changes do n
     await new Promise(resolve => setTimeout(resolve, 1500));
     await shot('1-before');
     if (process.env.PLAIN_STOP_EARLY) return;
-    // The older build this is compared with has no side-panel placement; only its focus changes are recorded.
+    // PLAIN_ONLY_FOCUS: record the focus changes only (a build from 2026-11-23 opened these beside the group in use).
     if (!process.env.PLAIN_ONLY_FOCUS) {
       const seen: unknown[] = [];
       for (const [step, file] of [['2-history', 'History.md'], ['3-index', 'index.js'], ['4-license', 'LICENSE']] as const) {
         await click('[role="treeitem"]', file);
-        await expect.poll(async () => (await groups())[1]?.selected, `${file} opens in the other group`).toBe(file);
+        await expect.poll(async () => (await groups())[0]?.selected, `${file} opens in the focused group`).toBe(file);
         await new Promise(resolve => setTimeout(resolve, 1500));
         const state = await groups(); seen.push({ file, state });
-        expect(state[0], `the group in use after opening ${file}`).toMatchObject({ focused: true, selected: 'package.json' });
-        expect(state[1].focused).toBe(false);
+        expect(state[0].focused).toBe(true);
+        expect(state[1], `the other group after opening ${file}`).toMatchObject({ focused: false, selected: 'Readme.md' });
         await shot(step);
       }
-      // Back to Readme.md in the right group (its tab is already there), still without focus.
-      await click('[role="treeitem"]', 'Readme.md');
-      await expect.poll(async () => (await groups())[1]?.selected).toBe('Readme.md');
+      // Back to package.json: its tab is already in the focused group.
+      await click('[role="treeitem"]', 'package.json');
+      await expect.poll(async () => (await groups())[0]?.selected).toBe('package.json');
       await new Promise(resolve => setTimeout(resolve, 1500));
-      expect((await groups())[0]).toMatchObject({ focused: true, selected: 'package.json' });
-      await shot('5-readme');
+      expect((await groups())[1]).toMatchObject({ focused: false, selected: 'Readme.md' });
+      await shot('5-package');
       console.log(`[plain] ${JSON.stringify(seen)}`);
     }
 

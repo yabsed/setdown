@@ -5,6 +5,8 @@ import { promisify } from 'node:util';
  * a native focus loss by targeting the shell directly. */
 export async function nativeInput(input: {
   click?: { x: number; y: number }; text?: string; keys?: string[];
+  /** X11 keysym names held together and released in reverse, such as `['Control_L', 'c']`. */
+  chord?: string[];
   pointer?: { x: number; y: number }[]; button?: 'down' | 'up';
   pointerIntervalMs?: number;
 }) {
@@ -33,6 +35,11 @@ for name in data.get('keys',[]):
  key=x.XKeysymToKeycode(d,x.XStringToKeysym(name.encode()))
  if not key: raise ValueError('Unknown X11 key: '+name)
  t.XTestFakeKeyEvent(d,key,1,0); t.XTestFakeKeyEvent(d,key,0,0); x.XFlush(d)
+chord=[x.XKeysymToKeycode(d,x.XStringToKeysym(name.encode())) for name in data.get('chord',[])]
+if not all(chord): raise ValueError('Unknown X11 key in chord')
+for key in chord: t.XTestFakeKeyEvent(d,key,1,0)
+for key in reversed(chord): t.XTestFakeKeyEvent(d,key,0,0)
+x.XFlush(d)
 for c in data.get('text',''):
  if not ('a' <= c <= 'z'): raise ValueError('This helper types lowercase ASCII only')
  key=x.XKeysymToKeycode(d,x.XStringToKeysym(c.encode()))

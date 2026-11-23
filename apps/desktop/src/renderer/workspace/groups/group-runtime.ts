@@ -40,7 +40,6 @@ export function createGroupRuntime(options: {
           tab.previewRevision = revision; tab.previewTheme = result.themeId;
           reader.send(tab.id, { command: 'marktex:position-preview', sourceLine: tab.anchor.sourceLine,
             topRatio: tab.anchor.yRatio, settle: false });
-          reader.backgroundReady(tab);
         }).catch(error => {
           if (tab.previewGeneration !== generation) return;
           failedPreparations.set(tab.id, preparationKey);

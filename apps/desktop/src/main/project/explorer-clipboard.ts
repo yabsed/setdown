@@ -9,6 +9,8 @@ import type { ExplorerService } from './explorer-service';
 // Store only a nonce on the OS clipboard. Paths are a main-process capability,
 // never a renderer-supplied file URI interpreted as permission to delete files.
 const FORMAT = 'web application/x-setdown-file-selection';
+/** A format written under its own name, as another application reads it. */
+const raw = (format: string) => `electron application/osclipboard;format="${format}"`;
 export class ExplorerClipboardStore {
   private value: (ExplorerClipboard & { token: string }) | null = null;
   /** What Paste would use now. Image data is reported by its formats only; nothing is decoded here. */
@@ -82,9 +84,12 @@ export class ExplorerClipboardStore {
     return paths.length ? { paths: [...new Set(paths)], cut: false, external: true, token: 'external' } : null;
   }
   async write(paths: string[], cut: boolean): Promise<ExplorerClipboard> {
-    const value = { paths: [...paths], cut, token: randomUUID() };
+    const value = { paths: [...paths], cut, token: randomUUID() }, uris = paths.map(file => pathToFileURL(file).href);
     await clipboard.write([new ClipboardItem({ [FORMAT]: new Blob([value.token]), 'text/plain': paths.join('\n'),
-      'electron application/osclipboard;format="text/uri-list"': new Blob([paths.map(file => pathToFileURL(file).href).join('\r\n')]) })]);
+      [raw('text/uri-list')]: new Blob([uris.join('\r\n')]),
+      // The format GTK file managers use for copied files, beside the URI list that GNOME Files also pastes
+      // from. Only a copy is offered in it: a Cut stays this window's to finish, and pastes elsewhere as a copy.
+      ...(cut ? {} : { [raw('x-special/gnome-copied-files')]: new Blob([`copy\n${uris.join('\n')}`]) }) })]);
     this.value = value;
     return { paths: [...paths], cut };
   }

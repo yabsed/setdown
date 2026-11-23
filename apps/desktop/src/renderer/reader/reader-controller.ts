@@ -39,7 +39,6 @@ type SearchTarget = { line: number; lineOccurrence: number; ordinal: number };
 export class ReaderController {
   themeId: PreviewThemeId;
   awaiting = false;
-  private readonly backgroundSearches = new Map<string, { query: string; target: SearchTarget }>();
   layoutHidden = false;
   private appliedThemeRevision: number;
   private transitionTabId: string | null = null;
@@ -73,7 +72,6 @@ export class ReaderController {
   }
 
   destroy(tabId: string) {
-    this.backgroundSearches.delete(tabId);
     this.options.desktop.destroyPreview(tabId);
   }
 
@@ -140,23 +138,6 @@ export class ReaderController {
       this.syncView();
     }
     this.restoreSearch(tab, target);
-  }
-
-  /**
-   * Go to a project search result in a preview that is shown without command focus. A preview
-   * still being prepared for its group gets the request once it has the document (`backgroundReady`).
-   */
-  searchIn(tab: WorkspaceTab, query: string, target: SearchTarget) {
-    this.backgroundSearches.set(tab.id, { query: query.slice(0, 512), target });
-    this.backgroundReady(tab);
-  }
-
-  backgroundReady(tab: WorkspaceTab) {
-    const search = this.backgroundSearches.get(tab.id);
-    if (!search || !tab.previewUrl || tab.previewRevision !== tab.revision) return;
-    this.backgroundSearches.delete(tab.id);
-    this.send(tab.id, { command: 'marktex:find', query: search.query, direction: 'forward', findNext: false,
-      sourceLine: search.target.line, sourceOccurrence: search.target.lineOccurrence, searchOrdinal: search.target.ordinal });
   }
 
   restoreSearch(

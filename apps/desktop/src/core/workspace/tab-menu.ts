@@ -2,7 +2,7 @@ import type { SplitDirection } from './editor-groups';
 
 /** The tab strip's context menu: VS Code's tab commands that have a Setdown counterpart. */
 export type TabMenuCommand = 'close' | 'close-others' | 'close-right' | 'close-saved' | 'close-all'
-  | 'copy-path' | 'copy-relative-path' | 'reveal-folder' | 'reveal-explorer'
+  | 'copy-file' | 'copy-path' | 'copy-relative-path' | 'reveal-folder' | 'reveal-explorer'
   | 'keep-open' | 'pin' | 'unpin' | `split-${SplitDirection}` | `move-${SplitDirection}` | 'move-window';
 
 export type TabMenuContext = {
@@ -52,7 +52,8 @@ export function tabMenu(context: TabMenuContext): TabMenuItem[] {
     [item('close', 'Close', true, 'CmdOrCtrl+W'), item('close-others', 'Close Others', context.others),
       item('close-right', 'Close to the Right', context.right), item('close-saved', 'Close Saved', context.saved),
       item('close-all', 'Close All', context.all)],
-    file ? [item('copy-path', 'Copy Path'), item('copy-relative-path', 'Copy Relative Path', context.inProject)]
+    // Copy is the file itself, as in the Explorer: it pastes into a folder here or in another application.
+    file ? [item('copy-file', 'Copy'), item('copy-path', 'Copy Path'), item('copy-relative-path', 'Copy Relative Path', context.inProject)]
       : context.location === 'address' ? [item('copy-path', 'Copy Address')] : [],
     file ? [item('reveal-folder', 'Reveal in Folder Tab'), item('reveal-explorer', 'Reveal in Explorer View', context.inProject)] : [],
     [item('keep-open', 'Keep Open', context.preview), context.pinned ? item('unpin', 'Unpin') : item('pin', 'Pin')],

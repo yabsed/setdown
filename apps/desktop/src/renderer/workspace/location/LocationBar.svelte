@@ -153,7 +153,9 @@ import type { AppActions } from '../../ports/ui-actions';
   function measure() {
     placement++;
     if (!controls || !input || editing) return;
-    const controlWidth = Array.from(controls.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-search') && getComputedStyle(element).position !== 'absolute')
+    // Only what is laid out in the row counts: the focused group's action box leaves it when it has nothing to show.
+    const laidOut = (element: Element) => { const style = getComputedStyle(element); return style.display !== 'none' && style.position !== 'absolute'; };
+    const controlWidth = Array.from(controls.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-search') && laidOut(element))
       .reduce((sum, element) => sum + element.getBoundingClientRect().width + 3, 0);
     const addressWidth = controls.clientWidth - controlWidth;
     if (!compact && addressWidth < 120) compact = true;
@@ -358,6 +360,10 @@ import type { AppActions } from '../../ports/ui-actions';
   .permission-request { color: var(--app-text); box-shadow: inset 0 0 0 1px var(--app-border); }
   button:focus-visible { outline: 1px solid var(--app-muted-text); outline-offset: -1px; }
   .location-actions { display: flex; align-items: center; flex: 0 0 auto; height: 28px; }
+  /* Only the focused group's bar has this box, and an empty flex item still takes the row's gap. With nothing to
+     show (a web page, a terminal, a folder) it leaves the row: the buttons beside it stay where they are when
+     focus moves to another group. */
+  .location-actions:not(:has(> :not([hidden]))) { display: none; }
   .location-actions button { min-width: 28px; height: 28px; }
   .location-action-divider { width: 1px; height: 17px; margin: 0 6px; background: var(--app-border); }
   @media (max-width: 620px) { .location-action-divider { margin: 0 4px; } }

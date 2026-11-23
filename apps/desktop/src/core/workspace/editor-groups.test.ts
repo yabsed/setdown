@@ -199,9 +199,7 @@ describe('editor groups', () => {
     // A maximized group is the only one shown; the others cannot take the tab.
     groups.toggleMaximize();
     expect(groups.beside(below)).toBeNull();
-    expect([below, right, 'group-0'].map(id => groups.shown(id))).toEqual([true, false, false]);
     groups.toggleMaximize();
     expect(groups.beside(below)?.id).toBe('group-0');
-    expect([below, right, 'group-0', 'closed'].map(id => groups.shown(id))).toEqual([true, true, true, false]);
   });
 });

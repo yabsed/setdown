@@ -598,3 +598,42 @@ test('tab widths stay stable when adding tabs and updating web page titles', asy
   } finally { await f.dispose(); }
 });
 
+
+test('address bar buttons keep their places when focus moves between two web groups', async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/first?pane=right`);
+    const tab = f.page.getByRole('tab', { name: /Research page/ });
+    await expect(tab).toBeVisible();
+    const data = await f.page.evaluateHandle(() => new DataTransfer());
+    await tab.dispatchEvent('dragstart', { dataTransfer: data });
+    const body = f.page.locator('.group-body').first(), box = (await body.boundingBox())!;
+    const drop = { clientX: box.x + box.width * .98, clientY: box.y + box.height / 2, dataTransfer: data };
+    await body.dispatchEvent('dragover', drop); await body.dispatchEvent('drop', drop);
+    await tab.dispatchEvent('dragend', { dataTransfer: data }); await data.dispose();
+    await expect(f.page.locator('.location-bar')).toHaveCount(2);
+    const groups = f.page.locator('.editor-group');
+    // A Markdown document's bar still carries its actions while its group has focus; the page's bar has none to show.
+    await f.page.getByRole('tab', { name: /notes.md/ }).click();
+    await expect(groups.first()).toHaveClass(/\bfocused\b/);
+    await expect(groups.first().locator('.location-actions .toc-toggle')).toBeVisible();
+    await expect(groups.first().locator('.location-actions .mode-toggle')).toBeVisible();
+    const addresses = f.page.getByRole('textbox', { name: 'Address or file path', exact: true });
+    await addresses.first().fill(`${f.origin}/first?pane=left`); await addresses.first().press('Enter');
+    await expect(f.page.getByRole('button', { name: 'Reload page', exact: true })).toHaveCount(2);
+    // Everything a bar shows, with where it is: the address field and each button.
+    const places = () => f.page.locator('.location-bar').evaluateAll(bars => bars.map(bar =>
+      Array.from(bar.querySelectorAll<HTMLElement>('input, button')).filter(element => element.getClientRects().length)
+        .map(element => { const rect = element.getBoundingClientRect(); return `${element.getAttribute('aria-label')} ${rect.left.toFixed(2)} ${rect.width.toFixed(2)}`; })));
+    const focus = async (index: number) => {
+      await groups.nth(index).locator('.document-tab[aria-selected="true"]').click();
+      await expect(groups.nth(index)).toHaveClass(/\bfocused\b/);
+      await expect(groups.nth(1 - index)).not.toHaveClass(/\bfocused\b/);
+    };
+    await focus(0);
+    const settled = await places();
+    expect(settled.map(bar => bar.length)).toEqual([settled[0].length, settled[0].length]);
+    expect(settled[0].length).toBeGreaterThan(8);
+    for (const index of [1, 0, 1]) { await focus(index); expect(await places(), `focus in group ${index}`).toEqual(settled); }
+  } finally { await f.dispose(); }
+});

@@ -1,8 +1,7 @@
 /** Editor groups own selection; the workspace owns documents and command focus. */
 export type SplitDirection = 'left' | 'right' | 'up' | 'down';
 export type EditorGroupPlacement = { groupId: string; direction: SplitDirection | null; index?: number };
-/** `preserveFocus`: the tab is shown in its group while command focus stays in the focused group. */
-export type EditorOpenOptions = { pinned?: boolean; groupId?: string; side?: boolean; preserveFocus?: boolean };
+export type EditorOpenOptions = { pinned?: boolean; groupId?: string; side?: boolean };
 /** `sticky` counts the leading tabs that are pinned to the start of the strip. */
 export type Group = { id: string; tabs: string[]; activeId: string | null; previewId: string | null; sticky: number };
 export type GroupTree = { kind: 'group'; id: string } | {
@@ -141,8 +140,6 @@ export class EditorGroups {
     }
     return null;
   }
-  /** A maximized group hides every other one. */
-  shown(groupId: string): boolean { return this.maximized ? this.maximized.id === groupId : this.groups.some(group => group.id === groupId); }
   remove(tabId: string) {
     const group = this.owner(tabId);
     if (!group) return;

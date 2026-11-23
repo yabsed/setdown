@@ -198,27 +198,22 @@ export class TabController {
       tab.previewRevision = this.options.preview.readyRevision;
     }
   }
-  /** `background` adds the tab without selecting it. `place` shows it in another group, with or without focus. */
-  addWeb = async (page: import('../../protocol/browser').BrowserPage, background = false, place: EditorOpenOptions = {}): Promise<void> => {
+  addWeb = async (page: import('../../protocol/browser').BrowserPage, background = false): Promise<void> => {
     const { workspace } = this.options;
-    const groupId = workspace.groups.groups.some(group => group.id === place.groupId) ? place.groupId : undefined;
-    if (!workspace.find(page.id)) workspace.add({ kind: 'web', id: page.id, surface: 'web', page }, true, groupId);
+    if (!workspace.find(page.id)) workspace.add({ kind: 'web', id: page.id, surface: 'web', page });
     this.render();
-    if (!background) await this.present(page.id, place);
+    if (!background) await this.activate(page.id);
   };
   /** `id`: the new session's id, for a caller that has something to say about it (`terminal-start.ts`). */
-  openTerminal = async (cwd = '', groupId = this.options.workspace.groups.focusedId, id: string = crypto.randomUUID(), preserveFocus = false): Promise<void> => {
+  openTerminal = async (cwd = '', groupId = this.options.workspace.groups.focusedId, id: string = crypto.randomUUID()): Promise<void> => {
     const session = { id, title: `Terminal ${++this.terminalNumber}`, cwd, exited: false };
     this.options.workspace.terminals.set(id, session);
     this.options.workspace.add({ ...session, kind: 'terminal', sessionId: id, surface: 'terminal' }, true, groupId);
-    this.render(); await this.present(id, { preserveFocus });
+    this.render(); await this.activate(id);
   };
-  /**
-   * Open (or reuse) a folder tab. Picker tabs are always new and never reused. `background` adds the
-   * tab without selecting it; `preserveFocus` selects it in its group and leaves command focus alone.
-   */
+  /** Open (or reuse) a folder tab. Picker tabs are always new and never reused. */
   openFolder = async (path: string, options: { groupId?: string; selection?: string[]; picker?: FolderTab['picker'];
-    background?: boolean; reuse?: boolean; preserveFocus?: boolean } = {}): Promise<FolderTab | null> => {
+    background?: boolean; reuse?: boolean } = {}): Promise<FolderTab | null> => {
     const { workspace } = this.options;
     const groupId = options.groupId ?? workspace.groups.focusedId;
     if (!workspace.groups.groups.some(group => group.id === groupId)) return null;
@@ -227,14 +222,14 @@ export class TabController {
         && workspace.groups.owner(tab.id)?.id === groupId);
       if (existing) {
         if (options.selection) { existing.selection = options.selection; existing.revision = (existing.revision ?? 0) + 1; }
-        this.render(); if (!options.background) await this.present(existing.id, options); return existing;
+        this.render(); if (!options.background) await this.activate(existing.id); return existing;
       }
     }
     const tab: FolderTab = { kind: 'folder', id: crypto.randomUUID(), surface: 'folder', path, view: { ...DEFAULT_FOLDER_VIEW,
       ...(options.picker?.showHidden ? { showHidden: true } : {}) }, selection: options.selection, picker: options.picker, revision: 0 };
     workspace.add(tab, true, groupId);
     this.render();
-    if (!options.background) await this.present(tab.id, options);
+    if (!options.background) await this.activate(tab.id);
     return tab;
   };
   /** The folder surface reports selection so Back/Forward and transfers keep it. */
@@ -252,18 +247,16 @@ export class TabController {
     if (tab?.kind !== 'folder') return;
     tab.view = { ...tab.view, ...update }; this.render();
   };
-  /** A session without a tab takes over the active tab, or a new tab of `place.groupId` when one is given. */
-  openTerminalSession = async (sessionId: string, place: EditorOpenOptions = {}): Promise<void> => {
+  openTerminalSession = async (sessionId: string): Promise<void> => {
     const { workspace } = this.options;
     const session = workspace.terminals.get(sessionId);
     if (!session) return;
     const existing = workspace.tabs.find(tab => tab.kind === 'terminal' && (tab.sessionId ?? tab.id) === sessionId);
-    if (existing) return this.present(existing.id, place);
-    const groupId = workspace.groups.groups.some(group => group.id === place.groupId) ? place.groupId : undefined;
-    if (!groupId && workspace.activeId) { await this.navigateLocation(workspace.activeId, `terminal://${sessionId}`); return; }
+    if (existing) return this.activate(existing.id);
+    if (workspace.activeId) { await this.navigateLocation(workspace.activeId, `terminal://${sessionId}`); return; }
     const id = crypto.randomUUID();
-    workspace.add({ ...session, kind: 'terminal', id, sessionId, surface: 'terminal' }, true, groupId);
-    this.render(); await this.present(id, place);
+    workspace.add({ ...session, kind: 'terminal', id, sessionId, surface: 'terminal' });
+    this.render(); await this.activate(id);
   };
   closeTerminalSession = async (sessionId: string): Promise<void> => {
     const { workspace, desktop } = this.options;
@@ -284,9 +277,9 @@ export class TabController {
     }
     this.updateChrome();
   };
-  openWeb = async (input = 'https://www.google.com/', background = false, place: EditorOpenOptions = {}): Promise<void> => {
+  openWeb = async (input = 'https://www.google.com/', background = false): Promise<void> => {
     const page = await this.options.desktop.browser.create(crypto.randomUUID(), input);
-    await this.addWeb(page, background, place);
+    await this.addWeb(page, background);
   };
   browserClosed = (id: string): void => {
     // Closing a native page during a resource change must not close its tab.
@@ -530,41 +523,6 @@ export class TabController {
     }
     next.restoringPosition = false;
   };
-
-  /**
-   * Show a tab in its group while command focus stays where it is: the side panel opens tabs beside
-   * the group in use. A tab of the focused group, or of a group a maximized one hides, can only be
-   * seen by activating it.
-   */
-  reveal = async (tabId: string, presentation: 'document' | 'review' = 'document', fresh = false): Promise<void> => {
-    const { desktop, editor, workspace } = this.options;
-    const beside = () => {
-      const group = workspace.groups.owner(tabId);
-      return group && group.id !== workspace.groups.focusedId && workspace.groups.shown(group.id) ? group : null;
-    };
-    if (!beside()) return this.activate(tabId, presentation, fresh);
-    if (this.initialZoom.has(tabId)) await this.initialZoom.get(tabId);
-    const tab = workspace.find(tabId);
-    if (!tab) return;
-    if (isDocumentTab(tab)) {
-      tab.surface = documentSurface(tab.document.path, tab.surface);
-      // A group's source editor exists only once Monaco does (`MonacoEditor.syncGroups`).
-      if (tab.surface === 'editor') await editor.load();
-    } else if (tab.kind === 'web') {
-      try { tab.page = await desktop.browser.create(tab.id, tab.page.url); }
-      catch (error) { tab.page.error = String(error); }
-    }
-    if (workspace.find(tabId) !== tab) return;
-    const group = beside();
-    // Focus entered that group, or the group left the screen, while the tab was loading.
-    if (!group) return this.activate(tabId, presentation, fresh);
-    group.activeId = tabId;
-    // The group runtimes present each group's selected tab: readers, editors, pages and reviews.
-    this.render();
-  };
-  private present(tabId: string, place: { preserveFocus?: boolean }, presentation: 'document' | 'review' = 'document', fresh = false): Promise<void> {
-    return place.preserveFocus ? this.reveal(tabId, presentation, fresh) : this.activate(tabId, presentation, fresh);
-  }
 
   close = async (tabId: string, confirmed = false): Promise<boolean> => {
     const replacing = this.navigation.cancel(tabId);
@@ -842,7 +800,7 @@ export class TabController {
     // Singleton content owners must be resolved before allocating a split.
     if (!documentSnapshot.isUntitled && (documentSnapshot.kind || isNotebookDocument(documentSnapshot.path))) {
       const singleton = workspace.documents.find(tab => tab.document.path === documentSnapshot.path);
-      if (singleton) return void await this.present(singleton.id, openOptions, presentation);
+      if (singleton) return void await this.activate(singleton.id, presentation);
     }
     const target = placement?.direction ? workspace.groups.split(requested, placement.direction)
       : openOptions.side ? workspace.groups.side(requested) : workspace.groups.groups.find(group => group.id === requested)!;
@@ -851,7 +809,7 @@ export class TabController {
         && !tab.document.isUntitled && tab.document.path === documentSnapshot.path);
       if (existing) {
         if (openOptions.pinned !== false || placement || presentation === 'review') this.pin(existing.id);
-        return void await this.present(existing.id, openOptions, presentation);
+        return void await this.activate(existing.id, presentation);
       }
     }
     const created = this.documentTab(crypto.randomUUID(), documentSnapshot, initialSurface);
@@ -882,7 +840,7 @@ export class TabController {
     this.restoreDocumentTab(created);
     if (placement?.index !== undefined) workspace.groups.move(created.id, target.id, null, placement.index);
     this.render();
-    await this.present(created.id, openOptions, presentation, fresh);
+    await this.activate(created.id, presentation, fresh);
     if (presentation === 'document' && created.surface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
       void editor.load().catch((error) => console.error('Failed to load editor', error));
     }, 0);
