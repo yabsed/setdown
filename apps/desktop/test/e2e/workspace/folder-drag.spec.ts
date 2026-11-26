@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, electron, focusApplication, type TestApplication } from '../../support/electron/electron-app';
 import { nativeInput } from '../../support/electron/native-input';
+import { clearAddress } from '../../support/browser/location-controls';
 
 /**
  * Folder-tab drags are OS file drags, so these specs use real pointer input:
@@ -245,7 +246,7 @@ test('a folder tab outside the workspace copies its files into the Explorer fold
     await expect(inbox).toBeVisible();
     await focusApplication(app);
     const address = page.locator('.location-bar input').first();
-    const browse = async (folder: string) => { await address.click(); await address.fill(folder); await address.press('Enter'); };
+    const browse = async (folder: string) => { await clearAddress(address); await address.fill(folder); await address.press('Enter'); };
     await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
     await browse(path.join(home, 'Downloads'));
     await expect.poll(() => labels(page)).toEqual(['report.bin']);

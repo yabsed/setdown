@@ -7,6 +7,7 @@ import path from 'node:path';
 import type { WebContentsView } from 'electron';
 import { disposeApplication, electron, focusApplication, type TestApplication } from '../../support/electron/electron-app';
 import { chooseNativeMenu } from '../../support/browser/browser-fixture';
+import { clearAddress } from '../../support/browser/location-controls';
 import { pngFixture } from '../../support/media/png-fixture';
 
 /** Folder tabs and the in-app chooser run with a temporary HOME and the platform dialog disabled. */
@@ -71,14 +72,14 @@ test('a folder tab browses from the new-tab button, keeps selection through Back
     await expect(row(page, 'alpha')).toHaveAttribute('aria-selected', 'true');
     // The address bar takes folder paths, including ~, and completes them from the filesystem.
     const address = page.locator('.location-bar input').first();
-    await address.click(); await address.fill('~/Proj');
+    await clearAddress(address); await address.fill('~/Proj');
     // Completion is debounced; wait for the filesystem suggestion before Tab accepts it.
     await page.waitForTimeout(400);
     await address.press('Tab');
     await expect(address).toHaveValue(`${path.join(home, 'Projects')}/`);
     await address.fill('~/Documents'); await address.press('Enter');
     await expect(page.locator('.folder-content:not(.inactive) .folder-crumbs [aria-current="location"]')).toHaveText('Documents');
-    await address.click(); await address.fill(path.join(home, 'Projects', 'alpha')); await address.press('Enter');
+    await clearAddress(address); await address.fill(path.join(home, 'Projects', 'alpha')); await address.press('Enter');
     await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
     await row(page, 'README.md').dblclick();
     await expect(page.getByRole('tab', { name: /README\.md/ })).toHaveAttribute('aria-selected', 'true');
@@ -97,7 +98,7 @@ test('folder tab file operations work outside any workspace and route Ctrl+C/V t
     const alpha = path.join(home, 'Projects', 'alpha');
     await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
     const address = page.locator('.location-bar input').first();
-    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await clearAddress(address); await address.fill(alpha); await address.press('Enter');
     await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
     await list(page).focus();
     await page.keyboard.press('Control+Shift+N');
@@ -155,7 +156,7 @@ test('files copied or cut in a folder tab paste into the workspace the sidebar s
     await focusApplication(app);
     await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
     const address = page.locator('.location-bar input').first();
-    await address.click(); await address.fill(elsewhere); await address.press('Enter');
+    await clearAddress(address); await address.fill(elsewhere); await address.press('Enter');
     await expect.poll(() => labels(page)).toEqual(['main.cpp', 'moved.txt']);
 
     // Copy outside the workspace, paste into a folder of the sidebar: the file is copied in.
@@ -290,7 +291,7 @@ test('a folder tab’s menu leaves a website in another group running, and Open 
     await folder.click({ button: 'right' }); await chooseNativeMenu(app, ['Split & Move', 'Move Right']);
     await expect(page.locator('.editor-group')).toHaveCount(2);
     const address = page.locator('.editor-group.focused .location-bar input');
-    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await clearAddress(address); await address.fill(alpha); await address.press('Enter');
     await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
     await expect.poll(async () => (await site()).shown).toBe(true);
     await advancing();
@@ -374,7 +375,7 @@ test('Open Folder and Save As use the in-app chooser instead of the platform dia
     // The address bar works as in any tab: a web address or search opens beside the chooser,
     // which keeps waiting for its answer.
     const address = page.locator('.editor-group.focused .location-bar input');
-    await address.click(); await address.fill(`127.0.0.1:${(server.address() as AddressInfo).port}/detour`); await address.press('Enter');
+    await clearAddress(address); await address.fill(`127.0.0.1:${(server.address() as AddressInfo).port}/detour`); await address.press('Enter');
     await expect(page.getByRole('tab', { name: /Chooser detour/ })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('.location-error')).toHaveCount(0);
     await expect(page.getByRole('tab', { name: /Save/ })).toHaveCount(1);
@@ -401,7 +402,7 @@ test('a chooser manages files like any folder tab and still answers its request'
     const chooser = page.getByRole('tab', { name: /Open Folder/ });
     await expect(chooser).toHaveAttribute('aria-selected', 'true');
     const address = page.locator('.editor-group.focused .location-bar input');
-    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await clearAddress(address); await address.fill(alpha); await address.press('Enter');
     await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
 
     // The row menu is the folder tab's. A file cannot answer a folder request, so its first command opens it.
@@ -496,7 +497,7 @@ test('with two groups a chooser opens beside the tab in use, and closing it give
     const left = page.locator('.editor-group').first(), right = page.locator('.editor-group').nth(1);
     const selected = (group: Locator) => group.locator('.document-tab[aria-selected="true"] .tab-name');
     const address = page.locator('.editor-group.focused .location-bar input');
-    await address.click(); await address.fill(alpha); await address.press('Enter');
+    await clearAddress(address); await address.fill(alpha); await address.press('Enter');
     await row(page, 'later.md').dblclick();
     await expect(selected(right)).toHaveText('later.md');
     await right.locator('.document-tab').filter({ hasText: 'alpha' }).click();
@@ -671,7 +672,7 @@ test('grid view keeps every thumbnail inside its cell and above the name, whatev
     await writeFile(path.join(pictures, 'small.png'), pngFixture(24, 24, [192, 57, 43]));
     await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
     const address = page.locator('.editor-group.focused .location-bar input');
-    await address.click(); await address.fill(pictures); await address.press('Enter');
+    await clearAddress(address); await address.fill(pictures); await address.press('Enter');
     await expect.poll(() => labels(page)).toEqual(['small.png', 'tall.png', 'wide.png']);
     await list(page).focus();
     await page.keyboard.press('Control+2');
@@ -719,7 +720,7 @@ test('launching with a folder opens it, and a file opens from a folder chooser',
     const chooser = page.getByRole('tab', { name: /Open Folder/ });
     await expect(chooser).toHaveAttribute('aria-selected', 'true');
     const address = page.locator('.editor-group.focused .location-bar input');
-    await address.click(); await address.fill(folder); await address.press('Enter');
+    await clearAddress(address); await address.fill(folder); await address.press('Enter');
     await row(page, 'note.md').dblclick();
     await expect(page.getByRole('tab', { name: /note\.md/ })).toHaveAttribute('aria-selected', 'true');
     await expect(chooser).toHaveCount(1);
