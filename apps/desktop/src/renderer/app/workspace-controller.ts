@@ -158,7 +158,7 @@ export function startWorkspace(desktop: DesktopPort) {
     closeTerminalSession: id => { void tabs.closeTerminalSession(id); },
     terminalChanged: (id, info) => tabs.terminalChanged(id, info),
     newWebTab: (input, background) => { projects.deactivateGitDiff(); void tabs.openWeb(input, background).catch(error => { browser.error = String(error); }); },
-    navigateLocation: async (groupId, input) => {
+    navigateLocation: async (groupId, input, selection) => {
       const target = workspace.groups.groups.find(group => group.id === groupId);
       const id = target?.activeId;
       const previous = id ? workspace.find(id) : null;
@@ -173,7 +173,7 @@ export function startWorkspace(desktop: DesktopPort) {
         const location = await desktop.files.resolve(input);
         if (location.kind === 'missing') throw Error(`No file or folder exists at ${location.path}.`);
         await tabs.navigateLocation(id, fileLocation(location.kind === 'folder' ? location.path : parentFolder(location.path)), undefined,
-          location.kind === 'file' ? [location.path] : undefined);
+          location.kind === 'file' ? [location.path] : selection);
         return;
       }
       if (id && workspace.activeId !== id) await tabs.activate(id);
@@ -181,17 +181,17 @@ export function startWorkspace(desktop: DesktopPort) {
       if (previous?.kind === 'diff') {
         if (isFileLocation(input)) {
           const location = await desktop.files.resolve(input);
-          if (location.kind === 'folder') await tabs.openFolder(location.path, { groupId });
+          if (location.kind === 'folder') await tabs.openFolder(location.path, { groupId, selection });
           else await tabs.show(await desktop.readDocumentLocation(location.path), 'viewer', 'document', undefined, { groupId, pinned: true });
         } else await tabs.openWeb(input);
         return;
       }
       if (id) {
-        if (await tabs.navigateLocation(id, input) && previous && isDocumentTab(previous)
+        if (await tabs.navigateLocation(id, input, undefined, selection) && previous && isDocumentTab(previous)
           && workspace.find(id) !== previous) projects.closeWorkingTreeReviews(previous.document.path);
       } else if (isFileLocation(input)) {
         const location = await desktop.files.resolve(input);
-        if (location.kind === 'folder') await tabs.openFolder(location.path, { groupId });
+        if (location.kind === 'folder') await tabs.openFolder(location.path, { groupId, selection });
         else await tabs.show(await desktop.readDocumentLocation(location.path));
       } else await tabs.openWeb(input);
     },
@@ -221,6 +221,7 @@ export function startWorkspace(desktop: DesktopPort) {
     menuOverlay: desktop.menuOverlay,
     browserFindOverlay: desktop.browserFindOverlay,
     locationSuggestions: desktop.locationSuggestions,
+    showLocationLinkMenu: (path, point) => desktop.showLocationLinkMenu(path, point),
     loadMenu: (id) => desktop.getApplicationMenu(id),
     executeMenuItem: (id) => desktop.executeApplicationMenuItem(id),
     resolveClosePrompt: (decision) => closePrompt.resolve(decision),

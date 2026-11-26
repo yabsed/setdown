@@ -217,6 +217,7 @@ const api: MarkTexApi = {
   moveTabToWindow: (transferId, tab) => ipcRenderer.send('tabs:move-to-window', { transferId, tab }),
   showTabMenu: (context, copy, point) => ipcRenderer.invoke('tabs:context-menu', context, copy, point),
   showFolderMenu: (context, copy, point) => ipcRenderer.invoke('folder:context-menu', context, copy, point),
+  showLocationLinkMenu: (path, point) => ipcRenderer.invoke('location:link-menu', path, point),
   adoptTabTransfer: (transferId) => ipcRenderer.invoke('tabs:adopt-transfer', transferId),
   releaseTabTransferSource: (transferId) => ipcRenderer.send('tabs:release-source', transferId),
   createPreview: (tabId) => ipcRenderer.send('preview:create', tabId),

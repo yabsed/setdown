@@ -21,6 +21,7 @@ import { LocationOverlay } from '../browser/location-overlay';
 import { showReadingMenu } from '../menu/reading-menu';
 import { showTabMenu } from '../menu/tab-menu';
 import { showFolderMenu } from '../menu/folder-menu';
+import { showLocationLinkMenu } from '../menu/location-menu';
 import { readFolderMenuContext } from '../../core/files/folder-menu';
 import { readTabMenuContext } from '../../core/workspace/tab-menu';
 import { MenuOverlay } from '../menu/menu-overlay';
@@ -133,6 +134,11 @@ export function installIpc(options: Options): void {
     const zoom = state.window.webContents.getZoomFactor(), x = Number(at?.x), y = Number(at?.y);
     return showFolderMenu(state, context, { paths: text(copy?.paths), folder: text(copy?.folder) },
       Number.isFinite(x) && Number.isFinite(y) ? { x: x * zoom, y: y * zoom } : undefined);
+  });
+  channels.handle('location:link-menu', (state, path: unknown, at: { x?: unknown; y?: unknown } | null) => {
+    if (typeof path !== 'string' || !path || path.length > 16_384) return null;
+    const zoom = state.window.webContents.getZoomFactor(), x = Number(at?.x), y = Number(at?.y);
+    return showLocationLinkMenu(state, path, Number.isFinite(x) && Number.isFinite(y) ? { x: x * zoom, y: y * zoom } : undefined);
   });
   channels.handle('theme:get', (): ThemeSnapshot => themes.snapshot);
   channels.handle('settings:get-auto-save', () => autoSave.enabled);

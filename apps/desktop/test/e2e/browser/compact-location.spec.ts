@@ -62,7 +62,16 @@ test('compact address panels own input above live pages and work for Markdown, f
     const file = path.join(f.root, 'plain.txt'); await writeFile(file, 'File contents');
     panel = await open(); await panel.getByRole('textbox').fill(file); await panel.getByRole('textbox').press('Enter');
     await expect(f.page.getByRole('tab', { name: /plain.txt/ })).toBeVisible();
-    panel = await open(); await expect(panel.getByRole('textbox')).toHaveValue(/plain\.txt/); await panel.getByRole('textbox').press('Escape');
+    panel = await open(); await expect(panel.getByRole('textbox')).toHaveValue(/plain\.txt/);
+    // The panel's field has the address bar's clear button: it empties the field and leaves the caret in it.
+    const clear = panel.getByRole('button', { name: 'Clear address', exact: true });
+    await clear.click();
+    await expect(panel.getByRole('textbox')).toHaveValue(''); await expect(panel.getByRole('textbox')).toBeFocused();
+    await expect(clear).toBeHidden();
+    await panel.keyboard.type('pla');
+    await expect(panel.getByRole('textbox')).toHaveValue('pla'); await expect(clear).toBeVisible();
+    await panel.screenshot({ path: test.info().outputPath('compact-panel-clear.png') });
+    await panel.getByRole('textbox').press('Escape');
     await expect(f.page.getByRole('textbox', { name: 'Editor content', exact: true })).toBeFocused();
     await f.page.getByRole('button', { name: 'New terminal', exact: true }).click();
     panel = await open(); await expect(panel.getByRole('textbox')).toHaveValue(/^terminal:\/\//); await panel.getByRole('textbox').press('Escape');

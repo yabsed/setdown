@@ -59,8 +59,15 @@
 <div class="location-suggestions" class:panel={!!context?.panel}>
   {#if context?.panel}
     {#if context.panel.mode === 'address'}
-      <input bind:this={input} bind:value={draft} aria-label="Search or enter an address" placeholder="Search, URL, or file path" spellcheck="false" autocomplete="off"
-        oninput={edit} oncompositionstart={() => { composing = true; }} oncompositionend={() => { composing = false; edit(); }} />
+      <div class="panel-field">
+        <input bind:this={input} bind:value={draft} aria-label="Search or enter an address" placeholder="Search, URL, or file path" spellcheck="false" autocomplete="off"
+          oninput={edit} oncompositionstart={() => { composing = true; }} oncompositionend={() => { composing = false; edit(); }} />
+        <!-- As in the address bar: the field is emptied and keeps the caret. -->
+        <button class="clear" type="button" aria-label="Clear address" title="Clear address" hidden={!draft}
+          onmousedown={event => event.preventDefault()} onclick={() => { draft = ''; edit(); input?.focus(); }}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
     {:else}
       <div role="menu" aria-label="Page actions">
         {#each context.panel.actions as action (action.id)}
@@ -97,7 +104,12 @@
   small { opacity: .55; font-size: 11px; }
   .panel { border-radius: 8px; padding: 8px; font: 12px var(--app-font-family); }
   .panel [role="listbox"]:not(:empty) { margin-top:6px; }
-  input { width:100%; height:25px; box-sizing:border-box; margin:0; padding:0 9px; border:1px solid transparent; border-radius:5px; background:var(--app-canvas); color:var(--app-text); font:12px/1.4 var(--app-font-family); outline:none; }
+  .panel-field { position:relative; }
+  .clear { position:absolute; top:3px; right:3px; display:grid; place-items:center; width:19px; height:19px; padding:0; border-radius:50%; color:var(--app-muted-text); }
+  .clear[hidden] { display:none; }
+  .clear:hover { color:var(--app-text); }
+  .clear svg { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; }
+  input { width:100%; height:25px; box-sizing:border-box; margin:0; padding:0 26px 0 9px; border:1px solid transparent; border-radius:5px; background:var(--app-canvas); color:var(--app-text); font:12px/1.4 var(--app-font-family); outline:none; }
   input:focus { border-color:var(--app-muted-text); }
   button[role="menuitem"] { height:32px; font:inherit; }
   button:disabled { opacity:.4; }

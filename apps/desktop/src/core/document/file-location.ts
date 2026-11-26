@@ -1,3 +1,5 @@
+import { folderCrumbs, rootLength } from '../files/folder-presentation';
+
 /** Keep filesystem paths in document state; encode them only for the address bar. */
 export function fileLocation(path: string): string {
   const windows = /^[a-z]:[\\/]/i.test(path) || path.startsWith('\\\\');
@@ -29,6 +31,35 @@ export function readableFileLocation(location: string): string {
     catch { return escapes; }
   });
   return (rest ? readable : readable.replace(/ $/, '%20')) + rest;
+}
+
+/** One run of a file's address-bar text. `path` is set on the name of a folder above the file. */
+export type FileLocationPart = { text: string; path?: string };
+
+/**
+ * A file's address-bar text split at its folders, so that each folder's name can be a link to it.
+ * The texts read in order are `readableFileLocation(fileLocation(path))`. The scheme, the
+ * separators and the last name (the location itself) are not links.
+ */
+export function fileLocationParts(path: string): FileLocationPart[] {
+  const text = readableFileLocation(fileLocation(path));
+  if (!rootLength(path)) return [{ text }];
+  const [root, ...below] = folderCrumbs(path, '');
+  // What the address shows for the filesystem root: `file:///`, `file:///C:/` or `file://server/share/`.
+  const rootText = readableFileLocation(fileLocation(root.path));
+  // Its link is the drive or the share. A POSIX root has no name, so its slash is the link.
+  const named = /^(file:\/\/.*?)([^/]+)(\/*)$/i.exec(rootText);
+  const [before, rootName, after] = named ? named.slice(1) : [rootText.slice(0, -1), rootText.slice(-1), ''];
+  const names = text.slice(rootText.length).split('/');
+  if (!text.startsWith(rootText) || names.filter(Boolean).length !== below.length) return [{ text }];
+  const part = (text: string, path: string, here: boolean): FileLocationPart => here ? { text } : { text, path };
+  const parts = [{ text: before }, part(rootName, root.path, !below.length), { text: after }];
+  let folder = 0;
+  names.forEach((name, index) => {
+    if (index) parts.push({ text: '/' });
+    if (name) { const { path } = below[folder++]; parts.push(part(name, path, folder === below.length)); }
+  });
+  return parts.filter(part => part.text);
 }
 
 /** Absolute paths, file URLs and home-relative `~` paths (a folder tab expands `~`). */

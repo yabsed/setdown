@@ -12,9 +12,10 @@ import type { AppActions } from '../../ports/ui-actions';
   import { project } from '../../project/project-state.svelte';
   import { browser } from '../../browser/browser-state.svelte';
   import type { BrowserPlace } from '../../../protocol/browser';
-  import { fileLocation, isFileLocation, readableFileLocation } from '../../../core/document/file-location';
+  import { fileLocation, fileLocationParts, isFileLocation, readableFileLocation } from '../../../core/document/file-location';
   import { isMarkdownPath } from '../../editor/markdown-editor-port';
   import { stepSuggestion } from './suggestion-selection';
+  import { scrollSideways } from '../tabs/tab-scroll';
   import { hangulContinuation } from './hangul-continuation';
   let { actions, groupId }: { actions: AppActions; groupId: string } = $props();
   const group = $derived(view.groups.find(g => g.id === groupId));
@@ -23,7 +24,7 @@ import type { AppActions } from '../../ports/ui-actions';
   const web = $derived(!review && tab?.kind === 'web' ? tab.page : undefined);
   // Shown and edited as text: a file's name reads as it does in a file manager, not as percent-escapes.
   const location = $derived(readableFileLocation(review ? fileLocation(review.filePath) : tab?.kind === 'web' || tab?.kind === 'terminal' ? tab.path : tab ? fileLocation(tab.path) : ''));
-  let input = $state<HTMLInputElement>();
+  let input = $state<HTMLInputElement>(), field = $state<HTMLElement>(), links = $state<HTMLElement>();
   let editing = $state(false), draft = $state(''), suggestions = $state<BrowserPlace[]>([]), selected = $state(-1), bookmarked = $state(false);
   let generation = 0, composing = false, timer: ReturnType<typeof setTimeout>;
   // What the user typed. While the arrow keys are on a row the input shows that row's address instead.
@@ -36,6 +37,25 @@ import type { AppActions } from '../../ports/ui-actions';
   let panelEdit = $state(0);
   let error = $state('');
   let selectOnClick = false;
+  // A file's address stays the text it is, and each folder in it is a link to that folder: a file tab
+  // reaches the folders above it as a folder tab's path bar does. Editing shows the plain field again.
+  const filePath = $derived(review ? review.filePath : tab && tab.kind !== 'web' && tab.kind !== 'terminal' && !tab.isUntitled ? tab.path : '');
+  const parts = $derived(filePath ? fileLocationParts(filePath) : []);
+  const folders = $derived(parts.flatMap(part => part.path === undefined ? [] : [part.path]));
+  const linked = $derived(!editing && folders.length > 0);
+  /** Arriving from below selects the folder (or the file) the way led through, as going up a level does. */
+  const cameFrom = (folder: string) => [folders[folders.indexOf(folder) + 1] ?? filePath];
+  // An address longer than the field scrolls under the wheel and fades where it is cut off.
+  let cut = $state({ start: false, end: false });
+  function scrolled() {
+    if (links) cut = { start: links.scrollLeft > 0.5, end: links.scrollWidth - links.clientWidth - links.scrollLeft > 0.5 };
+  }
+  // The wheel turns over the field beneath as often as over a link, so the field listens for both.
+  function wheel(event: WheelEvent) { if (links && scrollSideways(links, event)) scrolled(); }
+  // It first shows its end: the name of the file and the folders nearest to it, which is also text to click for editing.
+  $effect(() => { void parts; void placement; if (links) { links.scrollLeft = links.scrollWidth; scrolled(); } });
+  /** Empties the field and leaves the caret in it, wherever the keyboard was. */
+  function clear() { editing = true; draft = ''; input?.focus(); search(); }
   let activeTabId: string | undefined;
   const requests = $derived(tab ? browser.permissions[tab.id] ?? [] : []);
   const passwords = $derived(tab ? browser.passwords[tab.id] ?? null : null);
@@ -125,12 +145,29 @@ import type { AppActions } from '../../ports/ui-actions';
       if (request === generation && editing) present(rows.slice(0, 8), text);
     }).catch(() => { if (request === generation) present([]); }), typedPath ? 40 : 100);
   }
-  async function go(value = selected >= 0 ? suggestions[selected].url : draft) {
+  async function go(value = selected >= 0 ? suggestions[selected].url : draft, selection?: string[]) {
     // Submitting ends the address edit and lets navigation focus the content.
     input?.blur();
     blur(); error = '';
-    try { await actions.navigateLocation(groupId, value); }
+    try { await actions.navigateLocation(groupId, value, selection); }
     catch (reason) { error = String(reason); }
+  }
+  const openFolder = (folder: string, side = false) => {
+    error = '';
+    void actions.openFolder(folder, { groupId, newTab: true, side, selection: cameFrom(folder) }).catch(reason => { error = String(reason); });
+  };
+  /** A link as a browser treats one: a click goes there, a middle or Ctrl/Cmd click opens a tab. */
+  function follow(event: MouseEvent, folder: string) {
+    event.preventDefault();
+    if (event.button === 1 || (event.button === 0 && (event.ctrlKey || event.metaKey))) openFolder(folder);
+    else if (event.button === 0) void go(fileLocation(folder), cameFrom(folder));
+  }
+  async function linkMenu(event: MouseEvent, folder: string) {
+    event.preventDefault();
+    try {
+      const command = await actions.showLocationLinkMenu(folder, { x: event.clientX, y: event.clientY });
+      if (command === 'open-tab' || command === 'open-side') openFolder(folder, command === 'open-side');
+    } catch (reason) { error = String(reason); }
   }
   function blur() { editing = false; panelMode = null; suggestions = []; forget(); void tick().then(measure); }
   function inputBlur() {
@@ -155,7 +192,7 @@ import type { AppActions } from '../../ports/ui-actions';
     if (!controls || !input || editing) return;
     // Only what is laid out in the row counts: the focused group's action box leaves it when it has nothing to show.
     const laidOut = (element: Element) => { const style = getComputedStyle(element); return style.display !== 'none' && style.position !== 'absolute'; };
-    const controlWidth = Array.from(controls.children).filter(element => element !== input && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-search') && laidOut(element))
+    const controlWidth = Array.from(controls.children).filter(element => element !== field && element instanceof HTMLElement && !element.hidden && !element.classList.contains('location-search') && laidOut(element))
       .reduce((sum, element) => sum + element.getBoundingClientRect().width + 3, 0);
     const addressWidth = controls.clientWidth - controlWidth;
     if (!compact && addressWidth < 120) compact = true;
@@ -216,6 +253,7 @@ import type { AppActions } from '../../ports/ui-actions';
   <button class="location-icon location-search" hidden={!compact} aria-label="Open address and search" title="Search or enter an address" onclick={openPanel}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
   </button>
+    <div bind:this={field} class="location-field" class:linked onwheel={wheel}>
     <input bind:this={input} aria-label="Address or file path" placeholder="Search or enter an address" spellcheck="false" autocomplete="off"
       bind:value={draft} title={location} onfocus={() => { editing = true; input?.select(); search(); }} onblur={inputBlur}
       onpointerdown={() => { selectOnClick = document.activeElement !== input || !document.hasFocus(); if (!editing) { editing = true; search(); } }}
@@ -234,6 +272,17 @@ import type { AppActions } from '../../ports/ui-actions';
           else if (suggestions.length) { event.preventDefault(); select(step); }
         }
       }} />
+    {#if linked}
+      <!-- Only the links take the pointer: a click anywhere else lands on the field beneath and edits the address. -->
+      <div bind:this={links} class="location-links" class:cut-start={cut.start} class:cut-end={cut.end}>{#each parts as part}{#if part.path === undefined}{part.text}{:else}{@const folder = part.path}<a href={fileLocation(folder)} title={`Go to ${folder}`} tabindex="-1" draggable="false"
+        onmousedown={event => event.preventDefault()} onclick={event => follow(event, folder)} onauxclick={event => follow(event, folder)}
+        oncontextmenu={event => void linkMenu(event, folder)}>{part.text}</a>{/if}{/each}</div>
+    {/if}
+    <button class="location-clear" type="button" aria-label="Clear address" title="Clear address" hidden={!draft}
+      onmousedown={event => event.preventDefault()} onclick={clear}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    </div>
     {#if web}
       {#if web.pdf}
         <button aria-label="Save PDF" title="Save PDF" onclick={() => actions.browserCommand(tab!.id, 'save')}>↓</button>
@@ -340,11 +389,24 @@ import type { AppActions } from '../../ports/ui-actions';
   .location-bar { position: relative; z-index: 15; display: flex; align-items: center; gap: 3px; height: 34px; padding: 3px 9px; box-sizing: border-box; background: var(--app-chrome); border-bottom: 1px solid var(--app-border); color: var(--app-text); }
   .location-controls { display:flex; align-items:center; gap:3px; flex:1; min-width:0; overflow-x:auto; scrollbar-width:none; }
   .location-search { margin-left:auto; }
-  .location-search[hidden], .compact input { display:none; }
+  .location-search[hidden], .compact .location-field { display:none; }
+  .location-field { position: relative; display: flex; flex: 1; width: 0; min-width: 0; }
   button { flex-shrink: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; min-width: 26px; height: 26px; cursor: pointer; font-size: 16px; }
   button:hover { background: var(--app-hover); } button:disabled { opacity: .35; cursor: default; }
-  input { width: 0; flex: 1; height: 25px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
+  input { width: 0; flex: 1; height: 25px; padding: 0 26px 0 9px; border: 1px solid transparent; border-radius: 5px; background: var(--app-canvas); color: inherit; font: 12px/1.4 var(--app-font-family); outline: none; text-overflow: ellipsis; }
   input:focus { border-color: var(--app-muted-text); }
+  /* The links are the field's own text, drawn where the field draws it. */
+  .linked input { color: transparent; }
+  .location-links { --cut-start: 0px; --cut-end: 0px; position: absolute; inset: 0 27px 0 10px; overflow: hidden; font: 12px/25px var(--app-font-family); white-space: pre; pointer-events: none;
+    mask-image: linear-gradient(to right, transparent, #000 var(--cut-start), #000 calc(100% - var(--cut-end)), transparent); }
+  .location-links.cut-start { --cut-start: 18px; }
+  .location-links.cut-end { --cut-end: 18px; }
+  .location-links a { color: inherit; text-decoration: none; cursor: pointer; pointer-events: auto; }
+  .location-links a:hover { text-decoration: underline; }
+  .location-clear { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; min-width: 19px; width: 19px; height: 19px; padding: 0; border-radius: 50%; color: var(--app-muted-text); }
+  .location-clear[hidden] { display: none; }
+  .location-clear:hover { color: var(--app-text); }
+  .location-clear svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
   .location-error { color: #b94f4f; }
   .bookmarked { color: var(--app-text); }
   .loading { box-shadow: inset 0 -2px var(--app-muted-text); }

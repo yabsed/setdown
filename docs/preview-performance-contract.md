@@ -423,6 +423,19 @@ empty → matching queries; explicit Escape and actual focus/tab changes retain
 their existing cancellation behavior. The real native-click/slow-typing case in
 `test/e2e/browser/*.spec.ts` covers this boundary.
 
+A file's address stays the text it is, and each folder in it is a link
+(`fileLocationParts` in `core/document/file-location.ts`). A click takes the tab
+to that folder with the folder or file it came from selected; a middle or
+Ctrl/Cmd click, or the link's menu in the native menu layer, opens it in a new
+tab. The links are drawn where the field draws its text and only they take the
+pointer: a click anywhere else still edits the address, and editing shows the
+plain field. An address longer than its field first shows its end (the name and
+the folders nearest to it), scrolls under the wheel and fades where it is cut
+off. The clear button at the end of the field empties it and leaves the caret
+in it; the compact panel's field has the same button.
+`workspace/location-links.spec.ts` and `browser/compact-location.spec.ts` cover
+these.
+
 Focus entering the native suggestion view continues the same address edit.
 Its focus transition can precede the popup's pointer event, so shell DOM blur
 must consult main's native focus before dismissing the list. A late blur reply

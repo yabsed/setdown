@@ -38,6 +38,9 @@ export type PickLinkTargetResult = {
   label?: string;
 };
 
+/** What the menu of a folder name in the address bar can do with that folder. */
+export type LocationLinkCommand = 'open-tab' | 'open-side' | 'copy-path';
+
 export type ProjectFolder = { path: string; name: string };
 
 export type ProjectFilesChanged = { root: string; paths?: string[] };
@@ -348,6 +351,11 @@ export type MarkTexApi = {
    */
   showFolderMenu(context: import('../core/files/folder-menu').FolderMenuContext, copy: { paths: string; folder: string },
     point: { x: number; y: number }): Promise<import('../core/files/folder-menu').FolderMenuCommand | null>;
+  /**
+   * Show the menu of a folder name in the address bar at a point in this window (CSS pixels).
+   * Resolves with the chosen command; Copy Path has then already written `path`.
+   */
+  showLocationLinkMenu(path: string, point: { x: number; y: number }): Promise<LocationLinkCommand | null>;
   adoptTabTransfer(transferId: string): Promise<boolean>;
   releaseTabTransferSource(transferId: string): void;
   createPreview(tabId: string): void;

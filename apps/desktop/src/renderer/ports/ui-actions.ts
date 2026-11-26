@@ -23,7 +23,9 @@ export type AppActions = BrowserActions & TerminalActions & FolderActions & {
   menuOverlay: import('../../protocol/desktop-api').MarkTexApi['menuOverlay'];
   changeZoom(steps: number, scope: 'app' | 'text' | 'terminal', tabId?: string): void;
   newWebTab(input?: string, background?: boolean): void;
-  navigateLocation(groupId: string, input: string): Promise<void>;
+  /** `selection`: what to select when the address turns out to be a folder. */
+  navigateLocation(groupId: string, input: string, selection?: string[]): Promise<void>;
+  showLocationLinkMenu: import('../../protocol/desktop-api').MarkTexApi['showLocationLinkMenu'];
   focusLocationContent(groupId: string): void;
   navigateHistory(id: string, direction: -1 | 1): void;
   focusGroup(id: string): void;

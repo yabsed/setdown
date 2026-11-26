@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { fileLocation, isFileLocation, readableFileLocation } from './file-location';
+import { fileLocation, fileLocationParts, isFileLocation, readableFileLocation } from './file-location';
 
 test.each([
   "/home/user/Downloads/'26년 하반기 서울대 공학인재 인턴 JD_게시용.pdf",
@@ -36,4 +36,36 @@ test('readable file locations keep what is not a UTF-8 file name', () => {
   expect(readableFileLocation('file:///tmp/latin1-%E9.txt')).toBe('file:///tmp/latin1-%E9.txt');
   expect(readableFileLocation('file:///C:/Users/A%20B/%ED%95%9C%EA%B8%80.pdf')).toBe('file:///C:/Users/A B/한글.pdf');
   expect(readableFileLocation('/tmp/plain path')).toBe('/tmp/plain path');
+});
+
+// `[name]` is a link to that folder; everything else is plain text.
+const marked = (path: string) => fileLocationParts(path).map(part => part.path === undefined ? part.text : `[${part.text}]`).join('');
+const links = (path: string) => fileLocationParts(path).flatMap(part => part.path === undefined ? [] : [part.path]);
+test('every folder above a file is a link in its address, and the file itself is not', () => {
+  expect(marked('/home/user/Documents/build.py')).toBe('file://[/][home]/[user]/[Documents]/build.py');
+  expect(links('/home/user/Documents/build.py')).toEqual(['/', '/home', '/home/user', '/home/user/Documents']);
+  // A folder tab's own folder is where it already is.
+  expect(marked('/home')).toBe('file://[/]home');
+  expect(marked('/')).toBe('file:///');
+});
+test.each([
+  '/home/user/Downloads/[붙임1] 지침-2 copy (3).pdf', '/tmp/a # ? %20 + 한글.md', '/tmp/literal\\backslash.txt',
+  '/tmp/ends with space /inner /last ', '/', '/tmp', 'C:\\Users\\A B\\한글.pdf', 'C:\\', '\\\\server\\share\\a #.md', '\\\\server\\share',
+  'Untitled-1',
+])('the parts of an address read as the address: %s', path => {
+  expect(fileLocationParts(path).map(part => part.text).join('')).toBe(readableFileLocation(fileLocation(path)));
+});
+test('a link names the folder as the filesystem does, whatever its address had to escape', () => {
+  expect(marked('/tmp/a # ?/ends with space /한글.md')).toBe('file://[/][tmp]/[a %23 %3F]/[ends with space ]/한글.md');
+  expect(links('/tmp/a # ?/ends with space /한글.md')).toEqual(['/', '/tmp', '/tmp/a # ?', '/tmp/a # ?/ends with space ']);
+});
+test('Windows drives and network shares are the first link of their addresses', () => {
+  expect(marked('C:\\Users\\A B\\한글.pdf')).toBe('file:///[C:]/[Users]/[A B]/한글.pdf');
+  expect(links('C:\\Users\\A B\\한글.pdf')).toEqual(['C:\\', 'C:\\Users', 'C:\\Users\\A B']);
+  expect(marked('\\\\server\\share\\docs\\a.md')).toBe('file://server/[share]/[docs]/a.md');
+  expect(links('\\\\server\\share\\docs\\a.md')).toEqual(['\\\\server\\share\\', '\\\\server\\share\\docs']);
+  expect(marked('C:\\')).toBe('file:///C:/');
+});
+test('a location that is not an absolute path has no links', () => {
+  expect(fileLocationParts('Untitled-1')).toEqual([{ text: readableFileLocation(fileLocation('Untitled-1')) }]);
 });
