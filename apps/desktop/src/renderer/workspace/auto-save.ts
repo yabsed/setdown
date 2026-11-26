@@ -12,6 +12,8 @@ type Options = {
   dirty(tab: WorkspaceTab): boolean;
   acceptSaved(tab: WorkspaceTab, document: DocumentSnapshot): Promise<void>;
   beforeSave?(tab: WorkspaceTab): Promise<void>;
+  /** Saves a large document, whose text `text` does not hold, from its editor. */
+  saveLarge?(tab: WorkspaceTab): Promise<import('../../protocol/desktop-api').SaveResult>;
   saved(document: DocumentSnapshot): void | Promise<void>;
   failed?(tab: WorkspaceTab, message: string): void;
 };
@@ -85,7 +87,8 @@ export class AutoSaveController {
     try {
       await this.options.beforeSave?.(tab);
       if (canceled() || !this.options.tabs.includes(tab)) return;
-      const result = await desktop.saveTabDocument(tab.document, text(tab), tab.revision, true);
+      const result = tab.document.large && this.options.saveLarge ? await this.options.saveLarge(tab)
+        : await desktop.saveTabDocument(tab.document, text(tab), tab.revision, true);
       if (!this.options.tabs.includes(tab)) return;
       if (result.canceled || !result.document) {
         this.options.failed?.(tab, 'Auto save paused because the file changed on disk. Your edits are preserved.');

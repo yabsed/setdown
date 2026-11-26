@@ -44,7 +44,7 @@
 </script>
 
 {#if support}
-  <LanguageStatusButton bind:element={button} name={support.name} label={status.label} tone={status.tone} expanded={!!target} {narrow} onclick={toggle} />
+  <LanguageStatusButton bind:element={button} name={support.name} label={status.label || (support.limits ? 'Large file' : '')} tone={status.tone} expanded={!!target} {narrow} onclick={toggle} />
   {#if target}
     <div bind:this={panel} class="document-language-status" class:expanded style:max-height={`${availableHeight}px`} role="dialog" aria-label="Current file language support" tabindex="-1">
       {#key `${target.resource}\0${opened}`}

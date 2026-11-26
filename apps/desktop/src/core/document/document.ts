@@ -33,4 +33,9 @@ export type DocumentSnapshot = {
   /** Absent on legacy Markdown snapshots. Owned by the document, not the window. */
   encoding?: TextEncoding;
   eol?: TextEol;
+  /** A text file read and saved in pieces (`text-codec.ts`). Its text lives only in the editor
+   * model: `text` and `savedText` stay empty here and in every message that carries the snapshot. */
+  large?: { bytes: number; lines?: number };
 };
+
+export const isLargeText = (document: Pick<DocumentSnapshot, 'large'>): boolean => document.large !== undefined;

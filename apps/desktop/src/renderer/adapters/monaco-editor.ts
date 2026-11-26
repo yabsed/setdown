@@ -3,7 +3,8 @@ import { isNotebookDocument } from '../../core/document/document-profile';
 import { onTextZoom, textZoomOptions } from '../editor/text-zoom';
 import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import type * as Monaco from 'monaco-editor';
-import type { DocumentSnapshot } from '../../core/document/document';
+import { isLargeText, sameDiskVersion, type DiskVersion, type DocumentSnapshot } from '../../core/document/document';
+import { takeLargeText } from '../editor/large-text';
 import { documentLanguage } from '../../core/document/document-profile';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
@@ -27,7 +28,7 @@ import { isLanguageAnswer } from '../../protocol/language';
 import { isComposingInput } from '../editor/composition-guard';
 import { recordRecentCommand } from '../editor/tools/command-list';
 import { recognizedLanguage } from '../../core/document/language-policy';
-import { loadMonaco } from '../editor/monaco-runtime';
+import { largeTextModels, loadMonaco } from '../editor/monaco-runtime';
 import { displayOptions, releaseDisplayOptions } from '../editor/tools/view-display';
 import { onMarkdownWordWrap, sourceWordWrap } from '../editor/markdown-word-wrap';
 
@@ -44,9 +45,21 @@ type Options = {
   viewChanged?: () => void;
   focusTab?: (id: string) => void;
   scrolled: () => void; escape: () => void; insertLink: () => void; insertTable: () => void;
+  /** A large document was given a model without its text; it has to be read again. */
+  unloaded?: (tab: DocumentContent) => void;
 };
 type SearchTarget = { line: number; column: number; ordinal: number };
 type ProjectMatch = NonNullable<ProjectSearchDocument['matches']>[number];
+
+/** What a file goes without because of its size, said where its language support is shown. The
+ * editor decides the first part itself (VS Code names the same switches in a notification); a file
+ * read in pieces is also never handed to an analysis tool. */
+function largeFileLimits(document: DocumentSnapshot, model: Monaco.editor.ITextModel): string | undefined {
+  const plain = (model as { isTooLargeForTokenization?(): boolean }).isTooLargeForTokenization?.() === true;
+  const unanalysed = isLargeText(document);
+  if (plain) return `Syntax highlighting, word wrap and folding are off for a file this large${unanalysed ? ', and it is not given to analysis tools' : ''}.`;
+  return unanalysed ? 'A file this large is not given to analysis tools.' : undefined;
+}
 
 export class MonacoEditor {
   private languageRoutes: LanguageRoute[] | undefined;
@@ -75,6 +88,13 @@ export class MonacoEditor {
   private readonly views = new Map<string, Monaco.editor.ICodeEditorViewState | null>();
   private readonly owners = new Map<string, DocumentModelOwner<Monaco.editor.ITextModel>>();
   private readonly replacing = new Set<string>();
+  /** A large document is unchanged while its model is at the version that was read or saved as
+   * this file version. Its text is never compared: there is no second copy to compare with. */
+  private readonly savedPoints = new Map<string, { version: number; disk: DiskVersion }>();
+  /** The model version a save in progress took its snapshot at. */
+  private readonly captured = new Map<string, number>();
+  /** Large documents whose model was made without their text. Empty models are never saved. */
+  private readonly unloaded = new Set<string>();
   private readonly unregisterZoom = onTextZoom(id => {
     for (const entry of this.groupEditors.values()) {
       const tab = this.options.tabs().find(tab => tab.id === entry.tabId);
@@ -138,7 +158,29 @@ export class MonacoEditor {
     const model = this.models.get(documentIdentity(tab));
     return !!model && [...this.groupEditors.values()].some(entry => entry.tabId === tab.id && entry.editor.getModel() === model);
   }
-  text(tab: DocumentContent): string { return this.models.get(documentIdentity(tab))?.getValue() ?? tab.text; }
+  /** A large document answers with no text: its model is the only holder of it, and nothing that
+   * asks here (dirty checks, messages to the main process, recovery snapshots) may copy it. */
+  text(tab: DocumentContent): string {
+    return isLargeText(tab.document) ? '' : this.models.get(documentIdentity(tab))?.getValue() ?? tab.text;
+  }
+  /** Whether a large document differs from the file version it was read from or saved as. */
+  modified(tab: DocumentContent): boolean {
+    const id = documentIdentity(tab), model = this.models.get(id), saved = this.savedPoints.get(id);
+    if (!model || this.unloaded.has(id)) return false; // Never shown, or not read yet: nothing of the person's is in it.
+    return !saved || model.getAlternativeVersionId() !== saved.version || !sameDiskVersion(saved.disk, tab.document.diskVersion);
+  }
+  /** A large document's text for saving. The snapshot stays as taken while typing goes on. */
+  capture(tab: DocumentContent): Monaco.editor.ITextSnapshot | null {
+    const id = documentIdentity(tab), model = this.models.get(id);
+    if (!model || this.unloaded.has(id)) return null;
+    this.captured.set(id, model.getAlternativeVersionId());
+    return model.createSnapshot();
+  }
+  /** The file a large document was read from moved or was saved elsewhere: same text, new version. */
+  rebase(tab: DocumentContent, from: DiskVersion, to: DiskVersion): void {
+    const saved = this.savedPoints.get(documentIdentity(tab));
+    if (saved && sameDiskVersion(saved.disk, from)) saved.disk = to;
+  }
   modelFor(tab: DocumentContent): Monaco.editor.ITextModel { return this.ensureModel(tab); }
   documentSymbols(model: Monaco.editor.ITextModel) { return this.languageClient?.documentSymbols(model) ?? Promise.resolve([]); }
   async beforeSave(tab: DocumentContent, reason: 1 | 2 = 1): Promise<void> {
@@ -146,8 +188,11 @@ export class MonacoEditor {
     if (model) await this.languageClient?.beforeSave(model, reason);
   }
   saved(tab: DocumentContent): void {
-    const model = this.models.get(documentIdentity(tab));
-    if (model) this.languageClient?.saved(model, tab.document.savedText);
+    const id = documentIdentity(tab), model = this.models.get(id);
+    if (model && isLargeText(tab.document)) {
+      this.savedPoints.set(id, { version: this.captured.get(id) ?? model.getAlternativeVersionId(), disk: tab.document.diskVersion });
+      this.captured.delete(id);
+    } else if (model) this.languageClient?.saved(model, tab.document.savedText);
   }
   setLanguageRoot(root: string | null): void {
     if (this.languageRoot === root) return;
@@ -324,6 +369,8 @@ export class MonacoEditor {
     const model = this.models.get(documentIdentity(tab));
     // Reload/asset rewriting is one explicit, undoable document edit, not a new
     // model. A mounted Working Tree must never retain a disposed live model.
+    if (isLargeText(document)) { this.replaceLarge(tab, document, model); return; }
+    this.savedPoints.delete(documentIdentity(tab));
     this.replacing.add(documentIdentity(tab));
     try {
       if (model && (model.getValue() !== document.text
@@ -340,10 +387,25 @@ export class MonacoEditor {
     this.retarget(tab);
     liveDocumentModels.publish({ type: 'changed', path: document.path, text: tab.text });
   }
+  /** A reload of a large file. Without a model its text waits for `ensureModel`. */
+  private replaceLarge(tab: DocumentContent, document: DocumentSnapshot, model: Monaco.editor.ITextModel | undefined): void {
+    const id = documentIdentity(tab), pieces = model ? takeLargeText(document) : undefined;
+    if (model && pieces) {
+      this.replacing.add(id);
+      try { largeTextModels().updateLargeTextModel(this.apiValue!, model, pieces); }
+      finally { this.replacing.delete(id); }
+      this.savedPoints.set(id, { version: model.getAlternativeVersionId(), disk: document.diskVersion });
+      this.captured.delete(id); this.unloaded.delete(id);
+    }
+    tab.text = '';
+    tab.revision = document.revision;
+    this.retarget(tab);
+  }
   /** Explicit external edit. Normal Working Tree typing already uses our model. */
   setText(tab: DocumentContent, text: string, edits?: WorkingTreeEdit[]): boolean {
     if (isNotebookDocument(tab.document.path)) throw Error("Edit notebook cells in the notebook tab.");
     const model = this.models.get(documentIdentity(tab));
+    if (isLargeText(tab.document)) throw Error('A large file is edited in its own tab.');
     if (!model) { tab.text = text; return false; }
     if (model.getValue() === text) return true;
     const operations = edits?.length ? edits.map((edit) => ({ range: edit.range, text: edit.text }))
@@ -366,6 +428,7 @@ export class MonacoEditor {
     if (model) this.languageClient?.unbind(model);
     for (const entry of this.groupEditors.values()) if (model && entry.editor.getModel() === model) entry.editor.setModel(null);
     this.models.delete(id); this.owners.delete(id); this.modelPaths.delete(id); this.languageOverrides.delete(id);
+    this.savedPoints.delete(id); this.captured.delete(id); this.unloaded.delete(id);
     documentSupport.remove(id);
     owner?.releaseOwner();
     if (path) liveDocumentModels.publish({ type: 'closed', path });
@@ -458,15 +521,29 @@ export class MonacoEditor {
     if (!api) throw new Error('Monaco is not loaded.');
     this.apiValue ??= api;
     const uri = api.Uri.file(tab.document.path).with({ query: documentIdentity(tab) });
-    const language = documentLanguage(tab.document.path, api.languages.getLanguages(), tab.text.split(/[\r\n]/, 1)[0]);
-    const model = api.editor.createModel(tab.text, language, uri);
+    // A large file's text was read in pieces and becomes the model's buffer as it is.
+    const pieces = takeLargeText(tab.document);
+    const unloaded = isLargeText(tab.document) && !pieces;
+    const head = pieces ? (pieces[0] ?? '').slice(0, 4096) : tab.text;
+    const language = documentLanguage(tab.document.path, api.languages.getLanguages(), head.split(/[\r\n]/, 1)[0]);
+    const model = pieces ? largeTextModels().createLargeTextModel(pieces, language, uri) : api.editor.createModel(tab.text, language, uri);
     if (tab.document.eol) model.setEOL(tab.document.eol === 'crlf'
       ? api.editor.EndOfLineSequence.CRLF : api.editor.EndOfLineSequence.LF);
+    if (pieces) this.savedPoints.set(documentIdentity(tab), { version: model.getAlternativeVersionId(), disk: tab.document.diskVersion });
+    if (unloaded) {
+      // No path is known to lead here. The empty model is never saved, and the file is read again.
+      console.error('A large document reached the editor without its text:', tab.document.path);
+      this.unloaded.add(documentIdentity(tab));
+      queueMicrotask(() => this.options.unloaded?.(tab));
+    }
     const listener = model.onDidChangeContent(() => {
       if (this.replacing.has(documentIdentity(tab)) || this.models.get(documentIdentity(tab)) !== model) return;
-      const text = model.getValue();
       // Single authoritative notification regardless of which editor produced
       // the edit, Undo, Redo, IME update, or diff revert operation.
+      // A large document is reported as changed without its text: copying it out on every
+      // keystroke is what VS Code's version-based dirty state avoids.
+      if (isLargeText(tab.document)) { this.options.changed(tab, ''); return; }
+      const text = model.getValue();
       this.options.changed(tab, text);
       liveDocumentModels.publish({ type: 'changed', path: tab.document.path, text });
     });
@@ -507,6 +584,9 @@ export class MonacoEditor {
     this.publishLanguageSupport(tab, model);
     // A tool's answer is coloured as its language and analysed by no tool: it belongs to no project.
     if (isLanguageAnswer(tab.document.path)) return;
+    // A language server is sent the whole text, and again on full-sync changes. VS Code does not
+    // sync a model past 50 MB to its extension host; here no large document is sent to a server.
+    if (isLargeText(tab.document)) { this.languageClient?.unbind(model); return; }
     if (this.languageClient) { this.languageClient.bind(tab, model); return; }
     // Markdown stays off the analysis import path unless a provider was explicitly enabled.
     if (language === 'markdown' && !languageSupport(tab.document.path, this.languageRoutes)) return;
@@ -541,6 +621,7 @@ export class MonacoEditor {
     const ids = new Set([tab.id, ...(this.options.viewIds?.(tab) ?? this.options.tabs().filter(view => documentIdentity(view) === documentIdentity(tab)).map(view => view.id))]);
     for (const id of ids) documentSupport.set({ id, resource, language, name: choices.find(item => item.id === language)?.name ?? language, path: tab.document.path,
       choices, providers: this.languageClient?.supportFor(model) ?? (builtinSupport(model).features.length ? [builtinSupport(model)] : []),
+      limits: largeFileLimits(tab.document, model),
       setLanguage: id => {
         if (!valid() || (id && !choices.some(item => item.id === id))) return;
         if (id) this.languageOverrides.set(documentIdentity(tab), id); else this.languageOverrides.delete(documentIdentity(tab));

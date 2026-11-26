@@ -7,6 +7,9 @@ import type { ThemeSnapshot } from '../core/theme/theme-state';
 import type { PreviewBounds } from './preview-preparation';
 
 export type { DiskVersion, DocumentSnapshot } from '../core/document/document';
+/** One piece of a large text file as it is read; `end` says how it was encoded and which file version it is. */
+export type LargeTextPiece = { text: string } | { end: { encoding: import('../core/document/text-codec').TextEncoding;
+  eol: import('../core/document/text-codec').TextEol; diskVersion: DiskVersion; lines: number } };
 export type { PreviewHeading, RenderResult } from '../core/preview/preview-state';
 export type { ThemeSnapshot } from '../core/theme/theme-state';
 
@@ -321,8 +324,9 @@ export type MarkTexApi = {
   getDocument(): Promise<DocumentSnapshot | null>;
   newDocument(): Promise<DocumentSnapshot | null>;
   openDocument(): Promise<DocumentSnapshot | null>;
-  /** Read an address-bar file location without activating or replacing a document. */
-  readDocumentLocation(location: string): Promise<DocumentSnapshot>;
+  /** Read an address-bar file location without activating or replacing a document.
+   * `content: false` leaves the text of a large file unread: the snapshot only describes it. */
+  readDocumentLocation(location: string, content?: boolean): Promise<DocumentSnapshot>;
   droppedPathKind(path: string): Promise<'file' | 'directory'>;
   activateDocument(document: DocumentSnapshot, text: string, revision: number): Promise<DocumentSnapshot>;
   updateTabState(tabs: TabStateSummary[]): void;
@@ -431,6 +435,19 @@ export type MarkTexApi = {
   saveDocumentAs(text: string, revision: number): Promise<SaveResult>;
   saveTabDocument(document: DocumentSnapshot, text: string, revision: number, auto?: boolean): Promise<SaveResult>;
   discardDocument(document: DocumentSnapshot): Promise<void>;
+  /** A text file past the size held as one string (`core/document/text-codec.ts`). A snapshot of one
+   * has `large` set and no text: the text is read and saved here, piece by piece. */
+  largeText: {
+    open(path: string): Promise<{ id: string; bytes: number }>;
+    read(id: string): Promise<LargeTextPiece>;
+    close(id: string): void;
+    /** Starts a save and answers with its id. Dialogs and the overwrite check run before the first piece is taken. */
+    save(request: { document: DocumentSnapshot; revision: number; auto?: boolean; saveAs?: boolean }): Promise<string>;
+    /** `false`: the save has ended without taking this piece; `finish` tells how. */
+    write(id: string, text: string): Promise<boolean>;
+    /** Ends the text, or with `failure` abandons the save, and answers with its outcome. */
+    finish(id: string, failure?: string): Promise<SaveResult>;
+  };
   resolveWindowClose(decision: CloseDecision): void;
   finishWindowClose(saved: boolean): void;
   reloadDocument(): Promise<DocumentSnapshot | null>;

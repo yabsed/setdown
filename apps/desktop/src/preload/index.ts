@@ -191,6 +191,14 @@ const api: MarkTexApi = {
   openDocument: () => ipcRenderer.invoke('document:open'),
   readDocumentLocation: (location) => ipcRenderer.invoke('document:read-location', location),
   droppedPathKind: (path) => ipcRenderer.invoke('document:dropped-path-kind', path),
+  largeText: {
+    open: path => ipcRenderer.invoke('large-text:open', path),
+    read: id => ipcRenderer.invoke('large-text:read', id),
+    close: id => ipcRenderer.send('large-text:close', id),
+    save: request => ipcRenderer.invoke('large-text:save', request),
+    write: (id, text) => ipcRenderer.invoke('large-text:save-piece', id, text),
+    finish: (id, failure) => ipcRenderer.invoke('large-text:save-end', id, failure),
+  },
   activateDocument: (document, text, revision) =>
     ipcRenderer.invoke('document:activate', { document, text, revision }),
   updateMemoryContext: context => ipcRenderer.send('memory:context', context),

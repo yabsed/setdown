@@ -105,8 +105,9 @@ export class ReviewWorkspaceController {
         const existing = workspace.documentStore.find(path);
         if (existing) { workspace.documentStore.retain(existing.id, id); content = existing; }
         else try {
-          const snapshot = await this.options.desktop.readDocumentLocation(path);
-          if (sharedTextDocument(snapshot)) content = await workspace.documentStore.acquire(path, id, async () => snapshot);
+          // A large file is only described here: its text belongs to the editor of its own tab.
+          const snapshot = await this.options.desktop.readDocumentLocation(path, false);
+          if (sharedTextDocument(snapshot) && !snapshot.large) content = await workspace.documentStore.acquire(path, id, async () => snapshot);
         } catch (error) { if (!/ENOENT|no such file/i.test(String(error))) throw error; }
         // Retaining content is enough to make its model available through the
         // live-document provider. GitDiffEditor borrows it with its own Monaco

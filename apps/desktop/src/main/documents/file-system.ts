@@ -51,14 +51,20 @@ export async function serializeFileSave<T>(filePath: string, operation: () => Pr
   finally { if (saves.get(key) === pending) saves.delete(key); }
 }
 
-export async function atomicWrite(filePath: string, text: string, beforeCommit?: () => void) {
+/** `text` in pieces is written as it arrives; a source that throws leaves the destination untouched. */
+export async function atomicWrite(filePath: string, text: string | AsyncIterable<string>, beforeCommit?: () => void) {
   const stat = await fs.stat(filePath).catch(() => null);
   const temporary = path.join(
     path.dirname(filePath),
     `.${path.basename(filePath)}.${randomUUID()}.tmp`,
   );
   try {
-    await fs.writeFile(temporary, text, { encoding: 'utf8', mode: stat?.mode, flag: 'wx' });
+    if (typeof text === 'string') await fs.writeFile(temporary, text, { encoding: 'utf8', mode: stat?.mode, flag: 'wx' });
+    else {
+      const output = await fs.open(temporary, 'wx', stat?.mode);
+      try { for await (const piece of text) await output.writeFile(piece, 'utf8'); }
+      finally { await output.close(); }
+    }
     if (stat) await fs.chmod(temporary, stat.mode);
     const handle = await fs.open(temporary, 'r');
     try {

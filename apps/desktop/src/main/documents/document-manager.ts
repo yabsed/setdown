@@ -11,7 +11,7 @@ import type {
   SaveResult,
 } from '../../protocol/desktop-api';
 import { applyTextRevision } from '../../core/document/document-state';
-import { isMarkdownDocument, isPdfDocument, isImageDocument, isVideoDocument, isOfficeDocument, isReadOnlyDocument, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, OFFICE_EXTENSIONS, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
+import { isMarkdownDocument, isNotebookDocument, isTextCandidate, isPdfDocument, isImageDocument, isVideoDocument, isOfficeDocument, isReadOnlyDocument, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, OFFICE_EXTENSIONS, MARKDOWN_EXTENSIONS } from '../../core/document/document-profile';
 import { prepareDocumentSave, retainUnsavedRevision } from '../../core/document/document-save';
 import type { ReadingPositionStore } from '../reading/reading-position-store';
 import { readImageMetadata } from './image-file';
@@ -19,6 +19,8 @@ import { readPdfMetadata } from './pdf-file';
 import { readVideoMetadata } from './video-file';
 import { readOfficeMetadata } from './office-file';
 import { readMarkdownFile, readTextFile } from './text-file';
+import { assertLargeTextSize, isLargeTextFile } from './large-text';
+import { encodedText, TextStreamCheck } from '../../core/document/text-codec';
 import { discardDraftBundle, saveDraftBundle } from './draft-assets';
 import { isSupportedImagePath, savePastedImageFile, savePastedPng } from './pasted-image';
 import { markdownDestinationForFile } from './markdown-link';
@@ -40,6 +42,8 @@ export class DocumentManager {
 
   async read(filePath: string): Promise<DocumentSnapshot> {
     const absolute = canonicalPath(filePath);
+    const large = await this.readLarge(absolute);
+    if (large) return large;
     // Preserve Markdown's existing unbounded read policy. New text formats use
     // the bounded, strict decoder and retain their BOM/EOL metadata.
     const loaded = isOfficeDocument(absolute) ? await readOfficeMetadata(absolute) : isVideoDocument(absolute) ? await readVideoMetadata(absolute) : isImageDocument(absolute) ? await readImageMetadata(absolute) : isPdfDocument(absolute) ? await readPdfMetadata(absolute) : isMarkdownDocument(absolute)
@@ -55,6 +59,17 @@ export class DocumentManager {
       savedRevision: 0,
       isUntitled: false,
     };
+  }
+
+  /** A text file too large to hold as one string is described, not read: the window that shows
+   * it reads the text in pieces (`large-text.ts`), which is also where its content is checked. */
+  private async readLarge(absolute: string): Promise<DocumentSnapshot | null> {
+    const stat = await fs.stat(absolute).catch(() => null);
+    if (!stat?.isFile() || !isLargeTextFile(absolute, stat.size)) return null;
+    assertLargeTextSize(stat.size);
+    return { path: absolute, name: path.basename(absolute), text: '', savedText: '', revision: 0, savedRevision: 0,
+      diskVersion: versionFromStat(stat), isUntitled: false, large: { bytes: stat.size },
+      readingPosition: this.positions?.get(absolute, versionFromStat(stat)) };
   }
 
   private blank(): DocumentSnapshot {
@@ -214,6 +229,8 @@ export class DocumentManager {
 
   private async writeSnapshot(state: WindowState, document: DocumentSnapshot, text: string, revision: number, auto: boolean): Promise<SaveResult> {
     if (document.kind !== undefined || isReadOnlyDocument(document.path)) throw new Error('PDF and image documents are read-only.');
+    // Its text is not in `text`: writing that would empty the file.
+    if (document.large) throw new Error('A large text file is saved in pieces from its editor.');
     const updated = applyTextRevision(document, text, revision);
     if (updated.isUntitled) {
       // Auto save never opens a dialog; untitled drafts stay in the drafts folder.
@@ -295,6 +312,7 @@ export class DocumentManager {
     const document = state.currentDocument;
     if (!document) return { canceled: true };
     if (document.kind !== undefined || isReadOnlyDocument(document.path)) return { canceled: true };
+    if (document.large) throw new Error('A large text file is saved in pieces from its editor.');
     if (document.isUntitled) return this.saveCurrent(state, text, revision);
     const selected = await pathDialog.showSaveDialog(state.window, {
       defaultPath: document.path, filters: saveFilters(document.path),
@@ -311,6 +329,66 @@ export class DocumentManager {
         path: absolute, name: path.basename(absolute), text: output.text, savedText: output.text,
         encoding: output.encoding, eol: output.eol, assetRelocation: undefined,
         revision, savedRevision: revision, diskVersion: version, isUntitled: false } }, document.path);
+    });
+  }
+
+  /** Saves a large text file from the pieces its editor hands over. Like a whole-text save it asks
+   * before overwriting an externally changed file and replaces the file only once every piece is
+   * written and passes the checks a reopened file must pass. */
+  async saveLarge(state: WindowState, document: DocumentSnapshot, revision: number, pieces: AsyncIterable<string>,
+    mode: { auto?: boolean; saveAs?: boolean } = {}): Promise<SaveResult> {
+    if (!document.large || document.isUntitled || document.kind !== undefined || isReadOnlyDocument(document.path))
+      throw new Error('This document is not a large text file.');
+    let destination = document.path;
+    let expected: DocumentSnapshot['diskVersion'] | null | undefined;
+    if (mode.saveAs) {
+      const selected = await pathDialog.showSaveDialog(state.window, { defaultPath: document.path, filters: saveFilters(document.path) });
+      if (selected.canceled || !selected.filePath) return { canceled: true };
+      destination = canonicalSavePath(selected.filePath);
+      if (state.rendererTabs.some(tab => tab.path === destination && tab.path !== document.path))
+        throw Error('This destination is already open. Close that document before saving another document over it.');
+      if (!isTextCandidate(destination) || isReadOnlyDocument(destination)) throw new Error('Choose a text file extension, not a binary format.');
+      if (isMarkdownDocument(destination) || isNotebookDocument(destination))
+        throw new Error('A large text file cannot be saved as Markdown or as a notebook.');
+    }
+    const overwrite = destination === document.path;
+    if (overwrite) {
+      const confirmed = mode.auto ? this.unchangedOnDisk(document) ? document.diskVersion : false
+        : await this.confirmOverwrite(state, document);
+      if (confirmed === false) return { canceled: true };
+      expected = confirmed;
+    }
+    const check = new TextStreamCheck();
+    const checked = async function* (): AsyncGenerator<string> {
+      let first = true;
+      for await (const piece of pieces) {
+        check.accept(piece);
+        yield first ? encodedText(piece, document.encoding) : piece;
+        first = false;
+      }
+      // An emptied document still keeps its byte order mark.
+      if (first && document.encoding === 'utf8-bom') yield encodedText('', document.encoding);
+    };
+    let conflict = false;
+    const write = () => atomicWrite(destination, checked(), () => {
+      check.end(); // A text ending in a bare CR could not be opened again.
+      if (!overwrite) return;
+      let current: ReturnType<typeof diskVersion> | null = null;
+      try { current = diskVersion(destination); } catch { /* Missing destination. */ }
+      if (!!current !== !!expected || (current && expected && !sameDiskVersion(current, expected))) {
+        conflict = true;
+        throw new Error('The file changed while saving. Reload it or save a copy.');
+      }
+    });
+    return serializeFileSave(destination, async () => {
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      let version: DocumentSnapshot['diskVersion'];
+      try { version = overwrite ? await this.writeWatchedFile(state, destination, write) : await write(); }
+      catch (error) { if (mode.auto && conflict) return { canceled: true }; throw error; }
+      const absolute = canonicalPath(destination);
+      return this.acceptSaved(state, { canceled: false, document: { ...document,
+        path: absolute, name: path.basename(absolute), text: '', savedText: '', eol: check.end(), assetRelocation: undefined,
+        revision, savedRevision: revision, diskVersion: version, isUntitled: false, large: { bytes: version.size } } }, document.path);
     });
   }
 

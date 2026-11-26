@@ -25,6 +25,17 @@ declare module 'monaco-editor/editor/common/services/resolverService' {
   export const ITextModelService: unknown;
 }
 
+// A large file's text enters and leaves its model in pieces (`editor/monaco-large-text.ts`).
+declare module 'monaco-editor/editor/common/services/model' {
+  export const IModelService: unknown;
+}
+declare module 'monaco-editor/editor/common/languages/language' {
+  export const ILanguageService: unknown;
+}
+declare module 'monaco-editor/editor/common/model/textModel' {
+  export function createTextBufferFactoryFromSnapshot(snapshot: import('monaco-editor').editor.ITextSnapshot): unknown;
+}
+
 // Register the ported VS Code action with the real contribution registry so it
 // participates in keybindings, getAction() and Monaco's command palette.
 declare module 'monaco-editor/editor/browser/editorExtensions' {

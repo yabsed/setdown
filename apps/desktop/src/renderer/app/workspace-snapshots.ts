@@ -34,9 +34,14 @@ export class WorkspaceSnapshots {
     void desktop.editorTools.snapshots.list().then(entries => { view.recoveryCount = entries.filter(entry => entry.recovery).length; }).catch(error => console.error('Could not inspect recovery snapshots', error));
     window.addEventListener('pagehide', () => { clearInterval(timer); clearTimeout(scheduled); unsubscribe(); window.removeEventListener('blur', flush); document.removeEventListener('visibilitychange', flush); }, { once: true });
   }
-  private async capture(checkpoint = false): Promise<WorkspaceSnapshot> {
+  /** A large file's text is only in its editor model and past the content limit, so a snapshot holds
+   * none of it and restores the file's views from disk. One asked for by name refuses to leave unsaved
+   * edits out; the background `recovery` snapshot protects the other documents and leaves them out. */
+  private async capture(checkpoint = false, recovery = false): Promise<WorkspaceSnapshot> {
     const { workspace, editor, tabs } = this;
-    const records = workspace.contents.filter(content => !content.document.kind && (checkpoint || tabs.dirty(content) || content.document.isUntitled)).map(content => ({ key: documentIdentity(content), path: content.document.path,
+    if (!recovery && workspace.contents.some(content => !!content.document.large && tabs.dirty(content)))
+      throw Error('Recovery content exceeds 24 MiB. Save large documents directly.');
+    const records = workspace.contents.filter(content => !content.document.kind && !content.document.large && (checkpoint || tabs.dirty(content) || content.document.isUntitled)).map(content => ({ key: documentIdentity(content), path: content.document.path,
       untitled: content.document.isUntitled, savedText: content.document.savedText, text: tabs.text(content) }));
     const contents: SnapshotContent[] = [];
     let remaining = 24 * 1024 * 1024;
@@ -89,14 +94,16 @@ export class WorkspaceSnapshots {
   private async recoverable(): Promise<void> {
     if (this.writing || this.restoring) return;
     // An untouched empty draft has nothing to recover; backing it up on every launch only leaves litter.
-    const dirty = this.workspace.contents.filter(content => this.tabs.dirty(content)
-      || (content.document.isUntitled && this.tabs.text(content) !== ''));
+    // Edits in a large file are not backed up here (see `capture`): they are protected by saving, as
+    // the close prompt and auto save do, and typing in one must not rewrite the others' backup.
+    const dirty = this.workspace.contents.filter(content => !content.document.large && (this.tabs.dirty(content)
+      || (content.document.isUntitled && this.tabs.text(content) !== '')));
     const fingerprint = dirty.map(content => `${content.id}:${content.document.path}:${content.revision}`).join('|');
     if (fingerprint === this.fingerprint) return;
     if (fingerprint === this.failedFingerprint && Date.now() < this.retryAfter) return;
     this.writing = true;
     try {
-      if (dirty.length) this.recoveryId = await this.desktop.editorTools.snapshots.write('Unsaved workspace recovery', await this.capture(), true);
+      if (dirty.length) this.recoveryId = await this.desktop.editorTools.snapshots.write('Unsaved workspace recovery', await this.capture(false, true), true);
       else if (this.recoveryId) { await this.desktop.editorTools.snapshots.remove(this.recoveryId); this.recoveryId = undefined; }
       this.fingerprint = fingerprint; this.failedFingerprint = ''; this.retryAfter = 0; view.recoveryError = '';
     } catch (error) {
@@ -154,7 +161,8 @@ export class WorkspaceSnapshots {
           const existing = this.workspace.contents.find(record => record.document.path === content.path);
           let disk: DocumentSnapshot | undefined;
           if (!content.untitled) try { disk = await this.desktop.readDocumentLocation(content.path); } catch { /* A missing dirty file is still recoverable. */ }
-          const changed = !disk || await contentHash(disk.savedText) !== content.savedHash;
+          // Recovered text cannot be laid over a file that is now read in pieces.
+          const changed = !disk || (!!disk.large && content.text !== undefined) || await contentHash(disk.savedText) !== content.savedHash;
           const conflict = !!existing && this.tabs.text(existing) !== existing.document.savedText;
           if (content.text !== undefined && (changed || conflict || content.untitled)) {
             const draft = await this.desktop.newDocument(); if (!draft) throw Error('Could not create a recovery document.'); recovered.set(content.key, { ...draft, text: content.text, revision: 1 });

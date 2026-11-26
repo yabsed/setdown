@@ -127,10 +127,13 @@ export class DocumentActions {
     const { id, revision } = tab;
     const path = tab.document.path;
     const text = this.options.text(tab);
-    void this.options.desktop.readDocumentLocation(fileLocation(tab.document.path)).then(async (diskDocument) => {
+    // Only the file's version is wanted. A large file's text is not read for it, and the editor
+    // counts the document as changed once its file version is no longer the one it was read from.
+    void this.options.desktop.readDocumentLocation(fileLocation(tab.document.path), false).then(async (diskDocument) => {
       if (!diskDocument || this.options.active()?.id !== id
         || this.options.active()?.document.path !== path || tab.revision !== revision) return;
-      tab.document = { ...diskDocument, text, revision };
+      tab.document = diskDocument.large ? { ...diskDocument, encoding: tab.document.encoding, eol: tab.document.eol, text, revision }
+        : { ...diskDocument, text, revision };
       tab.text = text;
       await this.options.desktop.activateDocument(tab.document, text, revision);
       if (this.options.active()?.id !== id) return;

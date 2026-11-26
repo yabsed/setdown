@@ -25,6 +25,8 @@ export type ToolAction = { id: string; server: string; title: string; place: 'pr
 export type DocumentSupport = {
   id: string; resource: string; language: string; name: string; path: string;
   providers: ProviderSupport[]; choices: { id: string; name: string }[];
+  /** What this document goes without because of its size, as a sentence. */
+  limits?: string;
   setLanguage(id: string): void; restart(server?: string): Promise<void>; problems(): void;
   /** Repairs for a tool's setup. Each reconnects the document when it succeeds. */
   useAutomatic(server: string): Promise<void>; allowDownload(server: string): Promise<void>; chooseExecutable(server: string): Promise<void>;

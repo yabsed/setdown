@@ -203,3 +203,20 @@ test('disabling drops a pending save', async () => {
   await f.settle();
   assert.equal(f.desktop.saveTabDocument.mock.calls.length, 0);
 });
+
+test('a large document is auto saved from its editor, not from its empty text field', async () => {
+  const workspace = new WorkspaceState();
+  const large = { ...snapshot('/logs/session.jsonl', ''), large: { bytes: 30 } };
+  const tab = createWorkspaceTab('large', large, 'editor', anchor); workspace.add(tab); workspace.activeId = tab.id;
+  const saveTabDocument = vi.fn(), accepted: DocumentSnapshot[] = [];
+  const saveLarge = vi.fn(async () => ({ canceled: false, document: { ...large, revision: 1, savedRevision: 1 } }));
+  let dirty = true;
+  const controller = new AutoSaveController({ desktop: { saveTabDocument } as unknown as DesktopPort,
+    get tabs() { return workspace.documents; }, activeId: () => workspace.activeId, text: () => '', dirty: () => dirty,
+    acceptSaved: async (_tab, document) => { accepted.push(document); dirty = false; }, saved: () => {}, saveLarge });
+  controller.setEnabled(true); controller.schedule(tab);
+  await vi.advanceTimersByTimeAsync(AUTO_SAVE_DELAY);
+  assert.equal(saveLarge.mock.calls.length, 1);
+  assert.equal(saveTabDocument.mock.calls.length, 0);
+  assert.equal(accepted[0]?.savedRevision, 1);
+});

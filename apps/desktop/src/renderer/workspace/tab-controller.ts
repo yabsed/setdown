@@ -102,7 +102,8 @@ export class TabController {
   acceptWorkingTreeBuffer = (path: string, text: string, edits?: WorkingTreeEdit[]): void => {
     const { desktop, editor, preview, workspace } = this.options;
     const tab = workspace.documents.find((candidate) => !candidate.document.isUntitled && candidate.document.path === path);
-    if (!tab || this.text(tab) === text) return;
+    // A large file's text stays in its own editor model; a review never holds a second copy of it.
+    if (!tab || tab.document.large || this.text(tab) === text) return;
     workspace.groups.pin(tab.id);
     const notified = editor.setText(tab, text, edits);
     if (!notified) {
@@ -299,6 +300,8 @@ export class TabController {
       if (tab.picker) throw Error('A file chooser tab stays in the window that asked for it.');
       return { kind: 'folder', id: tab.id, path: tab.path, view: { ...tab.view }, navigation: tab.navigation };
     }
+    // A large file's text is not carried between windows: the window that takes the tab reads the file.
+    if (tab.document.large && this.dirty(tab)) throw Error('Save this large file before moving its tab to another window.');
     if (tab.id === this.options.workspace.activeId) this.saveActiveState();
     else this.options.documents.saveView(tab);
     const markdown = hasMarkdownPreview(tab.document);
@@ -713,7 +716,16 @@ export class TabController {
       if (collision) throw Error('The destination is already open as another document. Close that document before moving this file.');
       const views = workspace.documents.filter(tab => documentIdentity(tab) === documentIdentity(content));
       let diskVersion = content.document.diskVersion;
-      if (!content.document.kind) {
+      if (content.document.large) {
+        try {
+          // A move keeps a file's size and modification time and changes only its inode times.
+          const moved = await this.options.desktop.readDocumentLocation(fileLocation(nextPath), false);
+          if (moved.large && moved.diskVersion.size === diskVersion.size && moved.diskVersion.mtimeMs === diskVersion.mtimeMs) {
+            this.options.editor.rebase(content, diskVersion, moved.diskVersion);
+            diskVersion = moved.diskVersion;
+          }
+        } catch { /* Keep the conflict check when the moved file cannot be verified. */ }
+      } else if (!content.document.kind) {
         try {
           const moved = await this.options.desktop.readDocumentLocation(fileLocation(nextPath));
           // Moving a file changes its ctime. Accept that metadata only when the
@@ -913,7 +925,8 @@ export class TabController {
       documentSurface(snapshot.path, saved?.kind === 'text' ? saved.surface : surface), {
         sourceLine: 1, yRatio: GOLDEN_TOP_RATIO, reason: 'empty-document', confidence: 'fallback',
       });
-    if (saved?.kind === 'text') tab.anchor = { ...saved.anchor, sourceLine: Math.min(saved.anchor.sourceLine, this.countLines(tab.text)) };
+    if (saved?.kind === 'text') tab.anchor = { ...saved.anchor,
+      sourceLine: Math.min(saved.anchor.sourceLine, snapshot.large?.lines ?? this.countLines(tab.text)) };
     tab.tocOpen = hasMarkdownPreview(snapshot) && restoredOutlineOpen();
     return tab;
   }
@@ -972,9 +985,19 @@ export class TabController {
       preview.updateUi();
     };
     if (announce) { reader.awaiting = true; surfaces.set('viewer'); }
+    let largeDocument: DocumentSnapshot | undefined;
+    if (incoming.document.large) {
+      // Read before the source gives the tab up, so a file that cannot be read stays where it is shown.
+      try { largeDocument = await desktop.readDocumentLocation(fileLocation(incoming.document.path)); }
+      catch (error) {
+        desktop.cancelTabTransfer(transfer.transferId);
+        window.alert(`Could not read this large file. The source tab was kept.\n${String(error)}`);
+        return;
+      }
+    }
     if (!await desktop.adoptTabTransfer(transfer.transferId)) { finishAnnouncement(); return; }
     shell.dataset.lastTransferUsedSnapshot = 'false';
-    const restoredDocument: DocumentSnapshot = { ...incoming.document, text: incoming.text, revision: incoming.revision };
+    const restoredDocument: DocumentSnapshot = largeDocument ?? { ...incoming.document, text: incoming.text, revision: incoming.revision };
     const restored = createWorkspaceTab(incoming.id, restoredDocument, incoming.surface, incoming.anchor as ViewportAnchor);
     restored.navigation = incoming.navigation;
     if (markdown) Object.assign(restored, { previewUrl: incoming.previewUrl, previewRevision: incoming.previewRevision,

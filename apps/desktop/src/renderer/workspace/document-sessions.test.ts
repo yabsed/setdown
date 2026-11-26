@@ -93,3 +93,51 @@ test('a tab that takes over a released notebook tab’s ID gets its own session'
   expect(sessions.text(next)).toContain('next = 1');
   expect(sessions.dirty(next)).toBe(false);
 });
+
+function largeFixture() {
+  const tab = createWorkspaceTab('large', { path: '/logs/session.jsonl', name: 'session.jsonl', text: '', savedText: '',
+    revision: 3, savedRevision: 0, diskVersion: { mtimeMs: 1, size: 30 }, isUntitled: false, large: { bytes: 30, lines: 3 } },
+  'editor', { sourceLine: 1, yRatio: .4, reason: 'empty-document', confidence: 'fallback' });
+  let modified = false;
+  const runs = ['{"a":1}\n', '{"b":2}\n'];
+  const editor = { text: vi.fn(() => ''), beforeSave: vi.fn(async () => {}), saved: vi.fn(), replace: vi.fn(), retarget: vi.fn(), saveView: vi.fn(), dispose: vi.fn(),
+    modified: vi.fn(() => modified),
+    capture: vi.fn((): { read(): string | null } | null => { let next = 0; return { read: () => next < runs.length ? runs[next++] : null }; }) };
+  const written: string[] = [];
+  const desktop = { saveDocumentAs: vi.fn(), saveTabDocument: vi.fn(),
+    largeText: { open: vi.fn(), read: vi.fn(), close: vi.fn(), save: vi.fn(async () => 'save'),
+      write: vi.fn(async (_id: string, text: string) => { written.push(text); return true; }),
+      finish: vi.fn(async () => ({ canceled: false })) } };
+  const sessions = new DocumentSessions(editor, [notebookContent], desktop as never);
+  return { tab, editor, desktop, sessions, written, setModified: (value: boolean) => { modified = value; } };
+}
+
+test('a large document is unsaved by what its editor says, never by its empty text field', () => {
+  const { tab, sessions, setModified } = largeFixture();
+  expect(sessions.dirty(tab)).toBe(false);
+  setModified(true);
+  expect(sessions.dirty(tab)).toBe(true);
+  expect(sessions.text(tab)).toBe('');
+});
+
+test('a large document is saved from its editor in pieces, on every kind of save', async () => {
+  const { tab, sessions, desktop, written } = largeFixture();
+  await sessions.save(tab);
+  expect(desktop.largeText.save).toHaveBeenLastCalledWith({ document: tab.document, revision: 3, auto: false, saveAs: false });
+  expect(written.join('')).toBe('{"a":1}\n{"b":2}\n');
+  await sessions.save(tab, true);
+  expect(desktop.largeText.save).toHaveBeenLastCalledWith({ document: tab.document, revision: 3, auto: false, saveAs: true });
+  await sessions.save(tab, false, true);
+  expect(desktop.largeText.save).toHaveBeenLastCalledWith({ document: tab.document, revision: 3, auto: true, saveAs: false });
+  // The whole-text saves would write the empty text field over the file.
+  expect(desktop.saveTabDocument).not.toHaveBeenCalled();
+  expect(desktop.saveDocumentAs).not.toHaveBeenCalled();
+});
+
+test('a large document without its editor model is not saved at all', () => {
+  const { tab, sessions, editor, desktop } = largeFixture();
+  editor.capture.mockReturnValueOnce(null);
+  expect(() => sessions.save(tab)).toThrow('not loaded in an editor');
+  expect(desktop.largeText.save).not.toHaveBeenCalled();
+  expect(desktop.saveTabDocument).not.toHaveBeenCalled();
+});

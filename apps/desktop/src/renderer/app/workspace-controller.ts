@@ -337,6 +337,7 @@ export function startWorkspace(desktop: DesktopPort) {
     activeId: () => workspace.activeId, text: () => tabs.currentText(), lineCount: () => tabs.lineCount(), reader });
   const editor: MonacoEditor = new MonacoEditor({ host: editorHost, tabs: () => workspace.documents, active,
     releaseDocuments: () => documentSessions.releaseAll(),
+    unloaded: content => void tabs.reloadDocumentPaths([content.document.path]),
     contents: () => workspace.contents,
     viewIds: content => workspace.tabs.filter(tab => 'documentId' in tab && tab.documentId === (content.documentId ?? content.id)).map(tab => tab.id),
     content: tab => workspace.documentStore.get(tab.documentId ?? tab.id) ?? tab,
@@ -450,6 +451,7 @@ export function startWorkspace(desktop: DesktopPort) {
     failed: error => { browser.error = String(error); } });
   autoSave = new AutoSaveController({ desktop, get tabs() { return workspace.contents; }, activeId: () => workspace.activeContent?.id ?? null,
     text: tabs.text, dirty: tabs.dirty, beforeSave: tab => documentSessions.beforeSave(tab, 2), acceptSaved: tabs.acceptSaved,
+    saveLarge: tab => documentSessions.save(tab, false, true),
     saved: document => { tabs.updateChrome(); return projects.documentSaved(document); },
     failed: (tab, message) => { view.documentNotices[tab.document.path] = { message }; tabs.updateChrome(); } });
   const documents = new DocumentActions({ desktop, get tabs() { return workspace.contents; }, active: () => workspace.activeContent, text: tabs.text, dirty: tabs.dirty,
@@ -473,7 +475,7 @@ export function startWorkspace(desktop: DesktopPort) {
         return !documentSessions.dirty(content);
       },
     },
-    searchDocuments: (query) => workspace.documents.filter((tab) => !tab.document.kind).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
+    searchDocuments: (query) => workspace.documents.filter((tab) => !tab.document.kind && !tab.document.large).map((tab) => ({ path: tab.document.path, text: tabs.text(tab),
       surface: tab.surface === 'viewer' ? 'viewer' : 'editor', matches: tab.surface === 'editor' ? editor.projectMatches(tab, query.trim()) : undefined })),
     showDocument: async (path, options) => {
       options = { ...options, groupId: options?.groupId ?? workspace.groups.focusedId };

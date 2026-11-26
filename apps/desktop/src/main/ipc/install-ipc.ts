@@ -15,6 +15,7 @@ import type { ApplicationMenuEntry, CloseDecision, ClosePromptRequest, DocumentS
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
 import { canonicalPath } from '../documents/file-system';
 import type { DocumentManager } from '../documents/document-manager';
+import { LargeTextRead, LargeTextSessions, TextPieces } from '../documents/large-text';
 import { APPLICATION_MENU_ROOT, applicationMenuEntries, executeApplicationMenu } from '../menu/application-menu';
 import { BrowserFindOverlay } from '../browser/find-overlay';
 import { LocationOverlay } from '../browser/location-overlay';
@@ -181,12 +182,63 @@ export function installIpc(options: Options): void {
     if (stat.isFile()) return 'file';
     throw Error('Only files and folders can be opened.');
   });
-  channels.handle('document:read-location', (_state, location: unknown) => {
+  const locationPath = (location: unknown): string => {
     if (typeof location !== 'string' || location.length > 16384) throw new Error('Invalid file location.');
     const value = location.trim();
     const filePath = /^file:/i.test(value) ? fileURLToPath(value) : value;
     if (!path.isAbsolute(filePath)) throw new Error('Enter an absolute file path or file URL.');
-    return documents.read(filePath);
+    return filePath;
+  };
+  channels.handle('document:read-location', (_state, location: unknown) => documents.read(locationPath(location)));
+  // Large text files: the text goes to and from the window in pieces, never as one message.
+  const largeReads = new LargeTextSessions<LargeTextRead>(read => { void read.close().catch(() => {}); }, 120_000);
+  const largeSaves = new LargeTextSessions<{ pieces: TextPieces; result: Promise<SaveResult> }>(
+    save => save.pieces.fail(new Error('The window stopped sending the document.')));
+  const watched = new WeakSet<Electron.WebContents>();
+  /** A window that closes or reloads leaves no file open and no half-written copy behind. */
+  const transferOwner = (state: WindowState): number => {
+    const contents = state.window.webContents;
+    if (!watched.has(contents)) {
+      watched.add(contents);
+      const release = () => { largeReads.releaseOwner(contents.id); largeSaves.releaseOwner(contents.id); };
+      contents.once('destroyed', release);
+      contents.on('did-start-navigation', details => { if (details.isMainFrame && !details.isSameDocument) release(); });
+    }
+    return contents.id;
+  };
+  channels.handle('large-text:open', async (state, location: unknown) => {
+    const read = await LargeTextRead.open(canonicalPath(locationPath(location)));
+    try { return { id: largeReads.add(transferOwner(state), read), bytes: read.size }; }
+    catch (error) { await read.close(); throw error; }
+  });
+  channels.handle('large-text:read', async (state, id: unknown) => {
+    const owner = transferOwner(state), read = largeReads.use(owner, id);
+    let piece: Awaited<ReturnType<LargeTextRead['next']>> | undefined;
+    try { piece = await read.next(); return piece; }
+    finally {
+      if (!piece || 'end' in piece) { largeReads.forget(owner, id); await read.close().catch(() => {}); }
+    }
+  });
+  channels.on('large-text:close', (state, id: unknown) => {
+    const read = largeReads.forget(transferOwner(state), id);
+    if (read) void read.close().catch(() => {});
+  });
+  channels.handle('large-text:save', (state, request: { document: DocumentSnapshot; revision: number; auto?: boolean; saveAs?: boolean }) => {
+    const pieces = new TextPieces();
+    const result = documents.saveLarge(state, request.document, Number(request.revision), pieces,
+      { auto: request.auto === true, saveAs: request.saveAs === true }).finally(() => pieces.close());
+    result.catch(() => {}); // `large-text:save-end` reports it.
+    return largeSaves.add(transferOwner(state), { pieces, result });
+  });
+  channels.handle('large-text:save-piece', (state, id: unknown, text: unknown) => {
+    if (typeof text !== 'string') throw new Error('A piece of text was expected.');
+    return largeSaves.use(transferOwner(state), id).pieces.push(text);
+  });
+  channels.handle('large-text:save-end', (state, id: unknown, failure?: unknown) => {
+    const save = largeSaves.forget(transferOwner(state), id);
+    if (!save) throw new Error('This save is no longer open.');
+    if (failure === undefined) save.pieces.end(); else save.pieces.fail(new Error(String(failure)));
+    return save.result;
   });
   channels.on('document:update-text', (state, { text, revision }: { text: string; revision: number }) =>
     documents.updateText(state, text, revision));

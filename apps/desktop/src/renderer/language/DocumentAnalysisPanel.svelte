@@ -192,8 +192,10 @@
       </div>
     {:else if page === 'summary'}
       <!-- Not ready yet (starting, or still reading the project): the ring that turns beside the name turns here too. -->
-      <p class="result">{#if repairing || summary.tone === 'busy'}<span class="turning" aria-hidden="true"></span>{summary.working && !repairing ? 'Analyzing…' : 'Starting…'}{:else if summary.working}<span aria-hidden="true">✓</span> Working{:else}{summary.description}{/if}{#if summary.action && !repairing} <button class="link" disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}</p>
+      <p class="result">{#if repairing || summary.tone === 'busy'}<span class="turning" aria-hidden="true"></span>{summary.working && !repairing ? 'Analyzing…' : 'Starting…'}{:else if summary.working}<span aria-hidden="true">✓</span> Working{:else}{support.limits ?? summary.description}{/if}{#if summary.action && !repairing} <button class="link" disabled={analysis.busy} onclick={() => repair(summary.action!)}>{summary.action.label}</button>{/if}</p>
     {/if}
+    <!-- Said in place of the summary sentence above when nothing else is reported there. -->
+    {#if page === 'summary' && support.limits && (summary.title || repairing || summary.tone === 'busy' || summary.working)}<p class="muted">{support.limits}</p>{/if}
     <div class="rows">
       <button class="analysis-row" onclick={() => navigate('language')}><span>Language</span><strong>{support.name} <span aria-hidden="true">›</span></strong></button>
       {#if context}
