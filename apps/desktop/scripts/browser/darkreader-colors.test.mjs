@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { lightColorSource, rawColorDefault, rawHSLColor, readableLightText, simpleRawColor, patchDarkReaderColors } from './darkreader-colors.mjs';
+import { knownPart, lightColorSource, rawColorDefault, rawHSLColor, readableLightText, simpleRawColor, patchDarkReaderColors } from './darkreader-colors.mjs';
 
 test('light-dark colors retain nested variable fallbacks, gradients and quoted text', () => {
   assert.equal(lightColorSource('light-dark(var(--article,var(--light-article,#fff)),var(--dark,#111))'), 'var(--article,var(--light-article,#fff))');
@@ -11,8 +11,35 @@ test('light-dark colors retain nested variable fallbacks, gradients and quoted t
   assert.equal(lightColorSource('light-dark(red) light-dark(red,blue'), 'light-dark(red) light-dark(red,blue');
   assert.equal(lightColorSource('url(/light-dark(red,blue).png) light-dark(red,blue,green)'), 'url(/light-dark(red,blue).png) light-dark(red,blue,green)');
 });
+test('the Lightning CSS form of light-dark() is read as its light color', () => {
+  // Declarations of ChatGPT's public stylesheet (2026-11-27, /cdn/assets/fd0d5655c003.css).
+  assert.equal(lightColorSource('var(--lightningcss-light,var(--gray-0)) var(--lightningcss-dark,var(--gray-200))'), 'var(--gray-0)');
+  assert.equal(lightColorSource('var(--lightningcss-light, #0000000d) var(--lightningcss-dark, #ffffff21)'), '#0000000d');
+  assert.equal(lightColorSource('radial-gradient(ellipse at 76% 100%, var(--lightningcss-light,#f28a1f) var(--lightningcss-dark,#ffd776) 100%, var(--lightningcss-light,#ffb23b99) var(--lightningcss-dark,#ff912442) calc(100% + 2px))'),
+    'radial-gradient(ellipse at 76% 100%, #f28a1f 100%, #ffb23b99 calc(100% + 2px))');
+  assert.equal(lightColorSource('var(--lightningcss-light,rgb(from var(--a,red) r g b / 1))\n  var(--lightningcss-dark,color-mix(in oklab, var(--b), transparent))'), 'rgb(from var(--a,red) r g b / 1)');
+  assert.equal(lightColorSource('var(--lightningcss-light,light-dark(red,blue)) var(--lightningcss-dark,black)'), 'red');
+  // A lone half, an empty light side, another variable and quoted text are not this form.
+  for (const value of ['var(--lightningcss-light,red)', 'var(--lightningcss-dark,blue)', 'var(--lightningcss-light) var(--lightningcss-dark,blue)',
+    'var(--lightningcss-light, ) var(--lightningcss-dark,blue)', 'var(--lightningcss-lighter,red) var(--lightningcss-dark,blue)',
+    'var(--lightningcss-light,red) var(--lightningcss-darker,blue)', 'var(--lightningcss-light,red), var(--lightningcss-dark,blue)',
+    'var(--lightningcss-light,red) var(--lightningcss-dark)', 'var(--lightningcss-light,red) var(--lightningcss-dark, )',
+    'url("image).svg?var(--lightningcss-light,red) var(--lightningcss-dark,blue)")',
+    '"var(--lightningcss-light,red) var(--lightningcss-dark,blue)"', 'var(--lightningcss-light,red) var(--lightningcss-dark,blue'])
+    assert.equal(lightColorSource(value), value, value);
+});
+test('a declaration that waits for a variable type carries the part already themed', async () => {
+  const nothing = new Promise(() => {});
+  assert.equal(knownPart(nothing, 'var(--unknown)', 'var(--unknown)'), nothing);
+  assert.equal('known' in nothing, false);
+  const waiting = Promise.resolve('later');
+  const value = knownPart(waiting, 'linear-gradient(transparent, var(--darkreader-bg--surface) calc(100% - var(--radius)))', 'linear-gradient(transparent, var(--surface) calc(100% - var(--radius)))');
+  assert.equal(value, waiting);
+  assert.equal(value.known, 'linear-gradient(transparent, var(--darkreader-bg--surface) calc(100% - var(--radius)))');
+  assert.equal(await value, 'later');
+});
 test('pinned Dark Reader integration fails closed when its read paths change', () => {
-  for (const file of ['css-rules.ts', 'modify-css.ts', 'modify-colors.ts', 'index.ts', 'stylesheet-proxy.ts', 'variables.ts']) {
+  for (const file of ['css-rules.ts', 'modify-css.ts', 'modify-colors.ts', 'index.ts', 'stylesheet-modifier.ts', 'stylesheet-proxy.ts', 'variables.ts']) {
     const source = readFileSync(new URL(`../../../../vendor/darkreader/src/inject/dynamic-theme/${file}`, import.meta.url), 'utf8');
     assert.notEqual(patchDarkReaderColors(source, file), source);
     assert.throws(() => patchDarkReaderColors('', file), /Review/);

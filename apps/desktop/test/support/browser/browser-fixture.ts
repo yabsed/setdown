@@ -67,6 +67,9 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
           :root { color-scheme: light dark; --article: light-dark(#fff,#171717); --text: light-dark(#000,#eee) }
           body { margin:0; background:light-dark(#f5f5f5,#222); color:var(--text); min-height:2500px }
           #article,#sidebar { background:var(--article); padding:24px; margin:16px }
+          #sidebar { --lightningcss-light: initial; --lightningcss-dark: ; --radius: 4px;
+            background-color: var(--lightningcss-light, #fff) var(--lightningcss-dark, #171717);
+            background-image: linear-gradient(transparent, var(--article) calc(100% - var(--radius))) }
           input::placeholder { color:#a9a9a9 }
           a { color:#0275d8 }
           #colored { background:#f3dfad; color:#373a3c }

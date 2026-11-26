@@ -1,9 +1,41 @@
 /** Dark Reader's pinned parser predates CSS light-dark(). Normalize the light
  * source palette before its existing background/text/variable transforms. This
  * changes only values read by the engine, never the site's original stylesheet.
- * Quotes, URLs, nested functions and var() fallback commas are preserved. */
+ * Quotes, URLs, nested functions and var() fallback commas are preserved.
+ *
+ * Lightning CSS compiles light-dark(a, b) for older browsers to
+ * "var(--lightningcss-light, a) var(--lightningcss-dark, b)", where the site sets one
+ * of the two variables to "initial" and the other to a space. The engine renames
+ * variables, so both fallbacks applied at once and every such color became two colors:
+ * an invalid value, painted as nothing. The pair is read as its light side too. */
 export function lightColorSource(value) {
   let result = '', offset = 0;
+  // The ")" that closes a function opened just before `from`, and its first top-level comma.
+  const close = from => {
+    let depth = 1, comma = -1, commas = 0, end = from;
+    for (; end < value.length; end++) {
+      const c = value[end];
+      if (c === '\\') end++;
+      else if (c === '"' || c === "'") {
+        while (++end < value.length) { if (value[end] === '\\') end++; else if (value[end] === c) break; }
+      } else if (c === '(') depth++;
+      else if (c === ')' && --depth === 0) break;
+      else if (c === ',' && depth === 1) {
+        if (commas === 0) comma = end;
+        commas++;
+      }
+    }
+    return depth ? null : { end, comma, commas };
+  };
+  const toggle = (name, at) => {
+    if (!value.startsWith(name, at)) return null;
+    let comma = at + name.length;
+    while (/\s/.test(value[comma] ?? '')) comma++;
+    if (value[comma] !== ',') return null;
+    const args = close(comma + 1);
+    if (!args || !value.slice(comma + 1, args.end).trim()) return null;
+    return { comma, end: args.end };
+  };
   for (let i = 0; i < value.length; i++) {
     if (value[i] === '"' || value[i] === "'") {
       const quote = value[i];
@@ -11,29 +43,37 @@ export function lightColorSource(value) {
       continue;
     }
     if (value.slice(i, i + 4).toLowerCase() === 'url(') {
-      let depth = 1;
-      for (i += 4; i < value.length && depth; i++) {
-        if (value[i] === '\\') i++;
-        else if (value[i] === '(') depth++;
-        else if (value[i] === ')') depth--;
+      i = close(i + 4)?.end ?? value.length;
+      continue;
+    }
+    if (i && /[\w-]/.test(value[i - 1])) continue;
+    const light = toggle('var(--lightningcss-light', i);
+    if (light) {
+      let next = light.end + 1;
+      while (/\s/.test(value[next] ?? '')) next++;
+      const dark = toggle('var(--lightningcss-dark', next);
+      if (dark) {
+        result += value.slice(offset, i) + lightColorSource(value.slice(light.comma + 1, light.end).trim());
+        i = dark.end; offset = dark.end + 1;
       }
-      i--; continue;
+      continue;
     }
-    if (value.slice(i, i + 11).toLowerCase() !== 'light-dark(' || (i && /[\w-]/.test(value[i - 1]))) continue;
-    let depth = 1, comma = -1, end = i + 11;
-    for (; end < value.length; end++) {
-      const c = value[end];
-      if (c === '"' || c === "'") {
-        while (++end < value.length) { if (value[end] === '\\') end++; else if (value[end] === c) break; }
-      } else if (c === '(') depth++;
-      else if (c === ')' && --depth === 0) break;
-      else if (c === ',' && depth === 1) comma = comma === -1 ? end : -2;
-    }
-    if (depth || comma < 0) continue;
-    result += value.slice(offset, i) + lightColorSource(value.slice(i + 11, comma).trim());
-    i = end; offset = end + 1;
+    if (value.slice(i, i + 11).toLowerCase() !== 'light-dark(') continue;
+    const pair = close(i + 11);
+    if (!pair || pair.commas !== 1) continue;
+    result += value.slice(offset, i) + lightColorSource(value.slice(i + 11, pair.comma).trim());
+    i = pair.end; offset = pair.end + 1;
   }
   return result + value.slice(offset);
+}
+
+// A declaration can mix a color variable with one that never becomes a color, such as the
+// radius in "linear-gradient(transparent, var(--surface) calc(100% - var(--radius)))".
+// The pinned engine waits for the type of every variable it does not know before it
+// writes anything, so that declaration kept the site's own colors for good. The part the
+// engine already knows is written meanwhile; the waiting value still replaces it.
+export function knownPart(pending, modified, source) {
+  return modified === source ? pending : Object.assign(pending, { known: modified });
 }
 
 // The API's light-mode transform uses one ramp for backgrounds and text. With
@@ -111,7 +151,22 @@ export function patchDarkReaderColors(source, file) {
       if (source.split(site).length !== 2) throw Error('Review the Dark Reader raw color token adapter.');
       source = source.replace(site, () => replacement);
     }
-    return `${rawHSLColor.toString()}\n${simpleRawColor.toString()}\n${rawColorDefault.toString()}\n${source}`;
+    const waiting = [
+      ['                    return new Promise<string>((resolve) => {\n                        for (const unknownVar of unknownVars.values()) {',
+        '                    const pending = new Promise<string>((resolve) => {\n                        for (const unknownVar of unknownVars.values()) {'],
+      ['                            this.subscribeForVarTypeChange(unknownVar, callback);\n                        }\n                    });\n',
+        '                            this.subscribeForVarTypeChange(unknownVar, callback);\n                        }\n                    });\n                    return knownPart(pending, modified, sourceValue);\n'],
+    ];
+    for (const [site, replacement] of waiting) {
+      if (source.split(site).length !== 2) throw Error('Review the Dark Reader pending declaration adapter in variables.ts.');
+      source = source.replace(site, () => replacement);
+    }
+    return `${rawHSLColor.toString()}\n${simpleRawColor.toString()}\n${rawColorDefault.toString()}\n${knownPart.toString()}\n${source}`;
+  }
+  if (file === 'stylesheet-modifier.ts') {
+    const site = 'const asyncDeclaration: ReadyDeclaration = {property, value: null, important, asyncKey, sourceValue};';
+    if (source.split(site).length !== 2) throw Error('Review the Dark Reader pending declaration adapter in stylesheet-modifier.ts.');
+    return source.replace(site, 'const asyncDeclaration: ReadyDeclaration = {property, value: (modified as {known?: string}).known ?? null, important, asyncKey, sourceValue};');
   }
   if (file === 'index.ts') {
     const site = 'if (__CHROMIUM_MV3__) {\n        // Notify the dedicated injector of the data.';

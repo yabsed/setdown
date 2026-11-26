@@ -27,6 +27,7 @@ test('all web themes cover light-dark surfaces and external CSS without replacin
       await f.app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()!.getMenuItemById(`preview-theme-${id}`)!.click(), id);
       const expected = rgb(themeProfile(id).palette.surface);
       await expect.poll(() => evaluatePage(f.app, f.origin, `['#article','#sidebar','#external'].map(s=>getComputedStyle(document.querySelector(s)).backgroundColor)`)).toEqual([expected, expected, expected]);
+      await expect.poll(() => evaluatePage(f.app, f.origin, 'getComputedStyle(document.querySelector("#sidebar")).backgroundImage')).toContain(expected);
       expect(await evaluatePage(f.app, f.origin, '({same:keptNode===document.querySelector("#draft"),value:keptNode.value,scroll:scrollY})'))
         .toEqual({ same: true, value: '보존할 입력', scroll: 600 });
       await evaluatePage(f.app, f.origin, 'scrollTo(0,0)');

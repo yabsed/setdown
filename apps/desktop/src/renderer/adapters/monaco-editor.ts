@@ -5,6 +5,7 @@ import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import type * as Monaco from 'monaco-editor';
 import { isLargeText, sameDiskVersion, type DiskVersion, type DocumentSnapshot } from '../../core/document/document';
 import { takeLargeText } from '../editor/large-text';
+import { installLongLineSteps } from '../editor/long-line-steps';
 import { documentLanguage } from '../../core/document/document-profile';
 import { hasMarkdownPreview } from '../../core/document/document-capabilities';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
@@ -269,6 +270,8 @@ export class MonacoEditor {
     };
     host.addEventListener('mousedown', keepFindActionTarget, true);
     editor.onDidDispose(() => host.removeEventListener('mousedown', keepFindActionTarget, true));
+    const longLines = installLongLineSteps(api.editor.MouseTargetType.CONTENT_TEXT, editor);
+    editor.onDidDispose(() => longLines.dispose());
 
     this.installBindings(api, editor);
     editor.onDidFocusEditorText(() => {
