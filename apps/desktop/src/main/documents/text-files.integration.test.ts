@@ -13,7 +13,7 @@ import { readTextFile } from './text-file';
 import { atomicWrite } from './file-system';
 import { documentPathFromArgs } from './document-args';
 import { GitCli } from '../project/engines/git-cli';
-import { readGitDocument, readWorkingDocument } from '../project/git-text';
+import { gitComparedText, workingComparedText } from '../project/git-compare';
 import type { DocumentSnapshot } from '../../core/document/document';
 
 async function temporary(run: (root: string) => Promise<void>) {
@@ -167,14 +167,15 @@ test('real Git HEAD/Index/Working Tree text versions preserve EOL and strip only
     await fs.writeFile(file, '\uFEFF// WORKTREE\r\n');
     const repo = await GitCli.connect(root);
     assert.ok(repo);
-    assert.equal(await readGitDocument(repo, 'HEAD:main.cpp', file), '// HEAD 한글\r\n');
-    assert.equal(await readGitDocument(repo, ':main.cpp', file), '// INDEX\r\n');
-    assert.equal(await readWorkingDocument(file), '// WORKTREE\r\n');
-    assert.equal(await readGitDocument(repo, 'HEAD:missing.txt', path.join(root, 'missing.txt')), '');
+    // Each version is its bytes: the note beside the text is its size with the byte order mark.
+    assert.deepEqual(await gitComparedText(repo, 'HEAD:main.cpp', file), { text: '// HEAD 한글\r\n', note: { size: 19 } });
+    assert.deepEqual(await gitComparedText(repo, ':main.cpp', file), { text: '// INDEX\r\n', note: { size: 13 } });
+    assert.deepEqual(await workingComparedText(file), { text: '// WORKTREE\r\n', note: { size: 16 } });
+    assert.deepEqual(await gitComparedText(repo, 'HEAD:missing.txt', path.join(root, 'missing.txt')), { text: '', note: { missing: true } });
   });
 });
 
-test('real Git undecodable blobs are unsupported, never silently empty or replacement text', async () => {
+test('real Git blobs that are not valid text are compared with a note that says so, never silently empty or as clean text', async () => {
   await temporary(async root => {
     await GitCli.run(root, ['init']);
     const file = path.join(root, 'bad.txt');
@@ -182,9 +183,15 @@ test('real Git undecodable blobs are unsupported, never silently empty or replac
     await GitCli.run(root, ['add', '--', 'bad.txt']);
     const repo = await GitCli.connect(root);
     assert.ok(repo);
-    assert.equal(await readGitDocument(repo, ':bad.txt', file), null);
-    assert.equal(await readWorkingDocument(file), null);
-    assert.equal(await readWorkingDocument(path.join(root, 'missing.txt')), '');
+    // A comparison is for reading: the bytes that are no text show as U+FFFD, and the note makes the
+    // comparison read-only and puts a sentence above it. An editable document still refuses them.
+    const unread = { text: '\ufffda', note: { size: 2, reason: 'encoding' } };
+    assert.deepEqual(await gitComparedText(repo, ':bad.txt', file), unread);
+    assert.deepEqual(await workingComparedText(file), unread);
+    assert.deepEqual(await workingComparedText(path.join(root, 'missing.txt')), { text: '', note: { missing: true } });
     assert.throws(() => decodeTextBytes(Buffer.from([0xff, 0x61])));
+    // A NUL among the bytes is no text at all: nothing is shown in its place.
+    await fs.writeFile(file, Buffer.from([0x61, 0x00, 0x62]));
+    assert.deepEqual(await workingComparedText(file), { text: null, note: { size: 3, reason: 'binary' } });
   });
 });

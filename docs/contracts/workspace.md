@@ -248,6 +248,30 @@ Comparisons are read-only and do not create an ordinary image editor or a text
 model. `git/image-diff.spec.ts` verifies actual decoded pixels, working/staged/
 historical versions, added/deleted files, decode failures and shared magnification.
 
+Every other file is compared by what its bytes are, in the working tree, the
+Index and a commit alike (`src/main/project/git-compare.ts`; decided 2026-11-27
+after a commit's files showed an empty or collapsed comparison). Markdown keeps
+its source and rendered review. Other text is compared line by line in a source
+comparison that fills its tab. Text the strict decoder of editable documents
+refuses is still compared, read-only, with one sentence above it that says why:
+UTF-16, bytes that are not valid UTF-8 (shown as �), mixed line endings, control
+characters. Git's own "binary" flag is not asked, because UTF-16 text has NUL
+bytes too. PDF and Office files show both versions side by side in Setdown's
+own readers, each up to 64 MB. A file with no text to show (another binary, text
+past 16 MB, a version that could not be read) shows a notice with the reason,
+each side's size or "not in this version", and how the size changed. A submodule
+shows the commit each side is at (`Subproject commit <oid>`), as `git diff`
+prints it. An added or deleted file has an empty side, never the working file in
+its place. A stored version that is there costs two git processes, its size and
+its bytes, as before these notes existed: a Markdown review waits for both sides
+before it prepares its reader. What the rendered review is given is the two
+texts; each side's note and a document's bytes stay in the renderer, since
+reactive state cannot cross to the main process. `git-compare.test.ts`,
+`git-service.test.ts`, `git-history-service.test.ts`, `compared-file.test.ts`,
+`source-control-controller.test.ts` and `git/commit-file-diff.spec.ts` cover
+this. Not built: a cell comparison for notebooks, a text/image choice for SVG,
+word wrap for prose, next/previous change, a whitespace toggle.
+
 Explorer, staged/unstaged changes and Graph's changed files share VS Code's Seti
 file icons, using exact filename and longest compound-extension associations.
 Light/dark palettes follow the app theme; Git status colors/badges remain on the
@@ -808,8 +832,8 @@ in VS Code and as every other command does. This holds with one group or several
 and for every view of the panel: Explorer opens (click, double click, Enter,
 Open, "Reveal in Folder Tab", "Open in Terminal"), Search results, Source Control
 changes and history entries, the Browser panel's new tab, bookmarks, history and
-a download's "Show in folder", new and listed Terminal sessions, and new and
-listed file manager tabs. The group that is clicked into is the one the next item
+a download's "Show in folder", and new and listed Terminal sessions. The group
+that is clicked into is the one the next item
 opens in; another group on screen keeps its tabs, its selected tab and its
 reading position.
 
@@ -906,12 +930,26 @@ tab strip and the location bar only.
   region while a tab or file is dragged.
 - **One scrolling row.** Everything a strip carries is one row: the Setdown button
   and the menu button (top-left strip only), the tabs, then the new-tab buttons.
-  The tabs give up width first, down to their least (96px). Past that nothing is
+  The tabs give up width first, down to their least (112px). Past that nothing is
   squeezed further and nothing is held in place over the rest: the whole row
   scrolls, by wheel and by a dragged tab held at its edge. Only the free end stays.
   Decided 2026-11-22, replacing two earlier forms the same day: buttons pinned
   beside a scrolling tab list, which covered tabs in a narrow strip, and a row
   that joined them only below a measured width.
+  - **Tab widths stay much the same.** A tab is 180px wide and gives up width only
+    when the strip is full, down to 112px. Decided 2026-11-27: a tab used to be
+    210 to 230px alone and 96px in a full strip, so closing one tab changed the
+    width of all the others by a wide margin.
+  - After a tab is closed with the pointer, the tabs keep the width they had until
+    the pointer leaves the strip, a tab is added, or the strip changes size: the
+    next tab and its close button come under the pointer, as in a browser. Closing
+    the last tab holds nothing.
+  - While a tab is dragged, the strip keeps its layout. On Linux the window is not
+    resizable for the length of a tab drag (`main/browser/browser-tab-drag.ts`), so
+    its maximize button goes and the room the top-right strip leaves for the window
+    buttons would shrink: every tab of that strip changed width under the dragged
+    tab, and the place it was aimed at moved. `tab-drag.ts` holds that room from the
+    start of the drag until the buttons are back.
   - A tab picked with the pointer moves the row only as far as it takes to show
     that tab, so nothing else shifts under the pointer. A last tab selected any
     other way (opened, moved in, reached by a command) is shown with the new-tab
@@ -1270,7 +1308,7 @@ Checks: `core/files/*.test.ts`, `main/files/*.test.ts`,
 `test/e2e/workspace/folder-tab.spec.ts` (browse, Back/Forward selection, address
 completion, file operations outside a workspace, chooser accept/cancel/save, file
 operations inside a chooser, chooser placement and restoration with two groups,
-search, grid, properties, the Files side view, narrow panes, launch with a folder).
+search, grid, properties, narrow panes, launch with a folder).
 `renderer/files/file-drag.test.ts` and `test/e2e/workspace/folder-drag.spec.ts`
 cover drag and drop with real pointer input: moving a file and a document into a
 subfolder, a web page receiving the dragged files' contents, a tab-strip drop,

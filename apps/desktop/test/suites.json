@@ -24,6 +24,7 @@
       "src/core/preview/preview-install.test.ts",
       "src/core/reading/reading-menu.test.ts",
       "src/core/workspace/editor-groups.test.ts",
+      "src/core/workspace/tab-clusters.test.ts",
       "src/core/workspace/tab-menu.test.ts",
       "src/renderer/workspace/tabs/tab-menu.test.ts",
       "src/core/workspace/tab-navigation.test.ts",
@@ -81,6 +82,8 @@
       "src/main/project/file-transfer.test.ts",
       "src/main/project/git-history-service.test.ts",
       "src/main/project/git-service.test.ts",
+      "src/main/project/git-compare.test.ts",
+      "src/renderer/project/source-control/compared-file.test.ts",
       "src/main/reading/reading-position-store.test.ts",
       "src/main/tabs/tab-transfer-manager.test.ts",
       "src/main/terminal/terminal-manager.test.ts",
@@ -224,6 +227,9 @@
       "previewContract": true
     },
     "git/image-diff.spec.ts": {
+      "previewContract": true
+    },
+    "git/commit-file-diff.spec.ts": {
       "previewContract": true
     },
     "project/file-icons.spec.ts": {
@@ -392,6 +398,9 @@
       "previewContract": false
     },
     "workspace/tab-detach.spec.ts": {
+      "previewContract": true
+    },
+    "workspace/tab-groups.spec.ts": {
       "previewContract": true
     },
     "workspace/tab-menu.spec.ts": {

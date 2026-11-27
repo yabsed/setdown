@@ -131,24 +131,16 @@ test('with two groups the side panel opens in the focused group, as every other 
     await expect(page.locator('.review-content:not(.inactive)')).toContainText('working tree line');
     await besideUntouched();
 
-    // Terminal and Files: a new session or file manager tab, and a row of either list, show in the focused group.
+    // Terminal: a new session, and a row of the list, show in the focused group.
     await panel(page, 'Terminal').click();
     await page.getByRole('button', { name: 'New terminal session' }).click();
     await expect(selected(left)).toHaveText(/Terminal 1/);
     await expect(page.locator('.terminal-content:not(.inactive) .xterm')).toBeVisible();
     await besideUntouched();
-    await panel(page, 'Files').click();
-    await page.getByRole('button', { name: 'New file manager tab' }).click();
-    await expect(selected(left)).toHaveText(path.basename(root));
-    await expect(page.locator('.folder-content:not(.inactive)')).toBeVisible();
-    await besideUntouched();
-    await panel(page, 'Terminal').click();
+    await left.getByRole('tab', { name: /deep\.md/ }).click();
+    await expect(selected(left)).toHaveText('deep.md');
     await page.locator('.terminal-list .session .select').click();
     await expect(selected(left)).toHaveText(/Terminal 1/);
-    await besideUntouched();
-    await panel(page, 'Files').click();
-    await page.locator('.folder-sessions .session .select').click();
-    await expect(selected(left)).toHaveText(path.basename(root));
     await besideUntouched();
 
     // Browser: a visited page opened from History shows its live view in the focused group.

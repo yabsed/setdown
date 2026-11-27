@@ -4,6 +4,9 @@
   import type { ReviewView } from './review-workspace';
   import GitDiffEditor from './GitDiffEditor.svelte';
   import GitImageDiff from './GitImageDiff.svelte';
+  import GitDocumentDiff from './GitDocumentDiff.svelte';
+  import GitFileNotice from './GitFileNotice.svelte';
+  import { readingNote } from './compared-file';
 
 
   let { actions, entry, focused }: { actions: AppActions; entry: ReviewView; focused: boolean } = $props();
@@ -63,6 +66,9 @@
         <span>Resolve the file, then Stage to mark it resolved.</span>
       </div>
     {/if}
+    {#if project.gitDiff && !project.gitDiff.conflict && readingNote(project.gitDiff)}
+      <div class="notice git-reading-note" role="status"><span>{readingNote(project.gitDiff)}</span></div>
+    {/if}
     <div class="git-review-body">
       <div class="git-diff-source-layer"
         class:is-active={project.gitDiffActive && project.gitDiffMode === 'source'
@@ -86,10 +92,18 @@
         <div class="git-review-state">Reading versions…</div>
       {:else if project.gitDiffActive && project.gitDiff?.images}
         <GitImageDiff diff={project.gitDiff} tabId={entry.id} onfocus={() => { if (!focused) actions.activateTab(entry.id); }} />
-      {:else if project.gitDiffActive
-        && (project.gitDiff?.originalText === null || project.gitDiff?.modifiedText === null)}
-        <div class="git-review-state">Binary differences cannot be displayed.</div>
+      {:else if project.gitDiffActive && project.gitDiff?.documents}
+        <GitDocumentDiff diff={project.gitDiff} tabId={entry.id} active={project.gitDiffActive} {focused}
+          onfocus={() => { if (!focused) actions.activateTab(entry.id); }} />
+      {:else if project.gitDiffActive && project.gitDiff
+        && (project.gitDiff.originalText === null || project.gitDiff.modifiedText === null)}
+        <GitFileNotice diff={project.gitDiff} onopen={path => actions.openProjectFile(path)} />
       {/if}
     </div>
+  </section>
+{:else if project.error}
+  <!-- The version could not be read at all: the tab says so instead of staying empty. -->
+  <section class="git-review is-active" aria-label="Git diff review">
+    <div class="git-review-body"><div class="git-review-state is-error" role="alert">This comparison could not be opened. {project.error}</div></div>
   </section>
 {/if}

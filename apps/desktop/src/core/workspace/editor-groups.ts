@@ -1,9 +1,13 @@
 /** Editor groups own selection; the workspace owns documents and command focus. */
+import { nextTabClusterColor, normalizeTabClusters, tabClusterName, tabClusterOf, type TabCluster, type TabClusterColor } from './tab-clusters';
 export type SplitDirection = 'left' | 'right' | 'up' | 'down';
-export type EditorGroupPlacement = { groupId: string; direction: SplitDirection | null; index?: number };
+/** `cluster`: the tab group the tab joins at that place, `null` for none; left out, its neighbours decide.
+ * `pair`: the tab it was held over and released on, with which it makes a new tab group. */
+export type EditorGroupPlacement = { groupId: string; direction: SplitDirection | null; index?: number; cluster?: string | null; pair?: string };
 export type EditorOpenOptions = { pinned?: boolean; groupId?: string; side?: boolean };
-/** `sticky` counts the leading tabs that are pinned to the start of the strip. */
-export type Group = { id: string; tabs: string[]; activeId: string | null; previewId: string | null; sticky: number };
+/** `sticky` counts the leading tabs that are pinned to the start of the strip. `clusters` are its
+ * tab groups (`tab-clusters.ts`), in strip order, each a run of neighbouring tabs after the pinned ones. */
+export type Group = { id: string; tabs: string[]; activeId: string | null; previewId: string | null; sticky: number; clusters: TabCluster[] };
 export type GroupTree = { kind: 'group'; id: string } | {
   kind: 'split'; id: string; axis: 'x' | 'y'; ratio: number; first: GroupTree; second: GroupTree;
 };
@@ -37,7 +41,7 @@ export function splitDirection(x: number, y: number, width: number, height: numb
 
 export class EditorGroups {
   private serial = 0;
-  readonly groups: Group[] = [{ id: 'group-0', tabs: [], activeId: null, previewId: null, sticky: 0 }];
+  readonly groups: Group[] = [{ id: 'group-0', tabs: [], activeId: null, previewId: null, sticky: 0, clusters: [] }];
   tree: GroupTree = { kind: 'group', id: 'group-0' };
   focusedId = 'group-0';
   private maximized: { tree: GroupTree; id: string } | null = null;
@@ -52,20 +56,33 @@ export class EditorGroups {
   get focused() { return this.groups.find(g => g.id === this.focusedId)!; }
   owner(tabId: string) { return this.groups.find(g => g.tabs.includes(tabId)); }
   /** VS Code EditorGroupModel: one replaceable preview per group; other tabs stay pinned. */
-  add(tabId: string, pinned = true, groupId = this.focusedId): string | null {
+  add(tabId: string, pinned = true, groupId = this.focusedId, options: { cluster?: string } = {}): string | null {
     if (this.owner(tabId)) return null;
     const group = this.groups.find(group => group.id === groupId);
     if (!group) throw Error('The target editor group was closed.');
     const previous = pinned ? null : group.previewId;
     let at = group.activeId ? group.tabs.indexOf(group.activeId) + 1 : group.tabs.length;
+    // Tab groups. A new tab opened while a member is selected comes to stand after that tab
+    // group, outside it: Firefox puts a plain new tab outside every group. `options.cluster` asks
+    // for a place at the end of one ("New tab in group"), which unfolds it as Firefox does. A
+    // preview that replaces the selected preview takes its place, in its tab group too.
+    const beside = group.activeId ? tabClusterOf(group, group.activeId) : undefined;
+    const joined = options.cluster ? group.clusters.find(cluster => cluster.id === options.cluster) : undefined;
+    const inherited = !joined && previous && group.activeId === previous ? tabClusterOf(group, previous) : undefined;
     if (previous) {
       const index = group.tabs.indexOf(previous);
       group.tabs.splice(index, 1);
       if (at > index) at--;
       if (group.activeId === previous) group.activeId = tabId;
     }
+    const after = joined ?? (inherited ? undefined : beside);
+    const last = after?.tabs.filter(id => id !== previous).at(-1);
+    if (last) at = group.tabs.indexOf(last) + 1;
     group.tabs.splice(Math.max(at, group.sticky), 0, tabId);
     if (!pinned) group.previewId = tabId;
+    const cluster = joined ?? inherited;
+    if (cluster) { cluster.tabs.push(tabId); if (joined) cluster.collapsed = false; }
+    normalizeTabClusters(group);
     return previous;
   }
   isPinned(tabId: string): boolean { return this.owner(tabId)?.previewId !== tabId; }
@@ -86,6 +103,8 @@ export class EditorGroups {
     this.pin(tabId);
     group.tabs.splice(group.tabs.indexOf(tabId), 1);
     group.tabs.splice(group.sticky++, 0, tabId);
+    // A pinned tab is in no tab group, as in Firefox.
+    normalizeTabClusters(group);
     return true;
   }
   /** The released tab becomes the first ordinary tab, so it does not jump across the strip. */
@@ -103,7 +122,7 @@ export class EditorGroups {
   split(targetId: string, direction: SplitDirection): Group {
     this.maximized = null;
     if (!this.groups.some(group => group.id === targetId)) throw Error('The target editor group was closed.');
-    const destination: Group = { id: `group-${++this.serial}`, tabs: [], activeId: null, previewId: null, sticky: 0 };
+    const destination: Group = { id: `group-${++this.serial}`, tabs: [], activeId: null, previewId: null, sticky: 0, clusters: [] };
     this.groups.push(destination);
     const before = direction === 'left' || direction === 'up';
     const leaf: GroupTree = { kind: 'group', id: destination.id };
@@ -147,12 +166,21 @@ export class EditorGroups {
     group.tabs.splice(index, 1);
     if (index < group.sticky) group.sticky--;
     if (group.previewId === tabId) group.previewId = null;
-    if (group.activeId === tabId) group.activeId = group.tabs[Math.min(index, group.tabs.length - 1)] ?? null;
+    normalizeTabClusters(group);
+    if (group.activeId === tabId) group.activeId = this.successor(group, index);
     this.prune();
   }
-  move(tabId: string, targetId: string, direction: SplitDirection | null, index?: number) {
+  /** The tab selected after the one at `index` left: the one that took its place, as before; a tab
+   * hidden in a folded tab group is passed over for the nearest one that shows. */
+  private successor(group: Group, index: number): string | null {
+    const shows = (id: string) => !tabClusterOf(group, id)?.collapsed;
+    return group.tabs.slice(index).find(shows) ?? group.tabs.slice(0, index).reverse().find(shows)
+      ?? group.tabs[Math.min(index, group.tabs.length - 1)] ?? null;
+  }
+  move(tabId: string, targetId: string, direction: SplitDirection | null, index?: number, cluster?: string | null) {
     const source = this.owner(tabId), target = this.groups.find(g => g.id === targetId);
     if (!source || !target) return;
+    const former = tabClusterOf(source, tabId);
     this.pin(tabId);
     // Splitting a group's sole tab back into itself leaves exactly the same group.
     if (source === target && source.tabs.length === 1 && direction) return;
@@ -161,7 +189,8 @@ export class EditorGroups {
     const from = source.tabs.indexOf(tabId), sticky = from < source.sticky;
     source.tabs.splice(from, 1);
     if (sticky) source.sticky--;
-    if (source.activeId === tabId) source.activeId = source.tabs[Math.min(from, source.tabs.length - 1)] ?? null;
+    for (const group of new Set([source, destination])) for (const each of group.clusters) each.tabs = each.tabs.filter(id => id !== tabId);
+    if (source.activeId === tabId) source.activeId = this.successor(source, from);
     let at = index ?? destination.tabs.length;
     if (source === destination && index !== undefined && from < at) at--;
     at = Math.max(0, Math.min(at, destination.tabs.length));
@@ -172,8 +201,79 @@ export class EditorGroups {
       : sticky || (index !== undefined && at < destination.sticky);
     destination.tabs.splice(stick ? Math.min(at, destination.sticky) : Math.max(at, destination.sticky), 0, tabId);
     if (stick) destination.sticky++;
+    // Its tab group at the new place. A drop names it (`cluster`). Otherwise the neighbours do: a
+    // tab set down between two members of one tab group joins it, a member moved to an edge of
+    // its own tab group stays, and anywhere else it is in none (Firefox `moveTabForward`: "a tab
+    // at a group's edge leaves the group").
+    if (!stick) {
+      const place = destination.tabs.indexOf(tabId);
+      const left = tabClusterOf(destination, destination.tabs[place - 1] ?? ''), right = tabClusterOf(destination, destination.tabs[place + 1] ?? '');
+      const joined = cluster === null ? undefined : cluster !== undefined ? destination.clusters.find(each => each.id === cluster)
+        : left && left === right ? left : former && source === destination && (left === former || right === former) ? former : undefined;
+      joined?.tabs.push(tabId);
+    }
+    for (const group of new Set([source, destination])) normalizeTabClusters(group);
     this.activate(tabId);
     this.prune();
+  }
+  tabCluster(tabId: string): TabCluster | undefined { const group = this.owner(tabId); return group && tabClusterOf(group, tabId); }
+  clusterGroup(clusterId: string): Group | undefined { return this.groups.find(group => group.clusters.some(cluster => cluster.id === clusterId)); }
+  cluster(clusterId: string): TabCluster | undefined { return this.clusterGroup(clusterId)?.clusters.find(cluster => cluster.id === clusterId); }
+  /** Firefox `addTabGroup`: the tabs become a tab group where the first of them stands: unfolded,
+   * without a name, in the first colour no tab group of the window has. A pinned tab is released
+   * first (`tabgroup.mjs` `addTabs` unpins). */
+  createCluster(tabIds: string[]): TabCluster | null {
+    const group = this.owner(tabIds[0] ?? '');
+    if (!group) return null;
+    const members = tabIds.filter((id, index) => tabIds.indexOf(id) === index && group.tabs.includes(id));
+    for (const id of members) this.unstick(id);
+    for (const cluster of group.clusters) cluster.tabs = cluster.tabs.filter(id => !members.includes(id));
+    const rest = members.slice(1);
+    for (const id of rest) group.tabs.splice(group.tabs.indexOf(id), 1);
+    group.tabs.splice(group.tabs.indexOf(members[0]) + 1, 0, ...rest);
+    const created: TabCluster = { id: `cluster-${++this.serial}`, name: '', collapsed: false, tabs: members,
+      color: nextTabClusterColor(this.groups.flatMap(each => each.clusters.map(cluster => cluster.color))) };
+    group.clusters.push(created);
+    normalizeTabClusters(group);
+    return created;
+  }
+  /** Firefox "Add Tab to Group": the tab goes to the end of that tab group, in the same strip. */
+  addToCluster(tabId: string, clusterId: string): boolean {
+    const group = this.clusterGroup(clusterId), cluster = group?.clusters.find(each => each.id === clusterId);
+    if (!group || !cluster || this.owner(tabId) !== group || cluster.tabs.includes(tabId)) return false;
+    this.unstick(tabId);
+    for (const each of group.clusters) each.tabs = each.tabs.filter(id => id !== tabId);
+    group.tabs.splice(group.tabs.indexOf(tabId), 1);
+    const last = cluster.tabs.at(-1);
+    group.tabs.splice(last ? group.tabs.indexOf(last) + 1 : group.tabs.length, 0, tabId);
+    cluster.tabs.push(tabId);
+    normalizeTabClusters(group);
+    return true;
+  }
+  /** Firefox "Remove from Group": the tab comes to stand right after its tab group. */
+  removeFromCluster(tabId: string): boolean {
+    const group = this.owner(tabId), cluster = group && tabClusterOf(group, tabId);
+    if (!group || !cluster) return false;
+    const last = cluster.tabs.at(-1)!;
+    cluster.tabs = cluster.tabs.filter(id => id !== tabId);
+    if (last !== tabId) { group.tabs.splice(group.tabs.indexOf(tabId), 1); group.tabs.splice(group.tabs.indexOf(last) + 1, 0, tabId); }
+    normalizeTabClusters(group);
+    return true;
+  }
+  /** Firefox "Ungroup tabs": the tab group is gone and its tabs stay where they are. */
+  ungroup(clusterId: string): boolean {
+    const group = this.clusterGroup(clusterId);
+    if (!group) return false;
+    group.clusters.splice(group.clusters.findIndex(cluster => cluster.id === clusterId), 1);
+    return true;
+  }
+  setCluster(clusterId: string, change: { name?: string; color?: TabClusterColor; collapsed?: boolean }): boolean {
+    const cluster = this.cluster(clusterId);
+    if (!cluster) return false;
+    if (change.name !== undefined) cluster.name = tabClusterName(change.name);
+    if (change.color !== undefined) cluster.color = change.color;
+    if (change.collapsed !== undefined) cluster.collapsed = change.collapsed;
+    return true;
   }
   resize(id: string, ratio: number) {
     const visit = (node: GroupTree): void => {

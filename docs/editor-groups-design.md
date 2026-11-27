@@ -109,10 +109,58 @@ A menu move creates its window at that moment. Main delivers the tab only after
 that window's renderer publishes its first tab state, because the page finishes
 loading before the shell's lazily imported workspace subscribes to transfers.
 
+## Tab groups
+
+Tab groups are Firefox's (`browser/components/tabbrowser/content/tabgroup.mjs`,
+`tabgroup-menu.mjs`, `tab-context-menu.mjs`, `drag-and-drop.mjs`): a named,
+coloured run of neighbouring tabs in one strip that folds to its label. In the
+code a tab group is a *cluster* (`core/workspace/tab-clusters.ts`), because
+"group" already means an editor group, a pane with its own strip. People read
+"tab group".
+
+| Firefox | Setdown |
+| --- | --- |
+| Tab menu: "Add Tab to New Group"; with another group in the window, the submenu "Add Tab to Group" (New Group, then the groups); "Remove from Group" for a member | Same, for the groups of the tab's own strip. A group without a name is listed as "Unnamed group (Blue)". |
+| Drag a tab onto another, pause (240 ms), drop: a group of the two | Same, over the middle three fifths of a tab that is loose (not pinned, in no group). The tab under it is ringed once the hold is long enough. |
+| A new group is unfolded, unnamed, in the first of nine colours no group uses | Same; when all nine are used, the one used least (Firefox: a random one). |
+| Create panel under the label: name field focused, nine swatches, Cancel and Done; name and colour apply as they are chosen; Escape and Cancel undo the group; Enter, Done and a click elsewhere keep it; Enter that ends an input-method composition is ignored | Same. |
+| Left click on the label folds or unfolds; right click and the menu key open the panel for the existing group | Same. The panel for an existing group has "New tab in group" (a web tab), "Ungroup tabs" and "Delete group" (closes its tabs under one unsaved-changes question). |
+| A folded group shows only its selected tab, with "+N" for the others; the line under the label shows only when the group is unfolded or holds the selected tab | Same. "+N" unfolds the group. |
+| 2px line in the group's colour under the label, the tabs and the count | Same, in Firefox's light and dark colour values. |
+| A new tab opens outside every group; "New tab in group" opens at the group's end and unfolds it | Same: a tab opened while a member is selected comes after that group. A preview that replaces the selected preview keeps its place in the group. |
+| Next and previous tab skip tabs hidden in folded groups | Same, and closing the selected tab selects the nearest tab that shows. |
+| Pinned tabs are in no group | Same: pinning a member takes it out; putting a pinned tab into a group releases the pin. |
+| A group with no tab is gone; "Remove from Group" puts the tab right after its group | Same. |
+| Dragging: before a label is before the group; over an unfolded label is its first place; onto a folded label joins without unfolding; past a group's last tab is outside | Same, read from the halves of the piece under the pointer (`stripDrop`). The guide line takes the group's colour when the tab would join. |
+
+Not built: dragging a whole group by its label, saved groups ("Save and close
+group", middle click), the hover preview of a folded group's tabs, moving a group
+to another window, and several selected tabs (the strip selects one tab).
+
+`Group.clusters` holds a strip's tab groups in strip order. Every change to a
+strip ends with `normalizeTabClusters`: a tab is in at most one group, pinned tabs
+in none, a group's tabs stand together, and a group without tabs is removed.
+`stripItems` is what `TabChrome.svelte` draws; `visibleTabs` is what next/previous
+tab moves over. `EditorGroupPlacement.cluster` names the group a dropped tab joins
+(`null`: none; left out, its neighbours decide: between two members it joins, at
+an edge of its own group it stays). `TabClusterPanel.svelte` is the panel; it
+lies over the whole window and raises the native-overlay signal, so a live reader
+or web page under it gives way while it is open.
+
+Tab groups last for the window session, like pins: workspace snapshots and tabs
+moved to another window or pane do not carry them.
+
 ## Verification
 
 `tab-menu.spec.ts` drives the menu in real Electron above a live reader: position,
 clipboard, Explorer reveal, pinning, bulk closes, split, move and the new window.
+`tab-groups.spec.ts` drives tab groups the same way: both menu forms, the panel
+(focus, live name and colour, Enter, Escape, Cancel, Done, a click elsewhere, over
+a live reader), folding with and without the selected tab, the count, Next Tab and
+closing beside a folded group, joining and leaving by menu and by drag, the hold
+that makes a group of two tabs, pinning a member, and the panel's three commands.
+`tab-clusters.test.ts` covers the strip rules, what a strip draws, where a dragged
+tab lands, colours and names.
 Unit tests cover the menu model, sticky ordering, the single close prompt and the
 transfer without a drag.
 

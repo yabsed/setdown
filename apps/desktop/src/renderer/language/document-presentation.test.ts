@@ -167,3 +167,9 @@ test("a Deno project under TypeScript's own server is Limited, and its one actio
   // Any other limitation is still looked at in the environment.
   expect(presentSupport([within({ environment: 'partial', issues: [{ code: 'other', message: 'Something is missing.' }] })]).action).toEqual({ kind: 'details', label: 'Review environment…' });
 });
+test('a tool that says its own version no longer runs is shown in its words, with the one step that can change the answer', () => {
+  const expired = server({ state: 'failed', recovery: { retrying: false }, issue: { kind: 'outdated', detail: 'This build of kotlin-server has expired.' } });
+  expect(presentSupport([expired], undefined, 'Kotlin')).toMatchObject({ label: 'Not working', tone: 'warning',
+    title: "Kotlin support can't run in the version on this computer.", description: 'This build of kotlin-server has expired.',
+    action: { kind: 'restart', label: 'Look for a newer version' }, secondary: { kind: 'log' } });
+});

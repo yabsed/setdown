@@ -17,7 +17,7 @@ import { savePastedPng } from '../../main/documents/pasted-image';
 import { markdownDestinationForFile } from '../../main/documents/markdown-link';
 import { ServerItems } from '../../main/language/server-items';
 import { AutoSaveController } from '../../renderer/workspace/auto-save';
-import { readGitDocument } from '../../main/project/git-text';
+import { gitComparedText } from '../../main/project/git-compare';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readerMarkdown } from '../../core/browser/reader-export';
 import type { WindowState } from '../../main/windows/window-state';
@@ -354,8 +354,8 @@ test('F23 a Markdown Git blob above 4 MB must not be presented as an empty versi
   const content = 'a'.repeat(4_100_000);
   await fs.writeFile(file, content); await commit(f.root);
   const git = await GitCli.connect(f.root);
-  const result = await readGitDocument(git!, 'HEAD:large.md', file);
-  expect(result).toBe(content);
+  const result = await gitComparedText(git!, 'HEAD:large.md', file);
+  expect(result.text).toBe(content);
 });
 
 test('F24 reader Markdown export must preserve IDs attached to headings themselves', () => {

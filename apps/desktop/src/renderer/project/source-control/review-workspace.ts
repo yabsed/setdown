@@ -108,7 +108,10 @@ export class ReviewWorkspaceController {
           // A large file is only described here: its text belongs to the editor of its own tab.
           const snapshot = await this.options.desktop.readDocumentLocation(path, false);
           if (sharedTextDocument(snapshot) && !snapshot.large) content = await workspace.documentStore.acquire(path, id, async () => snapshot);
-        } catch (error) { if (!/ENOENT|no such file/i.test(String(error))) throw error; }
+        } catch {
+          // A file that is not an editable document (deleted, binary, not UTF-8, a submodule's
+          // folder) is still compared: main reads both versions for display and the review is read-only.
+        }
         // Retaining content is enough to make its model available through the
         // live-document provider. GitDiffEditor borrows it with its own Monaco
         // module. Loading an ordinary editor here serializes native preview

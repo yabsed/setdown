@@ -6,7 +6,8 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, utimes, writeFil
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ensureKotlinServer, forgetKotlinServer, KotlinChecksumError, kotlinDownloadLimits, kotlinLauncher, kotlinRelease, kotlinReleasesUrl, kotlinServerForRun, removeOutdatedKotlinServers, type KotlinServerOptions } from './kotlin-download';
+import { compareKotlinBuilds, ensureKotlinServer, forgetKotlinServer, installedKotlinServers, kotlinBundleFile, kotlinBundleRelease, KotlinChecksumError, kotlinDownloadLimits, kotlinExtensionUrl, kotlinLauncher, kotlinRelease, kotlinReleasesUrl, kotlinServerForRun, kotlinSourceLimits, removeOutdatedKotlinServers, zipEntry, type KotlinServerOptions } from './kotlin-download';
+import { deflateRawSync } from 'node:zlib';
 
 let directory = '';
 beforeEach(async () => { directory = await realpath(await mkdtemp(path.join(os.tmpdir(), 'setdown-kotlin-test-'))); });
@@ -30,6 +31,8 @@ function publisher(archive: (asked: Asked) => Response | Promise<Response>, chec
   const asked: Asked[] = [];
   const fetcher = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     const request = { url: String(input), range: new Headers(init?.headers).get('range') ?? undefined };
+    // The registry of JetBrains' extension does not answer here: these tests are about a listed build.
+    if (request.url.startsWith(kotlinExtensionUrl)) return new Response('not found', { status: 404 });
     asked.push(request);
     if (request.url === kotlinReleasesUrl) return new Response(releases);
     if (request.url === `${archiveUrl}.sha256`) return typeof checksum === 'string' ? new Response(checksum) : checksum;
@@ -96,7 +99,7 @@ test('the address comes from the first jetbrains.com link of the newest section 
 test('a server that is not installed is downloaded, verified and put where the extension looks', async () => {
   const server = publisher(whole), progress: [number, number | undefined][] = [];
   const result = await ensureKotlinServer(options(server, { progress: (received, total) => { progress.push([received, total]); } }));
-  expect(result).toEqual({ folder: folder(), version, downloaded: true });
+  expect(result).toEqual({ folder: folder(), version, program: launcher(), downloaded: true });
   expect(await readFile(launcher(), 'utf8')).toBe(content);
   expect(launcher()).toBe(kotlinLauncher(result.folder, result.version, 'linux'));
   if (process.platform !== 'win32') expect((await stat(launcher())).mode & 0o111).toBe(0o111);
@@ -111,7 +114,7 @@ test('a server that is not installed is downloaded, verified and put where the e
 test('an installed server is left alone and nothing is downloaded', async () => {
   await mkdir(path.dirname(launcher()), { recursive: true }); await writeFile(launcher(), 'installed by the extension');
   const server = publisher(whole);
-  expect(await ensureKotlinServer(options(server))).toEqual({ folder: folder(), version, downloaded: false });
+  expect(await ensureKotlinServer(options(server))).toEqual({ folder: folder(), version, program: launcher(), downloaded: false });
   expect(server.asked).toEqual([{ url: kotlinReleasesUrl }]);
   expect(await readFile(launcher(), 'utf8')).toBe('installed by the extension');
   expect(await readdir(work())).toEqual([`kotlin-lsp-${version}`]);
@@ -244,7 +247,7 @@ test('an installer waits behind the lock of one that is alive', async () => {
   expect(server.asked).toEqual([{ url: kotlinReleasesUrl }]);
   // The other installer finishes: its server is used, and nothing is downloaded.
   await mkdir(path.dirname(launcher()), { recursive: true }); await writeFile(launcher(), 'installed by the other window');
-  expect(await waiting).toEqual({ folder: folder(), version, downloaded: false });
+  expect(await waiting).toEqual({ folder: folder(), version, program: launcher(), downloaded: false });
   expect(server.asked).toEqual([{ url: kotlinReleasesUrl }]);
   // The other installer gives up: the lock is free, and this one downloads.
   await rm(folder(), { recursive: true });
@@ -335,7 +338,7 @@ test.skipIf(process.platform === 'win32')('the archive is unpacked with tar into
   execFileSync('tar', ['-czf', path.join(directory, archiveName), '-C', packed, `kotlin-server-${version}`]);
   const bytes = await readFile(path.join(directory, archiveName));
   const server = publisher(() => new Response(bytes), `${digest(bytes)} *${archiveName}`);
-  expect(await ensureKotlinServer({ work: work(), fetch: server.fetch, platform: 'linux', arch: 'x64' })).toEqual({ folder: folder(), version, downloaded: true });
+  expect(await ensureKotlinServer({ work: work(), fetch: server.fetch, platform: 'linux', arch: 'x64' })).toEqual({ folder: folder(), version, program: launcher(), downloaded: true });
   expect(await readFile(launcher(), 'utf8')).toBe('#!/bin/sh\n');
   expect((await stat(launcher())).mode & 0o111).toBe(0o111);
   expect(await readFile(path.join(folder(), `kotlin-server-${version}`, 'lib', 'app.jar'), 'utf8')).toBe('jar');
@@ -392,7 +395,7 @@ test('one run of the application reads the release list once, and every caller h
   await mkdir(older, { recursive: true }); await mkdir(other);
   const first: number[] = [], second: number[] = [];
   const [one, two] = await Promise.all([kotlinServerForRun(options(server, { progress: received => { first.push(received); } })), kotlinServerForRun(options(server, { progress: received => { second.push(received); } }))]);
-  expect(one).toEqual({ folder: folder(), version, downloaded: true });
+  expect(one).toEqual({ folder: folder(), version, program: launcher(), downloaded: true });
   expect(two).toBe(one);
   expect([first.at(-1), second.at(-1)]).toEqual([content.length, content.length]);
   expect(await kotlinServerForRun(options(server))).toBe(one);
@@ -408,7 +411,7 @@ test('a later check of the same run removes nothing, because a server may be run
   await mkdir(older);
   // The extension could not start the server: the list is read again by the next caller.
   forgetKotlinServer(work());
-  expect(await kotlinServerForRun(options(server))).toEqual({ folder: folder(), version, downloaded: false });
+  expect(await kotlinServerForRun(options(server))).toEqual({ folder: folder(), version, program: launcher(), downloaded: false });
   expect(server.asked.filter(request => request.url === kotlinReleasesUrl)).toHaveLength(2);
   expect(existsSync(older)).toBe(true);
 });
@@ -424,4 +427,142 @@ test('a check that failed is made again by the next caller, and then removes not
   expect((await kotlinServerForRun(options({ fetch: fetcher }))).downloaded).toBe(true);
   expect(existsSync(older)).toBe(true);
   expect(await readFile(launcher(), 'utf8')).toBe(content);
+});
+
+// ---- The newest build, asked of JetBrains' own extension as well as of the release list ----
+
+const newer = '271.3588.0', newerUrl = `https://download.jetbrains.com/language-server/kotlin-server/${newer}/kotlin-server-${newer}.tar.gz`;
+/** `extension/server-bundle.json` of "Kotlin by JetBrains" 0.0.162 for each platform, as the Open VSX registry served the packages on 2026-11-27. */
+const bundles = {
+  'linux-x64': { url: newerUrl, version: newer, archiveName: `kotlin-server-${newer}.tar.gz`, sha256: '0232cf959ff59e138c7ce2e8665018ca4622cad1088d63aa727e5b4f6ce73717' },
+  'linux-arm64': { url: `https://download.jetbrains.com/language-server/kotlin-server/${newer}/kotlin-server-${newer}-aarch64.tar.gz`, version: newer, archiveName: `kotlin-server-${newer}-aarch64.tar.gz`, sha256: 'a31835754904fb6286a974bb415edbde971a19fb81646fd431601f57cf33ff52' },
+  'darwin-x64': { url: `https://download.jetbrains.com/language-server/kotlin-server/${newer}/kotlin-server-${newer}.sit`, version: newer, archiveName: `kotlin-server-${newer}.sit`, sha256: '75685e727b7bb0adcc9d17d9a955d108e4bf6e6c19a6ec838d97315da50cb85a' },
+  'darwin-arm64': { url: `https://download.jetbrains.com/language-server/kotlin-server/${newer}/kotlin-server-${newer}-aarch64.sit`, version: newer, archiveName: `kotlin-server-${newer}-aarch64.sit`, sha256: 'db72f02b4a70936133d66ffbe7540bbed1da3740ab4822dc6684edd04e51b296' },
+  'win32-x64': { url: `https://download.jetbrains.com/language-server/kotlin-server/${newer}/kotlin-server-${newer}.win.zip`, version: newer, archiveName: `kotlin-server-${newer}.win.zip`, sha256: 'ef08ed2c0453e34a99214e6f1185de300c83a11971ad232762cad745f37f46ec' },
+  'win32-arm64': { url: `https://download.jetbrains.com/language-server/kotlin-server/${newer}/kotlin-server-${newer}-aarch64.win.zip`, version: newer, archiveName: `kotlin-server-${newer}-aarch64.win.zip`, sha256: '854479efc0dca4b79812f44259fce14933346f990cb1187e8edc3ed914590fdd' },
+} as const;
+/** A zip as the registry's packages are written: deflated, the sizes after the data (flag bit 3) and in the directory. */
+function zipOf(files: Record<string, string>): Buffer {
+  const parts: Buffer[] = [], directory: Buffer[] = [];
+  let offset = 0;
+  for (const [name, text] of Object.entries(files)) {
+    const raw = Buffer.from(text), packed = deflateRawSync(raw), file = Buffer.from(name), local = Buffer.alloc(30), entry = Buffer.alloc(46), sizes = Buffer.alloc(16);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x808, 6); local.writeUInt16LE(8, 8); local.writeUInt16LE(file.length, 26);
+    sizes.writeUInt32LE(0x08074b50, 0); sizes.writeUInt32LE(packed.length, 8); sizes.writeUInt32LE(raw.length, 12);
+    entry.writeUInt32LE(0x02014b50, 0); entry.writeUInt16LE(0x808, 8); entry.writeUInt16LE(8, 10); entry.writeUInt32LE(packed.length, 20); entry.writeUInt32LE(raw.length, 24);
+    entry.writeUInt16LE(file.length, 28); entry.writeUInt32LE(offset, 42);
+    parts.push(local, file, packed, sizes); directory.push(entry, file);
+    offset += local.length + file.length + packed.length + sizes.length;
+  }
+  const list = Buffer.concat(directory), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(files).length, 8); end.writeUInt16LE(Object.keys(files).length, 10); end.writeUInt32LE(list.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...parts, list, end]);
+}
+const packageUrl = 'https://open-vsx.org/api/JetBrains/kotlin-server/linux-x64/0.0.162/file/JetBrains.kotlin-server-0.0.162@linux-x64.vsix';
+/** Both places a build is named in. `list` and `registry` say what each answers; the archive of either build is `content`. */
+function sources(answer: { list?: 'down'; registry?: 'down' | 'no bundle'; extension?: string; bundle?: unknown; checksum?: string } = {}) {
+  const asked: string[] = [], extension = answer.extension ?? '0.0.162', bundle = answer.bundle ?? bundles['linux-x64'];
+  const fetcher = (async (input: Parameters<typeof fetch>[0]) => {
+    const url = String(input);
+    asked.push(url);
+    if (url === kotlinReleasesUrl) return answer.list === 'down' ? new Response('unavailable', { status: 503 }) : new Response(releases);
+    if (url === `${kotlinExtensionUrl}/linux-x64/latest`) return answer.registry === 'down' ? new Response('unavailable', { status: 503 })
+      : new Response(JSON.stringify({ version: extension, targetPlatform: 'linux-x64', files: { download: packageUrl } }));
+    if (url === packageUrl) return new Response(new Uint8Array(zipOf(answer.registry === 'no bundle' ? { 'extension/package.json': '{}' } : { 'extension/package.json': '{}', [kotlinBundleFile]: JSON.stringify(bundle) })));
+    if (url === `${archiveUrl}.sha256`) return new Response(`${digest(content)} *${archiveName}`);
+    if (url === `${newerUrl}.sha256`) return new Response(`${answer.checksum ?? digest(content)} *kotlin-server-${newer}.tar.gz`);
+    return url === archiveUrl || url === newerUrl ? whole() : new Response('not found', { status: 404 });
+  }) as typeof fetch;
+  return { fetch: fetcher, asked };
+}
+/** What `tar` makes of either archive: the folder is named after the release that was asked for. */
+const unpackAny = async (archive: string, into: string) => {
+  const release = /kotlin-server-(.+)\.tar\.gz$/.exec(path.basename(archive))![1];
+  await mkdir(path.join(into, `kotlin-server-${release}`, 'bin'), { recursive: true });
+  await writeFile(path.join(into, `kotlin-server-${release}`, 'bin', 'intellij-server'), await readFile(archive));
+};
+const newerFolder = () => path.join(work(), `kotlin-lsp-${newer}`), newerLauncher = () => path.join(newerFolder(), `kotlin-server-${newer}`, 'bin', 'intellij-server');
+// The checksum the test's archive has stands in for the one of the real archive, in both statements about it.
+const stated = { ...bundles['linux-x64'], sha256: digest(content) };
+
+test("the build JetBrains' own extension runs is this platform's archive on JetBrains' server", () => {
+  for (const [target, bundle] of Object.entries(bundles)) {
+    const [platform, arch] = target.split('-') as [NodeJS.Platform, string];
+    expect(kotlinBundleRelease(bundle, platform, arch)).toEqual({ version: newer, url: bundle.url, checksumUrl: `${bundle.url}.sha256`, folder: `kotlin-lsp-${newer}`, sha256: bundle.sha256 });
+    // The same archive the Zed extension's rule names for a listed build of that number.
+    expect(kotlinRelease(`### v${newer}\n`, platform, arch)!.url).toBe(bundle.url);
+  }
+  // Another platform's archive, another server, a version that could leave the folder, a checksum that is none.
+  expect(kotlinBundleRelease(bundles['darwin-arm64'], 'linux', 'x64')).toBeUndefined();
+  expect(kotlinBundleRelease({ ...bundles['linux-x64'], url: `https://jetbrains.com.evil.example/${newer}/kotlin-server-${newer}.tar.gz` }, 'linux', 'x64')).toBeUndefined();
+  expect(kotlinBundleRelease({ url: 'https://download.jetbrains.com/x/kotlin-server-...tar.gz', version: '../..' }, 'linux', 'x64')).toBeUndefined();
+  expect(kotlinBundleRelease({ ...bundles['linux-x64'], sha256: 'abc' }, 'linux', 'x64')).toBeUndefined();
+  expect(kotlinBundleRelease(null, 'linux', 'x64')).toBeUndefined();
+  expect([compareKotlinBuilds(newer, version) > 0, compareKotlinBuilds('263.7084.0', version) < 0, compareKotlinBuilds(version, version)]).toEqual([true, true, 0]);
+});
+
+test('a file is read out of a package, and what is no package holds none', () => {
+  const zip = zipOf({ 'extension/package.json': '{"name":"kotlin-server"}', [kotlinBundleFile]: JSON.stringify(bundles['linux-x64']) });
+  expect(JSON.parse(zipEntry(zip, kotlinBundleFile)!.toString())).toEqual(bundles['linux-x64']);
+  expect(zipEntry(zip, 'extension/missing.json')).toBeUndefined();
+  expect(zipEntry(zip, kotlinBundleFile, 10)).toBeUndefined();
+  expect(zipEntry(Buffer.from('<html>not a package</html>'), kotlinBundleFile)).toBeUndefined();
+  expect(zipEntry(zip.subarray(0, zip.length - 40), kotlinBundleFile)).toBeUndefined();
+});
+
+test('a build the release list does not name yet is installed, because the extension runs it', async () => {
+  const server = sources({ bundle: stated });
+  expect(await ensureKotlinServer(options(server, { unpack: unpackAny }))).toEqual({ folder: newerFolder(), version: newer, program: newerLauncher(), downloaded: true });
+  expect(await readFile(newerLauncher(), 'utf8')).toBe(content);
+  expect(server.asked).toEqual(expect.arrayContaining([kotlinReleasesUrl, `${kotlinExtensionUrl}/linux-x64/latest`, packageUrl, `${newerUrl}.sha256`, newerUrl]));
+  // The listed, older build is not downloaded beside it.
+  expect([server.asked.includes(archiveUrl), existsSync(folder())]).toEqual([false, false]);
+  // The package is read once for a version of the extension: the next check asks only which version is the newest.
+  const again = sources({ bundle: stated });
+  expect(await ensureKotlinServer(options(again, { unpack: unpackAny }))).toMatchObject({ version: newer, downloaded: false });
+  expect(again.asked.sort()).toEqual([kotlinReleasesUrl, `${kotlinExtensionUrl}/linux-x64/latest`].sort());
+  // A newer extension is read again.
+  const next = sources({ bundle: stated, extension: '0.0.163' });
+  await ensureKotlinServer(options(next, { unpack: unpackAny }));
+  expect(next.asked).toContain(packageUrl);
+});
+
+test('one place that does not answer is no obstacle while the other names a build', async () => {
+  // The registry is down, or its package names no build: the listed one is installed, as before.
+  for (const registry of ['down', 'no bundle'] as const) {
+    const server = sources({ registry });
+    expect(await ensureKotlinServer(options(server))).toMatchObject({ version, downloaded: true });
+    await rm(work(), { recursive: true, force: true });
+  }
+  // The list is down: the build of the extension is installed.
+  expect(await ensureKotlinServer(options(sources({ list: 'down', bundle: stated }), { unpack: unpackAny }))).toMatchObject({ version: newer, downloaded: true });
+});
+
+test('without a network the newest server that is already here is used, and without one there is an error to read', async () => {
+  const offline = sources({ list: 'down', registry: 'down' });
+  await expect(ensureKotlinServer(options(offline))).rejects.toThrow(`Failed to download ${kotlinReleasesUrl}: HTTP 503`);
+  for (const release of [version, newer, '263.7084.0']) {
+    await mkdir(path.join(work(), `kotlin-lsp-${release}`, `kotlin-server-${release}`, 'bin'), { recursive: true });
+    await writeFile(path.join(work(), `kotlin-lsp-${release}`, `kotlin-server-${release}`, 'bin', 'intellij-server'), 'installed');
+  }
+  // A folder without its program, as an interrupted install leaves it, is no server.
+  await mkdir(path.join(work(), 'kotlin-lsp-999.1.0'));
+  expect((await installedKotlinServers(work(), 'linux')).map(found => found.version)).toEqual([newer, version, '263.7084.0']);
+  expect(await ensureKotlinServer(options(offline))).toEqual({ folder: newerFolder(), version: newer, program: newerLauncher(), downloaded: false });
+});
+
+test("a build whose published checksum is not the one the extension names gives way to the listed build", async () => {
+  // The extension states the real archive's checksum; the server publishes another for it.
+  const server = sources({ bundle: bundles['linux-x64'] });
+  expect(await ensureKotlinServer(options(server, { unpack: unpackAny }))).toMatchObject({ version, downloaded: true });
+  expect([server.asked.includes(newerUrl), existsSync(newerFolder())]).toEqual([false, false]);
+});
+
+test.skipIf(!existsSync(path.join(upstream, 'vscode-extension-core/src/serverBundleDownload.ts')))("the file of the extension's package and its fields are the ones vendor/kotlin-lsp reads", () => {
+  const client = readFileSync(path.join(upstream, 'vscode-extension-core/src/serverBundleDownload.ts'), 'utf8');
+  for (const rule of ["export const SERVER_BUNDLE_METADATA_FILE = 'server-bundle.json';", "typeof metadata.url !== 'string'", "typeof metadata.version !== 'string'", '/^[0-9a-fA-F]{64}$/.test(metadata.sha256)']) expect(client).toContain(rule);
+  expect(kotlinBundleFile).toBe('extension/server-bundle.json');
+  // The release list itself says where the extension is published for editors other than VS Code.
+  expect(readFileSync(path.join(upstream, 'RELEASES.md'), 'utf8')).toContain('https://open-vsx.org/extension/JetBrains/kotlin-server');
+  expect(kotlinSourceLimits.extension).toBeLessThan(kotlinDownloadLimits.idle);
 });

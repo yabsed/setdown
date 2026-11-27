@@ -733,8 +733,11 @@ export class SourceControlController {
     const currentGeneration = () => this.tabExists(tab) && this.previewGenerations.get(tab) === generation;
     const text = tab.staged || tab.history ? current.modifiedText
       : this.options.workingTreeBuffer(tab.filePath) ?? current.modifiedText;
-    const diff: GitDiff = { ...current, modifiedText: text, patch: '', hunks: [],
-      // Nested Svelte state proxies must not cross Electron's clone boundary.
+    // Nested Svelte state proxies must not cross Electron's clone boundary: the history entry is
+    // copied, and what only the source comparison shows (each side's reading note, a PDF's two
+    // versions) is left behind. The rendered review reads the two texts.
+    const { sides: _sides, documents: _documents, ...plain } = current;
+    const diff: GitDiff = { ...plain, modifiedText: text, patch: '', hunks: [],
       ...(current.history ? { history: { ...current.history } } : {}) };
     if (text !== current.modifiedText) tab.diff = { ...current, modifiedText: text };
     const [a, b] = this.previewIds(tab);

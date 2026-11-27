@@ -176,7 +176,10 @@ input, select, textarea { font-family: inherit; }
   grid-column: 2;
   display: flex;
   min-width: 0;
-  --tab-min-width: 96px;
+  /* A tab is `--tab-width` wide and gives up width only when the strip is full, down to `--tab-min-width`.
+     The two are close, so tabs are much the same width whether one is open or ten. */
+  --tab-width: 180px;
+  --tab-min-width: 112px;
   padding: 4px 8px 0;
   border-bottom: 1px solid var(--app-border);
   background: var(--app-chrome);
@@ -190,15 +193,57 @@ input, select, textarea { font-family: inherit; }
 /* Setdown sits 2px into the strip's padding. The row takes that step: a scrolling row cuts off what hangs out of it. */
 .tab-row.has-lead { margin-left: -2px; }
 /* The list's least width is every tab at its least (TabChrome counts them), with the gaps between them. */
-.tab-list { display: flex; flex: 0 1 auto; gap: 2px; min-width: max(0px, calc(var(--tab-count, 0) * (var(--tab-min-width) + 2px) - 2px)); -webkit-app-region: no-drag; }
+.tab-list { display: flex; flex: 0 1 auto; gap: 2px; min-width: max(0px, calc(var(--tab-count, 0) * (var(--tab-min-width) + 2px) - 2px + var(--tab-extra, 0px))); -webkit-app-region: no-drag; }
+/* Tab groups (TabChrome, `core/workspace/tab-clusters.ts`), drawn as Firefox draws them: a label in
+   the group's colour before its tabs, a 2px line in that colour under the label, the tabs and the
+   count of a folded group's hidden tabs. The nine colours are Firefox's (`tab.tokens.css`): a
+   deeper set on light themes with white text, a paler set on dark themes with near-black text. */
+[data-cluster-color] { --cluster-text: #fff; }
+[data-cluster-color='blue'] { --cluster-color: #455fe7; --cluster-hover: #3246b0; }
+[data-cluster-color='purple'] { --cluster-color: #9540c8; --cluster-hover: #702e98; }
+[data-cluster-color='cyan'] { --cluster-color: #0a809f; --cluster-hover: #066077; }
+[data-cluster-color='orange'] { --cluster-color: #cd4208; --cluster-hover: #9c2c05; }
+[data-cluster-color='yellow'] { --cluster-color: #b26100; --cluster-hover: #854800; }
+[data-cluster-color='pink'] { --cluster-color: #b32e9f; --cluster-hover: #882078; }
+[data-cluster-color='green'] { --cluster-color: #008865; --cluster-hover: #06674b; }
+[data-cluster-color='gray'] { --cluster-color: #515054; --cluster-hover: #312f33; }
+[data-cluster-color='red'] { --cluster-color: #c52d4f; --cluster-hover: #961e3d; }
+[data-appearance='dark'] [data-cluster-color='blue'] { --cluster-color: #7bb2ff; --cluster-hover: #5a87fd; --cluster-text: #111524; }
+[data-appearance='dark'] [data-cluster-color='purple'] { --cluster-color: #d490ff; --cluster-hover: #b864ee; --cluster-text: #1a1220; }
+[data-appearance='dark'] [data-cluster-color='cyan'] { --cluster-color: #4cc4e1; --cluster-hover: #10a4ca; --cluster-text: #011c23; }
+[data-appearance='dark'] [data-cluster-color='orange'] { --cluster-color: #ff9565; --cluster-hover: #f4682c; --cluster-text: #250e0b; }
+[data-appearance='dark'] [data-cluster-color='yellow'] { --cluster-color: #f3a81e; --cluster-hover: #db820e; --cluster-text: #270f00; }
+[data-appearance='dark'] [data-cluster-color='pink'] { --cluster-color: #f585d3; --cluster-hover: #db54bf; --cluster-text: #1e111b; }
+[data-appearance='dark'] [data-cluster-color='green'] { --cluster-color: #4acca6; --cluster-hover: #11ae84; --cluster-text: #001e12; }
+[data-appearance='dark'] [data-cluster-color='gray'] { --cluster-color: #949297; --cluster-hover: #67666a; --cluster-text: #121114; }
+[data-appearance='dark'] [data-cluster-color='red'] { --cluster-color: #ff8998; --cluster-hover: #ed566e; --cluster-text: #211014; }
+/* The label is as tall as a tab, so the line under it meets the line under the tabs; the coloured
+   name inside is the pill. A group without a name keeps a small blob of its colour. */
+.tab-cluster-label, .tab-cluster-more { position: relative; display: flex; align-items: center; flex: none; height: 28px; padding: 0 3px; color: inherit;
+  border: 0; background: transparent; font: inherit; cursor: default; -webkit-app-region: no-drag; }
+.tab-cluster-name { box-sizing: border-box; min-width: 20px; max-width: 10em; height: 20px; padding: 0 8px; overflow: hidden; color: var(--cluster-text);
+  border-radius: 5px; background: var(--cluster-color); font-size: 12px; font-weight: 600; line-height: 20px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.tab-cluster-name:empty { padding: 0; }
+.tab-cluster-label:hover .tab-cluster-name { background: var(--cluster-hover); }
+.tab-cluster-label:focus-visible, .tab-cluster-more:focus-visible { outline: none; }
+.tab-cluster-label:focus-visible .tab-cluster-name, .tab-cluster-more:focus-visible span { outline: 2px solid var(--app-focus-ring); outline-offset: 1px; }
+.tab-cluster-more span { min-width: 22px; height: 20px; padding: 0 6px; box-sizing: border-box; color: var(--app-text); border-radius: 10px;
+  background: color-mix(in srgb, var(--cluster-color) 24%, transparent); font-size: 11px; font-weight: 600; line-height: 20px; text-align: center; }
+.tab-cluster-more:hover span { background: color-mix(in srgb, var(--cluster-color) 40%, transparent); }
+.document-tab[data-cluster-id] { position: relative; }
+/* The line runs on across the 2px between two pieces of one group. Under a folded group that holds no selected tab there is none. */
+.tab-cluster-label[data-lined]::after, .document-tab[data-cluster-id]::after, .tab-cluster-more::after {
+  content: ''; position: absolute; left: -2px; right: 0; bottom: 0; height: 2px; background: var(--cluster-color); pointer-events: none; }
+.tab-cluster-label[data-lined]::after { left: 3px; }
+.tab-cluster-more::after { right: 4px; }
 .document-tab {
   display: flex;
   align-items: center;
-  flex: 0 1 210px;
+  flex: 0 1 var(--tab-width);
   /* Keep the list's intrinsic width independent of loading labels and page titles. */
-  width: 210px;
+  width: var(--tab-width);
   min-width: var(--tab-min-width);
-  max-width: 230px;
+  max-width: var(--tab-width);
   height: 28px;
   padding: 0 5px 0 11px;
   color: var(--app-muted-text);
@@ -209,6 +254,11 @@ input, select, textarea { font-family: inherit; }
   cursor: default;
   -webkit-app-region: no-drag;
 }
+/* After a tab was closed with the pointer the others keep the width they had, so the next tab
+   and its close button come under the pointer instead of everything changing size (TabChrome
+   `held`). The widths are given back when the pointer leaves the strip. */
+.tab-list.is-held { flex-shrink: 0; min-width: 0; }
+.tab-list.is-held .document-tab { flex: 0 0 var(--tab-held-width); width: var(--tab-held-width); min-width: 0; max-width: var(--tab-held-width); }
 .document-tab:hover { background: var(--app-hover); }
 .document-tab[aria-selected="true"] { color: var(--app-text); background: var(--app-selected); }
 .document-tab.is-dragging { opacity: .48; }
@@ -700,6 +750,8 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 }
 .git-review.is-active { display: flex; pointer-events: auto; }
 .git-review-body { position: relative; flex: 1; min-width: 0; min-height: 0; }
+/* One line above a comparison that says how its text was read. */
+.git-review > .git-reading-note { flex: none; min-height: 28px; padding: 4px 14px; font-size: 12px; }
 .git-diff-source-layer, .git-diff-preview-host {
   position: absolute;
   inset: 0;
@@ -1178,6 +1230,10 @@ svg.tree-chevron.is-open { transform: rotate(90deg); }
 /* A tab drop must also work in the strip's padding and unused space. Only the free
    end of a top-edge strip is a native window-drag region, and not while a tab is dragged. */
 .tab-drop-indicator { position: fixed; z-index: 96; width: 3px; border-radius: 2px; background: var(--app-accent); pointer-events: none; }
+/* A tab held over another long enough to make a tab group of the two (tab-drag.ts): the one under it is ringed. */
+.document-tab.is-group-target { background: color-mix(in srgb, var(--app-accent) 16%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--app-accent) 60%, transparent); }
+/* A tab that would join a tab group is guided in that group's colour. */
+.tab-drop-indicator[data-cluster-color] { background: var(--cluster-color); }
 .explorer-drag-label { position: fixed; top: -100px; left: 0; padding: 6px 12px; border-radius: 5px; color: var(--app-text); background: var(--app-selected); border: 1px solid var(--app-border); }
 .explorer-row:focus-visible { outline: 1px solid var(--app-focus-ring); outline-offset: -1px; }
 

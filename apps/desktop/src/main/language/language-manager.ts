@@ -52,6 +52,7 @@ import { withBuiltinJsonSchemas } from './json-builtin-schema-files';
 import type { AnalysisObservation, AnalysisSelection, DocumentAnalysis } from '../../core/document/analysis-context';
 import { languageFailure } from '../../protocol/language-request';
 import { AutomaticDownloadsDisabled, LanguageProvisioner, mergeLanguageSettings, protocolLanguageId } from './language-provisioner';
+import { setAsideNote } from './program-health';
 import type { PreparedLanguageServer } from './zed-language-host';
 import { RuntimeLanguageCatalog } from './runtime-language-catalog';
 import { ZedProjectSettings } from './zed-project-settings';
@@ -61,7 +62,7 @@ import { ProjectLanguages } from './project-languages';
 type Binding = { languageId: string; id: string; generation: string; uri: string; version: number; server: ServerSession; capabilities: LanguageCapabilities };
 type Owner = { state: WindowState; documents: Map<string, Binding>; servers: Map<string, ServerSession>;
   requests: Map<string, CancellationTokenSource> };
-export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment' | 'pythonEnvironments' | 'contributions'>>;
+export type AutomaticLanguagePackages = Pick<LanguageProvisioner, 'rank' | 'canPrepare' | 'prepare' | 'highlight' | 'dispose'> & Partial<Pick<LanguageProvisioner, 'installation' | 'usesZed' | 'projectEnvironment' | 'resetEnvironment' | 'pythonEnvironments' | 'contributions' | 'setAside' | 'setAsideProgram' | 'tryProgramsAgain'>>;
 
 /** A separate server for each (window, server kind, project root). Unsaved buffers never cross windows. */
 /** How long quitting waits for language tools to shut down: above the 3 s the project host gives
@@ -98,6 +99,7 @@ export class LanguageManager {
       : this.packagePreparation ? null : new ProjectLanguages({ directory: path.join(app.getPath('userData'), 'language-packages'), executable: this.hostExecutable,
         home: app.getPath('home'), packaged: app.isPackaged, registry: () => this.registry, catalog: () => this.packageCatalog,
         schemas: this.schemas, toolEnvironment: () => this.discovery.environment.peek().env,
+        programs: { find: async program => this.provisioner.setAsideProgram?.(program), add: async (program, reason) => await this.provisioner.setAside?.(program, reason) ?? false },
         writeSettings: (tool, resource, root, entries) => this.writeSettings(tool, resource, root, entries),
         emit: (state, event) => { if (!state.window.isDestroyed() && !state.window.webContents.isDestroyed()) state.window.webContents.send('language:event', event); } });
     return this.projectsValue ?? undefined;
@@ -407,6 +409,8 @@ export class LanguageManager {
     });
     ipcMain.handle('language:restart', async (event, file?: string, provider?: string) => {
       const owner = state(event);
+      // A restart is how a person says that something outside changed: a program set aside is started again.
+      await this.provisioner.tryProgramsAgain?.();
       if (file !== undefined) {
         const resource = this.ownedFile(owner, file);
         if (provider === 'notebook-python') { this.notebooks.resetRecovery(owner.webContentsId, resource); return; }
@@ -584,6 +588,10 @@ export class LanguageManager {
     let server = activeServer();
     let launch;
     let prepared: PreparedLanguageServer | undefined;
+    // The program the tool was found in, before a runtime was put in front of it, and the program
+    // of this computer that was passed by for it because it cannot run (`program-health.ts`).
+    let program: string | undefined;
+    let passedBy: PreparedLanguageServer['instead'];
     let plan: AnalysisPlan | undefined;
     let runtime: ToolRuntime | undefined;
     // What was decided about Java when the tool is jdt.ls: the JDK it runs on and the JDKs a project may use.
@@ -658,6 +666,7 @@ export class LanguageManager {
             if (prepared) {
               const { NODE_OPTIONS: _node, NODE_PATH: _path, ELECTRON_RUN_AS_NODE: _electron, ...env } = environment;
               launch = { executable: prepared.executable, args: prepared.args, env: { ...env, ...prepared.env } };
+              program = prepared.executable; passedBy = prepared.instead;
               break;
             }
           }
@@ -666,7 +675,19 @@ export class LanguageManager {
             : await mapLimited(candidates, async candidate => ({ support: candidate, found: await this.discover(candidate.server, true) }));
           if (revision !== this.discovery.generation) continue;
           if (!current()) throw Error('Language document closed or configuration changed during discovery.');
-          const installed = available.filter(c => !c.found || c.found.selected);
+          // A program of this computer that was found unable to run is passed by where Setdown can
+          // prepare the tool itself. One the person named is used as it is.
+          const aside = new Map<string, PreparedLanguageServer['instead']>();
+          for (const { support: candidate, found } of available) {
+            const d = this.registry.definition(candidate.server), at = found?.selected?.path;
+            if (!at || this.registry.isCustom(d.id) || path.isAbsolute(this.registry.executable(d.id, this.discovery.environment.peek().env)) || !this.provisioner.canPrepare(d)
+              || !this.registry.automaticInstall(d.id, file)) continue;
+            const entry = await this.provisioner.setAsideProgram?.(at);
+            if (entry) aside.set(candidate.server, { program: at, ...(entry.detail ? { detail: entry.detail } : {}) });
+          }
+          if (revision !== this.discovery.generation) continue;
+          if (!current()) throw Error('Language document closed or configuration changed during discovery.');
+          const installed = available.filter(c => (!c.found || c.found.selected) && !aside.has(c.support.server));
           if (!installed.length) {
             const installable = candidates.filter(candidate => {
               const d = this.registry.definition(candidate.server);
@@ -680,6 +701,7 @@ export class LanguageManager {
               if (!current()) throw Error('Language document closed or configuration changed during installation.');
               const {NODE_OPTIONS:_node,NODE_PATH:_path,ELECTRON_RUN_AS_NODE:_electron,...env} = environment;
               launch = {executable:prepared.executable,args:prepared.args,env:{...env,...prepared.env}};
+              program = prepared.executable; passedBy = prepared.instead ?? aside.get(support.server);
               break;
             }
           }
@@ -696,6 +718,7 @@ export class LanguageManager {
           support = installed[0].support;
           definition = this.registry.definition(support.server); root = rootFor(definition);
           const found = installed[0].found;
+          program = found?.selected?.path;
           launch = this.registry.launch(support.server, app.isPackaged, found?.environment.env, found?.selected?.path, file);
           if (found?.selected?.runtime) launch = { ...launch, executable: found.selected.runtime, args: [found.selected.path, ...launch.args] };
           break;
@@ -799,6 +822,7 @@ export class LanguageManager {
       const pinned = prepared ? undefined : this.registry.options(support.server).executable;
       const repair = this.registry.canDetect(support.server) && !this.registry.isCustom(support.server);
       const runtimeFound = runtime?.found ?? java?.found;
+      const located = program;
       // Pyright is told of a cancelled request through a file, as its own extension tells it:
       // it reads no message while it analyses (`python-cancellation.ts`). The same argument
       // starts its background thread, so it is given only to a server that can run one (`pyright-thread.ts`).
@@ -824,11 +848,30 @@ export class LanguageManager {
           const issue = info.issue = found.kind === 'executable' ? { ...found, automatic: repair }
             : found.kind === 'no-installer' ? { ...found, help: /^https?:\/\//.test(languageCatalog.find(item => item.id === tool.id)?.homepage ?? '') } : found;
           // A program that is not a language tool or is not on this computer, or a missing runtime, ends the same way every time.
-          const repeats = issue.kind === 'executable' || issue.kind === 'runtime' || issue.kind === 'no-installer';
+          const repeats = issue.kind === 'executable' || issue.kind === 'runtime' || issue.kind === 'no-installer' || issue.kind === 'outdated';
+          // The program was found on this computer and Setdown can prepare the tool itself: the
+          // program is set aside and the tool starts again from Setdown's own copy
+          // (`program-health.ts`). A build that says it has expired stays aside across restarts
+          // of the app; a program that is no language tool, only for this run.
+          if ((issue.kind === 'outdated' || issue.kind === 'executable') && located && await this.setAside(tool, located, issue, file)) {
+            if (this.sessions.get(ended) !== info || this.owners.get(state.webContentsId) !== owned) return;
+            this.supervisor.reset(recoveryKey);
+            void this.reconnect(owned, ended).catch(error => console.warn('Language recovery failed', error));
+            return;
+          }
           const recovering = repeats ? undefined : this.supervisor.schedule(recoveryKey, () => {
             if (this.sessions.has(ended) && this.owners.get(state.webContentsId) === owned)
               void this.reconnect(owned, ended).catch(error => console.warn('Language recovery failed', error));
           });
+          // A program of this computer that did not start, or stopped, three times in a row:
+          // Setdown's own copy is tried before the person is asked to do anything. For this run
+          // only: what failed may mend itself (a project being built, a full disk).
+          if (!recovering && !repeats && (issue.kind === 'startup' || issue.kind === 'crashed') && located && await this.setAside(tool, located, issue, file)) {
+            if (this.sessions.get(ended) !== info || this.owners.get(state.webContentsId) !== owned) return;
+            this.supervisor.reset(recoveryKey);
+            void this.reconnect(owned, ended).catch(error => console.warn('Language recovery failed', error));
+            return;
+          }
           info.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : repeats ? 'It will not start until its setup changes.' : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
           this.emit(owned, { type: 'status', state: 'failed', message: info.message, issue, recovery: { retrying: !!recovering, attempt: recovering?.attempt },
             documents: [...owned.documents.values()].filter(binding => binding.server === ended).map(({ id, generation }) => ({ id, generation })) });
@@ -882,6 +925,8 @@ export class LanguageManager {
       this.items.set(server, new ServerItems());
       this.sessions.set(server, { plan, recoveryKey, id: support.server, root, resource: file, rootReason: roots.get(support.server)?.reason, configuration: JSON.stringify(this.registry.options(support.server, file)), state: 'starting', ...(kotlin ? { kotlinAdded } : {}),
         ...(additions ? { contributed: JSON.stringify(additions) } : {}) });
+      // Said in the panel beside the project and its root: a program of this computer was passed by, and why.
+      if (passedBy) { server.context?.set('Program', `${launch.executable} (Setdown's own copy)`); server.context?.set('Not used', setAsideNote(definition.name, passedBy.program, passedBy.detail)); }
       owner.servers.set(key, server); created = true;
       server.watch(root);
       const instance = server, watchedInputs = plan.inputs;
@@ -1260,6 +1305,19 @@ export class LanguageManager {
   private observation(server: ServerSession): AnalysisObservation | undefined {
     const plan = this.sessions.get(server)?.plan;
     return plan && { context: plan.context, analysis: server.progress?.size ? 'working' : 'waiting', scope: 'open-files', freshness: 'none', progress: [...server.progress?.values() ?? []] };
+  }
+  /** Sets aside the program of this computer a tool failed in, where Setdown can start the tool
+   * from a copy of its own. False when nothing would change: the person named the program, the
+   * program is Setdown's, Setdown has no way to prepare the tool or may not download it, or it
+   * was set aside before. */
+  private async setAside(tool: LanguageServerDefinition, program: string, issue: LanguageIssue, resource: string): Promise<boolean> {
+    if (!this.provisioner.setAside || this.registry.isCustom(tool.id) || path.isAbsolute(this.registry.executable(tool.id, this.discovery.environment.peek().env))
+      || !this.provisioner.canPrepare(tool) || !this.registry.automaticInstall(tool.id, resource)) return false;
+    const detail = issue.kind === 'outdated' || issue.kind === 'startup' ? issue.detail : issue.kind === 'executable' ? 'It is not a language tool that answers.'
+      : issue.kind === 'crashed' ? 'It stopped while working, three times in a row.' : undefined;
+    const done = await this.provisioner.setAside(program, { ...(detail ? { detail } : {}), lasting: issue.kind === 'outdated' });
+    if (done) console.info(`${tool.name}: ${program} does not run${detail ? ` (${detail})` : ''}; Setdown's own copy is started instead.`);
+    return done;
   }
   private async reconnect(owner: Owner, server: ServerSession, notify = true): Promise<void> {
     const info = this.sessions.get(server); if (!info) return;

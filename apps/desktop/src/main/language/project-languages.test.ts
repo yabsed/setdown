@@ -8,7 +8,7 @@ import type { LanguageEvent } from '../../protocol/language';
 import type { WindowState } from '../windows/window-state';
 import { isSvelteServer } from './extension-rules';
 import { SchemaContentError, type JsonSchemaContent } from './json-schema-content';
-import { ProjectLanguages } from './project-languages';
+import { failureIssue, ProjectLanguages } from './project-languages';
 import { ServerRegistry } from './server-registry';
 import type { HostEvent } from './zed-language-host';
 
@@ -41,6 +41,9 @@ const binding = (id: string) => (bindings.bindings as { id: string; server: stri
 const goFound = { executable: '/usr/bin/go', source: 'PATH', GOROOT: '/usr/lib/golang', GOPATH: '/home/person/go', GOBIN: '', GOPROXY: '', GOMODCACHE: '', GOVERSION: 'go1.27.4' };
 
 let root = '', project = '', directory = '', registry: ServerRegistry, languages: ProjectLanguages, events: LanguageEvent[] = [], sequence = 0;
+/** Where tools are looked for, and the programs of this computer that were found unable to run. */
+let toolEnvironment: NodeJS.ProcessEnv = { PATH: '/usr/bin' };
+const aside = new Map<string, { detail?: string }>();
 const schemas = { content: vi.fn() };
 const state = () => ({ webContentsId: 1, projectRoot: project }) as unknown as WindowState;
 beforeEach(async () => {
@@ -50,18 +53,18 @@ beforeEach(async () => {
   // The person's Zed settings file exists, so that watching it reports nothing by itself.
   await mkdir(path.join(root, 'config', 'zed'), { recursive: true }); await writeFile(path.join(root, 'config', 'zed', 'settings.json'), '{}');
   registry = new ServerRegistry(path.join(root, 'registry'));
-  events = []; sequence = 0; host.calls.length = 0;
+  events = []; sequence = 0; host.calls.length = 0; toolEnvironment = { PATH: '/usr/bin' }; aside.clear();
   host.answers = {
     inventory: () => ({ servers, languages: ['JSON', 'Go', 'C', 'C++', 'TypeScript', 'JavaScript'] }),
     'project.open': () => ({ servers: Object.keys(numbers) }),
     'project.servers': () => ({ servers: Object.entries(numbers).map(([name, server]) => ({ server, name, capabilities: {} })) }),
   };
   go.goEnvironment.mockResolvedValue(goFound); go.findGoTool.mockResolvedValue({ path: '/usr/bin/gopls', source: 'PATH' });
-  kotlin.kotlinServerForRun.mockResolvedValue({ folder: '/kotlin', version: '1.0', downloaded: false });
+  kotlin.kotlinServerForRun.mockResolvedValue({ folder: '/kotlin/kotlin-lsp-1.0', version: '1.0', program: '/kotlin/kotlin-lsp-1.0/kotlin-server-1.0/bin/intellij-server', downloaded: false });
   languages = new ProjectLanguages({ directory, executable: '/unused-host', home: root, packaged: false, registry: () => registry,
     catalog: () => ({ binding, package: id => ({ id, version: '1.0.0', url: 'https://packages.invalid/extension', sha256: '0'.repeat(64) }) }),
     emit: (_state, event) => { events.push(event); }, environment: { XDG_CONFIG_HOME: path.join(root, 'config') }, schemas: schemas as unknown as JsonSchemaContent,
-    toolEnvironment: () => ({ PATH: '/usr/bin' }) });
+    toolEnvironment: () => toolEnvironment, programs: { find: async program => aside.get(program), add: async (program, reason) => { if (aside.has(program)) return false; aside.set(program, reason); return true; } } });
 });
 afterEach(async () => { await languages.dispose(); vi.resetAllMocks(); await rm(root, { recursive: true, force: true }); });
 
@@ -153,6 +156,8 @@ test("JetBrains' Kotlin server is verified first and told the person's build set
   const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
   await open('Main.kt', 'kotlin-lsp', 'kotlin');
   expect(kotlin.kotlinServerForRun).toHaveBeenCalledWith(expect.objectContaining({ work: path.join(directory, 'extensions', 'work', 'kotlin') }));
+  // Zed is told the verified program, with the argument the Kotlin extension gives it: the extension looks only for the listed build.
+  expect(shipped()['kotlin-lsp'].binary).toEqual({ path: '/kotlin/kotlin-lsp-1.0/kotlin-server-1.0/bin/intellij-server', arguments: ['--stdio'] });
   expect(shipped()['kotlin-lsp'].initialization_options).toEqual({ defaultSdk: '/opt/jdk-21', buildTools: { [pathToFileURL(project).href]: 'gradle' }, projects: [{ type: 'gradle', path: '.' }] });
   expect(warned).toHaveBeenCalledWith(expect.stringContaining('`intellij.projects` entry #1 has an unsupported "type": "ant"'));
   expect(position(call => call.op === 'project.settings' && String(call.values.defaults).includes('defaultSdk'))).toBeLessThan(position(call => call.op === 'project.open'));
@@ -239,4 +244,46 @@ test('the Svelte tool hears each unsaved change of a TypeScript file, and of no 
   await languages.change(1, script.id, 2, changes);
   await languages.change(1, other.id, 2, changes);
   expect(called('project.notify')).toEqual([{ op: 'project.notify', values: expect.objectContaining({ server: svelte.server, method: '$/onDidChangeTsOrJsFile', params: { uri: script.uri, changes } }) }]);
+});
+
+test("what a tool wrote before it ended is its own account, not a download that failed", () => {
+  // Zed's sentence for a tool that ended, then the tool's words (lsp_store.rs). The words are
+  // those of JetBrains' Kotlin server 271.2085.0 on 2026-11-27, as the application logged them.
+  const written = ['WARNING: kotlin-lsp.sh is deprecated and will be removed in a future release. Use bin/intellij-server instead.', 'IJ_JAVA_OPTIONS=',
+    'Log file: /tmp/idea-system281559644452388692/system/log/intellij-server.log', 'This build of kotlin-server has expired.', 'The IDE will now close.',
+    'Please download a new build from https://github.com/kotlin/kotlin-lsp'].join('\n');
+  const ended = 'initialization: kotlin-lsp language server disconnected.';
+  expect(failureIssue(`${ended}\n-- stderr --\n${written}`, false)).toEqual({ kind: 'outdated', detail: 'This build of kotlin-server has expired.' });
+  // The program ran, so downloads being off is not why it stopped.
+  expect(failureIssue(`${ended}\n-- stderr --\n${written}`, true)).toMatchObject({ kind: 'outdated' });
+  // An address or the word "download" in a tool's output is advice. "disconnected" is no connection that failed.
+  expect(failureIssue(`${ended}\n-- stderr --\nSee https://example.org/install to download the SDK\nfatal: no SDK`, false)).toEqual({ kind: 'startup', detail: 'fatal: no SDK' });
+  expect(failureIssue(ended, false)).toEqual({ kind: 'startup', detail: ended });
+  // A tool that never ran: Zed could not fetch it.
+  expect(failureIssue('failed to download rust-analyzer: error sending request for url (https://api.github.com/repos/rust-lang/rust-analyzer/releases)', false)).toMatchObject({ kind: 'download-failed' });
+  expect(failureIssue('downloading language servers disabled', true)).toEqual({ kind: 'downloads-off' });
+});
+
+test.skipIf(process.platform === 'win32')("a kotlin-lsp on PATH is named to Zed, and one whose build has expired is set aside for the build Setdown verified", async () => {
+  const bin = path.join(root, 'home', '.local', 'bin'), local = path.join(bin, 'kotlin-lsp'), own = '/kotlin/kotlin-lsp-1.0/kotlin-server-1.0/bin/intellij-server';
+  await mkdir(bin, { recursive: true }); await writeFile(local, '#!/bin/sh\n', { mode: 0o755 });
+  toolEnvironment = { PATH: bin };
+  // What Zed reports for a server that ended while it was started (`lsp_store.rs`: the error, then what the tool wrote).
+  const ended = ['initializing server kotlin-lsp, id 7: server shut down', '-- stderr --', 'Log file: /tmp/idea-system1/system/log/intellij-server.log',
+    'This build of kotlin-server has expired.', 'The IDE will now close.', 'Please download a new build from https://github.com/kotlin/kotlin-lsp'].join('\n');
+  const opened = host.answers['project.open'];
+  host.answers['project.open'] = values => { if (JSON.stringify(shipped()['kotlin-lsp'].binary).includes(local)) throw Error(ended); return opened(values); };
+  // zed-extensions/kotlin 0.3.5: the program on PATH comes before any download, so nothing is downloaded for it.
+  await expect(open('Main.kt', 'kotlin-lsp', 'kotlin')).rejects.toThrow('has expired');
+  expect(kotlin.kotlinServerForRun).not.toHaveBeenCalled();
+  expect(called('project.settings').some(call => String(call.values.defaults).includes(JSON.stringify(local).slice(1, -1)))).toBe(true);
+  // No failure is shown for it: the program is set aside and the document is asked to connect again.
+  expect(aside.get(local)).toEqual({ detail: 'This build of kotlin-server has expired.', lasting: true });
+  expect(events.filter(event => event.type === 'status' && event.state === 'failed')).toEqual([]);
+  expect(events.at(-1)).toMatchObject({ type: 'configuration', servers: ['kotlin-lsp'] });
+  // The same document connects again, as it does when it is told to: its earlier binding is closed first (`LanguageManager.open`).
+  languages.close(1, `document-${sequence}`); sequence -= 1;
+  const again = await open('Main.kt', 'kotlin-lsp', 'kotlin');
+  expect(shipped()['kotlin-lsp'].binary).toEqual({ path: own, arguments: ['--stdio'] });
+  expect((again.connection as { context: string[] }).context).toContain(`Not used: Kotlin was found on this computer at ${local}, and that program does not run: This build of kotlin-server has expired. Setdown is using its own copy. Restart Kotlin to try that program again.`.replace('Kotlin was', `${registry.definition('kotlin-lsp').name} was`).replace('Restart Kotlin', `Restart ${registry.definition('kotlin-lsp').name}`));
 });

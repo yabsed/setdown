@@ -70,6 +70,10 @@ export type LanguageIssue =
   | { kind: 'no-installer'; help?: boolean; detail?: string }
   | { kind: 'executable'; path: string; missing?: boolean; automatic?: boolean }
   | { kind: 'runtime'; runtime: string; required: string; found?: string }
+  /** The tool ran and ended by itself, saying that this version of it no longer runs: a build
+   * with an end date, a version its maker ended. Starting it again ends the same way; what
+   * helps is a newer version, or another tool for the language. `detail`: its own sentence. */
+  | { kind: 'outdated'; detail?: string }
   | { kind: 'startup'; detail?: string }
   | { kind: 'crashed' };
 /** Text a markup tool writes after a keystroke: a closing tag after `>` or `/`, and with

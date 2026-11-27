@@ -3,6 +3,7 @@ import { draggedPaths, PROJECT_FILES } from '../../project/explorer/explorer-sel
 import { fileDrag, FILE_DRAG_END } from '../../files/file-drag';
 import type { ClaimedTabTransfer, TransferableTab } from '../../../protocol/desktop-api';
 import { splitDirection, type EditorGroupPlacement, type EditorGroups } from '../../../core/workspace/editor-groups';
+import { stripDrop, tabClusterOf, type StripPiece } from '../../../core/workspace/tab-clusters';
 import { view } from '../workspace-view.svelte';
 import type { WorkspaceTab } from '../../../core/workspace/workspace-state';
 import type { DesktopPort } from '../../ports/desktop-port';
@@ -18,6 +19,9 @@ type Options = {
   move?(id: string, target: EditorGroupPlacement): void;
 };
 type Target = EditorGroupPlacement;
+/** How long a tab is held over another before releasing it there makes a tab group of the two
+ * (Firefox `browser.tabs.dragDrop.createGroup.delayMS`). */
+const PAIR_DELAY = 240;
 const MIME = 'application/x-setdown-tab';
 const FILE = 'application/x-setdown-project-file';
 
@@ -47,7 +51,16 @@ export function createTabDrag(options: Options) {
   let scrollFrame = 0;
   let scrollList: HTMLElement | null = null;
   let scrollPointer = 0;
+  // The tab a dragged tab is held over, since when, and where the pointer was last; the tab is
+  // marked once the hold is long enough to make a tab group of the two.
+  let pairing: { id: string; since: number; timer: number; x: number } | null = null;
+  let pairedTab: HTMLElement | null = null;
+  const clearPair = () => {
+    if (pairing) clearTimeout(pairing.timer);
+    pairing = null; pairedTab?.classList.remove('is-group-target'); pairedTab = null;
+  };
   const clearStrip = () => {
+    clearPair();
     indicator.hidden = true;
     activeStrip?.classList.remove('is-drop-target'); activeStrip = null;
     cancelAnimationFrame(scrollFrame); scrollFrame = 0; scrollList = null;
@@ -81,17 +94,46 @@ export function createTabDrag(options: Options) {
     if (activeStrip !== strip) activeStrip?.classList.remove('is-drop-target');
     activeStrip = strip; strip.classList.add('is-drop-target');
     const list = strip.querySelector<HTMLElement>('.tab-list')!;
-    const tabs = Array.from(list.querySelectorAll<HTMLElement>('[data-tab-id]'));
-    const index = tabs.findIndex(tab => { const rect = tab.getBoundingClientRect(); return x < rect.left + rect.width / 2; });
-    const at = index < 0 ? tabs.length : index;
+    // What the strip draws, in order: tabs, and the labels and counts of its tab groups. A folded
+    // tab group draws fewer tabs than it holds, so the place is read from the strip's own order.
+    const pieces: StripPiece[] = Array.from(list.querySelectorAll<HTMLElement>('[data-tab-id], [data-cluster-label], [data-cluster-more]'), piece => {
+      const rect = piece.getBoundingClientRect(), data = piece.dataset;
+      return { kind: data.tabId ? 'tab' : data.clusterLabel ? 'label' : 'more', id: data.tabId ?? data.clusterLabel ?? data.clusterMore!, left: rect.left, right: rect.right };
+    });
+    const group = options.groups.groups.find(group => group.id === strip.dataset.groupId);
+    const drop = stripDrop(group ?? { tabs: [], sticky: 0, activeId: null, clusters: [] }, pieces, x);
+    // Firefox: a tab held over the middle of another tab that is loose (not pinned, in no tab
+    // group) makes a tab group with it when released. Only a tab of this window, itself not
+    // pinned; the outer fifths of the tab under it still mean "before" and "after".
+    const under = pieces.find(piece => x >= piece.left && x < piece.right), margin = under ? (under.right - under.left) * .2 : 0;
+    const loose = !!tabId && !!group && under?.kind === 'tab' && under.id !== tabId && x >= under.left + margin && x < under.right - margin
+      && group.tabs.indexOf(under.id) >= group.sticky && !tabClusterOf(group, under.id) && !options.groups.isSticky(tabId);
+    if (!loose) clearPair();
+    else if (pairing?.id !== under!.id) {
+      clearPair();
+      // A pointer that rests sends no further dragover in time: the hold is read again when it is long enough.
+      pairing = { id: under!.id, since: performance.now(), x, timer: window.setTimeout(() => { if (activeStrip && pairing) stripTarget(activeStrip, pairing.x); }, PAIR_DELAY + 20) };
+    } else pairing.x = x;
+    if (pairing && group && performance.now() - pairing.since >= PAIR_DELAY) {
+      const held = pieces.findIndex(piece => piece.kind === 'tab' && piece.id === pairing!.id);
+      const element = list.querySelectorAll<HTMLElement>('[data-tab-id], [data-cluster-label], [data-cluster-more]')[held];
+      if (pairedTab !== element) { pairedTab?.classList.remove('is-group-target'); pairedTab = element ?? null; pairedTab?.classList.add('is-group-target'); }
+      indicator.hidden = true; overlay.hidden = true;
+      options.desktop.setNativeTabDragGuide(null);
+      return guidedTarget = { groupId: group.id, direction: null, index: group.tabs.indexOf(pairing.id) + 1, cluster: null, pair: pairing.id };
+    }
+    pairedTab?.classList.remove('is-group-target'); pairedTab = null;
     // The guide stays inside the part of the row that shows.
     const bounds = tabScroller(strip).getBoundingClientRect(), stripBounds = strip.getBoundingClientRect();
-    const edge = tabs[at]?.getBoundingClientRect().left ?? tabs.at(-1)?.getBoundingClientRect().right ?? list.getBoundingClientRect().left;
+    const edge = pieces.length ? drop.edge : list.getBoundingClientRect().left;
     Object.assign(indicator.style, { left: `${Math.max(bounds.left, Math.min(edge, bounds.right)) - 1}px`,
       top: `${stripBounds.top + 5}px`, height: `${stripBounds.height - 7}px` });
+    // A tab that would join a tab group is guided in that group's colour.
+    const joined = drop.cluster ? group?.clusters.find(cluster => cluster.id === drop.cluster) : undefined;
+    if (joined) indicator.dataset.clusterColor = joined.color; else delete indicator.dataset.clusterColor;
     indicator.hidden = false; overlay.hidden = true;
     options.desktop.setNativeTabDragGuide(null);
-    return guidedTarget = { groupId: strip.dataset.groupId!, direction: null, index: at };
+    return guidedTarget = { groupId: strip.dataset.groupId!, direction: null, index: drop.index, cluster: drop.cluster };
   }
   function scrollStrip() {
     if (!scrollList || !activeStrip) { scrollFrame = 0; return; }
@@ -102,8 +144,37 @@ export function createTabDrag(options: Options) {
     if (scrollList.scrollLeft !== previous) stripTarget(activeStrip, scrollPointer);
     scrollFrame = requestAnimationFrame(scrollStrip);
   }
+  // The top-right strip leaves room for the window's own buttons, as wide as they are (`style.css`
+  // `.window-drag-space`). While a tab is dragged the window is not resizable (main, Linux): its
+  // maximize button goes, that room shrinks, and every tab of the strip changes width under the
+  // tab being dragged, moving the place it was aimed at. The room keeps its width from the start
+  // of the drag until the buttons are back.
+  let spaceHold = 0;
+  const holdWindowButtonRoom = () => {
+    const hold = ++spaceHold;
+    for (const space of document.querySelectorAll<HTMLElement>('.tab-strip.has-window-controls .window-drag-space')) {
+      if (!space.style.flexBasis) space.style.flexBasis = getComputedStyle(space).flexBasis;
+    }
+    return hold;
+  };
+  const releaseWindowButtonRoom = () => {
+    const hold = ++spaceHold, started = performance.now();
+    const release = () => {
+      if (hold !== spaceHold) return;
+      let waiting = false;
+      for (const space of document.querySelectorAll<HTMLElement>('.tab-strip.has-window-controls .window-drag-space')) {
+        const kept = space.style.flexBasis;
+        if (!kept) continue;
+        // Read what the room would be now; give it back only when that is what was kept.
+        space.style.flexBasis = '';
+        if (getComputedStyle(space).flexBasis !== kept && performance.now() - started < 1500) { space.style.flexBasis = kept; waiting = true; }
+      }
+      if (waiting) requestAnimationFrame(release);
+    };
+    release();
+  };
   const reset = () => {
-    if (transferId) options.desktop.setNativeTabDrag(null);
+    if (transferId) { options.desktop.setNativeTabDrag(null); releaseWindowButtonRoom(); }
     tabId = transferId = null; canceled = false; leftWindow = sourceDrag = fileGuide = false; view.draggedTabId = null;
     clearTarget(); options.shell.classList.remove('is-tab-dragging');
     setDragging(false);
@@ -202,7 +273,7 @@ export function createTabDrag(options: Options) {
     if (options.move) { options.move(id, destination); return; }
     const tab = options.tabs.find(tab => tab.id === id);
     if (tab) options.serialize(tab); // Capture the visible source group before reparenting its editor.
-    options.groups.move(id, destination.groupId, destination.direction, destination.index);
+    options.groups.move(id, destination.groupId, destination.direction, destination.index, destination.cluster);
     options.render(); options.activate(id);
   }
   window.addEventListener('dragstart', event => {
@@ -332,6 +403,7 @@ export function createTabDrag(options: Options) {
       view.draggedTabId = id;
       options.shell.classList.add('is-tab-dragging'); setDragging(true);
       event.dataTransfer?.setData(MIME, transferId);
+      holdWindowButtonRoom();
       options.desktop.setNativeTabDrag(transferId);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = options.copy ? 'copyMove' : 'move';
       if (!localOnly) options.desktop.registerTabTransfer(transferId, options.serialize(tab));

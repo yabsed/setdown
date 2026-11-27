@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -90,28 +90,27 @@ test('Python environments are asked of Zed for the project folder with the tools
   f.installer.dispose();
 });
 
-test("JetBrains' Kotlin server is verified and in place before its Zed extension is asked for it", async () => {
+test("JetBrains' Kotlin server is verified and started as its Zed extension starts it, without asking the extension for the program", async () => {
   const f = await fixture(), server = builtinLanguageServers.find(server => server.id === 'kotlin-lsp')!, work = path.join(f.directory, 'extensions', 'work', 'kotlin');
-  const order: string[] = [], told: string[] = [];
-  kotlin.kotlinServerForRun.mockImplementation(async (options: { progress?(received: number, total?: number): void }) => { order.push('verified download'); options.progress?.(5e7, 2e8); options.progress?.(7e6, undefined); return { folder: path.join(work, 'kotlin-lsp-1.0'), version: '1.0', downloaded: true }; });
-  host.prepare.mockImplementation(async () => { order.push('extension'); return binary(f.executable); });
-  await f.installer.prepare(server, 'kotlin', f.project, {}, { automaticInstall: true }, message => told.push(message));
-  expect(order).toEqual(['verified download', 'extension']);
+  const program = path.join(work, 'kotlin-lsp-271.3588.0', 'kotlin-server-271.3588.0', 'bin', 'intellij-server'), told: string[] = [];
+  kotlin.kotlinServerForRun.mockImplementation(async (options: { progress?(received: number, total?: number): void }) => { options.progress?.(5e7, 2e8); options.progress?.(7e6, undefined); return { folder: path.join(work, 'kotlin-lsp-271.3588.0'), version: '271.3588.0', program, downloaded: true }; });
+  host.prepare.mockClear();
+  const prepared = await f.installer.prepare(server, 'kotlin', f.project, {}, { automaticInstall: true, args: ['--verbose'], settings: { 'intellij.buildTool': 'gradle' } }, message => told.push(message));
+  // The extension looks only for the build the release list names and would download that one; it is not asked.
+  expect(host.prepare).not.toHaveBeenCalled();
+  expect(prepared).toMatchObject({ executable: program, args: ['--stdio', '--verbose'], env: {}, languageId: 'kotlin', settings: { kotlin: { 'intellij.buildTool': 'gradle' }, 'intellij.buildTool': 'gradle' } });
   expect(kotlin.kotlinServerForRun).toHaveBeenCalledWith(expect.objectContaining({ work, fetch: f.download }));
   expect(told).toEqual([`Downloading ${server.name}… 25%`, `Downloading ${server.name}… 7 MB`]);
-  // A download that fails its checksum is the person's to read; the extension is not asked, so nothing unverified starts.
-  host.prepare.mockClear();
+  // A download that fails its checksum is the person's to read, so nothing unverified starts.
   kotlin.kotlinServerForRun.mockRejectedValue(Error('Could not verify the language server download: expected SHA-256 a, got b. The downloaded file was deleted.'));
   await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'other'), {}, { automaticInstall: true })).rejects.toThrow('Could not verify the language server download');
-  expect(host.prepare).not.toHaveBeenCalled();
-  // The extension read a newer list than Setdown did and was refused its own download: the next start reads the list again.
-  kotlin.kotlinServerForRun.mockResolvedValue({ folder: path.join(work, 'kotlin-lsp-1.0'), version: '1.0', downloaded: false });
-  host.prepare.mockRejectedValue(Error('This download reads no checksum and was refused.'));
-  await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'third'), {}, { automaticInstall: true })).rejects.toThrow('was refused');
-  expect(kotlin.forgetKotlinServer).toHaveBeenCalledWith(work);
-  // Without download permission nothing is fetched, and other tools never touch the Kotlin download.
-  kotlin.kotlinServerForRun.mockClear(); host.prepare.mockResolvedValue(binary(f.executable));
+  // Without download permission nothing is fetched: a server that is already here is used, and without one the person is told.
+  kotlin.kotlinServerForRun.mockClear();
   await expect(f.installer.prepare(server, 'kotlin', path.join(f.root, 'fourth'), {}, { automaticInstall: false })).rejects.toThrow('Automatic downloads are disabled');
+  await mkdir(path.dirname(program), { recursive: true }); await writeFile(program, '#!/bin/sh\n');
+  expect(await f.installer.prepare(server, 'kotlin', path.join(f.root, 'fifth'), {}, { automaticInstall: false })).toMatchObject({ executable: program, args: ['--stdio'] });
+  // Other tools never touch the Kotlin download.
+  host.prepare.mockResolvedValue(binary(f.executable));
   await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: true });
   expect(kotlin.kotlinServerForRun).not.toHaveBeenCalled(); f.installer.dispose();
 });
@@ -179,5 +178,58 @@ test("Angular's server is installed for the extension where the project brings n
   await f.installer.prepare(angular, 'angular', f.project, {}, { automaticInstall: true, initializationOptions: { angular_language_server_path: '/my/copy' } });
   expect(host.request.mock.calls.some(call => call[0] === 'npm')).toBe(false);
   expect(host.prepare.mock.calls.at(-1)![0].settings.angular.initialization_options).toEqual({ angular_language_server_path: '/my/copy' });
+  f.installer.dispose();
+});
+
+// ---- A program of this computer that cannot run is passed by for Setdown's own copy (`program-health.ts`) ----
+
+test.skipIf(process.platform === 'win32')("a kotlin-lsp on PATH is started as the Kotlin extension starts it, and one whose build has expired gives way to Setdown's verified build", async () => {
+  const f = await fixture(), server = builtinLanguageServers.find(server => server.id === 'kotlin-lsp')!, work = path.join(f.directory, 'extensions', 'work', 'kotlin');
+  const bin = path.join(f.root, 'home', '.local', 'bin'), local = path.join(bin, 'kotlin-lsp'), env = { PATH: bin };
+  await mkdir(bin, { recursive: true }); await writeFile(local, '#!/bin/sh\n', { mode: 0o755 });
+  const own = path.join(work, 'kotlin-lsp-271.3588.0', 'kotlin-server-271.3588.0', 'bin', 'intellij-server');
+  kotlin.kotlinServerForRun.mockClear(); kotlin.kotlinServerForRun.mockResolvedValue({ folder: path.join(work, 'kotlin-lsp-271.3588.0'), version: '271.3588.0', program: own, downloaded: true });
+  host.prepare.mockClear();
+  // zed-extensions/kotlin 0.3.5 `language_server_binary_path`: `worktree.which("kotlin-lsp")` comes before any download.
+  expect(await f.installer.prepare(server, 'kotlin', f.project, env, { automaticInstall: true })).toMatchObject({ executable: local, args: ['--stdio'], env: {} });
+  expect(kotlin.kotlinServerForRun).not.toHaveBeenCalled();
+  // It ended saying its build has expired: from the next start on Setdown's own build is used, and what was passed by is named.
+  expect(await f.installer.setAside(local, { detail: 'This build of kotlin-server has expired.', lasting: true })).toBe(true);
+  const prepared = await f.installer.prepare(server, 'kotlin', path.join(f.root, 'second'), env, { automaticInstall: true });
+  expect(prepared).toMatchObject({ executable: own, args: ['--stdio'], instead: { program: local, detail: 'This build of kotlin-server has expired.' } });
+  expect(host.prepare).not.toHaveBeenCalled();
+  // Setdown's own copy is never set aside: there is nothing behind it.
+  expect([f.installer.manages(own), f.installer.manages(local), await f.installer.setAside(own, { lasting: true })]).toEqual([true, false, false]);
+  // It is remembered by the next run of the app, until the person asks for another try.
+  const next = new LanguageProvisioner(f.directory, '/unused-host', f.download);
+  expect(await next.prepare(server, 'kotlin', path.join(f.root, 'third'), env, { automaticInstall: true })).toMatchObject({ executable: own, instead: { program: local } });
+  // Without leave to download and with no copy here, the program of this computer is all there is: its own words say why it does not run.
+  kotlin.kotlinServerForRun.mockClear();
+  expect(await next.prepare(server, 'kotlin', path.join(f.root, 'fourth'), env, { automaticInstall: false })).toMatchObject({ executable: local });
+  expect(kotlin.kotlinServerForRun).not.toHaveBeenCalled();
+  await next.tryProgramsAgain();
+  expect(await next.prepare(server, 'kotlin', path.join(f.root, 'fifth'), env, { automaticInstall: true })).toMatchObject({ executable: local });
+  next.dispose(); f.installer.dispose();
+});
+
+test("a program Zed's adapter found on this computer and that cannot run is passed by: the adapter is asked again without it", async () => {
+  const f = await fixture(), local = path.join(f.root, 'cargo', 'bin', 'gopls');
+  await mkdir(path.dirname(local), { recursive: true }); await writeFile(local, 'a launcher that only prints an error', { mode: 0o755 });
+  host.prepare.mockReset();
+  host.prepare.mockImplementation(async (request: { skipPrograms?: string[] }) => binary(request.skipPrograms?.includes(local) ? f.executable : local));
+  // While nothing is known against it, the program of this computer is used, and the adapter is asked once.
+  expect(await f.installer.prepare(definition, 'go', f.project, {}, { automaticInstall: true })).toMatchObject({ executable: local });
+  expect(host.prepare).toHaveBeenCalledTimes(1);
+  expect(await f.installer.setAside(local, { detail: 'It is not a language tool that answers.', lasting: false })).toBe(true);
+  host.prepare.mockClear();
+  const prepared = await f.installer.prepare(definition, 'go', path.join(f.root, 'other'), {}, { automaticInstall: true });
+  expect(prepared).toMatchObject({ executable: f.executable, instead: { program: local, detail: 'It is not a language tool that answers.' } });
+  expect(host.prepare.mock.calls.map(([request]) => (request as { skipPrograms?: string[] }).skipPrograms)).toEqual([undefined, [local]]);
+  // What was passed by is not written into the receipt of the command.
+  const receipts = await readdir(path.join(f.directory, 'launches'));
+  for (const receipt of receipts) expect(await readFile(path.join(f.directory, 'launches', receipt), 'utf8')).not.toContain('instead');
+  // An adapter that has no other program answers with the same one: it is started, and its failure is the person's to read.
+  host.prepare.mockImplementation(async () => binary(local));
+  expect(await f.installer.prepare(definition, 'go', path.join(f.root, 'third'), {}, { automaticInstall: true })).toEqual(expect.not.objectContaining({ instead: expect.anything() }));
   f.installer.dispose();
 });

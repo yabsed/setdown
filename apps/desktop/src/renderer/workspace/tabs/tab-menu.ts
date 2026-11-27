@@ -1,12 +1,13 @@
 import { isDocumentTab, tabLocation, type WorkspaceState, type WorkspaceTab } from '../../../core/workspace/workspace-state';
 import type { Group, SplitDirection } from '../../../core/workspace/editor-groups';
-import { tabCloseTargets, type TabMenuCommand, type TabMenuContext } from '../../../core/workspace/tab-menu';
+import { clusterOfCommand, tabCloseTargets, type TabMenuCommand, type TabMenuContext } from '../../../core/workspace/tab-menu';
+import { tabClusterOf, tabClusterTitle } from '../../../core/workspace/tab-clusters';
 import type { DesktopPort } from '../../ports/desktop-port';
 import type { TabController } from '../tab-controller';
 
 type Options = {
   desktop: Pick<DesktopPort, 'showTabMenu'>; workspace: WorkspaceState;
-  tabs: Pick<TabController, 'close' | 'closeMany' | 'pin' | 'stick' | 'dirty' | 'copyToGroup' | 'moveToGroup'>;
+  tabs: Pick<TabController, 'close' | 'closeMany' | 'pin' | 'stick' | 'dirty' | 'copyToGroup' | 'moveToGroup' | 'clusters'>;
   /** The open project folder: the base of relative paths and the Explorer's root. */
   root(): string | null;
   /** Puts the file or folder itself on the clipboard, as the Explorer's Copy does. */
@@ -43,6 +44,8 @@ export function createTabMenu(options: Options) {
         // A sole tab can only join a neighbor: splitting its own group would leave that group empty.
         moves: DIRECTIONS.filter(direction => group.tabs.length > 1 || !!groups.neighbor(group.id, direction)),
         detachable: workspace.tabs.length > 1 && tab.kind !== 'diff' && !(tab.kind === 'folder' && tab.picker),
+        cluster: !!tabClusterOf(group, tab.id),
+        clusters: group.clusters.filter(cluster => !cluster.tabs.includes(tab.id)).map(cluster => ({ id: cluster.id, title: tabClusterTitle(cluster) })),
       },
       copy: { path: kind === 'none' ? '' : path, relative: inProject ? path.slice(root!.length + 1) : '' },
     };
@@ -60,6 +63,13 @@ export function createTabMenu(options: Options) {
     else if (command === 'reveal-folder' && context.location === 'file')
       await options.revealInFolder(tabLocation(tab), group.id);
     else if (command === 'reveal-explorer' && context.inProject) await options.revealInExplorer(tabLocation(tab));
+    else if (command === 'cluster-new') await tabs.clusters.create(id);
+    else if (command === 'cluster-leave') tabs.clusters.leave(id);
+    else if (command.startsWith('cluster-add:')) {
+      // Only a tab group of this tab's own strip: it may have gone while the menu was open.
+      const target = clusterOfCommand(command);
+      if (target && group.clusters.some(cluster => cluster.id === target)) tabs.clusters.add(id, target);
+    }
     else if (command === 'keep-open') tabs.pin(id);
     else if (command === 'pin' || command === 'unpin') tabs.stick(id, command === 'pin');
     else if (command === 'move-window') { if (context.detachable) options.moveToWindow(id); }

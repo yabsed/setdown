@@ -732,3 +732,105 @@ test("JetBrains' Kotlin server is told the build settings its VS Code extension 
   expect(server.context.get('Settings not sent')).toBe('`intellij.projects` entry #1 requires "type" to be specified as a non-empty string');
   discovery.dispose();
 });
+
+test("a program of this computer that says its build has expired is set aside, and the tool starts again from Setdown's own copy", async () => {
+  const root = path.join(mocks.directory, 'kotlin-expired'); await mkdir(path.join(root, '.git'), { recursive: true }); await writeFile(path.join(root, '.git/HEAD'), 'ref: refs/heads/main\n');
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  const local = '/home/person/.local/bin/kotlin-lsp', own = '/packages/kotlin-lsp-271.3588.0/kotlin-server-271.3588.0/bin/intellij-server';
+  // What an old build of JetBrains' Kotlin server writes before it ends by itself.
+  const expired = ['Log file: /tmp/idea-system1/system/log/intellij-server.log', 'This build of kotlin-server has expired.', 'The IDE will now close.', 'Please download a new build from https://github.com/kotlin/kotlin-lsp'].join('\n');
+  const aside = new Map<string, { detail?: string }>();
+  const prepare = vi.fn(async () => ({ executable: aside.has(local) ? own : local, args: ['--stdio'], settings: {}, initializationOptions: {}, ...(aside.has(local) ? { instead: { program: local, ...aside.get(local) } } : {}) }));
+  // As the provisioner answers: its own copy is never set aside, and nothing is set aside twice.
+  const setAside = vi.fn(async (program: string, reason: { detail?: string; lasting: boolean }) => { if (program === own || aside.has(program)) return false; aside.set(program, reason); return true; });
+  const tryProgramsAgain = vi.fn(async () => { aside.clear(); });
+  const f = fixture(discovery, root, { ...noPackages, usesZed: async () => true, canPrepare: () => true, projectEnvironment: async () => ({}), prepare, setAside, tryProgramsAgain, setAsideProgram: async (program: string) => aside.get(program) as never });
+  const failed = (issue: object) => expect.objectContaining({ type: 'status', state: 'failed', issue });
+  await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+  const first = mocks.servers.at(-1)! as any;
+  expect(first.launch.executable).toBe(local);
+  first.failureFacts = async () => ({ started: false, reason: 'kotlin-lsp language server disconnected.', stderr: expired });
+  f.first.sender.send.mockClear(); first.failed('initialization: kotlin-lsp language server disconnected.');
+  // No failure is shown and nothing is counted as a failed try: the document is asked to connect again.
+  await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'configuration', servers: ['kotlin-lsp'] })));
+  expect(setAside).toHaveBeenCalledWith(local, { detail: 'This build of kotlin-server has expired.', lasting: true });
+  expect(f.first.sender.send).not.toHaveBeenCalledWith('language:event', failed(expect.anything()));
+  await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+  const second = mocks.servers.at(-1)! as any;
+  expect(second.launch.executable).toBe(own);
+  // The person can read which program was passed by, and why.
+  expect(second.context.get('Not used')).toContain(`${local}, and that program does not run: This build of kotlin-server has expired.`);
+  // Setdown's own copy saying the same is shown as it is: there is no copy behind it.
+  second.failureFacts = async () => ({ started: false, reason: 'kotlin-lsp language server disconnected.', stderr: expired });
+  f.first.sender.send.mockClear(); second.failed('initialization: kotlin-lsp language server disconnected.');
+  await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', failed({ kind: 'outdated', detail: 'This build of kotlin-server has expired.' })));
+  // A restart is the person asking for another try: the program of this computer is started again.
+  await f.invoke('restart', f.first, f.document('one', 'Main.kt').path);
+  expect(tryProgramsAgain).toHaveBeenCalled();
+  await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+  expect((mocks.servers.at(-1)! as any).launch.executable).toBe(local);
+  discovery.dispose();
+});
+
+test("a program of this computer that fails three starts in a row gives way to Setdown's own copy, for this run", async () => {
+  vi.useFakeTimers();
+  try {
+    const root = path.join(mocks.directory, 'kotlin-broken'); await mkdir(path.join(root, '.git'), { recursive: true }); await writeFile(path.join(root, '.git/HEAD'), 'ref: refs/heads/main\n');
+    const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+    const local = '/usr/local/bin/kotlin-lsp', own = '/packages/kotlin-lsp-271.3588.0/kotlin-server-271.3588.0/bin/intellij-server';
+    const aside = new Map<string, { detail?: string; lasting: boolean }>();
+    const prepare = vi.fn(async () => ({ executable: aside.has(local) ? own : local, args: ['--stdio'], settings: {}, initializationOptions: {}, ...(aside.has(local) ? { instead: { program: local, ...aside.get(local) } } : {}) }));
+    const setAside = vi.fn(async (program: string, reason: { detail?: string; lasting: boolean }) => { if (program === own || aside.has(program)) return false; aside.set(program, reason); return true; });
+    const f = fixture(discovery, root, { ...noPackages, usesZed: async () => true, canPrepare: () => true, projectEnvironment: async () => ({}), prepare, setAside, setAsideProgram: async (program: string) => aside.get(program) as never });
+    const broken = async () => ({ started: false, reason: 'kotlin-lsp language server exited (139).', stderr: 'Segmentation fault (core dumped)' });
+    const reopened = () => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'configuration', servers: ['kotlin-lsp'] }));
+    await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+    // Three reconnections, each to the same program: it may only have been unlucky.
+    for (const delay of [1000, 3000, 5000]) {
+      const server = mocks.servers.at(-1)! as any; expect(server.launch.executable).toBe(local);
+      server.failureFacts = broken; f.first.sender.send.mockClear(); server.failed('initialization: exited');
+      await vi.advanceTimersByTimeAsync(delay); reopened();
+      expect(setAside).not.toHaveBeenCalled();
+      await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+    }
+    // The fourth failure would have been the end. The program is set aside instead, until the app is started again.
+    const last = mocks.servers.at(-1)! as any; last.failureFacts = broken; f.first.sender.send.mockClear(); last.failed('initialization: exited');
+    await vi.advanceTimersByTimeAsync(0); await vi.waitFor(reopened);
+    expect(setAside).toHaveBeenCalledWith(local, { detail: 'Segmentation fault (core dumped)', lasting: false });
+    expect(f.first.sender.send).not.toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status', state: 'failed', recovery: expect.objectContaining({ retrying: false }) }));
+    await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+    const copy = mocks.servers.at(-1)! as any;
+    expect(copy.launch.executable).toBe(own);
+    expect(copy.context.get('Not used')).toContain(`${local}, and that program does not run: Segmentation fault (core dumped)`);
+    // Setdown's own copy failing the same way is counted anew, and at its end the failure is shown.
+    for (const delay of [1000, 3000, 5000]) {
+      const server = mocks.servers.at(-1)! as any; server.failureFacts = broken; f.first.sender.send.mockClear(); server.failed('initialization: exited');
+      await vi.advanceTimersByTimeAsync(delay); reopened();
+      await f.invoke('open', f.first, f.document('one', 'Main.kt'));
+    }
+    const end = mocks.servers.at(-1)! as any; expect(end.launch.executable).toBe(own);
+    end.failureFacts = broken; f.first.sender.send.mockClear(); end.failed('initialization: exited');
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status', state: 'failed',
+      issue: { kind: 'startup', detail: 'Segmentation fault (core dumped)' }, recovery: { retrying: false, attempt: undefined } })));
+    discovery.dispose();
+  } finally { vi.useRealTimers(); }
+});
+
+test('a program the person named is never set aside, however it ends', async () => {
+  await writeFile(path.join(mocks.directory, 'language-servers.json'), JSON.stringify({ version: 1, servers: { clangd: { executable: process.execPath, automaticExecutable: false } }, custom: [], preferred: {} }));
+  const discovery = new ServerDiscovery(new ServerEnvironment({ HOME: mocks.directory, PATH: '', SETDOWN_LSP_INHERIT_ENV: '1' }));
+  vi.spyOn(discovery, 'find').mockImplementation(async command => {
+    const selected = path.isAbsolute(command) ? { id: command, path: command, source: 'explicit' as const } : undefined;
+    return { selected, candidates: selected ? [selected] : [], environment: { env: {}, source: 'inherited' }, searched: [] };
+  });
+  const setAside = vi.fn(async () => true);
+  const f = fixture(discovery, undefined, { ...noPackages, canPrepare: () => true, setAside });
+  await f.invoke('open', f.first, f.document('cpp', 'main.cpp'));
+  const chosen = mocks.servers.at(-1)! as any;
+  chosen.failureFacts = async () => ({ started: false, reason: 'clangd language server exited (1).', stderr: 'This version of clangd is no longer supported.' });
+  f.first.sender.send.mockClear(); chosen.failed('initialization: exited');
+  await vi.waitFor(() => expect(f.first.sender.send).toHaveBeenCalledWith('language:event', expect.objectContaining({ type: 'status', state: 'failed', issue: expect.objectContaining({ kind: 'outdated' }) })));
+  expect(setAside).not.toHaveBeenCalled();
+  discovery.dispose();
+});

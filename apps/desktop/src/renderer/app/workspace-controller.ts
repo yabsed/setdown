@@ -1,3 +1,4 @@
+import { visibleTabs } from '../../core/workspace/tab-clusters';
 import { fileLocation } from '../../core/document/file-location';
 import { parentFolder } from '../../core/files/folder-presentation';
 import { imageSessions } from '../image/image-edit-sessions';
@@ -228,6 +229,12 @@ export function startWorkspace(desktop: DesktopPort) {
     activateTab: (id) => { projectOpenRequest++; projects.deactivateGitDiff(); return tabs.activate(id); },
     pinTab: (id) => tabs.pin(id),
     stickTab: (id, sticky) => tabs.stick(id, sticky),
+    tabClusters: {
+      create: id => void tabs.clusters.create(id), add: (id, cluster) => tabs.clusters.add(id, cluster), leave: id => tabs.clusters.leave(id),
+      ungroup: id => tabs.clusters.ungroup(id), update: (id, change) => tabs.clusters.update(id, change), toggle: id => tabs.clusters.toggle(id),
+      edit: id => tabs.clusters.edit(id), close: id => void tabs.clusters.close(id),
+      newTab: id => void tabs.clusters.newTab(id).catch(error => { browser.error = String(error); }),
+    },
     showTabMenu: (id, point) => void tabMenu.show(id, point),
     closeTab: (id) => void closeDocumentTab(id),
     startTabDrag: (id, event) => tabDrag.start(id, event),
@@ -572,7 +579,8 @@ export function startWorkspace(desktop: DesktopPort) {
     if (loose) void actions.activateTab(loose);
   }
   function cycleTab(direction: -1 | 1) {
-    const ids = workspace.groups.focused.tabs;
+    // A tab hidden in a folded tab group is stepped over, as in Firefox (`advanceSelectedTab` over visible tabs).
+    const ids = visibleTabs(workspace.groups.focused);
     if (ids.length < 2) return;
     const current = Math.max(0, ids.indexOf(workspace.activeId ?? ''));
     actions.activateTab(ids[(current + direction + ids.length) % ids.length]);

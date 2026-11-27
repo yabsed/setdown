@@ -115,7 +115,7 @@ describe('editor groups', () => {
     const id = groups.focusedId;
     const tree = structuredClone(groups.tree);
     expect(groups.add('next', false)).toBe('preview');
-    expect(groups.focused).toEqual({ id, tabs: ['next'], activeId: 'next', previewId: 'next', sticky: 0 });
+    expect(groups.focused).toEqual({ id, tabs: ['next'], activeId: 'next', previewId: 'next', sticky: 0, clusters: [] });
     expect(groups.tree).toEqual(tree);
     expect(groups.groups).toHaveLength(2);
   });

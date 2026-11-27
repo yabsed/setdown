@@ -5,8 +5,10 @@
   import type { PdfPort } from '../ports/desktop-port';
   import { PdfRuntime, type OutlineItem } from './pdf-runtime';
 
-  let { tabId, document, initialPosition, desktop, onposition, active, focused = active }: { tabId: string; focused?: boolean; document: DocumentSnapshot; active: boolean;
-    initialPosition?: ReadingPosition; desktop: PdfPort; onposition(position: PdfReadingPosition): void } = $props();
+  let { tabId, document, initialPosition, desktop, onposition, onpage, active, focused = active }: { tabId: string; focused?: boolean; document: DocumentSnapshot; active: boolean;
+    initialPosition?: ReadingPosition; desktop: PdfPort; onposition(position: PdfReadingPosition): void;
+    /** The page number the toolbar shows, each time it changes. */
+    onpage?(page: number): void } = $props();
   let host: HTMLDivElement;
   let runtime: PdfRuntime;
   let page = $state(1);
@@ -26,7 +28,7 @@
     runtime = new PdfRuntime({ tabId, host, document, desktop,
       initial: initialPosition?.kind === 'pdf' ? initialPosition : undefined, active: () => active,
       changed: (position) => { zoom = String(position.zoom); onposition(position); },
-      status: (current, total) => { page = current; count = total; passwordPrompt = ''; },
+      status: (current, total) => { page = current; count = total; passwordPrompt = ''; onpage?.(current); },
       outline: (items) => outline = items, matches: (current, total) => matches = `${current} / ${total}`,
       password: (update, incorrect) => { unlock = update; passwordPrompt = incorrect ? 'Incorrect password. Try again.' : 'This PDF requires a password.'; },
       error: (message) => error = message });
@@ -36,6 +38,8 @@
     return () => { window.removeEventListener('setdown:pdf-find', focusFind); runtime.dispose(); };
   });
   $effect(() => { if (active) runtime?.resume(); else runtime?.suspend(); });
+  /** Shows a page by number: a comparison turns both of its readers to the same page. */
+  export function showPage(number: number) { if (count && number >= 1 && number <= count && number !== page) runtime.page(number); }
 
   function findKey(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); runtime.find(query, event.shiftKey, true); }

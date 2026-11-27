@@ -37,6 +37,17 @@ export function runtimeIssue(output: string, found?: string): Extract<LanguageIs
   return runtime ? { kind: 'runtime', runtime, required: '' } : undefined;
 }
 
+/** A tool that refuses to run because of its own age says so in a sentence. JetBrains' Kotlin
+ * server is published as builds with an end date: "This build of kotlin-server has expired."
+ * Only wording that states the end of the tool's own build or version is recognized: a licence
+ * or a session that expired is something else, and stays an unexplained failure. */
+export function outdatedIssue(output: string): Extract<LanguageIssue, { kind: 'outdated' }> | undefined {
+  const line = output.split(/\r?\n/).map(text => text.trim()).find(text =>
+    /\b(?:this|your) (?:build|version|release)\b[^.\n]*\b(?:has expired|is expired|is no longer supported|is too old|is out of date|is outdated)\b/i.test(text)
+    || /\b(?:build|version|release) (?:has |is )expired\b/i.test(text));
+  return line ? { kind: 'outdated', detail: line.slice(0, 240) } : undefined;
+}
+
 /** The line a person would read first: the last one that states a problem.
  *
  * A tool that speaks the person's own language states its problem in words this does not know,
@@ -45,7 +56,7 @@ export function runtimeIssue(output: string, found?: string): Extract<LanguageIs
  * so that the reason is among them; of a long output, the last line. */
 export function failureLine(output: string): string | undefined {
   const lines = output.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const stated = [...lines].reverse().find(line => /error|exception|cannot|can't|could not|couldn't|not found|no such|failed|fatal|denied|panic|invalid|missing|unable/i.test(line));
+  const stated = [...lines].reverse().find(line => /error|exception|cannot|can't|could not|couldn't|not found|no such|failed|fatal|denied|panic|invalid|missing|unable|expired/i.test(line));
   return (stated ?? (lines.length <= 6 ? lines.join(' ') : lines.at(-1)))?.slice(0, 240) || undefined;
 }
 
@@ -53,6 +64,9 @@ export function sessionIssue(facts: FailureFacts): LanguageIssue {
   if (facts.started) return { kind: 'crashed' };
   const runtime = runtimeIssue(`${facts.stderr}\n${facts.reason}`, facts.runtimeFound);
   if (runtime) return runtime;
+  // Its own words about its own age come before whose program it is: choosing the same program again helps nobody.
+  const outdated = outdatedIssue(facts.stderr);
+  if (outdated) return outdated;
   if (facts.pinned) return { kind: 'executable', path: facts.pinned };
   // The program to start is not on this computer, and it is not one Setdown put there itself.
   // Zed's extension for a language may point at a program it does not download: sourcekit-lsp

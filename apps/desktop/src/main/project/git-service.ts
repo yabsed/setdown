@@ -17,7 +17,7 @@ import type {
 import type { WindowState } from '../windows/window-state';
 import { GitCli } from './engines/git-cli';
 import { ProjectPaths } from './project-paths';
-import { readGitDocument, readWorkingDocument } from './git-text';
+import { comparedDocumentKind, fileNotes, gitComparedFile, gitComparedText, readPastStrict, workingComparedFile, workingComparedText } from './git-compare';
 import { isImageDocument } from '../../core/document/document-profile';
 import { readGitImage, readWorkingImage } from './git-image';
 import { promises as fs } from 'node:fs';
@@ -289,9 +289,24 @@ export class GitService {
         ...(conflict ? { conflict: { base: null, ours: null, theirs: null } } : {}),
         images: { original, modified, ...(conflict ? { conflict } : {}) } };
     }
+    const labels = {
+      originalLabel: change?.conflict ? 'OURS (unresolved conflict)' : staged ? 'HEAD' : change?.indexStatus === '?' ? 'EMPTY' : 'INDEX',
+      modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
+    };
+    const former = staged ? `HEAD:${originalPath}` : change?.indexStatus === '?' ? undefined : `${change?.conflict ? ':2:' : ':'}${repositoryRelative}`;
+    const kind = comparedDocumentKind(filePath);
+    if (kind) {
+      // Both versions for Setdown's own reader of this type, as images are compared.
+      const original = await gitComparedFile(repository, former);
+      const modified = staged ? await gitComparedFile(repository, `:${repositoryRelative}`) : await workingComparedFile(filePath);
+      return { path: relative, filePath, staged: Boolean(staged), readOnly: true, patch: '', hunks: [],
+        originalText: null, modifiedText: null, ...labels, documents: { kind, original, modified }, sides: fileNotes(original, modified) };
+    }
+    const original = await gitComparedText(repository, former, filePath);
+    const modified = staged ? await gitComparedText(repository, `:${repositoryRelative}`, filePath) : await workingComparedText(filePath);
     let patch: string;
     if (!staged && change?.indexStatus === '?' && change.workingTreeStatus === '?') {
-      const text = await readWorkingDocument(filePath);
+      const text = modified.text;
       if (text === null) patch = 'Binary or unreadable file.';
       else {
         const lines = text.split(/\r\n|\r|\n/);
@@ -302,26 +317,23 @@ export class GitService {
         ...(staged ? ['--cached'] : []), '--', relative,
         ...(staged && change?.previousPath ? [change.previousPath] : [])]);
     }
-    const originalText = staged
-      ? await readGitDocument(repository, `HEAD:${originalPath}`, filePath)
-      : change?.indexStatus === '?' ? '' : await readGitDocument(repository, `${change?.conflict ? ':2:' : ':'}${repositoryRelative}`, filePath);
-    const modifiedText = staged
-      ? await readGitDocument(repository, `:${repositoryRelative}`, filePath)
-      : await readWorkingDocument(filePath);
+    const originalText = original.text, modifiedText = modified.text;
     return {
       path: relative,
       filePath,
       staged: Boolean(staged),
+      // Text read past the strict decoder of editable documents is compared, never edited.
+      ...(readPastStrict(original, modified) ? { readOnly: true } : {}),
       patch,
       ...(change?.conflict ? { conflict: {
-        base: await readGitDocument(repository, `:1:${repositoryRelative}`, filePath),
+        base: (await gitComparedText(repository, `:1:${repositoryRelative}`, filePath)).text,
         ours: originalText,
-        theirs: await readGitDocument(repository, `:3:${repositoryRelative}`, filePath),
+        theirs: (await gitComparedText(repository, `:3:${repositoryRelative}`, filePath)).text,
       } } : {}),
       originalText,
       modifiedText,
-      originalLabel: change?.conflict ? 'OURS (unresolved conflict)' : staged ? 'HEAD' : change?.indexStatus === '?' ? 'EMPTY' : 'INDEX',
-      modifiedLabel: staged ? 'INDEX' : 'WORKTREE',
+      ...labels,
+      sides: { original: original.note, modified: modified.note },
       hunks: parseGitDiffHunks(patch),
     };
   }

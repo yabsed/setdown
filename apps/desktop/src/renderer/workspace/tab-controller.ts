@@ -26,6 +26,7 @@ import { restoredOutlineOpen } from '../shell/layout-session';
 import { tick } from 'svelte';
 import { MediaCache, webPdfMedia } from './media-cache';
 import { groupLayout, type EditorGroupPlacement, type EditorOpenOptions } from '../../core/workspace/editor-groups';
+import type { TabClusterColor } from '../../core/workspace/tab-clusters';
 
 type Options = {
   activateReview?(id: string): Promise<void>;
@@ -325,7 +326,10 @@ export class TabController {
         active: tab.id === workspace.activeId, dirty, preview: !workspace.groups.isPinned(tab.id) };
     });
     const visibleGroups = new Set(groupLayout(workspace.groups.displayTree).groups.map(group => group.id));
-    view.groups = workspace.groups.groups.filter(group => visibleGroups.has(group.id)).map(group => ({ ...group, tabs: [...group.tabs] }));
+    view.groups = workspace.groups.groups.filter(group => visibleGroups.has(group.id)).map(group => ({ ...group, tabs: [...group.tabs],
+      clusters: group.clusters.map(cluster => ({ ...cluster, tabs: [...cluster.tabs] })) }));
+    // A tab group that is gone takes its panel with it.
+    if (view.clusterPanel && !workspace.groups.cluster(view.clusterPanel.clusterId)) view.clusterPanel = null;
     view.groupTree = structuredClone(workspace.groups.displayTree);
     view.focusedGroupId = workspace.groups.focusedId;
     view.tabs = summaries;
@@ -364,6 +368,43 @@ export class TabController {
     this.render();
   };
   pin = (tabId: string): void => { if (this.options.workspace.groups.pin(tabId)) this.render(); };
+  /** Tab groups (`core/workspace/tab-clusters.ts`): each change ends with the strips drawn again. */
+  clusters = {
+    /** Firefox "Add Tab to New Group": the tab group is made around the tab, and its panel opens to name it. */
+    create: async (tabId: string): Promise<void> => {
+      const { groups } = this.options.workspace, created = groups.createCluster([tabId]);
+      if (!created) return;
+      // The panel opens once the tab is shown: showing a tab gives its editor the focus, and the name field is to keep it.
+      this.render(); await this.activate(tabId);
+      if (groups.cluster(created.id)) view.clusterPanel = { clusterId: created.id, mode: 'create' };
+    },
+    add: (tabId: string, clusterId: string): void => { if (this.options.workspace.groups.addToCluster(tabId, clusterId)) this.render(); },
+    leave: (tabId: string): void => { if (this.options.workspace.groups.removeFromCluster(tabId)) this.render(); },
+    ungroup: (clusterId: string): void => { if (this.options.workspace.groups.ungroup(clusterId)) this.render(); },
+    update: (clusterId: string, change: { name?: string; color?: TabClusterColor; collapsed?: boolean }): void => {
+      if (this.options.workspace.groups.setCluster(clusterId, change)) this.render();
+    },
+    toggle: (clusterId: string): void => {
+      const { groups } = this.options.workspace, cluster = groups.cluster(clusterId);
+      if (cluster && groups.setCluster(clusterId, { collapsed: !cluster.collapsed })) this.render();
+    },
+    edit: (clusterId: string): void => { if (this.options.workspace.groups.cluster(clusterId)) view.clusterPanel = { clusterId, mode: 'edit' }; },
+    /** Firefox "Delete group": its tabs close, under one question about unsaved changes. */
+    close: async (clusterId: string): Promise<void> => {
+      const cluster = this.options.workspace.groups.cluster(clusterId);
+      if (cluster) await this.closeMany([...cluster.tabs]);
+    },
+    /** Firefox "New tab in group": a new web tab at the end of the tab group, which unfolds. */
+    newTab: async (clusterId: string): Promise<void> => {
+      const { workspace } = this.options, group = workspace.groups.clusterGroup(clusterId);
+      if (!group) return;
+      const before = new Set(workspace.tabs.map(tab => tab.id));
+      workspace.groups.focusedId = group.id;
+      await this.openWeb();
+      const created = workspace.tabs.find(tab => !before.has(tab.id));
+      if (created && workspace.groups.addToCluster(created.id, clusterId)) { workspace.groups.setCluster(clusterId, { collapsed: false }); this.render(); }
+    },
+  };
   /** Pinned ("sticky") tabs lead their strip and survive the bulk close commands. */
   stick = (tabId: string, sticky: boolean): void => {
     const { groups } = this.options.workspace;
@@ -850,7 +891,7 @@ export class TabController {
       if (workspace.find(created.id) !== created) return;
     }
     this.restoreDocumentTab(created);
-    if (placement?.index !== undefined) workspace.groups.move(created.id, target.id, null, placement.index);
+    if (placement?.index !== undefined) workspace.groups.move(created.id, target.id, null, placement.index, placement.cluster);
     this.render();
     await this.activate(created.id, presentation, fresh);
     if (presentation === 'document' && created.surface === 'viewer' && hasMarkdownPreview(documentSnapshot)) window.setTimeout(() => {
@@ -897,8 +938,13 @@ export class TabController {
       await this.close(id); await this.activate(existing.id); return;
     }
     if (isDocumentTab(source)) this.options.documents.saveView(source);
-    workspace.groups.move(id, placement.groupId, placement.direction, placement.index);
+    workspace.groups.move(id, placement.groupId, placement.direction, placement.index, placement.cluster);
+    // Firefox: a tab held over another and released there makes a tab group of the two, the one
+    // it was dropped on first, and the panel opens to name it.
+    const paired = placement.pair && workspace.groups.owner(placement.pair) === workspace.groups.owner(id) && !workspace.groups.tabCluster(placement.pair)
+      ? workspace.groups.createCluster([placement.pair, id]) : null;
     this.render(); await this.activate(id);
+    if (paired && workspace.groups.cluster(paired.id)) view.clusterPanel = { clusterId: paired.id, mode: 'create' };
   };
   convertReviewToFile = (id: string): void => {
     const { workspace } = this.options;
@@ -953,7 +999,7 @@ export class TabController {
       if (!await desktop.adoptTabTransfer(transfer.transferId)) return;
       workspace.add({ kind: 'folder', id: incoming.id, surface: 'folder', path: incoming.path, view: { ...DEFAULT_FOLDER_VIEW, ...incoming.view },
         navigation: incoming.navigation, revision: 0 });
-      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index);
+      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index, placement.cluster);
       this.render(); await this.activate(incoming.id); desktop.completeTabTransfer(transfer.transferId); return;
     }
     if (incoming.kind !== 'web' && incoming.kind !== 'terminal'
@@ -968,13 +1014,13 @@ export class TabController {
       workspace.terminals.set(sessionId, { id: sessionId, title: incoming.title, cwd: incoming.cwd, exited: incoming.exited });
       this.terminalNumber = Math.max(this.terminalNumber, Number(incoming.title.match(/^Terminal (\d+)$/)?.[1] ?? 0));
       workspace.add({ ...incoming, surface: 'terminal' });
-      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index);
+      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index, placement.cluster);
       this.render(); await this.activate(incoming.id); desktop.completeTabTransfer(transfer.transferId); return;
     }
     if (incoming.kind === 'web') {
       if (!await desktop.adoptTabTransfer(transfer.transferId)) return;
       workspace.add({ kind: 'web', id: incoming.id, surface: 'web', page: incoming.page, navigation: incoming.navigation });
-      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index);
+      if (placement) workspace.groups.move(incoming.id, placement.groupId, placement.direction, placement.index, placement.cluster);
       this.render(); await this.activate(incoming.id); desktop.completeTabTransfer(transfer.transferId); return;
     }
     const markdown = hasMarkdownPreview(incoming.document);
@@ -1005,7 +1051,7 @@ export class TabController {
     restored.readingPosition = incoming.readingPosition;
     editor.importView(restored.id, incoming.editorViewState);
     workspace.add(restored);
-    if (placement) workspace.groups.move(restored.id, placement.groupId, placement.direction, placement.index);
+    if (placement) workspace.groups.move(restored.id, placement.groupId, placement.direction, placement.index, placement.cluster);
     this.render();
     await this.activate(restored.id);
     reader.syncView();

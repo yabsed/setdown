@@ -54,7 +54,7 @@ test('the top-left tab strip starts with Setdown and the menu, and its free end 
     await expect(page.locator('.product-identity')).toHaveText('Setdown');
     // With room for all of it the row does not scroll, the tab has its full width, and Setdown is not cut off at the row's start.
     expect(await page.locator('.tab-row').evaluate(node => node.scrollWidth > node.clientWidth)).toBe(false);
-    expect(boxes[2].width).toBe(210);
+    expect(boxes[2].width).toBe(180);
     expect(boxes[0].x).toBeGreaterThanOrEqual((await box(page, '.tab-row')).x);
 
     // Only the free end drags the window. The strip and everything on it keep their own pointer input.
@@ -220,15 +220,15 @@ test('everything on a strip scrolls as one row: Setdown, the menu, the tabs and 
     // Five tabs do not fit at their full width. They give up width first, and nothing scrolls yet.
     await expect(page.locator('.document-tab')).toHaveCount(5);
     const five = (await box(page, '.document-tab')).width;
-    expect(five).toBeGreaterThan(96);
-    expect(five).toBeLessThan(210);
+    expect(five).toBeGreaterThan(112);
+    expect(five).toBeLessThan(180);
     expect(await row.evaluate(overflows)).toBe(false);
 
     // Twelve do not fit at their least width either. They stop shrinking there and the whole row scrolls;
     // the list inside it does not, and no part is held in place over the others.
     for (const name of names.slice(5)) { await writeFile(path.join(root, name), `${name}\n`); await openFile(page, path.join(root, name)); }
     await expect(page.locator('.document-tab')).toHaveCount(12);
-    expect((await box(page, '.document-tab')).width).toBeCloseTo(96, 1);
+    expect((await box(page, '.document-tab')).width).toBeCloseTo(112, 1);
     expect(await row.evaluate(overflows)).toBe(true);
     expect(await list.evaluate(overflows)).toBe(false);
     await expect(page.locator('.tab-creation-actions button')).toHaveCount(4);
@@ -319,7 +319,7 @@ test('everything on a strip scrolls as one row: Setdown, the menu, the tabs and 
     // part is still reached by scrolling.
     await page.evaluate(() => { const style = document.createElement('style'); style.textContent = '.editor-group{max-width:420px}'; document.head.append(style); });
     await expect.poll(async () => (await box(page, '.tab-row')).width).toBeLessThan(420);
-    expect((await box(page, '.document-tab')).width).toBeCloseTo(96, 1);
+    expect((await box(page, '.document-tab')).width).toBeCloseTo(112, 1);
     expect(await inside('.tab-row', '.tab-strip')).toBe(true);
     await row.hover(); await page.mouse.wheel(0, -20000);
     await expect.poll(scroll).toBe(0);

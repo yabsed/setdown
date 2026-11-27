@@ -12,7 +12,6 @@
   import { gitChangeGroups } from './source-control/git-change-groups';
 
   import TerminalSidebar from '../terminal/TerminalSidebar.svelte';
-  import FolderSidebar from '../folder/FolderSidebar.svelte';
 
   let { actions, languageApi }: { actions: AppActions; languageApi: LanguageApi } = $props();
   let gitGroups = $derived(gitChangeGroups(project.git?.changes, project.git?.settings));
@@ -65,10 +64,6 @@
       aria-label="Terminal" aria-expanded={project.open && project.activeView === 'terminal'} title="Terminal sessions (Ctrl+`)" onclick={() => select('terminal')}>
       <svg viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM7 9l3.5 3L7 15M13 15h4"/></svg>
     </button>
-    <button type="button" class="files-activity" class:is-active={project.open && project.activeView === 'files'}
-      aria-label="Files" aria-expanded={project.open && project.activeView === 'files'} title="File manager tabs" onclick={() => select('files')}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4.1a1 1 0 0 1 .8.4l1.6 2.1H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
-    </button>
     <!-- The column's free space below its views moves the window. -->
     <div class="activity-drag-space" aria-hidden="true"></div>
   </nav>
@@ -78,7 +73,6 @@
     {#if project.activeView === 'explorer'}{#key project.folder?.path}<ExplorerView {actions} />{/key}
     {:else if project.activeView === 'search'}<SearchView {actions} />
     {:else if project.activeView === 'terminal'}<TerminalSidebar {actions} />
-    {:else if project.activeView === 'files'}<FolderSidebar {actions} />
     {:else if project.activeView === 'browser'}<BrowserSidebar {actions} />
     {:else if project.activeView === 'language'}
       {#if project.visible && project.open}

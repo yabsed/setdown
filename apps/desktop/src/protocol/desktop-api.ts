@@ -145,9 +145,28 @@ export type GitDiffHunk = {
 
 export type GitImageVersion = { bytes: Uint8Array; mimeType: string } | { error: string } | null;
 
+/** One version of a file as bytes for a reader (PDF, Office); absent when the version does not exist. */
+export type GitFileVersion = { bytes: Uint8Array } | { error: string } | null;
+/** What is known about one side of a comparison besides its text. */
+export type GitSideNote = {
+  /** This version does not exist: the file was added or deleted. */
+  missing?: boolean;
+  /** Bytes of this version. */
+  size?: number;
+  /** Why the text is absent (`binary`, `large`, `unreadable`) or was read past the strict
+   * decoder of editable documents (`encoding`, `line-endings`, `control`). */
+  reason?: 'binary' | 'large' | 'unreadable' | 'encoding' | 'line-endings' | 'control';
+  detail?: string;
+  /** A submodule: the text is the commit it is at. */
+  submodule?: boolean;
+};
+
 export type GitDiff = {
   images?: { original: GitImageVersion; modified: GitImageVersion;
     conflict?: { base: GitImageVersion; ours: GitImageVersion; theirs: GitImageVersion } };
+  /** Both versions of a file that Setdown has a reader for, shown side by side. */
+  documents?: { kind: 'pdf' | 'office'; original: GitFileVersion; modified: GitFileVersion };
+  sides?: { original: GitSideNote; modified: GitSideNote };
   conflict?: { base: string | null; ours: string | null; theirs: string | null };
   /** Deleted files and unsupported mutable formats are comparison snapshots. */
   readOnly?: boolean;

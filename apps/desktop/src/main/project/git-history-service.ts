@@ -3,12 +3,13 @@ import { LocalGitBackend } from '@web-git-graph/node';
 import type { GitGraphRevision } from '@web-git-graph/protocol';
 import type { GitDiff } from '../../protocol/desktop-api';
 import type { GitGraphRequest, GitHistorySelection } from '../../protocol/git-history';
-import { decodeTextBytes, MAX_TEXT_FILE_BYTES } from '../../core/document/text-codec';
-import { isImageDocument, isTextCandidate } from '../../core/document/document-profile';
+import { MAX_TEXT_FILE_BYTES } from '../../core/document/text-codec';
+import { isImageDocument } from '../../core/document/document-profile';
 import { textDiffHunks } from '../../core/diff/text-diff';
 import type { WindowState } from '../windows/window-state';
 import { GitCli } from './engines/git-cli';
 import { readGitImage } from './git-image';
+import { comparedDocumentKind, fileNotes, gitComparedFile, gitComparedText } from './git-compare';
 
 const oid = (value: unknown): value is string => typeof value === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value);
 function revision(value: GitGraphRevision): void {
@@ -118,20 +119,28 @@ export class GitHistoryService {
         originalText: null, modifiedText: null, originalLabel: baseOid?.slice(0, 8) ?? 'EMPTY',
         modifiedLabel: selection.head.slice(0, 8), images: { original, modified } };
     }
-    const read = async (commit: string | undefined, file: string, missing: boolean): Promise<string | null> => {
-      if (!commit || missing) return '';
-      if (change.binary || !isTextCandidate(file)) return null;
-      // Keep Setdown's bounded, strict byte decoding instead of silently showing
-      // an upstream truncated/UTF-8-replaced string as the complete document.
-      return decodeTextBytes(await git.runBytes(['show', `${commit}:${file}`])).text;
-    };
-    const [originalText, modifiedText] = await Promise.all([
-      read(baseOid, change.previousPath ?? change.path, change.kind === 'add'),
-      read(selection.head, change.path, change.kind === 'delete'),
+    const former = baseOid && change.kind !== 'add' ? `${baseOid}:${change.previousPath ?? change.path}` : undefined;
+    const latter = change.kind !== 'delete' ? `${selection.head}:${change.path}` : undefined;
+    const labels = { originalLabel: baseOid?.slice(0, 8) ?? 'EMPTY', modifiedLabel: selection.head.slice(0, 8) };
+    const open = () => { if (![state.projectRoot, ...(state.gitRepositories ?? [])].includes(selection.root)) throw new Error('The open repository changed.'); };
+    const kind = comparedDocumentKind(filePath);
+    if (kind) {
+      // Both versions for Setdown's own reader of this type, as images are compared.
+      const [original, modified] = await Promise.all([gitComparedFile(git, former), gitComparedFile(git, latter)]);
+      open();
+      return { path: change.path, filePath, staged: false, readOnly: true, history: selection, patch: '', hunks: [],
+        originalText: null, modifiedText: null, ...labels, documents: { kind, original, modified }, sides: fileNotes(original, modified) };
+    }
+    // What the strict decoder of editable documents refuses is still shown here, with a note:
+    // a commit is only read (`git-compare.ts`).
+    const [original, modified] = await Promise.all([
+      gitComparedText(git, former, change.previousPath ?? change.path),
+      gitComparedText(git, latter, change.path),
     ]);
-    if (![state.projectRoot, ...(state.gitRepositories ?? [])].includes(selection.root)) throw new Error('The open repository changed.');
+    open();
+    const originalText = original.text, modifiedText = modified.text;
     return { path: change.path, filePath, staged: false, history: selection, patch: '',
-      originalText, modifiedText, originalLabel: baseOid?.slice(0, 8) ?? 'EMPTY', modifiedLabel: selection.head.slice(0, 8),
+      originalText, modifiedText, ...labels, sides: { original: original.note, modified: modified.note },
       hunks: originalText !== null && modifiedText !== null ? textDiffHunks(originalText, modifiedText) : [] };
   }
 }

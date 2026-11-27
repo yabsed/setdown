@@ -276,6 +276,75 @@ describe('Git status parser', () => {
       modifiedLabel: 'WORKTREE',
     });
   });
+
+  test('working-tree and staged comparisons of refused text, PDF, other binaries and a submodule', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-git-compare-'));
+    temporaryDirectories.push(root);
+    const service = new GitService(new ProjectPaths());
+    const state = { projectRoot: root } as WindowState;
+    const file = (name: string) => path.join(root, name);
+    await service.initialize(state);
+    await GitCli.run(root, ['config', 'user.email', 'setdown@example.test']);
+    await GitCli.run(root, ['config', 'user.name', 'Setdown Test']);
+    await GitCli.run(root, ['config', 'core.autocrlf', 'false']);
+    await writeFile(file('mixed.tex'), 'one\r\ntwo\nthree\n');
+    await writeFile(file('legacy.txt'), Buffer.from('caf\xe9\n', 'latin1'));
+    await writeFile(file('main.pdf'), Buffer.from('%PDF-1.4\nhead\n'));
+    await writeFile(file('data.sqlite'), Buffer.from([1, 0, 2]));
+    await writeFile(file('plain.tex'), 'plain\n');
+    await service.stage(state, ['mixed.tex', 'legacy.txt', 'main.pdf', 'data.sqlite', 'plain.tex'].map(file));
+    await service.commit(state, 'base');
+    await writeFile(file('mixed.tex'), 'one\r\ntwo\nfour\n');
+    await writeFile(file('legacy.txt'), 'caf\u00e9, now UTF-8\n', 'utf8');
+    await writeFile(file('main.pdf'), Buffer.from('%PDF-1.4\nworking tree\n'));
+    await writeFile(file('data.sqlite'), Buffer.from([1, 0, 2, 3, 4]));
+    await writeFile(file('plain.tex'), 'plainer\n');
+
+    // Mixed line endings are compared, and the comparison is read-only: saving would rewrite them.
+    expect(await service.diff(state, file('mixed.tex'), false)).toMatchObject({ readOnly: true, originalText: 'one\r\ntwo\nthree\n',
+      modifiedText: 'one\r\ntwo\nfour\n', sides: { original: { reason: 'line-endings' }, modified: { reason: 'line-endings' } } });
+    // The stored side is not UTF-8; the working file has been converted and decodes strictly.
+    expect(await service.diff(state, file('legacy.txt'), false)).toMatchObject({ readOnly: true, originalText: 'caf\uFFFD\n',
+      modifiedText: 'caf\u00e9, now UTF-8\n', sides: { original: { size: 5, reason: 'encoding' }, modified: { size: 17 } } });
+    // Ordinary text is as it was: editable, no note beyond its size.
+    const plain = await service.diff(state, file('plain.tex'), false);
+    expect(plain.readOnly).toBeUndefined();
+    expect(plain.sides).toEqual({ original: { size: 6 }, modified: { size: 8 } });
+
+    const pdf = await service.diff(state, file('main.pdf'), false);
+    expect(pdf).toMatchObject({ readOnly: true, originalText: null, modifiedText: null, originalLabel: 'INDEX', modifiedLabel: 'WORKTREE', documents: { kind: 'pdf' } });
+    expect(Buffer.from((pdf.documents!.original as { bytes: Uint8Array }).bytes).toString()).toBe('%PDF-1.4\nhead\n');
+    expect(Buffer.from((pdf.documents!.modified as { bytes: Uint8Array }).bytes).toString()).toBe('%PDF-1.4\nworking tree\n');
+    await service.stage(state, [file('main.pdf')]);
+    await writeFile(file('main.pdf'), Buffer.from('%PDF-1.4\nnewer still\n'));
+    const staged = await service.diff(state, file('main.pdf'), true);
+    expect(staged).toMatchObject({ originalLabel: 'HEAD', modifiedLabel: 'INDEX' });
+    expect(Buffer.from((staged.documents!.modified as { bytes: Uint8Array }).bytes).toString()).toBe('%PDF-1.4\nworking tree\n');
+
+    expect(await service.diff(state, file('data.sqlite'), false)).toMatchObject({ originalText: null, modifiedText: null,
+      sides: { original: { size: 3, reason: 'binary' }, modified: { size: 5, reason: 'binary' } } });
+    // A deleted PDF has one version only.
+    await rm(file('main.pdf'));
+    expect((await service.diff(state, file('main.pdf'), false)).documents).toMatchObject({ modified: null });
+
+    // A submodule is the commit it is at: the recorded one against the one its folder has checked out.
+    const library = file('vendor/lib');
+    await mkdir(library, { recursive: true });
+    await GitCli.run(library, ['init']);
+    await GitCli.run(library, ['config', 'user.email', 'setdown@example.test']);
+    await GitCli.run(library, ['config', 'user.name', 'Setdown Test']);
+    await writeFile(path.join(library, 'lib.c'), 'int one;\n');
+    await GitCli.run(library, ['add', 'lib.c']); await GitCli.run(library, ['commit', '-m', 'first']);
+    const recorded = (await GitCli.run(library, ['rev-parse', 'HEAD'])).trim();
+    await GitCli.run(root, ['update-index', '--add', '--cacheinfo', `160000,${recorded},vendor/lib`]);
+    await writeFile(path.join(library, 'lib.c'), 'int two;\n');
+    await GitCli.run(library, ['commit', '-am', 'second']);
+    const checkedOut = (await GitCli.run(library, ['rev-parse', 'HEAD'])).trim();
+    expect(await service.diff(state, library, false)).toMatchObject({ readOnly: true, originalText: `Subproject commit ${recorded}\n`,
+      modifiedText: `Subproject commit ${checkedOut}\n`, sides: { original: { submodule: true }, modified: { submodule: true } } });
+    // Staged: nothing recorded before, the first commit now.
+    expect(await service.diff(state, library, true)).toMatchObject({ originalText: '', modifiedText: `Subproject commit ${recorded}\n` });
+  });
 });
 
 test('one failed repository retains healthy lists, reports a partial count and recovers', async () => {

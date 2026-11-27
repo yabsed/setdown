@@ -32,12 +32,14 @@ export const view = $state({
   recoveryCount: 0,
   reloadPrompt: null as { id: string; name: string; revision: number; path: string } | null,
   recoveryError: '',
-  groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null, sticky: 0 }] as import('../../core/workspace/editor-groups').Group[],
+  groups: [{ id: 'group-0', tabs: [], activeId: null, previewId: null, sticky: 0, clusters: [] }] as import('../../core/workspace/editor-groups').Group[],
   groupTree: { kind: 'group', id: 'group-0' } as import('../../core/workspace/editor-groups').GroupTree,
   focusedGroupId: 'group-0',
   tabs: [] as TabView[],
   terminalSessions: [] as import('../../core/workspace/workspace-state').TerminalSession[],
   draggedTabId: null as string | null,
+  /** The panel that names and colours a tab group: open on one tab group at a time. `create`: Cancel dissolves the new tab group. */
+  clusterPanel: null as { clusterId: string; mode: 'create' | 'edit' } | null,
   surface: 'empty' as 'empty' | 'viewer' | 'editor' | 'pdf' | 'image' | 'video' | 'office' | 'notebook' | 'web' | 'terminal' | 'diff' | 'folder',
   /** Reactive copies of folder tabs for their surfaces. */
   folderTabs: [] as Array<{ id: string; path: string; view: import('../../core/workspace/workspace-state').FolderView; selection?: string[]; picker?: import('../../protocol/files').PathPickerRequest; revision: number }>,

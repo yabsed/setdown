@@ -345,9 +345,13 @@
 
   // Do not lay out the hidden 0x0 host: Monaco's inline transition otherwise
   // clears wrapping in the original pane. Preserve this Markdown regression fix.
+  // The size is the host's, given to Monaco in numbers. Asked to measure for itself, Monaco's
+  // diff editor measures its own root, whose height it has set in pixels at the first layout
+  // (`diffEditorWidget.js` `_layoutInfo`): an editor made while its tab was hidden stayed 5px
+  // tall, a stripe of the first changed line, and no editor followed the window's height.
   function layoutEditor() {
     if (!editor || !host || host.clientWidth === 0 || host.clientHeight === 0) return;
-    editor.layout();
+    editor.layout({ width: host.clientWidth, height: host.clientHeight });
   }
 
   async function reconcile(snapshots: Array<{ id: string; diff: GitDiff | null }>,

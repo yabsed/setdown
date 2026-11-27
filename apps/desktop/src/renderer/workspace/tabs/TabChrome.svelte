@@ -5,6 +5,8 @@
   import FileIcon from '../../project/FileIcon.svelte';
   import { project } from '../../project/project-state.svelte';
   import ApplicationMenu from '../../shell/ApplicationMenu.svelte';
+  import TabClusterPanel from './TabClusterPanel.svelte';
+  import { stripItems, tabClusterTitle } from '../../../core/workspace/tab-clusters';
 import type { AppActions } from '../../ports/ui-actions';
   /** The tab strips along the window's top edge stand in for a title bar: `lead` is the top-left one,
    * `windowControls` the top-right one, and every `top` strip moves the window by its free end. */
@@ -15,6 +17,22 @@ import type { AppActions } from '../../ports/ui-actions';
   const selected = $derived(group?.activeId);
   const tabs = $derived((group?.tabs ?? []).flatMap(id => view.tabs.find(tab => tab.id === id) ?? []));
   const pinned = $derived(new Set((group?.tabs ?? []).slice(0, group?.sticky ?? 0)));
+  /** What the strip draws, in order: tabs, and for each tab group its label and, folded around the
+   * selected tab, the count of its hidden tabs (`core/workspace/tab-clusters.ts`). */
+  const items = $derived(group ? stripItems(group) : []);
+  const summaries = $derived(new Map(tabs.map(tab => [tab.id, tab])));
+  const shown = $derived(items.filter(item => item.kind === 'tab').length);
+  /** The tab group whose panel is open, when it is one of this strip's. */
+  const paneled = $derived(view.clusterPanel ? group?.clusters.find(cluster => cluster.id === view.clusterPanel!.clusterId) : undefined);
+  /** The width the labels and counts take beside the tabs: the list's least width counts it. */
+  let extra = $state(0);
+  $effect(() => {
+    void items;
+    void tick().then(() => {
+      extra = Array.from(list?.querySelectorAll<HTMLElement>('[data-cluster-label], [data-cluster-more]') ?? [])
+        .reduce((width, piece) => width + piece.offsetWidth + 2, 0);
+    });
+  });
   const press = (run: () => void) => (event: KeyboardEvent) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault(); event.stopPropagation(); run();
@@ -31,6 +49,31 @@ import type { AppActions } from '../../ports/ui-actions';
     const left = tab.getBoundingClientRect().left;
     if (left < bounds.left) row.scrollLeft += left - bounds.left;
   };
+  /** The width the tabs keep after one was closed with the pointer, as browsers keep it: the
+   * tabs after the closed one move up and the next close button is where the pointer already is.
+   * Without it every tab grew at each close and the row changed under the pointer. Closing the
+   * last tab holds nothing: the tabs before it grow, and the new last one ends where the pointer is.
+   * The widths are given back when the pointer leaves the strip, a tab is added, or the strip changes size. */
+  let held = $state<number | null>(null);
+  const closeWithPointer = (id: string) => {
+    const all = Array.from(list?.querySelectorAll<HTMLElement>('[data-tab-id]') ?? []), tab = all.find(el => el.dataset.tabId === id);
+    if (tab && tab !== all.at(-1)) held = tab.getBoundingClientRect().width;
+    actions.closeTab(id);
+  };
+  let counted = 0;
+  $effect(() => {
+    const count = shown;
+    if (count > counted) held = null;
+    counted = count;
+  });
+  $effect(() => {
+    if (held === null || !row) return;
+    // The strip's own size changing (the window, a split) ends the hold: held widths may no longer fit.
+    let first = true;
+    const watch = new ResizeObserver(() => { if (first) first = false; else held = null; });
+    watch.observe(row.parentElement ?? row);
+    return () => watch.disconnect();
+  });
   /** The tab the pointer picked last, until the selection has answered it. */
   let pointed: string | null = null;
   $effect(() => {
@@ -43,7 +86,7 @@ import type { AppActions } from '../../ports/ui-actions';
   });
 </script>
 
-<nav class="tab-strip" class:has-window-controls={windowControls} data-group-id={groupId} aria-label="Open documents">
+<nav class="tab-strip" class:has-window-controls={windowControls} data-group-id={groupId} aria-label="Open documents" onpointerleave={() => { held = null; }}>
   <!-- Everything the strip carries is one row that scrolls as a whole: Setdown and the menu button in the
        top-left strip, the tabs, then the new-tab buttons. Nothing in it is held in place over the rest. -->
   <div class="tab-row" class:has-lead={lead} bind:this={row} use:tabScroll>
@@ -53,9 +96,30 @@ import type { AppActions } from '../../ports/ui-actions';
       onclick={actions.toggleProjectSidebar}>Setdown</button>
     <ApplicationMenu overlay={actions.menuOverlay} load={actions.loadMenu} execute={actions.executeMenuItem} />
   {/if}
-  <div class="tab-list" role="tablist" style:--tab-count={tabs.length} bind:this={list}>
-    {#each tabs as tab (tab.id)}
+  <div class="tab-list" class:is-held={held !== null} role="tablist" style:--tab-count={shown} style:--tab-extra={`${extra}px`}
+    style:--tab-held-width={held === null ? null : `${held}px`} bind:this={list}>
+    {#each items as item (item.kind === 'tab' ? item.id : `${item.kind}:${item.cluster.id}`)}
+      {#if item.kind === 'label'}
+        {@const cluster = item.cluster}
+        <!-- Firefox: a click folds or unfolds the tab group; the secondary button (and the menu key) opens its panel. -->
+        <button class="tab-cluster-label" type="button" data-cluster-label={cluster.id} data-cluster-color={cluster.color}
+          data-lined={!cluster.collapsed || cluster.tabs.includes(selected ?? '') || undefined}
+          aria-expanded={!cluster.collapsed} aria-label={`${tabClusterTitle(cluster)}, tab group`}
+          title={`${tabClusterTitle(cluster)} — ${cluster.collapsed ? 'Collapsed' : 'Expanded'}`}
+          onclick={() => actions.tabClusters.toggle(cluster.id)}
+          oncontextmenu={(event) => { event.preventDefault(); actions.tabClusters.edit(cluster.id); }}>
+          <span class="tab-cluster-name">{cluster.name}</span>
+        </button>
+      {:else if item.kind === 'more'}
+        {@const cluster = item.cluster}
+        <button class="tab-cluster-more" type="button" data-cluster-more={cluster.id} data-cluster-color={cluster.color}
+          aria-label={`${item.count} more ${item.count === 1 ? 'tab' : 'tabs'} in ${tabClusterTitle(cluster)}`} title="Show the tab group's other tabs"
+          onclick={() => actions.tabClusters.toggle(cluster.id)}
+          oncontextmenu={(event) => { event.preventDefault(); actions.tabClusters.edit(cluster.id); }}><span>+{item.count}</span></button>
+      {:else if summaries.get(item.id)}
+      {@const tab = summaries.get(item.id)!}
       <button class="document-tab" class:is-dragging={view.draggedTabId === tab.id} class:git-diff-tab={tab.kind === 'diff'}
+        data-cluster-id={item.cluster?.id} data-cluster-color={item.cluster?.color}
         type="button" role="tab" aria-selected={tab.id === selected}
         title={tab.preview ? `${tab.path}\nDouble-click to keep open` : tab.path}
         draggable="true" data-sleeping={tab.page?.sleeping || undefined} data-tab-id={tab.id} data-preview={tab.preview}
@@ -99,10 +163,11 @@ import type { AppActions } from '../../ports/ui-actions';
           </span>
         {:else}
           <span class="tab-close" title="Close tab" role="button" tabindex="0"
-            onclick={(event) => { event.stopPropagation(); actions.closeTab(tab.id); }}
+            onclick={(event) => { event.stopPropagation(); if (event.detail > 0) closeWithPointer(tab.id); else actions.closeTab(tab.id); }}
             onkeydown={press(() => actions.closeTab(tab.id))}>×</span>
         {/if}
       </button>
+      {/if}
     {/each}
 
   </div>
@@ -129,6 +194,13 @@ import type { AppActions } from '../../ports/ui-actions';
   </div>
   {#if top}<div class="window-drag-space" aria-hidden="true"></div>{/if}
 </nav>
+{#if paneled && view.clusterPanel}
+  {@const id = paneled.id}
+  {#key id}
+    <TabClusterPanel {actions} cluster={paneled} mode={view.clusterPanel.mode}
+      anchor={() => list?.querySelector<HTMLElement>(`[data-cluster-label="${id}"]`) ?? null} onclose={() => { view.clusterPanel = null; }} />
+  {/key}
+{/if}
 
 <style>
   .document-tab[data-preview="true"] .tab-name { font-style: italic; }

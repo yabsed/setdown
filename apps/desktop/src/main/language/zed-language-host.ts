@@ -5,6 +5,8 @@ import path from 'node:path';
 export type PreparedLanguageServer = {
   executable: string; args: string[]; env?: Record<string, string>; languageId?: string;
   settings: Record<string, unknown>; initializationOptions: Record<string, unknown>;
+  /** The program of this computer that would have been started and was passed by because it cannot run (`program-health.ts`). */
+  instead?: { program: string; detail?: string };
 };
 export type HostEvent = { event: string; [key: string]: unknown };
 /** A document of 16 MiB crosses as one line, and escaping can double it. The host reads lines up to the same size. */

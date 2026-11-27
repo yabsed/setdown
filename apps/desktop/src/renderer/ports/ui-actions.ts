@@ -37,6 +37,13 @@ export type AppActions = BrowserActions & TerminalActions & FolderActions & {
   pinTab(id: string): void;
   /** Pin a tab to the start of its strip, or release it. `pinTab` only keeps a preview tab open. */
   stickTab(id: string, sticky: boolean): void;
+  /** Tab groups of a strip (`core/workspace/tab-clusters.ts`). */
+  tabClusters: {
+    create(tabId: string): void; add(tabId: string, clusterId: string): void; leave(tabId: string): void;
+    ungroup(clusterId: string): void; close(clusterId: string): void; newTab(clusterId: string): void;
+    update(clusterId: string, change: { name?: string; color?: import('../../core/workspace/tab-clusters').TabClusterColor; collapsed?: boolean }): void;
+    toggle(clusterId: string): void; edit(clusterId: string): void;
+  };
   /** Open a tab's context menu at a point in window CSS pixels. */
   showTabMenu(id: string, point: { x: number; y: number }): void;
   closeTab(id: string): void;

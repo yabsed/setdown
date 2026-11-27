@@ -115,6 +115,26 @@ test('review controls receive both pending and completed reload state, including
   }
 });
 
+test('what is sent for the rendered review can cross to the main process: reading notes and document versions stay behind', async () => {
+  // In the app a tab's comparison is reactive state, and its nested objects are proxies that
+  // Electron cannot clone ("An object could not be cloned"). A proxy stands in for them here.
+  const f = fixture();
+  const proxied = <T extends object>(value: T) => new Proxy(value, {});
+  f.tab.diff = { ...f.tab.diff!, sides: proxied({ original: { size: 6 }, modified: { size: 5 } }),
+    documents: proxied({ kind: 'pdf' as const, original: null, modified: null }) };
+  assert.throws(() => structuredClone(f.tab.diff), 'the stand-in must be as uncloneable as the real state');
+  const sent: GitDiff[] = [];
+  const prepare = f.desktop.prepareGitDiffPreview.bind(f.desktop);
+  f.desktop.prepareGitDiffPreview = (id, diff, theme) => { sent.push(diff); return prepare(id, diff, theme); };
+  await f.activate();
+  assert.ok(sent.length, 'the review must have been requested');
+  for (const diff of sent) {
+    assert.doesNotThrow(() => structuredClone(diff));
+    assert.equal('sides' in diff, false); assert.equal('documents' in diff, false);
+    assert.equal(diff.originalText, 'before'); assert.equal(diff.modifiedText, 'after');
+  }
+});
+
 test('repository errors remain distinct from an absent repository and clear on recovery', async () => {
   const f = fixture(); project.folder = { path: '/project', name: 'project' };
   f.desktop.getGitStatus = async () => { throw Error('Permission denied'); };

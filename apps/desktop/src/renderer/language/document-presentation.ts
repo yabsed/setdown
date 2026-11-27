@@ -49,6 +49,10 @@ export function presentIssue(issue: LanguageIssue | undefined, subject: string, 
     case 'runtime': return { title: `${subject} needs ${issue.runtime}${issue.required ? ` ${issue.required} or newer` : ''}.`,
       description: issue.found ? `Found ${issue.runtime} ${issue.found}.` : issue.required ? `No suitable ${issue.runtime} was found.` : `${issue.runtime} was not found.`,
       action: { kind: 'help', label: 'How to install ↗', server, runtime: issue.runtime }, secondary: log };
+    // The tool's own sentence says why. Starting it again ends the same way; the button looks
+    // for a newer version, which is the one thing that can change the answer.
+    case 'outdated': return { title: `${subject} can't run in the version on this computer.`, description: issue.detail,
+      action: { kind: 'restart', label: 'Look for a newer version', server }, secondary: log };
     case 'startup': return { title: `${subject} can't start.`, description: issue.detail, action: log, secondary: { kind: 'restart', label: 'Try again', server } };
     case 'crashed': return { title: `${subject} stopped unexpectedly.`, action: { kind: 'restart', label: 'Restart', server }, secondary: log };
     default: return unstarted ? { title: `${subject} can't start.`, action: { kind: 'restart', label: 'Try again', server } }

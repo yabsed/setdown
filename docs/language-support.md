@@ -212,6 +212,7 @@ follows the cause, not the state:
 | The chosen program does not start as a language tool | Java support can't start. | Use automatic setup | Show log |
 | The chosen program no longer exists | Java support can't start. | Use automatic setup | Choose program… |
 | A runtime is missing or too old | Java support needs Java 21 or newer. | How to install ↗ | Show log |
+| The tool's build says it is too old to run, and nothing else can be started | Kotlin support can't start. This version of the tool no longer runs. | Use automatic setup, or How to install ↗ for a program the person named | Show log |
 | It never answered, cause unknown | Java support can't start. | Show log | Try again |
 | It worked, then stopped | Java support stopped unexpectedly. | Restart | Show log |
 
@@ -464,7 +465,32 @@ error output. Three causes repeat identically and are not retried: a program the
 person chose that ends before answering, a runtime the tool itself reports
 as missing or too old, and a program that is not on this computer and that
 nothing downloads (sourcekit-lsp comes with Swift). Their repair is a change of
-setup, so the status offers that instead of another attempt. A tool that asks
+setup, so the status offers that instead of another attempt.
+
+A program of this computer gives way to Setdown's own copy before the person is
+asked to do anything. There are three ranks of program (`Finding an
+installation`): the one a person named, one found on this computer, and Setdown's
+own verified copy. A found program is set aside, and the tool started again on
+Setdown's copy, when it says its build is too old to run (`program-health.ts`
+reads that from what it prints: kotlin-lsp exits with "This build is outdated"),
+when it is no language tool that answers, or when it failed three starts or
+stopped three times in a row. A program the person named is never replaced: its
+failure is shown with its action. An outdated program stays set aside across
+restarts (`language-packages/programs-set-aside.json`, keyed by its path, size
+and time, so a new build at that path is tried again); the other two causes last
+for this run, because what failed may mend itself. The document panel names
+both: `Program: … (Setdown's own copy)` and `Not used: <path> (<why>)`.
+**Restart language tools** and **Check again for installed tools** forget what
+was set aside and try every program again.
+
+Under the Zed project engine the same holds for Kotlin: the Kotlin extension
+(from 0.3.5, the version that engine installs from the registry) starts a
+`kotlin-lsp` it finds on `PATH` before its own download, so an
+expired one on `PATH` made every start fail ("Reconnecting… Attempt 3 of 3").
+The host is told which programs to pass by (`skipPrograms`). For other tools the
+Zed engine does not yet set a found program aside; the own-client engine does.
+
+A tool that asks
 the person a question while it starts has not stopped answering: no request to
 it times out while the question is open. Recovery resends current
 open buffers; it never replays editor commands or workspace edits. Requests from a
@@ -727,7 +753,7 @@ cannot name a program to run.
 | TypeScript, JavaScript | tsserver gets the memory limit of the TypeScript extension. It downloads the type packages of a JavaScript project with npm, as the extension lets it, where Setdown may download tools for that project, and nowhere else; the setting decides when it is written. npm location and display language follow the extension's settings. | `typescript.tsserver.maxTsServerMemory` (3072 MB), `typescript.disableAutomaticTypeAcquisition`, `typescript.npm`, `typescript.locale` |
 | JSON | A file name VS Code has a schema for has it here too: the associations of VS Code's built-in extensions are carried over with the schema files they ship (`json-builtin-schemas.ts`, `scripts/update-json-schema-associations.mjs`), after the ones a person wrote. The editor, not the server, downloads a schema (`vscode/content`). An address outside the trusted domains is refused and the file says so. Downloaded schemas are kept in `language-packages/json-schemas` and checked again with their ETag. The document panel lists the schemas a file was checked with (`json/languageStatus`). | `json.schemaDownload.enable` (on), `json.schemaDownload.trustedDomains` (the extension's list; add a domain with `"https://example.com/": true`) |
 | Go | `gopls` is looked for where the Go extension looks, with the project's Go environment: `GOBIN`, each `GOPATH/bin`, `GOROOT/bin`, then `PATH`. When none is found and downloads are on, Setdown installs it with `go install` into its own folder. An install that fails is shown; nothing else is started in its place. gopls starts with the person's `gopls` settings and with what the extension makes of the `go.*` ones: build flags and tags, inlay hints, the vulnerability check. After a save the lint tool a person named is run for the file, its package or the project, and what it finds stands beside gopls' own marks; with downloads on, a lint tool that is missing is installed first. Without `go.lintTool` nothing runs on save, as in the extension. A "run test" lens runs `go test` in the terminal. | `gopls`, `go.buildFlags`, `go.buildTags`, `go.inlayHints.*`, `go.diagnostic.vulncheck`, `go.lintTool`, `go.lintOnSave` (`package`), `go.lintFlags`, `go.toolsEnvVars`, `go.testFlags`, `go.testTags`, `go.testTimeout` (`30s`), `go.testEnvVars`, `go.addTags`, `go.removeTags`, `go.enableCodeLens.runtest` |
-| Kotlin | The server archive is downloaded by Setdown and started only after its checksum matches the one JetBrains publishes. The server starts with the options its extension sends. An option the server would reject is left out and named in the document panel. The state of the project import and its log are shown (`intellij/*`), and a build-tool conflict is asked as a question with the tool's own choices. The project's build files say which Java it is for; when the Java of the environment is older, the tool is given an installed JDK that is new enough, and the document panel names it. | `intellij.jdkForSymbolResolution`, `intellij.buildTool`, `intellij.projects` |
+| Kotlin | The server archive is downloaded by Setdown and started only after its checksum matches the one JetBrains publishes. The server starts with the options its extension sends. An option the server would reject is left out and named in the document panel. A `kotlin-lsp` on `PATH` is used first; one that says its build is outdated is set aside for Setdown's own copy, and the document panel says so. A build Setdown downloaded that has since expired is replaced by the newest published one (`kotlin-download.ts`). The state of the project import and its log are shown (`intellij/*`), and a build-tool conflict is asked as a question with the tool's own choices. The project's build files say which Java it is for; when the Java of the environment is older, the tool is given an installed JDK that is new enough, and the document panel names it. | `intellij.jdkForSymbolResolution`, `intellij.buildTool`, `intellij.projects` |
 | Java | jdt.ls's status ("Activating…", the import of the build, "Ready") is a line of the document panel and its work is listed as progress (`language/status`, `language/progressReport`). What it asks with buttons is a notice with those buttons (`language/actionableNotification`), and the commands it hands back to its editor are run or refused by name (`workspace/executeClientCommand`). With no JDK that jdt.ls can run on and downloads on, the tool's Zed extension downloads one. | `java.jdt.ls.java.home`, `java.home` (the JDK jdt.ls runs on) |
 | PHP | Intelephense starts with the options its extension sends (the index is cleared when the person asks), and its memory limit becomes Node's heap size. | `intelephense.maxMemory` |
 | Python | The file `python.envFile` names is read as the Python extension reads it, and the folders of its `PYTHONPATH` are added to the paths the tool reads imports from; the document panel says so. A request that is no longer wanted is cancelled through a file, as Pyright's extension does it: Pyright reads no message while it analyses. The same argument starts Pyright's background analysis thread, so it is given only to a server Setdown ships and has looked at (`pyright-thread.ts`); a program a person chose is cancelled by message as before. | `python.envFile` (`${workspaceFolder}/.env`) |
@@ -869,6 +895,13 @@ A tool's program is looked for in one order: the program a person chose, the
 project's environment (its shell PATH, then the known user locations below), and
 last Setdown's own prepared copy. There is no list of everything installed on the
 computer and no step where a person picks between programs.
+
+A found program that cannot do the work is passed by for Setdown's own copy
+without a question: one whose build says it is too old, one that is no language
+tool, one that failed three times in a row (see the recovery rules above). The
+document panel shows which program runs and which was not used, with the reason.
+A program a person chose is the exception: it is used or its failure is shown,
+never replaced.
 
 If you install a server while Setdown is running, open **Edit → Language Support…**,
 **Advanced**, and click **Check again for installed tools**. Open documents with unavailable or failed

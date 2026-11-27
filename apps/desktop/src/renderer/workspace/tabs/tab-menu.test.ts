@@ -11,7 +11,8 @@ function fixture(root: string | null = '/project') {
   let choice: TabMenuCommand | null = null;
   const shown: Array<{ context: TabMenuContext; copy: { path: string; relative: string }; point: { x: number; y: number } }> = [];
   const tabs = { close: vi.fn(async () => true), closeMany: vi.fn(async () => true), pin: vi.fn(), stick: vi.fn(),
-    dirty: (tab: { id: string }) => dirty.has(tab.id), copyToGroup: vi.fn(async () => {}), moveToGroup: vi.fn(async () => {}) };
+    dirty: (tab: { id: string }) => dirty.has(tab.id), copyToGroup: vi.fn(async () => {}), moveToGroup: vi.fn(async () => {}),
+    clusters: { create: vi.fn(async () => {}), add: vi.fn(), leave: vi.fn(), ungroup: vi.fn(), update: vi.fn(), toggle: vi.fn(), edit: vi.fn(), close: vi.fn(async () => {}), newTab: vi.fn(async () => {}) } };
   const options = { workspace, tabs, root: () => root, copyFile: vi.fn(async () => {}), revealInFolder: vi.fn(async () => {}), revealInExplorer: vi.fn(async () => {}),
     moveToWindow: vi.fn(), failed: vi.fn(),
     desktop: { showTabMenu: async (context: TabMenuContext, copy: { path: string; relative: string }, point: { x: number; y: number }) => { shown.push({ context, copy, point }); return choice; } } };
@@ -28,7 +29,7 @@ test('describes a tab by what each command could act on', async () => {
   f.workspace.groups.stick('/project/a.md'); f.dirty.add('/elsewhere/c.md');
   expect(await f.choose('/project/docs/b.md', null)).toEqual({ point: { x: 4, y: 8 }, copy: { path: '/project/docs/b.md', relative: 'docs/b.md' },
     context: { location: 'file', inProject: true, others: true, right: true, saved: true, all: true, preview: false, pinned: false,
-      copyable: true, moves: ['up', 'down', 'left', 'right'], detachable: true } });
+      copyable: true, moves: ['up', 'down', 'left', 'right'], detachable: true, cluster: false, clusters: [] } });
   expect((await f.choose('/project/a.md', null)).context).toMatchObject({ pinned: true, others: true });
   expect(await f.choose('/elsewhere/c.md', null)).toMatchObject({ copy: { path: '/elsewhere/c.md', relative: '' }, context: { location: 'file', inProject: false } });
   expect(await f.choose('/drafts/Untitled-1', null)).toMatchObject({ copy: { path: '', relative: '' }, context: { location: 'none' } });
@@ -82,4 +83,23 @@ test('a command for a tab that closed while its menu was open does nothing, and 
   f.tabs.close.mockRejectedValueOnce(Error('disk full'));
   await f.choose('/project/b.md', null);
   expect(f.options.failed).toHaveBeenCalledExactlyOnceWith(Error('disk full'));
+});
+
+test('names the strip\'s other tab groups, and runs the tab group commands only for a group of that strip', async () => {
+  const f = fixture();
+  for (const path of ['/project/a.md', '/project/b.md', '/project/c.md', '/project/d.md']) f.workspace.add(file(path));
+  const reading = f.workspace.groups.createCluster(['/project/a.md', '/project/b.md'])!;
+  f.workspace.groups.setCluster(reading.id, { name: 'Reading' });
+  const unnamed = f.workspace.groups.createCluster(['/project/c.md'])!;
+  // A member is told it is one, and is offered the other tab group, not its own.
+  expect((await f.choose('/project/a.md', null)).context).toMatchObject({ cluster: true, clusters: [{ id: unnamed.id, title: 'Unnamed group (Purple)' }] });
+  expect((await f.choose('/project/d.md', null)).context).toMatchObject({ cluster: false,
+    clusters: [{ id: reading.id, title: 'Reading' }, { id: unnamed.id, title: 'Unnamed group (Purple)' }] });
+  await f.choose('/project/d.md', 'cluster-new'); expect(f.tabs.clusters.create).toHaveBeenCalledWith('/project/d.md');
+  await f.choose('/project/a.md', 'cluster-leave'); expect(f.tabs.clusters.leave).toHaveBeenCalledWith('/project/a.md');
+  await f.choose('/project/d.md', `cluster-add:${reading.id}`); expect(f.tabs.clusters.add).toHaveBeenCalledWith('/project/d.md', reading.id);
+  // A tab group that is not in this strip (gone since the menu opened, or never there) is not joined.
+  f.tabs.clusters.add.mockClear();
+  await f.choose('/project/d.md', 'cluster-add:cluster-999'); await f.choose('/project/d.md', 'cluster-add:../x' as never);
+  expect(f.tabs.clusters.add).not.toHaveBeenCalled();
 });

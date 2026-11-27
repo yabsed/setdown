@@ -75,6 +75,9 @@ struct Request {
     #[serde(default)] text: String,
     #[serde(default = "enabled")] allow_binary_download: bool,
     #[serde(default)] inherit_environment: bool,
+    /// Programs of this computer that Setdown found unable to run (`program-health.ts`). `prepare`
+    /// passes them by, so the adapter goes on to the next program of that name or to its own copy.
+    #[serde(default)] skip_programs: Vec<PathBuf>,
 }
 fn enabled() -> bool { true }
 #[derive(Deserialize)]
@@ -83,6 +86,7 @@ struct Delegate {
     request_id: u64, root: PathBuf, env: HashMap<String, String>,
     http: Arc<dyn HttpClient>, executor: BackgroundExecutor,
     registry: Arc<LanguageRegistry>, entity: EntityId,
+    skip: Vec<PathBuf>,
 }
 #[async_trait]
 impl LspAdapterDelegate for Delegate {
@@ -110,7 +114,9 @@ impl LspAdapterDelegate for Delegate {
         }
         Ok(None)
     }
-    async fn which(&self, command: &OsStr) -> Option<PathBuf> { which::which_in(command, self.env.get("PATH"), &self.root).ok() }
+    async fn which(&self, command: &OsStr) -> Option<PathBuf> {
+        which::which_in_all(command, self.env.get("PATH"), &self.root).ok()?.find(|found| !self.skip.contains(found))
+    }
     async fn shell_env(&self) -> HashMap<String, String> { self.env.clone() }
     async fn read_text_file(&self, path: &RelPath) -> Result<String> { Ok(smol::fs::read_to_string(self.root.join(path.as_std_path())).await?) }
     async fn try_exec(&self, binary: LanguageServerBinary) -> Result<()> {
@@ -328,7 +334,7 @@ fn main() -> Result<()> {
                         },
                         "contributions" => {
                             ensure!(request.root.is_absolute(), "Workspace root must be absolute");
-                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });
+                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() ,skip:request.skip_programs.clone()});
                             contributions(&request,&registry,delegate,cx).await
                         },
                         "npm" => prepare_npm(&request, &data, &node).await,
@@ -337,7 +343,7 @@ fn main() -> Result<()> {
                             ensure!(!offline || !request.allow_binary_download, "Downloads are disabled for this host");
                             ensure!(request.root.is_absolute(), "Workspace root must be absolute");
                             cx.update(|cx| SettingsStore::update_global(cx, |store,cx| { let _ = store.set_user_settings(&json!({"lsp":request.settings}).to_string(),cx); }));
-                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() });
+                            let delegate = Arc::new(Delegate { request_id:request.id,root:request.root.clone(),env:normalize_path(request.env.clone()),http:http.clone(),executor:cx.background_executor().clone(),registry:registry.clone(),entity:source.entity_id() ,skip:request.skip_programs.clone()});
                             // A tool from a Zed extension reports its installation to the registry and not
                             // to the delegate. Unheard, a 370 MB download looked like nothing happening.
                             let (mut statuses, _subscription) = registry.language_server_binary_statuses();

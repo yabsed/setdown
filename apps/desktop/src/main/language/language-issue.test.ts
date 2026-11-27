@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { failureLine, preparationIssue, runtimeIssue, sessionIssue, withoutZedSettings } from './language-issue';
+import { failureLine, outdatedIssue, preparationIssue, runtimeIssue, sessionIssue, withoutZedSettings } from './language-issue';
 
 const jvmUsage = 'Usage: java [options] <mainclass> [args...]\n   (to execute a class)\n   or  java [options] -jar <jarfile> [args...]';
 
@@ -91,4 +91,29 @@ test('a tool started by a script names the runtime its shell did not find', () =
   expect(runtimeIssue('launch.sh: line 149: elixir: command not found\n')).toEqual({ kind: 'runtime', runtime: 'Elixir', required: '' });
   // A program that is no runtime this knows stays the tool's own failure.
   expect(runtimeIssue('launch.sh:3: command not found: frobnicate\n')).toBeUndefined();
+});
+
+/** What JetBrains' Kotlin server 271.2085.0 (built 2026-11-03) wrote on 2026-11-27 before it
+ * ended, as the installed application logged it. */
+const expiredKotlin = ['WARNING: kotlin-lsp.sh is deprecated and will be removed in a future release. Use bin/intellij-server instead.', 'IJ_JAVA_OPTIONS=',
+  'idea.config.path=/tmp/idea-system281559644452388692/config', 'idea.system.path=/tmp/idea-system281559644452388692/system',
+  'Log file: /tmp/idea-system281559644452388692/system/log/intellij-server.log', 'This build of kotlin-server has expired.', 'The IDE will now close.',
+  'Please download a new build from https://github.com/kotlin/kotlin-lsp'].join('\n');
+
+test('a tool that says its own build has expired is outdated, in its own sentence', () => {
+  expect(sessionIssue({ started: false, reason: 'kotlin-lsp language server disconnected.', stderr: expiredKotlin }))
+    .toEqual({ kind: 'outdated', detail: 'This build of kotlin-server has expired.' });
+  // Choosing the same program again helps nobody: its age comes before whose program it is.
+  expect(sessionIssue({ started: false, reason: 'exited (1).', stderr: expiredKotlin, pinned: '/opt/kotlin/bin/intellij-server' })).toMatchObject({ kind: 'outdated' });
+  // The line a person reads is the reason, not the advice after it or the warning before it.
+  expect(failureLine(expiredKotlin)).toBe('This build of kotlin-server has expired.');
+  expect(outdatedIssue('This version of the server is no longer supported. Please upgrade.')).toMatchObject({ kind: 'outdated' });
+});
+
+test('something else that expired is not the tool\'s age', () => {
+  expect(outdatedIssue('Your JetBrains license has expired or is no longer valid.')).toBeUndefined();
+  expect(outdatedIssue('Your completion session has expired, please try again')).toBeUndefined();
+  expect(outdatedIssue('error: the lock file is out of date')).toBeUndefined();
+  // A tool that worked and then stopped has crashed, whatever it wrote.
+  expect(sessionIssue({ started: true, reason: 'exited (1).', stderr: expiredKotlin })).toEqual({ kind: 'crashed' });
 });

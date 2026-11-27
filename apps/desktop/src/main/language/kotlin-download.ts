@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, existsSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, open, readFile, readdir, rename, rm, rmdir, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { inflateRawSync } from 'node:zlib';
 
 // JetBrains' Kotlin server is started for Setdown by the Zed Kotlin extension, which downloads
 // it without a checksum and unpacks it straight into the folder it later takes as installed.
@@ -17,12 +18,21 @@ import path from 'node:path';
 //   vendor/kotlin-lsp/vscode-extension-core/src/serverBundleDownload.ts    resuming, the checksum, the lock, unpacking
 //   vendor/kotlin-lsp/vscode-extension-core/src/serverDownloadRecovery.ts  the words for a download that fails its checksum
 //   vendor/kotlin-lsp/RELEASES.md                                          the list itself, with a checksum beside every archive
+// A `kotlin-lsp` on PATH comes before this folder: Setdown's own search finds it first, and from
+// v0.3.5 the extension itself starts it first (the Zed project engine installs the registry's
+// newest extension, not the catalog's). One that says its build is outdated is set aside
+// (`program-health.ts`, the host's `skipPrograms`) and the server of this folder is started.
+// Which build is the newest is asked of two places, because the list is written by hand and has
+// stayed behind (see `kotlinExtensionUrl`): the list, and the package of JetBrains' own extension.
 
 /** kotlin_lsp.rs `get_release`: where the extension reads the releases from. */
 export const kotlinReleasesUrl = 'https://raw.githubusercontent.com/Kotlin/kotlin-lsp/refs/heads/main/RELEASES.md';
 /** serverBundleDownload.ts `INSTALL_LOCK_RETRY_DELAY_MS`, `INSTALL_LOCK_STALE_MS` and
  * `DOWNLOAD_IDLE_TIMEOUT_MS`, in milliseconds. A lock is touched four times in `lockStale`. */
 export const kotlinDownloadLimits = { lockRetry: 200, lockStale: 2 * 60 * 1000, idle: 2 * 60 * 1000 };
+/** Setdown's own, in milliseconds: how long the extension's package may take to answer, so that a slow registry
+ * does not hold a file back, and how long an answer about the newest build is kept within one run of the application. */
+export const kotlinSourceLimits = { extension: 20 * 1000, recheck: 30 * 60 * 1000 };
 
 export type KotlinRelease = {
   version: string;
@@ -31,7 +41,9 @@ export type KotlinRelease = {
   /** JetBrains publishes the archive's SHA-256 beside it, in a file of the same name and `.sha256`. */
   checksumUrl: string;
   /** The name of the folder the Zed extension installs this release into, inside its work folder. */
-  folder: string };
+  folder: string;
+  /** The SHA-256 JetBrains' extension states for the archive. It has to be the one published beside the archive. */
+  sha256?: string };
 
 /** kotlin_lsp.rs `is_jetbrains_url`: an address the extension would download from. */
 function jetbrainsUrl(value: string): boolean {
@@ -50,10 +62,8 @@ function jetbrainsUrl(value: string): boolean {
  * (serverBundleDownload.ts `readServerBundleMetadata`, "bad version"). */
 export function kotlinRelease(releasesMarkdown: string, platform: NodeJS.Platform, arch: string): KotlinRelease | undefined {
   const lines = releasesMarkdown.split(/\r?\n/), heading = lines.findIndex(line => line.startsWith('### v'));
-  const version = heading < 0 ? '' : lines[heading].slice('### v'.length).trim();
-  const suffix = arch === 'x64' ? '' : arch === 'arm64' ? '-aarch64' : undefined;
-  const kind = platform === 'win32' ? '.win.zip' : platform === 'darwin' ? '.sit' : platform === 'linux' ? '.tar.gz' : undefined;
-  if (!/^[0-9A-Za-z][0-9A-Za-z._-]*$/.test(version) || suffix === undefined || !kind) return undefined;
+  const version = heading < 0 ? '' : lines[heading].slice('### v'.length).trim(), archive = kotlinArchive(version, platform, arch);
+  if (!archive) return undefined;
   const segment = `/${version}/`;
   let base: string | undefined;
   for (const line of lines.slice(heading + 1)) {
@@ -63,8 +73,83 @@ export function kotlinRelease(releasesMarkdown: string, platform: NodeJS.Platfor
       if (at >= 0 && jetbrainsUrl(url)) { base = url.slice(0, at + segment.length - 1); break; }
     }
   }
-  const url = `${base ?? `https://download.jetbrains.com/language-server/kotlin-server/${version}`}/kotlin-server-${version}${suffix}${kind}`;
+  const url = `${base ?? `https://download.jetbrains.com/language-server/kotlin-server/${version}`}/${archive}`;
   return { version, url, checksumUrl: `${url}.sha256`, folder: `kotlin-lsp-${version}` };
+}
+/** kotlin_lsp.rs `download_from_teamcity`: the name of the archive of a version for a platform.
+ * None for a version that could not be a folder name, or a platform JetBrains builds none for. */
+export function kotlinArchive(version: string, platform: NodeJS.Platform, arch: string): string | undefined {
+  const suffix = arch === 'x64' ? '' : arch === 'arm64' ? '-aarch64' : undefined;
+  const kind = platform === 'win32' ? '.win.zip' : platform === 'darwin' ? '.sit' : platform === 'linux' ? '.tar.gz' : undefined;
+  return /^[0-9A-Za-z][0-9A-Za-z._-]*$/.test(version) && suffix !== undefined && kind ? `kotlin-server-${version}${suffix}${kind}` : undefined;
+}
+
+/** RELEASES.md is written by hand and has stayed behind the builds JetBrains publishes. On
+ * 2026-11-27 its newest entry was 271.2085.0, a build that had reached its end date and ended
+ * at every start ("This build of kotlin-server has expired"), while 271.3588.0 lay on the same
+ * server (Kotlin/kotlin-lsp issue 302 reports the same for the entry before it).
+ *
+ * JetBrains' own VS Code extension names the build it runs in a file of its package
+ * (serverBundleDownload.ts `SERVER_BUNDLE_METADATA_FILE`, `readServerBundleMetadata`), and
+ * RELEASES.md says where that extension is published for editors other than VS Code: the Open
+ * VSX registry. `<target>/latest` answers with the newest version for a platform and the
+ * address of its package, which is a zip of about 1.5 MB.
+ *
+ * Only the number of the build is taken from there. The archive has to be the one the Zed
+ * extension's rule names, on JetBrains' server, and its checksum is read from that server as
+ * for a listed build, so the registry cannot make Setdown start anything but a JetBrains build. */
+export const kotlinExtensionUrl = 'https://open-vsx.org/api/JetBrains/kotlin-server';
+export const kotlinBundleFile = 'extension/server-bundle.json';
+/** The registry's name for a platform, as VS Code names it. */
+export function kotlinExtensionTarget(platform: NodeJS.Platform, arch: string): string | undefined {
+  return (platform === 'linux' || platform === 'darwin' || platform === 'win32') && (arch === 'x64' || arch === 'arm64') ? `${platform}-${arch}` : undefined;
+}
+/** serverBundleDownload.ts `readServerBundleMetadata`, for the content of `server-bundle.json`:
+ * the release it names, when that is this platform's archive on JetBrains' server. */
+export function kotlinBundleRelease(bundle: unknown, platform: NodeJS.Platform, arch: string): KotlinRelease | undefined {
+  const { url, version, sha256 } = (bundle && typeof bundle === 'object' ? bundle : {}) as Record<string, unknown>;
+  if (typeof url !== 'string' || typeof version !== 'string') return undefined;
+  if (sha256 !== undefined && (typeof sha256 !== 'string' || !/^[0-9a-fA-F]{64}$/.test(sha256))) return undefined;
+  const archive = kotlinArchive(version, platform, arch);
+  let named = '';
+  try { named = path.posix.basename(new URL(url).pathname); } catch { return undefined; }
+  if (!archive || named !== archive || !jetbrainsUrl(url)) return undefined;
+  return { version, url, checksumUrl: `${url}.sha256`, folder: `kotlin-lsp-${version}`, ...(typeof sha256 === 'string' ? { sha256: sha256.toLowerCase() } : {}) };
+}
+/** Build numbers compare part by part as numbers: 271.3588.0 is newer than 271.2085.0 and than 263.7084.0. */
+export function compareKotlinBuilds(a: string, b: string): number {
+  const parts = (version: string) => version.split(/[._-]/), left = parts(a), right = parts(b);
+  for (let index = 0; index < Math.max(left.length, right.length); index++) {
+    const x = left[index] ?? '0', y = right[index] ?? '0';
+    const order = /^\d+$/.test(x) && /^\d+$/.test(y) ? Number(x) - Number(y) : x.localeCompare(y);
+    if (order) return order;
+  }
+  return 0;
+}
+/** One file out of a zip that is held in memory: the end record, the directory, the file's
+ * bytes. Sizes are read from the directory, because a package writes them after the data. */
+export function zipEntry(zip: Buffer, name: string, limit = 1024 * 1024): Buffer | undefined {
+  try {
+    // The end record is the last one; a comment of up to 65535 bytes may follow it.
+    let end = -1;
+    for (let at = zip.length - 22; at >= Math.max(0, zip.length - 22 - 0xffff); at--) if (zip.readUInt32LE(at) === 0x06054b50) { end = at; break; }
+    if (end < 0) return undefined;
+    let at = zip.readUInt32LE(end + 16);
+    for (let index = zip.readUInt16LE(end + 10); index > 0; index--) {
+      if (zip.readUInt32LE(at) !== 0x02014b50) return undefined;
+      const method = zip.readUInt16LE(at + 10), packed = zip.readUInt32LE(at + 20), size = zip.readUInt32LE(at + 24);
+      const nameLength = zip.readUInt16LE(at + 28), local = zip.readUInt32LE(at + 42);
+      if (zip.toString('utf8', at + 46, at + 46 + nameLength) === name) {
+        if (size > limit || zip.readUInt32LE(local) !== 0x04034b50) return undefined;
+        const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28), data = zip.subarray(start, start + packed);
+        if (data.length !== packed) return undefined;
+        const content = method === 0 ? data : method === 8 ? inflateRawSync(data, { maxOutputLength: limit }) : undefined;
+        return content && content.length === size ? Buffer.from(content) : undefined;
+      }
+      at += 46 + nameLength + zip.readUInt16LE(at + 30) + zip.readUInt16LE(at + 32);
+    }
+  } catch { /* Not a zip this reads: the answer is that the file is not in it. */ }
+  return undefined;
 }
 
 /** kotlin_lsp.rs `download_from_teamcity`: the program the extension starts, given the folder
@@ -111,6 +196,50 @@ async function text(fetcher: typeof fetch, url: string, limit: number, signal?: 
     throwIfAborted(signal);
     throw late.aborted ? new Error(`Timed out downloading ${url}: no response received`) : error;
   }
+}
+
+/** A file that is held in memory: the package of the extension. More than `most` bytes is not one. */
+async function bytes(fetcher: typeof fetch, url: string, limit: number, most: number, signal?: AbortSignal): Promise<Buffer> {
+  throwIfAborted(signal);
+  const late = AbortSignal.timeout(limit), either = signal ? AbortSignal.any([signal, late]) : late;
+  try {
+    const response = await halting(fetcher(url, { signal: either }), either);
+    if (!response.ok) throw new Error(`Failed to download ${url}: HTTP ${response.status}`);
+    if (Number(response.headers.get('content-length') ?? 0) > most) throw new Error(`Failed to download ${url}: larger than ${most} bytes`);
+    const content = Buffer.from(await halting(response.arrayBuffer(), either));
+    if (content.length > most) throw new Error(`Failed to download ${url}: larger than ${most} bytes`);
+    return content;
+  } catch (error) {
+    throwIfAborted(signal);
+    throw late.aborted ? new Error(`Timed out downloading ${url}: no response received`) : error;
+  }
+}
+/** An address of the registry the extension is published in. */
+function registryUrl(value: string): boolean {
+  try { const url = new URL(value); return url.protocol === 'https:' && (url.hostname === 'open-vsx.org' || url.hostname.endsWith('.open-vsx.org')); }
+  catch { return false; }
+}
+/** The build the newest "Kotlin by JetBrains" extension runs (see `kotlinExtensionUrl`). The
+ * package is downloaded once for each version of the extension: what it named is kept in
+ * `server-downloads/extension.json` beside the downloads, and the next run asks only which
+ * version is the newest. */
+async function extensionRelease(fetcher: typeof fetch, work: string, platform: NodeJS.Platform, arch: string, limit: number, signal?: AbortSignal): Promise<KotlinRelease | undefined> {
+  const target = kotlinExtensionTarget(platform, arch);
+  if (!target) return undefined;
+  const latest = JSON.parse(await text(fetcher, `${kotlinExtensionUrl}/${target}/latest`, limit, signal)) as { version?: unknown; files?: { download?: unknown } } | null;
+  const extension = typeof latest?.version === 'string' ? latest.version : '', download = typeof latest?.files?.download === 'string' ? latest.files.download : '';
+  if (!extension || !registryUrl(download)) throw new Error(`The registry named no package of the Kotlin extension for ${target}`);
+  const memory = path.join(work, 'server-downloads', 'extension.json');
+  const kept = await readFile(memory, 'utf8').then(saved => JSON.parse(saved) as { target?: unknown; extension?: unknown; bundle?: unknown }, () => undefined);
+  const remembered = kept?.target === target && kept.extension === extension ? kotlinBundleRelease(kept.bundle, platform, arch) : undefined;
+  if (remembered) return remembered;
+  const file = zipEntry(await bytes(fetcher, download, limit, 32 * 1024 * 1024, signal), kotlinBundleFile);
+  if (!file) throw new Error(`The Kotlin extension ${extension} holds no ${kotlinBundleFile}`);
+  const bundle: unknown = JSON.parse(file.toString('utf8')), release = kotlinBundleRelease(bundle, platform, arch);
+  if (!release) throw new Error(`The Kotlin extension ${extension} names no server archive of JetBrains for ${target}`);
+  await mkdir(path.dirname(memory), { recursive: true });
+  await writeFile(memory, JSON.stringify({ target, extension, bundle })).catch(() => {});
+  return release;
 }
 
 /** serverBundleDownload.ts `downloadFile`, one request of it: the bytes go to `destination`,
@@ -264,6 +393,8 @@ async function install(release: KotlinRelease, work: string, platform: NodeJS.Pl
   // Before the archive, so that a release without a checksum costs no download.
   const published = /^[0-9a-f]{64}(?=\s|$)/i.exec((await text(fetcher, release.checksumUrl, options.idle ?? kotlinDownloadLimits.idle, signal)).trim())?.[0].toLowerCase();
   if (!published) throw new Error(`No SHA-256 checksum was found at ${release.checksumUrl}, so the language server was not downloaded`);
+  // Two statements about one archive, of JetBrains' server and of JetBrains' extension, have to agree.
+  if (release.sha256 && release.sha256 !== published) throw new Error(`The SHA-256 at ${release.checksumUrl} is not the one the Kotlin extension names for this archive, so the language server was not downloaded`);
   await mkdir(downloads, { recursive: true });
   const temporary = await mkdtemp(path.join(downloads, 'server-download-')), unpacked = path.join(temporary, 'server');
   try {
@@ -284,26 +415,67 @@ async function install(release: KotlinRelease, work: string, platform: NodeJS.Pl
   } finally { await rm(temporary, { recursive: true, force: true }); }
 }
 
-/** serverBundleDownload.ts `ensureServerLauncher`, for the folder of the Zed extension. The
- * release list is read first, as the extension reads it, because the newest version names the
- * folder. When that folder holds the program the extension starts, nothing more is done.
- * Otherwise the archive is downloaded, verified and unpacked into that folder, by one caller
- * at a time. Rejects, and leaves the extension's folder as it was, when the release list or
- * the checksum cannot be read, the checksum does not match (`KotlinChecksumError`), or
- * `signal` fires (an error named `AbortError`). */
-export async function ensureKotlinServer(options: KotlinServerOptions): Promise<{ folder: string; version: string; downloaded: boolean }> {
+/** What is started: the folder of a release in the extension's work folder, and the program in it. */
+export type KotlinServer = { folder: string; version: string; program: string; downloaded: boolean };
+
+/** The servers that are in the work folder with their program, the newest build first. */
+export async function installedKotlinServers(work: string, platform: NodeJS.Platform = process.platform): Promise<Omit<KotlinServer, 'downloaded'>[]> {
+  const found: Omit<KotlinServer, 'downloaded'>[] = [];
+  for (const entry of await readdir(work, { withFileTypes: true }).catch(() => [])) {
+    const version = entry.isDirectory() && entry.name.startsWith('kotlin-lsp-') ? entry.name.slice('kotlin-lsp-'.length) : '';
+    const folder = path.join(work, entry.name), program = version ? kotlinLauncher(folder, version, platform) : '';
+    if (program && existsSync(program)) found.push({ folder, version, program });
+  }
+  return found.sort((a, b) => compareKotlinBuilds(b.version, a.version));
+}
+
+/** serverBundleDownload.ts `ensureServerLauncher`, for the folder of the Zed extension. Which
+ * build is the newest is asked first, of the release list as the extension reads it and of
+ * JetBrains' own extension (`kotlinExtensionUrl`), because the newest version names the folder.
+ * One place that does not answer is no obstacle while the other does. When the folder of the
+ * newest build holds the program, nothing more is done. Otherwise its archive is downloaded,
+ * verified and unpacked into that folder, by one caller at a time; a build that cannot be put
+ * in place gives way to the next older one that was named.
+ *
+ * When neither place answers, the newest server that is already in the work folder is used:
+ * a computer without a network keeps the Kotlin support it had.
+ *
+ * Rejects, and leaves the extension's folder as it was, when no build could be named and none
+ * is installed, a checksum cannot be read or does not match (`KotlinChecksumError`) for every
+ * build named, or `signal` fires (an error named `AbortError`). */
+export async function ensureKotlinServer(options: KotlinServerOptions): Promise<KotlinServer> {
   const { signal, platform = process.platform, arch = process.arch } = options, fetcher = options.fetch ?? fetch, work = path.resolve(options.work);
-  const release = kotlinRelease(await text(fetcher, kotlinReleasesUrl, options.idle ?? kotlinDownloadLimits.idle, signal), platform, arch);
-  if (!release) throw new Error(`No Kotlin language server for ${platform} ${arch} was found in ${kotlinReleasesUrl}`);
-  const folder = path.join(work, release.folder), launcher = kotlinLauncher(folder, release.version, platform), installed = () => existsSync(launcher);
-  let downloaded = false;
-  if (!installed()) await withInstallLock(path.join(work, 'server-downloads', `${release.version}.lock`), installed, signal, async () => {
-    if (installed()) return;
-    await install(release, work, platform, fetcher, options);
-    downloaded = true;
-  });
-  if (!installed()) throw new Error(`Downloaded language server is missing launcher: ${launcher}`);
-  return { folder, version: release.version, downloaded };
+  const limit = options.idle ?? kotlinDownloadLimits.idle;
+  const [listed, bundled] = await Promise.allSettled([
+    text(fetcher, kotlinReleasesUrl, limit, signal).then(markdown => kotlinRelease(markdown, platform, arch)),
+    extensionRelease(fetcher, work, platform, arch, Math.min(limit, kotlinSourceLimits.extension), signal)]);
+  throwIfAborted(signal);
+  const named = [listed, bundled].flatMap(found => found.status === 'fulfilled' && found.value ? [found.value] : []);
+  const releases = named.filter((release, index) => named.findIndex(other => other.version === release.version) === index).sort((a, b) => compareKotlinBuilds(b.version, a.version));
+  if (!releases.length) {
+    const [present] = await installedKotlinServers(work, platform);
+    if (present) return { ...present, downloaded: false };
+    if (listed.status === 'rejected') throw listed.reason;
+    throw new Error(`No Kotlin language server for ${platform} ${arch} was found in ${kotlinReleasesUrl}`);
+  }
+  let failure: unknown;
+  for (const release of releases) {
+    const folder = path.join(work, release.folder), launcher = kotlinLauncher(folder, release.version, platform), installed = () => existsSync(launcher);
+    try {
+      let downloaded = false;
+      if (!installed()) await withInstallLock(path.join(work, 'server-downloads', `${release.version}.lock`), installed, signal, async () => {
+        if (installed()) return;
+        await install(release, work, platform, fetcher, options);
+        downloaded = true;
+      });
+      if (!installed()) throw new Error(`Downloaded language server is missing launcher: ${launcher}`);
+      return { folder, version: release.version, program: launcher, downloaded };
+    } catch (error) {
+      throwIfAborted(signal);
+      failure ??= error;
+    }
+  }
+  throw failure;
 }
 
 /** util.rs `remove_outdated_versions`: the folders of other releases, which the extension
@@ -322,13 +494,15 @@ export async function removeOutdatedKotlinServers(work: string, keep: string): P
 }
 
 type KotlinProgress = NonNullable<KotlinServerOptions['progress']>;
-const runs = new Map<string, { found: ReturnType<typeof ensureKotlinServer>; listeners: Set<KotlinProgress> }>(), used = new Set<string>();
+const runs = new Map<string, { found: ReturnType<typeof ensureKotlinServer>; listeners: Set<KotlinProgress>; at: number }>(), used = new Set<string>();
 
-/** `ensureKotlinServer`, asked once in each run of the application for one work folder, as the
- * Zed extension reads the release list once and keeps what it found (kotlin_lsp.rs
- * `cached_binary_path`). Every caller hears the progress of the one download. A check that
- * failed is made again by the next caller, and `forgetKotlinServer` asks for a new one after
- * the extension could not start the server.
+/** `ensureKotlinServer`, asked once for one work folder and then kept for `recheck`, as the Zed
+ * extension reads the release list once and keeps what it found (kotlin_lsp.rs
+ * `cached_binary_path`). The extension keeps it until Zed ends; an application that stays open
+ * for days would not hear of a newer build, so the answer is asked for again after half an
+ * hour. Every caller hears the progress of the one download. A check that failed is made again
+ * by the next caller, and `forgetKotlinServer` asks for a new one after the server could not
+ * be started.
  *
  * util.rs `remove_outdated_versions` is applied here and only by the first check of a run:
  * no server of this run has been started from an older folder then, and one application at a
@@ -337,6 +511,7 @@ const runs = new Map<string, { found: ReturnType<typeof ensureKotlinServer>; lis
 export function kotlinServerForRun(options: KotlinServerOptions): ReturnType<typeof ensureKotlinServer> {
   const work = path.resolve(options.work);
   let run = runs.get(work);
+  if (run && Date.now() - run.at > kotlinSourceLimits.recheck) { runs.delete(work); run = undefined; }
   if (!run) {
     const first = !used.has(work), listeners = new Set<KotlinProgress>();
     used.add(work);
@@ -344,7 +519,7 @@ export function kotlinServerForRun(options: KotlinServerOptions): ReturnType<typ
       if (first) await removeOutdatedKotlinServers(work, path.basename(server.folder)).catch(() => {});
       return server;
     });
-    const started = run = { found, listeners };
+    const started = run = { found, listeners, at: Date.now() };
     runs.set(work, started);
     found.catch(() => { if (runs.get(work) === started) runs.delete(work); });
   }

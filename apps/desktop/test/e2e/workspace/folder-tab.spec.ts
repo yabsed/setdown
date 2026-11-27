@@ -621,19 +621,10 @@ test('the file manager searches subfolders, shows a grid, properties and stays u
     await properties.getByRole('button', { name: 'Close' }).click();
     await expect(properties).toHaveCount(0);
 
-    // The Files side view manages file-manager tabs like terminal sessions.
+    // A narrow pane turns Places into a drawer and still shows file names. The side panel is open beside it.
     await page.getByRole('button', { name: 'Toggle Folder Tools', exact: true }).click();
-    await page.getByRole('button', { name: 'Files', exact: true }).click();
-    const sessions = page.getByRole('region', { name: 'File manager tabs' });
-    await expect(sessions.locator('.session')).toHaveCount(1);
-    await sessions.getByRole('button', { name: 'New file manager tab' }).click();
-    await expect(sessions.locator('.session')).toHaveCount(2);
-    await sessions.locator('.session').first().locator('.select').click();
-    await expect(page.locator('.folder-content:not(.inactive) .folder-crumbs [aria-current="location"]')).toHaveText('Projects');
-    await sessions.locator('.session').nth(1).getByRole('button', { name: /Close file manager/ }).click();
-    await expect(sessions.locator('.session')).toHaveCount(1);
-
-    // A narrow pane turns Places into a drawer and still shows file names.
+    await page.getByRole('button', { name: 'Explorer', exact: true }).click();
+    await expect(page.locator('.project-sidebar')).not.toHaveClass(/is-collapsed/);
     await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.setMinimumSize(300, 300); window.setContentSize(720, 620); });
     const surface = page.locator('.folder-content:not(.inactive) .folder-surface');
     await expect(surface).toHaveClass(/narrow/);

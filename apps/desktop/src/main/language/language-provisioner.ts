@@ -15,7 +15,8 @@ import type { LanguageCatalogEntry } from '../../protocol/language';
 
 import { mergeLanguageSettings } from './language-settings';
 import { isKotlinServer, packageFolder } from './extension-rules';
-import { forgetKotlinServer, kotlinServerForRun } from './kotlin-download';
+import { forgetKotlinServer, installedKotlinServers, kotlinServerForRun } from './kotlin-download';
+import { programOnPath, SetAsidePrograms, type SetAside } from './program-health';
 import { foundPythons, type FoundPython } from './python-toolchains';
 import { usable, type Contribution } from './tool-contributions';
 import { installedPackageFolder, pinnedNpmPackage, projectHasPackage, projectPackageTools } from './project-package-tools';
@@ -39,10 +40,30 @@ export class LanguageProvisioner {
   private inventory?: Promise<{ servers: string[]; languages: string[] }>;
   private loading: Promise<unknown> = Promise.resolve();
   private readonly environments = new Map<string, Promise<NodeJS.ProcessEnv>>();
+  private readonly aside: SetAsidePrograms;
   constructor(private readonly directory: string, executable: string, private readonly download: typeof fetch = fetch, private readonly catalog?: RuntimeLanguageCatalog) {
+    this.aside = new SetAsidePrograms(path.join(directory, 'programs-set-aside.json'));
     this.host = new ZedLanguageHost(directory, executable);
     this.offlineHost = new ZedLanguageHost(directory, executable, { ...process.env, SETDOWN_LANGUAGE_HOST_OFFLINE: '1' });
     this.packages = new LanguagePackageStore(path.join(directory, 'extensions'), download);
+  }
+  /** True for a program in Setdown's own folder of tools: a copy Setdown put there. */
+  manages(program: string): boolean {
+    const relative = path.relative(this.directory, program);
+    return relative !== '' && !relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative);
+  }
+  /** A program of this computer that cannot run is passed by from the next start on, and
+   * Setdown's own copy of the tool is used (`program-health.ts`). False when nothing changed:
+   * the program is Setdown's own, is gone, or was set aside before. */
+  setAside(program: string, reason: { detail?: string; lasting: boolean }): Promise<boolean> {
+    return this.manages(program) ? Promise.resolve(false) : this.aside.add(program, reason);
+  }
+  setAsideProgram(program: string): Promise<SetAside | undefined> { return this.aside.find(program); }
+  /** The person asked for another try: every program found on this computer is started again,
+   * and the newest build of JetBrains' Kotlin server is looked up again instead of remembered. */
+  tryProgramsAgain(): Promise<void> {
+    forgetKotlinServer(path.join(this.directory, 'extensions', 'work', this.catalog?.binding('kotlin-lsp')?.extension ?? 'kotlin'));
+    return this.aside.clear();
   }
   private hostInventory() {
     return this.inventory ??= this.host.request<{ servers: string[]; languages: string[] }>('inventory').catch(error => { this.inventory = undefined; throw error; });
@@ -148,7 +169,9 @@ export class LanguageProvisioner {
     if(paths.some(managed)) {
       const files=(await Promise.all(paths.map(async file=>{try{const info=await stat(file);return info.isFile()?{path:file,size:info.size,mtime:info.mtimeMs}:undefined;}catch{return undefined;}}))).filter((value):value is {path:string;size:number;mtime:number}=>!!value);
       const overrides=Object.fromEntries(Object.entries(prepared.env??{}).filter(([key,value])=>value!==env[key]&&!['NODE_OPTIONS','NODE_PATH','ELECTRON_RUN_AS_NODE'].includes(key)));
-      await mkdir(path.dirname(receipt),{recursive:true});await writeFile(receipt,JSON.stringify({version:1,prepared:{...prepared,env:overrides},files}),{mode:0o600});
+      // What was passed by this time is not part of the command: a receipt is read when the tool cannot be asked.
+      const { instead: _instead, ...command } = prepared;
+      await mkdir(path.dirname(receipt),{recursive:true});await writeFile(receipt,JSON.stringify({version:1,prepared:{...command,env:overrides},files}),{mode:0o600});
       await this.recordInstallation(definition.id, prepared.executable, files);
     }
     return prepared;
@@ -160,6 +183,35 @@ export class LanguageProvisioner {
     const binding = this.binding(definition);
     const downloads = options.automaticInstall !== false;
     const disabled = () => new AutomaticDownloadsDisabled(`${definition.name} has no usable external executable or prepared project cache. Automatic downloads are disabled. Choose an executable or enable downloads in Language Support.`);
+    // JetBrains' Kotlin server is started as its Zed extension starts it, by rules carried over from
+    // zed-extensions/kotlin 0.3.5 (the version the catalog installs):
+    //   src/language_servers/kotlin_lsp.rs `language_server_binary_path`: a `kotlin-lsp` on PATH is used before any download;
+    //   src/kotlin.rs `language_server_command`: the program with `--stdio`, no environment;
+    //   `language_server_workspace_configuration`: the tool's settings under "kotlin"; no options at startup.
+    // The extension itself is not asked, for two reasons. Its own download reads no checksum and
+    // takes the build GitHub's release list names, which lags behind the builds JetBrains
+    // publishes; Setdown finds the newest build, verifies it and puts it in the extension's
+    // folder (`kotlin-download.ts`). And it starts a `kotlin-lsp` on PATH whatever its state: an
+    // old build there ends at once with "This build of kotlin-server has expired", at every
+    // start. Such a program is set aside (`program-health.ts`) and Setdown's copy is started.
+    // A failure of the download is the person's to read: nothing unverified is started. Without
+    // download permission the newest server that is already here is used, and the network is
+    // not asked. The extension's package is not needed for any of it, so it is not loaded first.
+    if (binding && isKotlinServer(definition)) {
+      const start = (program: string, instead?: PreparedLanguageServer['instead']): PreparedLanguageServer => ({ executable: program, args: ['--stdio', ...(options.args ?? [])], env: {},
+        languageId: binding.languageIds?.[languageId as keyof typeof binding.languageIds] ?? 'kotlin',
+        settings: mergeLanguageSettings({ kotlin: options.settings ?? definition.settings }, definition.settings, options.settings),
+        initializationOptions: mergeLanguageSettings({}, definition.initializationOptions, options.initializationOptions), ...(instead ? { instead } : {}) });
+      const local = await programOnPath('kotlin-lsp', env, root), aside = local ? await this.aside.find(local) : undefined;
+      if (local && !aside) return start(local);
+      const work = path.join(this.directory, 'extensions', 'work', binding.extension);
+      const found = downloads ? await kotlinServerForRun({ work, fetch: this.download,
+        progress: (received, total) => progress?.(`Downloading ${definition.name}… ${total ? `${Math.floor(received / total * 100)}%` : `${Math.round(received / 1e6)} MB`}`) })
+        : (await installedKotlinServers(work))[0];
+      // Downloads are off and no copy is here: the program of this computer is all there is, and its own words say why it does not run.
+      if (!found) { if (local) return start(local); throw disabled(); }
+      return start(found.program, local ? { program: local, ...(aside?.detail ? { detail: aside.detail } : {}) } : undefined);
+    }
     if (!server && binding) {
       // WASI extensions own their installation logic and may invoke package
       // managers. Without download permission only a validated receipt is used.
@@ -174,12 +226,6 @@ export class LanguageProvisioner {
       this.loading = load; await load; server = binding.server;
     }
     const language = this.catalog?.definition(languageId)??languageDefinition(languageId);
-    // The Zed Kotlin extension downloads JetBrains' server without reading its checksum. Setdown
-    // puts a verified one where the extension looks first (`kotlin-download.ts`); the host
-    // refuses the extension's own download. A failure is the person's to read: nothing unverified is started.
-    const kotlin = server && binding && downloads && isKotlinServer(definition) ? path.join(this.directory, 'extensions', 'work', binding.extension) : undefined;
-    if (kotlin) await kotlinServerForRun({ work: kotlin, fetch: this.download,
-      progress: (received, total) => progress?.(`Downloading ${definition.name}… ${total ? `${Math.floor(received / total * 100)}%` : `${Math.round(received / 1e6)} MB`}`) });
     // An extension that starts its tool out of the project's packages and installs none is given
     // Setdown's copy where the project has none (`project-package-tools.ts`).
     const supplied = server && binding && downloads ? await this.suppliedPackage(server, root, options.initializationOptions ?? definition.initializationOptions, progress) : {};
@@ -187,13 +233,22 @@ export class LanguageProvisioner {
       const name = binding?.languages[languageId as keyof typeof binding.languages]
         ?? inventory.languages.find(name => [language?.zedName,language?.name,language?.grammar,language?.label,languageId].some(candidate=>candidate?.toLowerCase()===name.toLowerCase()))
         ?? language?.zedName ?? language?.label ?? languageId;
-      const prepared = await (downloads ? this.host : this.offlineHost).prepare({server,language:name,root,allowBinaryDownload:downloads,env:Object.fromEntries(Object.entries(env).filter((e): e is [string,string] => typeof e[1] === 'string')),
-        settings:{[server]:{settings:options.settings??definition.settings,initialization_options:{...(options.initializationOptions??definition.initializationOptions),...supplied}}}},progress).catch(error => {
+      const request = {server,language:name,root,allowBinaryDownload:downloads,env:Object.fromEntries(Object.entries(env).filter((e): e is [string,string] => typeof e[1] === 'string')),
+        settings:{[server]:{settings:options.settings??definition.settings,initialization_options:{...(options.initializationOptions??definition.initializationOptions),...supplied}}}};
+      let prepared = await (downloads ? this.host : this.offlineHost).prepare(request,progress).catch(error => {
           if (!downloads && /downloading language servers disabled/i.test(String(error))) throw disabled();
-          // The extension may have read a newer release list than Setdown did; the next start reads it again.
-          if (kotlin) forgetKotlinServer(kotlin);
           throw error;
         });
+      // Zed's adapters start a program of this computer before they download their own
+      // (`LspAdapter::check_if_user_installed`). One that was found unable to run is passed by:
+      // the adapter is asked again without it and prepares the next program of that name or its
+      // own copy. Where it has no other, the program is started and its failure is shown.
+      const aside = this.manages(prepared.executable) ? undefined : await this.aside.find(prepared.executable);
+      if (aside) {
+        const local = prepared.executable;
+        const other = await (downloads ? this.host : this.offlineHost).prepare({ ...request, skipPrograms: [local] }, progress).catch(() => undefined);
+        if (other && other.executable !== local && !await this.aside.find(other.executable)) prepared = { ...other, instead: { program: local, ...(aside.detail ? { detail: aside.detail } : {}) } };
+      }
       // Adapter arguments can contain the server script or transport switches.
       // Keep that launch command intact and append only explicit user options.
       return { ...prepared, args: [...prepared.args, ...(options.args ?? [])], languageId:binding?.languageIds?.[languageId]??prepared.languageId,settings:mergeLanguageSettings(prepared.settings,definition.settings,options.settings),

@@ -121,3 +121,63 @@ test('merged branches retain both parents and review uses the first-parent chang
   expect(diff.modifiedText).toBe('# Feature\n');
   await expect(service.request(state, { id: 'oversized', root, method: 'history', params: { limit: 10000 } })).rejects.toThrow('Invalid history query');
 });
+
+test('a commit file the strict decoder refuses is still compared, with a note of how it was read', async () => {
+  // LaTeX sources arrive from co-authors in Latin-1 and with Windows line endings mixed in.
+  await writeFile(path.join(root, 'legacy.tex'), Buffer.from('caf\xe9 au lait\n', 'latin1'));
+  await writeFile(path.join(root, 'mixed.tex'), 'one\r\ntwo\nthree\n');
+  await writeFile(path.join(root, 'wide.txt'), Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('wide text\n', 'utf16le')]));
+  await writeFile(path.join(root, 'plain.tex'), 'plain\n');
+  const first = await commit('first');
+  await writeFile(path.join(root, 'legacy.tex'), Buffer.from('caf\xe9 cr\xe8me\n', 'latin1'));
+  await writeFile(path.join(root, 'mixed.tex'), 'one\r\ntwo\nfour\n');
+  await writeFile(path.join(root, 'wide.txt'), Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('wider text\n', 'utf16le')]));
+  await writeFile(path.join(root, 'plain.tex'), 'plainer\n');
+  const second = await commit('second');
+  const legacy = await service.diff(state, { root, head: second, path: 'legacy.tex' });
+  expect(legacy.originalText).toBe('caf� au lait\n');
+  expect(legacy.modifiedText).toBe('caf� cr�me\n');
+  expect(legacy.sides).toEqual({ original: { size: 13, reason: 'encoding' }, modified: { size: 11, reason: 'encoding' } });
+  expect(legacy.hunks.length).toBe(1);
+  expect(legacy.originalLabel).toBe(first.slice(0, 8));
+  const mixed = await service.diff(state, { root, head: second, path: 'mixed.tex' });
+  expect(mixed.modifiedText).toBe('one\r\ntwo\nfour\n');
+  expect(mixed.sides?.modified).toEqual({ size: 14, reason: 'line-endings' });
+  const wide = await service.diff(state, { root, head: second, path: 'wide.txt' });
+  expect(wide.modifiedText).toBe('wider text\n');
+  expect(wide.sides?.modified).toMatchObject({ reason: 'encoding', detail: 'UTF-16' });
+  const plain = await service.diff(state, { root, head: second, path: 'plain.tex' });
+  expect(plain.sides).toEqual({ original: { size: 6 }, modified: { size: 8 } });
+});
+
+test('PDF and Office files of a commit carry both versions for their reader; other binaries carry sizes and the reason', async () => {
+  await writeFile(path.join(root, 'main.pdf'), Buffer.from('%PDF-1.4\nfirst\n'));
+  await writeFile(path.join(root, 'data.sqlite'), Buffer.from([1, 0, 2, 0, 3]));
+  await writeFile(path.join(root, 'blob.txt'), Buffer.from([65, 0, 66]));
+  const first = await commit('first');
+  await writeFile(path.join(root, 'main.pdf'), Buffer.from('%PDF-1.4\nsecond version\n'));
+  await writeFile(path.join(root, 'data.sqlite'), Buffer.from([1, 0, 2, 0, 3, 4, 5]));
+  await writeFile(path.join(root, 'blob.txt'), Buffer.from([65, 0, 66, 67]));
+  await writeFile(path.join(root, 'slides.pptx'), Buffer.from('PK added'));
+  const second = await commit('second');
+  const pdf = await service.diff(state, { root, head: second, path: 'main.pdf' });
+  expect(pdf.documents?.kind).toBe('pdf');
+  expect(Buffer.from((pdf.documents!.original as { bytes: Uint8Array }).bytes).toString()).toBe('%PDF-1.4\nfirst\n');
+  expect(Buffer.from((pdf.documents!.modified as { bytes: Uint8Array }).bytes).toString()).toBe('%PDF-1.4\nsecond version\n');
+  expect(pdf).toMatchObject({ readOnly: true, originalText: null, modifiedText: null, originalLabel: first.slice(0, 8),
+    sides: { original: { size: 15 }, modified: { size: 24 } } });
+  // The working file is never read in place of a commit's version.
+  await writeFile(path.join(root, 'main.pdf'), Buffer.from('%PDF-1.4\nworking\n'));
+  const again = await service.diff(state, { root, head: second, path: 'main.pdf' });
+  expect(Buffer.from((again.documents!.modified as { bytes: Uint8Array }).bytes).toString()).toBe('%PDF-1.4\nsecond version\n');
+  const added = await service.diff(state, { root, head: second, path: 'slides.pptx' });
+  expect(added.documents).toMatchObject({ kind: 'office', original: null });
+  expect(added.sides).toEqual({ original: { missing: true }, modified: { size: 8 } });
+  for (const file of ['data.sqlite', 'blob.txt']) {
+    const binary = await service.diff(state, { root, head: second, path: file });
+    expect(binary).toMatchObject({ originalText: null, modifiedText: null, hunks: [] });
+    expect(binary.documents).toBeUndefined();
+    expect(binary.sides?.original.reason).toBe('binary');
+    expect(binary.sides?.modified.size).toBe(file === 'blob.txt' ? 4 : 7);
+  }
+});

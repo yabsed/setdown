@@ -12,13 +12,14 @@ import type { LanguageServerDefinition } from '../../core/document/language-defi
 import { canonicalPath, isInside } from '../documents/file-system';
 import type { WindowState } from '../windows/window-state';
 import { fileOperationMethod, filteredFileOperation, type LanguageFileOperation } from './file-operations';
-import { failureLine, runtimeIssue } from './language-issue';
+import { failureLine, outdatedIssue, runtimeIssue } from './language-issue';
 import { answersRequest, autoInsertion, isClangd, isGopls, isJsonServer, isKotlinServer, isSvelteServer, jsonLanguageStatus, schemaLines, setting, svelteScriptChanged, svelteScriptLanguages, toolFamily } from './extension-rules';
 import { isOwnAction, isToolCommand, toolMessage } from '../../protocol/language-tools';
 import { findGoTool, goEnvironment, installGoTool } from './go-tools';
 import { withoutDuplicates } from './go-check';
 import { chooseGoVersion, goLintOnSave, goProjectEnvironment, lintAfterChange, goTagsCommand, goTestProgram, goVersionList, goplsStartOptions } from './go-project';
-import { forgetKotlinServer, kotlinServerForRun } from './kotlin-download';
+import { forgetKotlinServer, installedKotlinServers, kotlinServerForRun } from './kotlin-download';
+import { programOnPath, setAsideNote } from './program-health';
 import { kotlinInitializationOptions } from './kotlin-options';
 import { schemaContentErrors, schemaDownloadSettings, SchemaContentError, type JsonSchemaContent } from './json-schema-content';
 import { withBuiltinJsonSchemas } from './json-builtin-schema-files';
@@ -75,6 +76,8 @@ export type ProjectLanguagesOptions = {
   writeSettings?(tool: string, resource: string, root: string | undefined, entries: [string, unknown][]): Promise<void>;
   /** The environment tools are looked for in: the person's login shell, where it is known. */
   toolEnvironment?(): NodeJS.ProcessEnv;
+  /** The programs of this computer that were found unable to run (`program-health.ts`). */
+  programs?: { find(program: string): Promise<{ detail?: string } | undefined>; add(program: string, reason: { detail?: string; lasting: boolean }): Promise<boolean> };
 };
 
 /** What the editor is told about a server Zed runs. Zed keeps the server's copy of the text
@@ -109,11 +112,18 @@ function proposedEdits(method: LanguageMethod, result: unknown): (WorkspaceEdit 
 
 /** Options that say nothing are no options: Zed is not told its settings changed. */
 const someOptions = (options: Record<string, unknown>) => Object.keys(options).length ? options : undefined;
-function failureIssue(message: string, offline: boolean): LanguageIssue {
+export function failureIssue(message: string, offline: boolean): LanguageIssue {
   const runtime = runtimeIssue(message); if (runtime) return runtime;
-  if (offline) return { kind: 'downloads-off' };
-  const detail = failureLine(message.split('-- stderr --').at(-1) ?? message);
-  return /download|fetch|http|network|dns|connect|resolve host|certificate/i.test(message) ? { kind: 'download-failed', ...(detail ? { detail } : {}) }
+  // Zed puts what the tool wrote before it ended after this line (lsp_store.rs, "-- stderr --").
+  // Those are the tool's words about itself. The program was on this computer and ran, so
+  // nothing failed to download, whatever addresses and advice it printed: the Kotlin server
+  // ends with "Please download a new build from https://…", and Zed's own sentence for a tool
+  // that ended is "language server disconnected".
+  const at = message.indexOf('-- stderr --'), reason = at < 0 ? message : message.slice(0, at), written = at < 0 ? '' : message.slice(at + '-- stderr --'.length);
+  const outdated = outdatedIssue(written || reason); if (outdated) return outdated;
+  if (offline && !written.trim()) return { kind: 'downloads-off' };
+  const detail = failureLine(written.trim() ? written : reason);
+  return !written.trim() && /\b(?:download\w*|fetch\w*|https?|network|dns|connect(?:ion|ing)?|resolve host|certificate)\b/i.test(reason) ? { kind: 'download-failed', ...(detail ? { detail } : {}) }
     : { kind: 'startup', ...(detail ? { detail } : {}) };
 }
 
@@ -301,6 +311,9 @@ export class ProjectLanguages {
       void host.request('project.diagnostics', { workspace, path: file }).catch(() => {});
       const autoInsert = autoInsertion(tool, registry.options(tool.id, file).settings ?? tool.settings);
       channel.notes = await this.schemas(session, window, current, channel, tool);
+      // A program of this computer that was passed by for Setdown's own copy is named wherever the tool's lines are shown.
+      const passedBy = this.notUsed.get(tool.id);
+      if (passedBy) channel.notes = [...channel.notes, `Not used: ${passedBy}`];
       if (!alive()) throw Error('Language document closed during initialization.');
       const family = toolFamily(tool);
       return { ...(autoInsert ? { autoInsert } : {}), ...(isClangd(tool) ? { companion: true } : {}), ...(family ? { tool: family } : {}),
@@ -310,9 +323,18 @@ export class ProjectLanguages {
       if (!alive()) throw error;
       const message = String(error instanceof Error ? error.message : error);
       channel.state = 'failed'; channel.message = message; channel.issue = failureIssue(message, session.offline);
-      window.failed.add(channel.target.server);
       this.unprepare(channel.target.tool, current.root);
-      const repeats = channel.issue.kind === 'runtime' || channel.issue.kind === 'downloads-off';
+      // The program of this computer said its build no longer runs: it is set aside and the tool
+      // is opened again, now from the copy Setdown verified.
+      if (channel.issue.kind === 'outdated' && await this.setAside(definition, current.root, channel.issue.detail).catch(() => false)) {
+        this.unprepare(channel.target.tool);
+        this.supervisor.reset(this.recoveryKey(window, channel.target.server));
+        this.options.emit(state, { type: 'status', state: 'starting', server: named(), documents: [{ id: channel.id, generation: channel.generation }] });
+        this.rebind(window, current, channel.target.tool);
+        throw Error(message);
+      }
+      window.failed.add(channel.target.server);
+      const repeats = channel.issue.kind === 'runtime' || channel.issue.kind === 'downloads-off' || channel.issue.kind === 'outdated';
       const recovering = repeats ? undefined : this.supervisor.schedule(this.recoveryKey(window, channel.target.server), () => this.rebind(window, current, channel.target.tool));
       channel.message = `${message}\n${recovering ? `Reconnecting (${recovering.attempt}/3)…` : repeats ? 'It will not start until its setup changes.' : 'Automatic recovery paused after repeated failures. Restart this service to try again.'}`;
       this.options.emit(state, { type: 'status', state: 'failed', message: channel.message, issue: channel.issue, server: named(),
@@ -332,9 +354,10 @@ export class ProjectLanguages {
     let prepared = this.prepared.get(key);
     if (!prepared) {
       const started = prepared = (async () => {
-        const program = isGopls(tool) ? await this.gopls(session, tool, folder, report) : undefined;
+        const kotlin = isKotlinServer(tool) ? await this.kotlin(session, tool, folder, report) : undefined;
+        const program = isGopls(tool) ? await this.gopls(session, tool, folder, report) : kotlin?.program;
         // gopls is told the person's `go.*` and `gopls` settings as its extension tells it (`go-gopls-rules.ts`).
-        const options = isKotlinServer(tool) ? await this.kotlin(session, tool, folder, report)
+        const options = kotlin ? kotlin.options
           : isGopls(tool) ? someOptions(goplsStartOptions(this.options.registry().options(tool.id).settings ?? tool.settings)) : undefined;
         // Read and replaced without a pause between: another tool may have been prepared meanwhile.
         if (JSON.stringify([this.rules.programs?.[tool.id], this.rules.options?.[tool.id]]) === JSON.stringify([program, options])) return;
@@ -382,14 +405,35 @@ export class ProjectLanguages {
     return program || goFolder ? { ...(program ? { path: program, arguments: ['-mode=stdio'] } : {}), ...added } : undefined;
   }
   private goBase(): NodeJS.ProcessEnv { return this.options.toolEnvironment?.() ?? this.options.environment ?? process.env; }
-  private async kotlin(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<Record<string, unknown>> {
-    // The host refuses the Zed extension's own download of the server, which reads no checksum.
-    if (!session.offline) await kotlinServerForRun({ work: this.kotlinWork(tool.id), fetch: this.options.download,
+  /** By tool: the sentence about a program of this computer that was passed by for Setdown's own copy. */
+  private readonly notUsed = new Map<string, string>();
+  /** Sets aside the program of this computer a tool ended in saying its build no longer runs, where
+   * Setdown names another copy to Zed. That is JetBrains' Kotlin server: `kotlin()` names the
+   * verified build once the `kotlin-lsp` on PATH is aside. False when nothing would change. */
+  private async setAside(tool: LanguageServerDefinition, folder: string, detail?: string): Promise<boolean> {
+    if (!this.options.programs || !isKotlinServer(tool) || path.isAbsolute(this.options.registry().executable(tool.id))) return false;
+    const local = await programOnPath('kotlin-lsp', this.goBase(), folder);
+    return !!local && this.options.programs.add(local, { ...(detail ? { detail } : {}), lasting: true });
+  }
+  private async kotlin(session: Session, tool: LanguageServerDefinition, folder: string, report: (message: string) => void): Promise<{ program?: NonNullable<SetdownRules['programs']>[string]; options: Record<string, unknown> }> {
+    // Zed is told the program, with the argument the Kotlin extension gives it, by the rules of
+    // zed-extensions/kotlin 0.3.5 (src/language_servers/kotlin_lsp.rs `language_server_binary_path`,
+    // src/kotlin.rs `language_server_command`): a `kotlin-lsp` on PATH before any download. The
+    // extension is not left to find it, because it starts that program whatever its state and
+    // otherwise downloads a build without reading its checksum, which the host refuses. A
+    // program on PATH that was found unable to run is passed by, and the build Setdown verified
+    // (`kotlin-download.ts`) is named. A program the person named in Language Support is used as
+    // it is. With downloads off the newest server already here is named.
+    const named = path.isAbsolute(this.options.registry().executable(tool.id)), work = this.kotlinWork(tool.id);
+    const local = named ? undefined : await programOnPath('kotlin-lsp', this.goBase(), folder), aside = local ? await this.options.programs?.find(local) : undefined;
+    const managed = named || local && !aside ? undefined : session.offline ? (await installedKotlinServers(work))[0] : await kotlinServerForRun({ work, fetch: this.options.download,
       progress: (received, total) => report(`Downloading ${tool.name}… ${total ? `${Math.floor(received / total * 100)}%` : `${Math.round(received / 1e6)} MB`}`) });
+    const found = managed ?? (local ? { program: local } : undefined);
+    if (managed && local) this.notUsed.set(tool.id, setAsideNote(tool.name, local, aside?.detail)); else this.notUsed.delete(tool.id);
     const folders = new Set([...this.windows.values()].flatMap(window => [...window.folders])).add(folder);
     const { options, problems } = kotlinInitializationOptions(this.options.registry().options(tool.id).settings ?? tool.settings, [...folders].map(open => pathToFileURL(open).href));
     for (const problem of problems) console.warn(`${tool.name}: ${problem} and was not sent.`);
-    return options;
+    return { ...(found ? { program: { path: found.program, arguments: ['--stdio'] } } : {}), options };
   }
   private revisions(window: Window) { return new Map([...window.files].map(([file, opened]) => [file, opened.revision])); }
   private recoveryKey(window: Window, server: string) { return `${window.state.webContentsId}:${server}`; }
