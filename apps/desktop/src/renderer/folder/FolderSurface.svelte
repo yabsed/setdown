@@ -852,7 +852,7 @@
   .folder-columns span { margin-left: 4px; }
   .folder-row { height: var(--folder-row); border-radius: 5px; margin: 0 4px; cursor: default; user-select: none; }
   .folder-row:hover, .folder-cell:hover { background: var(--app-hover); }
-  .folder-row.selected, .folder-cell.selected { background: var(--app-selected); }
+  .folder-row.selected, .folder-cell.selected { background: var(--app-list-selected); }
   .folder-row.focused, .folder-cell.focused { box-shadow: inset 0 0 0 1px var(--app-focus-ring, var(--app-muted-text)); }
   .folder-row.drop-target, .folder-cell.drop-target { box-shadow: inset 0 0 0 1px var(--app-accent); }
   .folder-row.cut, .folder-row.hidden-entry, .folder-cell.cut, .folder-cell.hidden-entry { opacity: .55; }

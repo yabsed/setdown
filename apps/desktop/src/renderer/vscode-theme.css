@@ -14,8 +14,8 @@
   background: var(--vscode-tab-unfocusedActiveBackground, var(--vscode-tab-activeBackground));
   color: var(--vscode-tab-unfocusedActiveForeground, var(--vscode-tab-inactiveForeground));
 }
-:root[data-vscode-theme="true"] .explorer-row.is-selected { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
-:root[data-vscode-theme="true"] .explorer-tree:focus-within .explorer-row.is-selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+:root[data-vscode-theme="true"] :is(.explorer-row.is-selected, .folder-row.selected, .folder-cell.selected) { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
+:root[data-vscode-theme="true"] :is(.explorer-tree:focus-within .explorer-row.is-selected, .folder-list:focus-within :is(.folder-row.selected, .folder-cell.selected)) { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
 :root[data-vscode-theme="true"] :is(.application-menu-popup, .application-submenu-popup, .project-context-menu) {
   background: var(--vscode-menu-background); color: var(--vscode-menu-foreground); border-color: var(--vscode-menu-border);
 }

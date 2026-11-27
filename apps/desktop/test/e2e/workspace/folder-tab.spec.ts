@@ -9,6 +9,7 @@ import { disposeApplication, electron, focusApplication, type TestApplication } 
 import { chooseNativeMenu } from '../../support/browser/browser-fixture';
 import { clearAddress } from '../../support/browser/location-controls';
 import { pngFixture } from '../../support/media/png-fixture';
+import { THEME_IDS } from '../../../src/core/theme/theme-catalog';
 
 /** Folder tabs and the in-app chooser run with a temporary HOME and the platform dialog disabled. */
 async function launch(): Promise<{ root: string; home: string; app: TestApplication; page: Page }> {
@@ -649,6 +650,60 @@ test('the file manager searches subfolders, shows a grid, properties and stays u
     await expect(surface.locator('.folder-places')).toHaveCount(0);
     await expect.poll(() => labels(page)).toEqual(['Documents', 'Projects']);
     void home;
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('selected rows and cells stand out from the unselected ones in every theme', async () => {
+  const { root, app, page } = await launch();
+  try {
+    await page.getByRole('button', { name: 'Browse Files', exact: true }).click();
+    await row(page, 'Projects').dblclick();
+    await row(page, 'alpha').dblclick();
+    await expect.poll(() => labels(page)).toEqual(['notes', 'data.csv', 'README.md']);
+    // Two of three are selected; the focus ring is on the second.
+    await row(page, 'notes').click();
+    await row(page, 'data.csv').click({ modifiers: ['Control'] });
+    await expect(page.locator('.folder-content:not(.inactive) .folder-status')).toContainText('2 selected');
+    // What each item is painted with: its own background over the tab's.
+    const paint = () => page.evaluate(() => {
+      const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+      const rgba = (element: Element) => {
+        context.clearRect(0, 0, 1, 1); context.fillStyle = getComputedStyle(element).backgroundColor; context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      const surface = document.querySelector('.folder-content:not(.inactive) .folder-surface')!;
+      const tab = rgba(surface);
+      return [...surface.querySelectorAll('.folder-row, .folder-cell')].map(item => {
+        const own = rgba(item);
+        return { name: item.querySelector('.folder-label')!.textContent, selected: item.getAttribute('aria-selected') === 'true',
+          color: tab.slice(0, 3).map((under, index) => (own[index] * own[3] + under * (255 - own[3])) / 255) };
+      });
+    });
+    const luminance = (color: number[]) => color.map(value => value / 255).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+      .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+    const contrast = (a: number[], b: number[]) => { const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (high + .05) / (low + .05); };
+    for (const view of ['list', 'grid']) {
+      await list(page).focus();
+      await page.keyboard.press(view === 'list' ? 'Control+1' : 'Control+2');
+      const items = list(page).locator(view === 'list' ? '.folder-row' : '.folder-cell');
+      await expect(items).toHaveCount(3);
+      // The pointer rests on a selected item, so the unselected one shows the plain background.
+      await items.first().hover();
+      for (const id of THEME_IDS) {
+        await page.evaluate(id => window.marktex.executeApplicationMenuItem(`preview-theme-${id}`), id);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', id);
+        // Imported VS Code themes paint the selection of a list without focus in another colour.
+        for (const focus of ['focused', 'unfocused']) {
+          if (focus === 'focused') { await list(page).focus(); await expect(list(page)).toBeFocused(); }
+          else { await list(page).evaluate(element => (element as HTMLElement).blur()); await expect(list(page)).not.toBeFocused(); }
+          const painted = await paint();
+          expect(painted.map(item => [item.name, item.selected]), `${id} ${view}`).toEqual([['notes', true], ['data.csv', true], ['README.md', false]]);
+          // The active tab's colour gave 1.00 to 1.08 in the light themes; a selection gives 1.2 or more in all.
+          for (const item of painted.slice(0, 2)) expect(contrast(item.color, painted[2].color), `${id} ${view} ${focus} ${item.name}`).toBeGreaterThan(1.15);
+        }
+        if (id === 'github-light' || id === 'night-owl') await page.screenshot({ path: test.info().outputPath(`selection-${id}-${view}.png`) });
+      }
+    }
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });
 

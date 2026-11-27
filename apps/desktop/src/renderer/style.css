@@ -15,6 +15,9 @@
   --app-strong-border: #c8c8c1;
   --app-hover: #e7e7e1;
   --app-selected: #f7f7f5;
+  /* Selected rows in the Explorer and in folder tabs. --app-selected is the
+     active tab's colour and can equal the canvas a folder tab is drawn on. */
+  --app-list-selected: color-mix(in srgb, var(--app-focus-ring) 14%, var(--app-hover));
   --app-accent: #0969da;
   --app-focus-ring: #4c8ed9;
   --app-warning-surface: #fff2cc;
@@ -519,7 +522,7 @@ input, select, textarea { font-family: inherit; }
   cursor: default;
 }
 .explorer-row:hover, .explorer-row:focus-visible, .explorer-row.is-selected { background: var(--app-hover); outline: 0; }
-.explorer-row.is-selected { background: color-mix(in srgb, var(--app-focus-ring) 14%, var(--app-hover)); }
+.explorer-row.is-selected { background: var(--app-list-selected); }
 .explorer-row.is-drop-target, .explorer-root.is-drop-target {
   background: color-mix(in srgb, var(--app-focus-ring) 16%, transparent);
   outline: 1px solid var(--app-focus-ring);
