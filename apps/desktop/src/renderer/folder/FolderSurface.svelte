@@ -80,7 +80,10 @@
   const columnCount = $derived(mainWidth >= 660 ? 4 : mainWidth >= 400 ? 2 : 1);
   const grid = $derived(tab.view.layout === 'grid');
   const cellWidth = $derived(Math.round(116 * scale)), cellHeight = $derived(Math.round(124 * scale));
-  const gridColumns = $derived(Math.max(1, Math.floor((listWidth - 16) / cellWidth)));
+  // The empty strip on either side of the rows and cells. When they fill the pane it is the only
+  // background in sight, so it is wide enough to press on and start a selection box (see marqueePress).
+  const gutter = $derived(narrow ? 8 : 20);
+  const gridColumns = $derived(Math.max(1, Math.floor((listWidth - 2 * gutter) / cellWidth)));
   const trashFolder = $derived(places.find(place => place.kind === 'trash')?.path ?? '');
   const inTrash = $derived(!!trashFolder && tab.path === trashFolder);
   const rows = $derived(searchResults
@@ -353,9 +356,19 @@
   /** The drawn box, in the coordinates of the rows' viewport, and where that viewport lies in the list. */
   let marquee = $state<{ left: number; top: number; width: number; height: number; layerTop: number; layerWidth: number } | null>(null);
   const marqueeLayout = $derived<MarqueeLayout>(grid
-    ? { columns: gridColumns, itemWidth: cellWidth, itemHeight: cellHeight - 4, lineHeight: cellHeight, left: 8, inset: 6 }
+    ? { columns: gridColumns, itemWidth: cellWidth, itemHeight: cellHeight - 4, lineHeight: cellHeight, left: gutter, inset: 6 }
     : listMarqueeLayout(rowHeight));
   const rowsViewport = () => listElement?.querySelector<HTMLElement>('.folder-rows') ?? null;
+  // The rows scroll and the headings do not: the headings give up the scrollbar's room to stay over their columns.
+  let scrollbar = $state(0);
+  $effect(() => {
+    void list; // The virtual list is another element after a change of layout.
+    const viewport = rowsViewport();
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => { scrollbar = viewport.offsetWidth - viewport.clientWidth; });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  });
   const NOT_BACKGROUND = '.folder-item, .folder-label, .folder-link, .folder-columns, .folder-row.editing, button, input, select';
   function marqueePress(event: MouseEvent) {
     marqueeStop();
@@ -709,7 +722,7 @@
 {/snippet}
 
 <section class="folder-surface" bind:this={surface} data-folder-surface={tab.id} data-zoom-tab={tab.id} aria-label={picker ? picker.title : `Folder ${tab.path}`}
-  style:--folder-font={`${13 * scale}px`} style:--folder-row={`${rowHeight}px`} style:--folder-cell-width={`${cellWidth}px`} style:--folder-cell-height={`${cellHeight}px`}
+  style:--folder-font={`${13 * scale}px`} style:--folder-gutter={`${gutter}px`} style:--folder-scrollbar={`${scrollbar}px`} style:--folder-row={`${rowHeight}px`} style:--folder-cell-width={`${cellWidth}px`} style:--folder-cell-height={`${cellHeight}px`}
   class:narrow class:places-open={placesOpen} data-columns={columnCount}
   ondragleave={event => { if (!(event.relatedTarget instanceof Node) || !surface?.contains(event.relatedTarget)) clearDrop(); }}>
     <div class="folder-toolbar">
@@ -957,11 +970,12 @@
   [data-columns="2"] :is(.folder-columns, .folder-row) { grid-template-columns: minmax(0, 1fr) 7.5em; }
   [data-columns="1"] :is(.folder-columns, .folder-row) { grid-template-columns: minmax(0, 1fr); }
   [data-columns="2"] :is(.column-size, .column-type), [data-columns="1"] :is(.column-size, .column-type, .column-modified) { display: none; }
-  .folder-columns { height: 28px; border-bottom: 1px solid var(--app-border); }
+  /* The headings stand over the columns of the rows, which lie between the side margins and end at the scrollbar. */
+  .folder-columns { height: 28px; padding: 0 calc(var(--folder-gutter) + 12px + var(--folder-scrollbar)) 0 calc(var(--folder-gutter) + 12px); border-bottom: 1px solid var(--app-border); }
   .folder-columns button { height: 100%; min-width: 0; padding: 0; overflow: hidden; border: 0; background: transparent; color: var(--app-muted-text); font: 600 calc(var(--folder-font) * .9)/1 var(--app-font-family); text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   .folder-columns button:hover { color: var(--app-text); }
   .folder-columns span { margin-left: 4px; }
-  .folder-row { height: var(--folder-row); border-radius: 5px; margin: 0 4px; cursor: default; user-select: none; }
+  .folder-row { height: var(--folder-row); border-radius: 5px; margin: 0 var(--folder-gutter); cursor: default; user-select: none; }
   .folder-row:hover, .folder-cell:hover { background: var(--app-hover); }
   .folder-row.selected, .folder-cell.selected { background: var(--app-list-selected); }
   .folder-row.focused, .folder-cell.focused { box-shadow: inset 0 0 0 1px var(--app-focus-ring, var(--app-muted-text)); }
@@ -976,7 +990,7 @@
   .column-modified, .column-size, .column-type { overflow: hidden; color: var(--app-muted-text); text-overflow: ellipsis; white-space: nowrap; font-size: .92em; }
   .column-size { text-align: right; }
   .folder-columns .column-size { text-align: right; }
-  .folder-line { display: flex; height: var(--folder-cell-height); padding: 0 8px; }
+  .folder-line { display: flex; height: var(--folder-cell-height); padding: 0 var(--folder-gutter); }
   .folder-cell { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 4px; flex: 0 0 var(--folder-cell-width); width: var(--folder-cell-width); height: calc(var(--folder-cell-height) - 4px);
     padding: 8px 6px 6px; box-sizing: border-box; border-radius: 8px; cursor: default; user-select: none; }
   .folder-cell-name { display: flex; justify-content: center; min-width: 0; max-height: 2.8em; overflow: hidden; text-align: center; }

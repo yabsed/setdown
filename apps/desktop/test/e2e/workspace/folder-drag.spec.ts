@@ -410,6 +410,31 @@ test('a box scrolls a folder longer than the pane to reach its rows, and selects
     await expect(marquee(page)).toHaveCount(0);
     expect(await selectedNames(page)).toEqual(['file-00.txt', 'file-01.txt', 'file-02.txt']);
 
+    // The rows fill the pane, so the margin on either side of them is the background in sight:
+    // a click there is a click on the background, and a drag from there draws a box.
+    const pane = (await scroller.boundingBox())!, width = await scroller.evaluate(element => element.clientWidth);
+    const second = (await row(page, 'file-01.txt').boundingBox())!, fifth = (await row(page, 'file-04.txt').boundingBox())!;
+    for (const x of [second.x - 10, second.x + second.width + 10]) {
+      expect(x).toBeGreaterThan(pane.x + 4);
+      expect(x).toBeLessThan(pane.x + width - 4);
+      await page.mouse.click(x, second.y + second.height / 2);
+      await expect.poll(() => selectedNames(page)).toEqual([]);
+      await page.mouse.move(x, second.y + second.height / 2); await page.mouse.down();
+      await page.mouse.move(x, fifth.y + fifth.height / 2, { steps: 4 });
+      await expect(marquee(page)).toBeVisible();
+      await expect.poll(() => selectedNames(page)).toEqual(['file-01.txt', 'file-02.txt', 'file-03.txt', 'file-04.txt']);
+      await page.screenshot({ path: test.info().outputPath(`folder-marquee-margin-${x < second.x ? 'left' : 'right'}.png`) });
+      await page.mouse.up();
+      expect(await selectedNames(page)).toEqual(['file-01.txt', 'file-02.txt', 'file-03.txt', 'file-04.txt']);
+    }
+    // The headings stand over the columns they name, also beside a scrollbar.
+    expect(await scroller.evaluate(element => (element as HTMLElement).offsetWidth - element.clientWidth)).toBeGreaterThan(0);
+    for (const [heading, column] of [['.column-name', '.folder-name'], ['.column-modified', '.column-modified'], ['.column-size', '.column-size'], ['.column-type', '.column-type']]) {
+      const over = (await list(page).locator(`.folder-columns ${heading}`).boundingBox())!, under = (await row(page, 'file-01.txt').locator(column).boundingBox())!;
+      expect(Math.abs(over.x - under.x), heading).toBeLessThanOrEqual(1);
+      expect(Math.abs(over.x + over.width - under.x - under.width), heading).toBeLessThanOrEqual(1);
+    }
+
     // Grid: the padding around a thumbnail is background, and a cell is taken once the box reaches its content.
     await page.keyboard.press('Escape');
     await page.keyboard.press('Control+2');
@@ -418,6 +443,8 @@ test('a box scrolls a folder longer than the pane to reach its rows, and selects
     const columns = await list(page).locator('.folder-line').first().locator('.folder-cell').count();
     expect(columns).toBeGreaterThan(2);
     const first = (await cell('file-00.txt').boundingBox())!, below = (await cell(names[columns + 1]).boundingBox())!;
+    // The cells keep the same margin from the edge of the pane as the rows do.
+    expect(first.x - pane.x).toBeGreaterThanOrEqual(second.x - pane.x - 1);
     await page.mouse.move(first.x + 2, first.y + first.height / 2); await page.mouse.down();
     await page.mouse.move(first.x + 5, first.y + first.height / 2 + 6, { steps: 2 });
     await expect(marquee(page)).toBeVisible();
