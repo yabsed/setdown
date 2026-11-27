@@ -8,6 +8,7 @@
   import type { FolderView } from '../../core/workspace/workspace-state';
   import type { FolderMenuCommand, FolderMenuContext } from '../../core/files/folder-menu';
   import { folderCrumbs, formatModified, formatSize, kindLabel, parentFolder, presentFolder, type FolderSort } from '../../core/files/folder-presentation';
+  import { listMarqueeLayout, marqueeCorner, marqueeIndexes, marqueeMode, marqueeScroll, marqueeSelection, marqueeSpan, type MarqueeLayout, type MarqueeMode } from '../../core/files/folder-marquee';
   import { acceptedPaths, activationAccepts, canAccept, canAcceptSelection, checkName, nameSelection, visibleInPicker, withFilterExtension } from '../../core/files/picker-rules';
   import { draggedPaths, PROJECT_ENTRIES, selectEntry, topLevelPaths, type ExplorerSelection } from '../project/explorer/explorer-selection';
   import { typeaheadMatch } from '../project/explorer/explorer-presentation';
@@ -151,7 +152,7 @@
       if (path === appliedPath && revision === appliedRevision) return;
       const moved = path !== appliedPath;
       appliedPath = path; appliedRevision = revision;
-      if (moved) { filter = ''; filterOpen = false; searchResults = null; renaming = ''; creating = null; closeMenu(); placesOpen = false; }
+      if (moved) { filter = ''; filterOpen = false; searchResults = null; renaming = ''; creating = null; closeMenu(); placesOpen = false; marqueeStop(); }
       void load('navigate');
     });
   });
@@ -208,7 +209,7 @@
     window.addEventListener('focus', windowFocus);
     window.addEventListener(FILE_DRAG_END, clearDrop);
     return () => {
-      closeMenu();
+      closeMenu(); marqueeStop();
       window.removeEventListener(FILE_DRAG_END, clearDrop);
       stopChanges(); stopProgress(); desktop.files.watch(token, null); resize.disconnect();
       window.removeEventListener('setdown:folder-properties', propertiesRequest);
@@ -344,6 +345,103 @@
     await load('refresh');
   }
 
+  // Rubber band: a press on the background that then moves draws a box and selects what it touches.
+  // An item's icon and name are its handle for a file drag; the rest of a row is background, as in Nautilus and Finder.
+  type Band = { startX: number; startY: number; x: number; y: number; anchorX: number; anchorY: number; mode: MarqueeMode;
+    before: { selection: ExplorerSelection; focusedPath: string }; drawn: boolean; ended: boolean; span: string; frame: number; time: number; carry: number };
+  let band: Band | null = null;
+  /** The drawn box, in the coordinates of the rows' viewport, and where that viewport lies in the list. */
+  let marquee = $state<{ left: number; top: number; width: number; height: number; layerTop: number; layerWidth: number } | null>(null);
+  const marqueeLayout = $derived<MarqueeLayout>(grid
+    ? { columns: gridColumns, itemWidth: cellWidth, itemHeight: cellHeight - 4, lineHeight: cellHeight, left: 8, inset: 6 }
+    : listMarqueeLayout(rowHeight));
+  const rowsViewport = () => listElement?.querySelector<HTMLElement>('.folder-rows') ?? null;
+  const NOT_BACKGROUND = '.folder-item, .folder-label, .folder-link, .folder-columns, .folder-row.editing, button, input, select';
+  function marqueePress(event: MouseEvent) {
+    marqueeStop();
+    const viewport = rowsViewport();
+    if (event.button !== 0 || !multiple || !viewport || !(event.target instanceof Element) || event.target.closest(NOT_BACKGROUND)) return;
+    const rect = viewport.getBoundingClientRect();
+    // The scrollbar is not background.
+    if (event.clientX >= rect.left + viewport.clientWidth) return;
+    // The press keeps its default: the pointer focuses the list as any click does. What it must not
+    // start is a file drag (see dragStart) or a text selection (the list is `user-select: none`).
+    band = { startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY,
+      anchorX: Math.max(0, Math.min(viewport.clientWidth, event.clientX - rect.left)), anchorY: Math.max(0, event.clientY - rect.top) + viewport.scrollTop,
+      mode: marqueeMode(event), before: { selection, focusedPath }, drawn: false, ended: false, span: 'unset', frame: 0, time: 0, carry: 0 };
+    window.addEventListener('mousemove', marqueeMove); window.addEventListener('mouseup', marqueeRelease);
+    window.addEventListener('blur', marqueeCancel); window.addEventListener('keydown', marqueeKey, true);
+  }
+  function marqueeMove(event: MouseEvent) {
+    if (!band) return;
+    // A release this window never saw (over a menu, another window) still ends the drag.
+    if (!(event.buttons & 1)) { marqueeRelease(); return; }
+    band.x = event.clientX; band.y = event.clientY;
+    // A press that barely moves is a click: it selects the row under it or clears the selection.
+    if (band.drawn || band.ended || Math.hypot(band.x - band.startX, band.y - band.startY) < 4) return;
+    band.drawn = true; band.time = performance.now();
+    // The press may have focused a row, which scrolls away; the click that would hand the list the keyboard is swallowed.
+    listElement?.focus({ preventScroll: true });
+    marqueeFrame(band.time);
+  }
+  /** Runs every frame of a drag: the box also grows while the list scrolls under a still pointer. */
+  function marqueeFrame(now: number) {
+    const viewport = rowsViewport();
+    if (!band || band.ended || !viewport || !listElement) return;
+    const rect = viewport.getBoundingClientRect();
+    band.carry += marqueeScroll(band.y - rect.top, rect.height, now - band.time); band.time = now;
+    const step = Math.trunc(band.carry);
+    if (step) { viewport.scrollTop += step; band.carry -= step; }
+    const scroll = viewport.scrollTop, width = viewport.clientWidth;
+    const x = Math.max(0, Math.min(width, band.x - rect.left)), y = Math.max(0, Math.min(rect.height, band.y - rect.top)) + scroll;
+    const box = { left: Math.min(band.anchorX, x), top: Math.min(band.anchorY, y), right: Math.max(band.anchorX, x), bottom: Math.max(band.anchorY, y) };
+    const next = { left: box.left, top: box.top - scroll, width: box.right - box.left, height: box.bottom - box.top,
+      layerTop: rect.top - listElement.getBoundingClientRect().top, layerWidth: width };
+    if (!marquee || (Object.keys(next) as (keyof typeof next)[]).some(name => marquee![name] !== next[name])) marquee = next;
+    const count = paths.length, columns = marqueeLayout.columns, toward = { down: y >= band.anchorY, right: x >= band.anchorX };
+    const span = marqueeSpan(box, marqueeLayout, count);
+    const touched = span ? `${span.firstLine}:${span.lastLine}:${span.firstColumn}:${span.lastColumn}:${toward.down}:${toward.right}:${count}` : '';
+    if (touched !== band.span) {
+      band.span = touched;
+      const hits = marqueeIndexes(span, columns, count).map(index => paths[index]);
+      // Shift+arrows afterwards extend from where the drag began; the keyboard focus follows the pointer.
+      const from = span ? paths[marqueeCorner(span, columns, count, { down: !toward.down, right: !toward.right })] : '';
+      selection = { paths: marqueeSelection(band.before.selection.paths, hits, band.mode),
+        anchor: from || (band.mode === 'replace' ? '' : band.before.selection.anchor) };
+      if (span) focusedPath = paths[marqueeCorner(span, columns, count, toward)];
+    }
+    band.frame = requestAnimationFrame(marqueeFrame);
+  }
+  function marqueeRelease() {
+    const dragged = band?.drawn;
+    marqueeStop();
+    if (!dragged) return;
+    // The click that ends a drag is not a click on whatever lies under the pointer.
+    const swallow = (event: Event) => { event.stopPropagation(); event.preventDefault(); };
+    window.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', swallow, true));
+  }
+  /** Escape or a lost window gives the selection back. The press stays owned until its release, so that release is not a click. */
+  function marqueeCancel() {
+    if (!band || band.ended) return;
+    if (band.drawn) { selection = band.before.selection; focusedPath = band.before.focusedPath; }
+    band.ended = true; cancelAnimationFrame(band.frame); marquee = null;
+  }
+  function marqueeKey(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || !band?.drawn || band.ended) return;
+    event.preventDefault(); event.stopPropagation();
+    marqueeCancel();
+  }
+  function marqueeStop() {
+    if (!band) return;
+    cancelAnimationFrame(band.frame);
+    band = null; marquee = null;
+    window.removeEventListener('mousemove', marqueeMove); window.removeEventListener('mouseup', marqueeRelease);
+    window.removeEventListener('blur', marqueeCancel); window.removeEventListener('keydown', marqueeKey, true);
+  }
+  // A box belongs to the folder it was drawn in, and only a visible folder is drawn in.
+  $effect(() => { if (!active) untrack(marqueeStop); });
+
   function key(event: KeyboardEvent) {
     if (event.target !== listElement || event.isComposing || event.keyCode === 229) return;
     const mod = event.ctrlKey || event.metaKey;
@@ -471,7 +569,8 @@
   function dragStart(event: DragEvent, entry: FolderEntry) {
     // Always an OS file drag (file-drag.ts): web pages and other applications receive the files themselves.
     event.preventDefault();
-    if (busy) return;
+    // A press beside the name draws a selection box (marqueePress): only the icon and the name carry the file.
+    if (busy || band) return;
     if (!selected.has(entry.path)) select(entry.path);
     const documents = selectedEntries.filter(item => item.kind === 'document').map(item => item.path);
     void fileDrag.start(desktop.files, topLevelPaths(selection.paths), documents).catch(failure => { error = message(failure); });
@@ -666,10 +765,15 @@
       </div>
       {#if narrow}<button class="folder-scrim" type="button" aria-label="Close Places" onclick={() => { placesOpen = false; }}></button>{/if}
     {/if}
-    <div class="folder-list" class:grid bind:this={listElement} data-folder-list={tab.id} role="listbox" tabindex="0" aria-label={`Contents of ${crumbs.at(-1)?.name ?? tab.path}`}
+    <div class="folder-list" class:grid class:selecting={!!marquee} bind:this={listElement} data-folder-list={tab.id} role="listbox" tabindex="0" aria-label={`Contents of ${crumbs.at(-1)?.name ?? tab.path}`}
       aria-multiselectable={multiple} aria-busy={loading || busy || searching} aria-activedescendant={indexes.has(focusedPath) ? optionId(indexes.get(focusedPath)!) : undefined}
-      onkeydown={key} oncontextmenu={event => openMenu(event, null)}
-      onclick={event => { if (!(event.target as Element).closest('.folder-row, .folder-cell, .folder-columns, button, input')) { selection = { paths: [], anchor: '' }; listElement?.focus({ preventScroll: true }); } }}
+      onkeydown={key} oncontextmenu={event => openMenu(event, null)} onmousedown={marqueePress}
+      onclick={event => {
+        if ((event.target as Element).closest('.folder-row, .folder-cell, .folder-columns, button, input')) return;
+        // Ctrl or Shift on the background is the start of a box that adds to the selection: it clears nothing.
+        if (!(event.ctrlKey || event.metaKey || event.shiftKey)) selection = { paths: [], anchor: '' };
+        listElement?.focus({ preventScroll: true });
+      }}
       ondragover={event => dragOver(event, tab.path)} ondragleave={event => { if (event.target === event.currentTarget) clearDrop(); }} ondrop={event => void drop(event, tab.path)}>
       {#if !grid}
         <div class="folder-columns" role="presentation">
@@ -719,8 +823,10 @@
               class:drop-target={dropTarget === row.path} aria-selected={selected.has(row.path)}
               title={row.link ? `${row.path} → ${row.link.target}` : row.path} draggable={!busy && renaming !== row.path} {...rowEvents(row)}>
               <span class="folder-name">
-                {#if row.kind === 'directory'}<svg class="folder-glyph" viewBox="0 0 16 16" aria-hidden="true"><path d={directoryIcon}/></svg>{:else}<FileIcon path={row.path} />{/if}
-                {@render nameCell(row)}
+                <span class="folder-item" class:editing={renaming === row.path}>
+                  {#if row.kind === 'directory'}<svg class="folder-glyph" viewBox="0 0 16 16" aria-hidden="true"><path d={directoryIcon}/></svg>{:else}<FileIcon path={row.path} />{/if}
+                  {@render nameCell(row)}
+                </span>
               </span>
               <span class="column-modified">{formatModified(row.modified)}</span>
               <span class="column-size">{row.kind === 'directory' ? '' : formatSize(row.size)}</span>
@@ -728,6 +834,11 @@
             </div>
           {/snippet}
         </VList>
+      {/if}
+      {#if marquee}
+        <div class="folder-marquee-layer" aria-hidden="true" style:top={`${marquee.layerTop}px`} style:width={`${marquee.layerWidth}px`}>
+          <div class="folder-marquee" style:left={`${marquee.left}px`} style:top={`${marquee.top}px`} style:width={`${marquee.width}px`} style:height={`${marquee.height}px`}></div>
+        </div>
       {/if}
     </div>
     </div>
@@ -838,7 +949,7 @@
   .folder-error button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 16px; }
   /* A column flex box gives the virtual list a definite height whether or not
      the optional create row or empty message is present. */
-  .folder-list { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; outline: none; }
+  .folder-list { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; outline: none; user-select: none; }
   .folder-list:focus-visible { box-shadow: inset 0 0 0 1px var(--app-focus-ring, var(--app-muted-text)); }
   .folder-list > * { flex: 0 0 auto; }
   .folder-list :global(.folder-rows) { flex: 1 1 0; min-height: 0; }
@@ -856,7 +967,9 @@
   .folder-row.focused, .folder-cell.focused { box-shadow: inset 0 0 0 1px var(--app-focus-ring, var(--app-muted-text)); }
   .folder-row.drop-target, .folder-cell.drop-target { box-shadow: inset 0 0 0 1px var(--app-accent); }
   .folder-row.cut, .folder-row.hidden-entry, .folder-cell.cut, .folder-cell.hidden-entry { opacity: .55; }
-  .folder-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: 100%; }
+  .folder-name, .folder-item { display: flex; align-items: center; gap: 8px; min-width: 0; height: 100%; }
+  /* The icon and the name are the item; a rename field takes the rest of the column. */
+  .folder-item.editing { flex: 1; }
   .folder-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .folder-link { color: var(--app-muted-text); font-size: .85em; }
   .folder-glyph { flex: 0 0 16px; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linejoin: round; color: var(--app-muted-text); }
@@ -868,6 +981,10 @@
     padding: 8px 6px 6px; box-sizing: border-box; border-radius: 8px; cursor: default; user-select: none; }
   .folder-cell-name { display: flex; justify-content: center; min-width: 0; max-height: 2.8em; overflow: hidden; text-align: center; }
   .folder-cell-name :global(.folder-label) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+  /* Rubber band: drawn over the rows only and clipped to them. */
+  .folder-marquee-layer { position: absolute; z-index: 2; left: 0; bottom: 0; overflow: hidden; pointer-events: none; }
+  .folder-marquee { position: absolute; box-sizing: border-box; border: 1px solid var(--app-accent); border-radius: 2px; background: color-mix(in srgb, var(--app-accent) 16%, transparent); }
+  .folder-list.selecting :is(.folder-row, .folder-cell):not(.selected):hover { background: transparent; }
   .folder-empty { margin: 24px; color: var(--app-muted-text); text-align: center; }
   .folder-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px; padding: 0 12px; border-top: 1px solid var(--app-border); color: var(--app-muted-text); font-size: .9em; }
   .folder-status span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

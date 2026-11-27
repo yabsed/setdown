@@ -277,3 +277,161 @@ test('a folder tab outside the workspace copies its files into the Explorer fold
     await disposeApplication(app); await rm(fixture.root, { recursive: true, force: true });
   }
 });
+
+const selectedNames = (page: Page) => list(page).locator('[role="option"][aria-selected="true"] .folder-label').allTextContents();
+const marquee = (page: Page) => list(page).locator('.folder-marquee');
+
+test('dragging on the background, or on a row beside its name, draws a box that selects what it touches', async () => {
+  test.setTimeout(120_000);
+  const names = ['alpha.md', 'beta.md', 'delta.md', 'gamma.md'];
+  const fixture = await launch(async home => {
+    await mkdir(path.join(home, 'sub'));
+    for (const name of names) await writeFile(path.join(home, name), `# ${name}\n`);
+  });
+  const { home, page } = fixture;
+  try {
+    await expect.poll(() => labels(page)).toEqual(['sub', ...names]);
+    const area = (await list(page).boundingBox())!;
+    const middle = async (name: string) => { const box = (await row(page, name).boundingBox())!; return box.y + box.height / 2; };
+    const gamma = (await row(page, 'gamma.md').boundingBox())!;
+    // Real pointer input, from the empty space under the rows up into "beta.md".
+    const from = { x: Math.round(area.x + area.width * .7), y: Math.round(gamma.y + gamma.height + 120) };
+    const to = { x: Math.round(area.x + area.width * .3), y: Math.round(await middle('beta.md')) };
+    await nativeInput({ pointer: [await screenPoint(fixture, from)], button: 'down' });
+    await nativeInput({ pointer: [await screenPoint(fixture, { x: from.x - 30, y: from.y - 30 }), await screenPoint(fixture, to)] });
+    await expect(marquee(page)).toBeVisible();
+    await expect.poll(() => selectedNames(page)).toEqual(['beta.md', 'delta.md', 'gamma.md']);
+    await expect(status(page)).toContainText('3 selected');
+    // The box spans the press and the pointer.
+    await expect.poll(async () => {
+      const box = (await marquee(page).boundingBox())!;
+      return [box.x - to.x, box.y - to.y, box.x + box.width - from.x, box.y + box.height - from.y].every(gap => Math.abs(gap) <= 1.5);
+    }).toBe(true);
+    await page.screenshot({ path: test.info().outputPath('folder-marquee.png') });
+    await nativeInput({ button: 'up' });
+    await expect(marquee(page)).toHaveCount(0);
+    // The release is not a click on the background: it clears nothing.
+    await expect(status(page)).toContainText('3 selected');
+    expect(await selectedNames(page)).toEqual(['beta.md', 'delta.md', 'gamma.md']);
+    // The keyboard continues from the box: its far end is the anchor, the pointer's end has the focus.
+    await page.keyboard.press('Shift+ArrowUp');
+    await expect.poll(() => selectedNames(page)).toEqual(names);
+
+    // The rest of a row is background too: a drag from the Kind column of "alpha.md" selects, and carries no file.
+    const beside = { x: Math.round(area.x + area.width - 60), y: Math.round(await middle('alpha.md')) };
+    await nativeInput({ pointer: [await screenPoint(fixture, beside)], button: 'down' });
+    await nativeInput({ pointer: [await screenPoint(fixture, { x: beside.x - 12, y: beside.y + 10 }), await screenPoint(fixture, { x: beside.x - 200, y: await middle('delta.md') })] });
+    await expect(marquee(page)).toBeVisible();
+    await expect.poll(() => selectedNames(page)).toEqual(['alpha.md', 'beta.md', 'delta.md']);
+    await expect(status(page)).not.toContainText('Move into');
+    await nativeInput({ button: 'up' });
+    await expect(marquee(page)).toHaveCount(0);
+    expect(await selectedNames(page)).toEqual(['alpha.md', 'beta.md', 'delta.md']);
+    expect((await readdir(home)).filter(name => !name.startsWith('.')).sort()).toEqual([...names, 'sub']);
+    // Without a drag the same press is a click on the row.
+    await nativeInput({ click: await screenPoint(fixture, { x: beside.x, y: await middle('gamma.md') }) });
+    await expect.poll(() => selectedNames(page)).toEqual(['gamma.md']);
+    // The name is still the handle that carries the file.
+    const over = await carry(fixture, 'gamma.md', await screenPoint(fixture, await center(row(page, 'sub'))));
+    await expect(status(page)).toContainText('Move into “sub”');
+    await expect(marquee(page)).toHaveCount(0);
+    await release(over);
+    await expect.poll(() => readdir(path.join(home, 'sub'))).toEqual(['gamma.md']);
+    await expect.poll(() => labels(page)).toEqual(['sub', 'alpha.md', 'beta.md', 'delta.md']);
+
+    // Ctrl toggles what the box touches, Shift adds it, and Escape gives the selection back.
+    const sweep = async (name: string) => {
+      await page.mouse.move(from.x, from.y); await page.mouse.down();
+      await page.mouse.move(to.x, await middle(name), { steps: 4 });
+      await expect(marquee(page)).toBeVisible();
+    };
+    await row(page, 'alpha.md').locator('.folder-label').click();
+    await page.keyboard.down('Control');
+    await sweep('beta.md');
+    await expect.poll(() => selectedNames(page)).toEqual(['alpha.md', 'beta.md', 'delta.md']);
+    await page.mouse.up();
+    await sweep('delta.md');
+    await expect.poll(() => selectedNames(page)).toEqual(['alpha.md', 'beta.md']);
+    await page.mouse.up(); await page.keyboard.up('Control');
+    await page.keyboard.down('Shift');
+    await sweep('delta.md');
+    await expect.poll(() => selectedNames(page)).toEqual(['alpha.md', 'beta.md', 'delta.md']);
+    await page.mouse.up(); await page.keyboard.up('Shift');
+    await sweep('delta.md');
+    await expect.poll(() => selectedNames(page)).toEqual(['delta.md']);
+    await page.keyboard.press('Escape');
+    await expect(marquee(page)).toHaveCount(0);
+    await expect.poll(() => selectedNames(page)).toEqual(['alpha.md', 'beta.md', 'delta.md']);
+    await page.mouse.up();
+    expect(await selectedNames(page)).toEqual(['alpha.md', 'beta.md', 'delta.md']);
+    // A box that touches nothing clears the selection, as a click on the background does.
+    await page.mouse.move(from.x, from.y); await page.mouse.down();
+    await page.mouse.move(from.x + 60, from.y + 30, { steps: 3 });
+    await expect(marquee(page)).toBeVisible();
+    await expect.poll(() => selectedNames(page)).toEqual([]);
+    await page.mouse.up();
+    expect(fixture.errors).toEqual([]);
+  } finally {
+    await nativeInput({ button: 'up' }).catch(() => {});
+    await page.mouse.up().catch(() => {});
+    await page.screenshot({ path: test.info().outputPath('folder-marquee-end.png') }).catch(() => {});
+    await disposeApplication(fixture.app); await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('a box scrolls a folder longer than the pane to reach its rows, and selects cells in the grid', async () => {
+  test.setTimeout(120_000);
+  const names = Array.from({ length: 80 }, (_, index) => `file-${String(index).padStart(2, '0')}.txt`);
+  const fixture = await launch(async home => { for (const name of names) await writeFile(path.join(home, name), `${name}\n`); });
+  const { page } = fixture;
+  const scroller = list(page).locator('.folder-rows');
+  const scrollTop = () => scroller.evaluate(element => element.scrollTop);
+  try {
+    await expect(row(page, 'file-00.txt')).toBeVisible();
+    await expect(status(page)).toContainText('80 items');
+    const area = (await list(page).boundingBox())!;
+    // Every row is under a name here: the only background is the rows themselves.
+    const third = (await row(page, 'file-02.txt').boundingBox())!;
+    const start = { x: Math.round(area.x + area.width - 60), y: Math.round(third.y + third.height / 2) };
+    await page.mouse.move(start.x, start.y); await page.mouse.down();
+    await page.mouse.move(start.x - 40, area.y + area.height + 30, { steps: 5 });
+    await expect(marquee(page)).toBeVisible();
+    // Held below the list, the pointer keeps the list scrolling to its end.
+    await expect.poll(async () => { const top = await scrollTop(); return top > 0 && top === await scroller.evaluate(element => element.scrollHeight - element.clientHeight); }, { timeout: 15_000 }).toBe(true);
+    await expect(status(page)).toContainText('78 selected');
+    await expect(row(page, 'file-79.txt')).toHaveAttribute('aria-selected', 'true');
+    // The box is anchored to the row it began on, which has scrolled out of view above.
+    expect((await marquee(page).boundingBox())!.y).toBeLessThanOrEqual((await scroller.boundingBox())!.y);
+    // Back up at the top edge the list scrolls the other way and the box shrinks to its first rows.
+    await page.mouse.move(start.x - 40, (await scroller.boundingBox())!.y - 30, { steps: 5 });
+    await expect.poll(scrollTop, { timeout: 15_000 }).toBe(0);
+    await expect(status(page)).toContainText('3 selected');
+    await page.mouse.up();
+    await expect(marquee(page)).toHaveCount(0);
+    expect(await selectedNames(page)).toEqual(['file-00.txt', 'file-01.txt', 'file-02.txt']);
+
+    // Grid: the padding around a thumbnail is background, and a cell is taken once the box reaches its content.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+2');
+    const cell = (name: string) => list(page).locator('.folder-cell').filter({ has: page.locator('.folder-label', { hasText: new RegExp(`^${name.replace('.', '\\.')}$`) }) });
+    await expect(cell('file-00.txt')).toBeVisible();
+    const columns = await list(page).locator('.folder-line').first().locator('.folder-cell').count();
+    expect(columns).toBeGreaterThan(2);
+    const first = (await cell('file-00.txt').boundingBox())!, below = (await cell(names[columns + 1]).boundingBox())!;
+    await page.mouse.move(first.x + 2, first.y + first.height / 2); await page.mouse.down();
+    await page.mouse.move(first.x + 5, first.y + first.height / 2 + 6, { steps: 2 });
+    await expect(marquee(page)).toBeVisible();
+    await expect.poll(() => selectedNames(page)).toEqual([]);
+    await page.mouse.move(below.x + below.width / 2, below.y + below.height / 2, { steps: 4 });
+    await expect.poll(() => selectedNames(page)).toEqual([names[0], names[1], names[columns], names[columns + 1]]);
+    await page.screenshot({ path: test.info().outputPath('folder-marquee-grid.png') });
+    await page.mouse.up();
+    await expect(marquee(page)).toHaveCount(0);
+    expect(await selectedNames(page)).toEqual([names[0], names[1], names[columns], names[columns + 1]]);
+    expect(fixture.errors).toEqual([]);
+  } finally {
+    await page.mouse.up().catch(() => {});
+    await page.screenshot({ path: test.info().outputPath('folder-marquee-long-end.png') }).catch(() => {});
+    await disposeApplication(fixture.app); await rm(fixture.root, { recursive: true, force: true });
+  }
+});

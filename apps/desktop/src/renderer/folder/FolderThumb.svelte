@@ -23,7 +23,8 @@
   });
 </script>
 
-<span class="folder-thumb" aria-hidden="true">
+<!-- `folder-item`: the thumbnail is the handle for a file drag; the cell's padding around it starts a rubber band (FolderSurface). -->
+<span class="folder-thumb folder-item" aria-hidden="true">
   {#if entry.kind === 'directory'}
     <svg viewBox="0 0 48 48"><path d="M5 12.5a3 3 0 0 1 3-3h10.5l4 4.5H40a3 3 0 0 1 3 3V36a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z"/></svg>
   {:else if url}
