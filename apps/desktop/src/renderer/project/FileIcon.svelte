@@ -6,4 +6,4 @@
 </script>
 
 <span class="file-type-icon" aria-hidden="true" data-file-icon={icon.id}
-  style:--file-icon-dark={icon.dark} style:--file-icon-light={icon.light}>{icon.character}</span>
+  style:--file-icon-dark={icon.dark} style:--file-icon-light={icon.light}>{#if icon.path}<svg viewBox="0 0 16 16"><path fill-rule="evenodd" d={icon.path} /></svg>{:else}{icon.character}{/if}</span>

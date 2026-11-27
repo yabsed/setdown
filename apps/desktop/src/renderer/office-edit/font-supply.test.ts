@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { installedFontSupply, koreanLastResort, type FontAnswer, type FontSourceMaker, type FontWish } from './docx-font-supply';
+import { installedFontSupply, koreanLastResort, type FontAnswer, type FontSourceMaker, type FontWish } from './font-supply';
 import type { DocxFontAnswer, DocxFontFace, DocxFontRequest } from '../../protocol/docx-edit';
 
 type Source = { family: string; weight: number; style: string; faceIndex: number; size: number };
@@ -116,7 +116,7 @@ describe('installed fonts for the Word engine', () => {
     const answer = await installedFontSupply(supply, refusing, options)({ families: ['Broken Sans', '맑은 고딕', '굴림'], defaultFamily: 'Calibri' });
     expect(answer!.sources.map(source => source.family)).toEqual(['NanumGothic']);
     expect(answer!.substitutions.map(substitution => substitution.from.family)).toEqual(['굴림']);
-    expect(options.warn.mock.calls.map(call => call[0])).toEqual(['DOCX font unusable: Broken Sans malformed no cmap', 'DOCX font unusable: Broken Sans malformed no cmap']);
+    expect(options.warn.mock.calls.map(call => call[0])).toEqual(['Document font unusable: Broken Sans malformed no cmap', 'Document font unusable: Broken Sans malformed no cmap']);
   });
 
   test('a face whose file main did not send and nobody holds is skipped', async () => {

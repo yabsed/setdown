@@ -279,6 +279,12 @@ word wrap for prose, next/previous change, a whitespace toggle.
 
 Explorer, staged/unstaged changes and Graph's changed files share VS Code's Seti
 file icons, using exact filename and longest compound-extension associations.
+Seti has no icon for presentations or Hangul documents, and associates only a few
+Office extensions. `core/files/office-file-icons.ts` adds two drawings of Setdown's
+own in Seti's colours (`_powerpoint`, `_hwp`: SVG paths drawn in the same box as a
+Seti glyph by `FileIcon`) and sends every extension of an Office family, with
+`rtf`, OpenDocument text, sheets and slides, to its family's icon. A Seti
+association always wins; `file-icon.test.ts` covers the families.
 Light/dark palettes follow the app theme; Git status colors/badges remain on the
 file labels. Folder icons distinguish open and closed states. The pinned font,
 associations and MIT notice live in `src/core/files`; regenerate with

@@ -1,5 +1,5 @@
 import { imageSessions } from '../../image/image-edit-sessions';
-import { docxSessions } from '../../docx/docx-sessions';
+import { officeEditSession } from '../../office-edit/office-editors';
 import { draggedPaths, PROJECT_FILES } from '../../project/explorer/explorer-selection';
 import { fileDrag, FILE_DRAG_END } from '../../files/file-drag';
 import type { ClaimedTabTransfer, TransferableTab } from '../../../protocol/desktop-api';
@@ -381,9 +381,9 @@ export function createTabDrag(options: Options) {
   const held = (id: string): string | null => {
     const image = imageSessions.get(id);
     if (image && (image.history.dirty || image.busy)) return 'Save your image changes before moving this tab to another group or window.';
-    // Unsaved Word edits live in this window's engine and cannot follow the tab to another one.
-    const word = docxSessions.get(id);
-    return word && (word.edits !== word.savedEdits || word.busy) ? 'Save your document changes before moving this tab to another group or window.' : null;
+    // Unsaved Word and presentation edits live in this window's engine and cannot follow the tab to another one.
+    const office = officeEditSession(id);
+    return office && (office.edits !== office.savedEdits || office.busy) ? 'Save your document changes before moving this tab to another group or window.' : null;
   };
   const controller = {
     /** The tab menu's "Move into New Window": the same transfer as a tear-off, without a drag. */

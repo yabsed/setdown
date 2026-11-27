@@ -7,7 +7,7 @@ const shared = {
   platform: 'node',
   target: 'node22',
   sourcemap: true,
-  external: ['sharp', 'electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'pyright', 'basedpyright', 'typescript', 'typescript-language-server'],
+  external: ['sharp', 'electron', 'jsonc-parser', 'crossnote', '@parcel/watcher', '@vscode/ripgrep', 'node-pty', '@xterm/headless', '@xterm/addon-serialize', 'electron-chrome-extensions', 'electron-chrome-web-store', 'turndown', 'turndown-plugin-gfm', 'sanitize-html', 'katex', 'pyright', 'basedpyright', 'typescript', 'typescript-language-server'],
 };
 await mkdir('dist-electron', { recursive: true });
 await import('./build-language-host.mjs');

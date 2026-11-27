@@ -1,10 +1,14 @@
-import { documentProfile, isEditableOfficeDocument, type DocumentProfile } from './document-profile';
+import { documentProfile, officeEditorFor, type DocumentProfile, type OfficeEditor } from './document-profile';
 import type { DocumentSnapshot } from './document';
 
-/** A `.docx` whose content main verified as a Word document. The name alone is never enough:
- * a spreadsheet or a legacy binary file under that name must not reach an editor that could save over it. */
-export const isWordEditorDocument = (document: Pick<DocumentSnapshot, 'kind' | 'path' | 'officeEditor'> | null | undefined): boolean =>
-  !!document && document.kind === 'office' && document.officeEditor === 'word' && isEditableOfficeDocument(document.path);
+type OfficeCandidate = Pick<DocumentSnapshot, 'kind' | 'path' | 'officeEditor'> | null | undefined;
+/** The editor of an Office document whose content main verified: a `.docx` that is a Word document, a `.pptx` that is a
+ * presentation. The name alone is never enough: a spreadsheet or a legacy binary file under that name must not reach an
+ * editor that could save over it. */
+export const officeEditorOf = (document: OfficeCandidate): OfficeEditor | undefined =>
+  document && document.kind === 'office' && document.officeEditor && officeEditorFor(document.path) === document.officeEditor ? document.officeEditor : undefined;
+export const isWordEditorDocument = (document: OfficeCandidate): boolean => officeEditorOf(document) === 'word';
+export const isPresentationEditorDocument = (document: OfficeCandidate): boolean => officeEditorOf(document) === 'presentation';
 
 /** Cache by snapshot identity/path. No content scan or registry lookup on input. */
 const profiles = new WeakMap<object, { path: string; profile: DocumentProfile }>();

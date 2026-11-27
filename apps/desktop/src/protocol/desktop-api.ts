@@ -329,6 +329,7 @@ export type MarkTexApi = {
   showPdfSelectionMenu(path: string, selection: string): Promise<void>;
   imageEdit: import('./image-edit').ImageEditApi;
   docxEdit: import('./docx-edit').DocxEditApi;
+  pptxEdit: import('./pptx-edit').PptxEditApi;
   readImageBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   readOfficeBytes(path: string, version: DiskVersion): Promise<Uint8Array>;
   mediaUrl(path: string): string;

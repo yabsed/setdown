@@ -10,7 +10,10 @@ const exec = promisify(execFile);
 test('Seti icons follow file types in Explorer, both Git groups and history, in light and dark themes', async () => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), 'setdown-file-icons-'));
   const root = path.join(temporary, 'repo');
-  const files = { 'guide.md': '_markdown', 'README.md': '_info', 'index.ts': '_typescript', 'App.svelte': '_svelte', 'package.json': '_json', 'image.png': '_image', 'report.csv': '_csv', 'unknown.custom': '_default' };
+  const files = { 'guide.md': '_markdown', 'README.md': '_info', 'index.ts': '_typescript', 'App.svelte': '_svelte', 'package.json': '_json', 'image.png': '_image', 'report.csv': '_csv', 'unknown.custom': '_default',
+    'slides.pptx': '_powerpoint', 'letter.hwp': '_hwp' };
+  // Seti has no glyph for these: Setdown draws them itself, in Seti's colours and in a glyph's box.
+  const drawn: Record<string, [dark: string, light: string]> = { _powerpoint: ['rgb(227, 121, 51)', 'rgb(204, 109, 46)'], _hwp: ['rgb(81, 154, 186)', 'rgb(73, 139, 167)'] };
   const git = (...args: string[]) => exec('git', args, { cwd: root });
   let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
   try {
@@ -34,6 +37,14 @@ test('Seti icons follow file types in Explorer, both Git groups and history, in 
         await expect(row.locator('.file-type-icon')).toHaveAttribute('data-file-icon', icon);
         await expect(row.locator('.file-type-icon')).toHaveCSS('font-family', '"Setdown Seti"');
       }
+      for (const [icon, [dark, light]] of Object.entries(drawn)) {
+        const shape = page.locator(`.explorer-row [data-file-icon="${icon}"]`);
+        await expect(shape).toHaveCSS('color', theme === 'night' ? dark : light);
+        await expect(shape).toHaveText('');
+        const box = (await shape.locator('svg').boundingBox())!;
+        expect([box.width, box.height]).toEqual([16, 16]);
+        await expect(shape.locator('svg')).toHaveCSS('fill', theme === 'night' ? dark : light);
+      }
       await page.evaluate(() => document.fonts.load('24px "Setdown Seti"'));
       expect(await page.evaluate(() => document.fonts.check('24px "Setdown Seti"'))).toBe(true);
       await expect(page.locator('.explorer-row [data-file-icon="_markdown"]')).toHaveCSS('color', theme === 'night' ? 'rgb(81, 154, 186)' : 'rgb(73, 139, 167)');
@@ -47,6 +58,7 @@ test('Seti icons follow file types in Explorer, both Git groups and history, in 
       const graph = page.locator('web-git-graph');
       if (!(await graph.locator('.tree-file').count())) await graph.locator('.row').first().click();
       await expect(graph.locator('.tree-file [data-file-icon="_typescript"]')).toBeVisible();
+      await expect(graph.locator('.tree-file [data-file-icon="_powerpoint"] svg')).toBeVisible();
       await expect(graph.locator('.tree-file [data-file-icon="_markdown"]')).toHaveCSS('color', theme === 'night' ? 'rgb(81, 154, 186)' : 'rgb(73, 139, 167)');
       await page.locator('.project-sidebar').screenshot({ path: test.info().outputPath(`git-icons-${theme}.png`) });
     }

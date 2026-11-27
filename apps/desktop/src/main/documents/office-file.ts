@@ -1,8 +1,8 @@
 import { versionFromStat } from './file-system';
 import { constants, promises as fs } from 'node:fs';
 import type { DiskVersion } from '../../core/document/document';
-import { isEditableOfficeDocument, isOfficeDocument } from '../../core/document/document-profile';
-import { wordPackageProblem } from './docx-save';
+import { isOfficeDocument, officeEditorFor, type OfficeEditor } from '../../core/document/document-profile';
+import { officePackageProblem } from './office-package';
 
 /** The viewer parses the whole file in renderer memory, so the input is bounded. */
 export const MAX_OFFICE_BYTES = 128 * 1024 * 1024;
@@ -26,13 +26,15 @@ async function readAll(handle: fs.FileHandle, size: number): Promise<Uint8Array 
   return bytes;
 }
 /** Legacy files may carry HTML, text or XML under an Office extension; the viewer decides, so no signature is required to open one.
- * Only a `.docx` whose bytes are a Word document package is marked for the Word editor; anything else under that name stays read-only. */
-export async function readOfficeMetadata(file: string): Promise<{ kind: 'office'; text: ''; diskVersion: DiskVersion; officeEditor?: 'word' }> {
+ * Only a `.docx` whose bytes are a Word document package and a `.pptx` whose bytes are a presentation package are marked
+ * for their editor; anything else under those names stays read-only. */
+export async function readOfficeMetadata(file: string): Promise<{ kind: 'office'; text: ''; diskVersion: DiskVersion; officeEditor?: OfficeEditor }> {
   const { handle, diskVersion } = await openOffice(file);
   try {
-    if (!isEditableOfficeDocument(file)) return { kind: 'office', text: '', diskVersion };
+    const editor = officeEditorFor(file);
+    if (!editor) return { kind: 'office', text: '', diskVersion };
     const bytes = await readAll(handle, diskVersion.size);
-    return { kind: 'office', text: '', diskVersion, ...(bytes && wordPackageProblem(bytes) === null ? { officeEditor: 'word' as const } : {}) };
+    return { kind: 'office', text: '', diskVersion, ...(bytes && officePackageProblem(bytes, editor) === null ? { officeEditor: editor } : {}) };
   } finally { await handle.close(); }
 }
 export async function readOfficeBytes(file: string, version: DiskVersion): Promise<Uint8Array> {

@@ -4,7 +4,7 @@ import { CHROME_GROUPS, composeFontOrigins, createDocxEditor, createFontSource, 
 import { packagedFonts } from '@docx-editor.dev/fonts';
 import { cjkFonts, NOTO_SANS_CJK_JP_FAMILY } from '@docx-editor.dev/fonts-cjk/browser';
 import type { DocxEditApi } from '../../protocol/docx-edit';
-import { installedFontSupply, koreanLastResort } from './docx-font-supply';
+import { installedFontSupply, koreanLastResort } from '../office-edit/font-supply';
 import type { DocxControlId, DocxEngine, DocxFind, DocxLink, DocxMode, DocxView } from './docx-engine';
 
 /**

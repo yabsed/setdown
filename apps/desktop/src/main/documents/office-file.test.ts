@@ -3,7 +3,8 @@ import { copyFile, mkdtemp, mkdir, readFile, rm, truncate, utimes, writeFile } f
 import os from 'node:os';
 import path from 'node:path';
 import { MAX_OFFICE_BYTES, readOfficeBytes, readOfficeMetadata } from './office-file';
-import { OFFICE_EXTENSIONS, documentProfile, documentSurface, isEditableOfficeDocument, isOfficeDocument, isOpenableDocument, isReadOnlyDocument, isTextCandidate, officeFamily } from '../../core/document/document-profile';
+import { OFFICE_EXTENSIONS, documentProfile, documentSurface, isEditableOfficeDocument, isOfficeDocument, isOpenableDocument, isReadOnlyDocument, isTextCandidate, officeEditorFor, officeFamily } from '../../core/document/document-profile';
+import { isPresentationEditorDocument, isWordEditorDocument, officeEditorOf } from '../../core/document/document-capabilities';
 import { applyTextRevision, isDirty } from '../../core/document/document-state';
 import { prepareDocumentSave } from '../../core/document/document-save';
 import { validReadingRecord } from '../../core/reading/reading-position';
@@ -19,10 +20,12 @@ it('routes Word, Excel, PowerPoint and Hangul files to the Office surface, none 
   }
   expect(['report.docx', 'old.DOC', 'budget.xlsx', 'old.xls', 'deck.pptx', 'old.ppt', 'notice.hwp', 'notice.HWPX'].map(officeFamily))
     .toEqual(['word', 'word', 'spreadsheet', 'spreadsheet', 'presentation', 'presentation', 'hangul', 'hangul']);
-  // Only .docx is edited; macro-enabled, template, legacy and every non-Word format stay in the read-only viewer.
-  expect(OFFICE_EXTENSIONS.filter(extension => isEditableOfficeDocument(`example.${extension}`))).toEqual(['docx']);
+  // Only .docx and .pptx are edited; macro-enabled, template, slide-show, legacy and every other format stay in the read-only viewer.
+  expect(OFFICE_EXTENSIONS.filter(extension => isEditableOfficeDocument(`example.${extension}`))).toEqual(['docx', 'pptx']);
   expect(isEditableOfficeDocument('/docs/REPORT.DOCX')).toBe(true);
-  for (const file of ['report.docx.bak', 'docx', 'report.docm', 'report.dotx', 'report.doc', 'notes.md']) expect(isEditableOfficeDocument(file)).toBe(false);
+  expect(['/docs/REPORT.DOCX', 'deck.pptx', 'DECK.PPTX', 'deck.ppsx', 'deck.pptm', 'deck.ppt', 'budget.xlsx'].map(officeEditorFor))
+    .toEqual(['word', 'presentation', 'presentation', undefined, undefined, undefined, undefined]);
+  for (const file of ['report.docx.bak', 'docx', 'report.docm', 'report.dotx', 'report.doc', 'deck.pptx.bak', 'pptx', 'deck.potx', 'notes.md']) expect(isEditableOfficeDocument(file)).toBe(false);
   // OpenDocument and delimited text keep their existing routes.
   for (const file of ['notes.odt', 'sheet.ods', 'slides.odp', 'file.__proto__', 'docx']) expect(isOfficeDocument(file)).toBe(false);
   expect(isOpenableDocument('notes.odt')).toBe(false);
@@ -73,6 +76,32 @@ it('marks a .docx for the Word editor only when its bytes are a Word document pa
       const other = path.join(root, name); await copyFile(path.join(fixtures, 'report.docx'), other);
       expect(await readOfficeMetadata(other)).not.toHaveProperty('officeEditor');
     }
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+it('marks a .pptx for the presentation editor only when its bytes are a presentation package', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'office-deck-')), fixtures = path.join(import.meta.dirname, '../../../test/fixtures/office');
+  try {
+    const deck = path.join(root, 'deck.pptx'); await copyFile(path.join(fixtures, 'deck.pptx'), deck);
+    expect((await readOfficeMetadata(deck)).officeEditor).toBe('presentation');
+    // A Word document, a legacy binary deck and plain bytes under the same extension stay with the read-only viewer.
+    for (const source of ['report.docx', 'deck.ppt']) {
+      const renamed = path.join(root, `renamed-${source}.pptx`); await copyFile(path.join(fixtures, source), renamed);
+      expect(await readOfficeMetadata(renamed)).not.toHaveProperty('officeEditor');
+    }
+    const empty = path.join(root, 'empty.pptx'); await writeFile(empty, '');
+    expect(await readOfficeMetadata(empty)).not.toHaveProperty('officeEditor');
+    // The same package under a name the editor does not take, and under the Word editor's name, is not marked.
+    for (const name of ['deck.pptm', 'deck.ppsx', 'deck.potx', 'deck.docx']) {
+      const other = path.join(root, name); await copyFile(path.join(fixtures, 'deck.pptx'), other);
+      expect(await readOfficeMetadata(other)).not.toHaveProperty('officeEditor');
+    }
+    // The mark is honoured only together with the name it was given for.
+    expect(officeEditorOf({ kind: 'office', path: deck, officeEditor: 'presentation' })).toBe('presentation');
+    expect(isPresentationEditorDocument({ kind: 'office', path: deck, officeEditor: 'presentation' })).toBe(true);
+    expect(officeEditorOf({ kind: 'office', path: deck, officeEditor: 'word' })).toBeUndefined();
+    expect(officeEditorOf({ kind: 'office', path: path.join(root, 'deck.ppsx'), officeEditor: 'presentation' })).toBeUndefined();
+    expect(isWordEditorDocument({ kind: 'office', path: deck, officeEditor: 'presentation' })).toBe(false);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

@@ -3,6 +3,8 @@ import { fileLocation } from '../../core/document/file-location';
 import { parentFolder } from '../../core/files/folder-presentation';
 import { imageSessions } from '../image/image-edit-sessions';
 import { docxSessions } from '../docx/docx-sessions';
+import { pptxSessions } from '../pptx/pptx-sessions';
+import { officeEditSessions } from '../office-edit/office-editors';
 import { DocumentSessions } from '../workspace/document-sessions';
 import { startWith } from '../terminal/terminal-start';
 import { notebookContent, notebookViews } from '../notebook/document-content';
@@ -374,7 +376,7 @@ export function startWorkspace(desktop: DesktopPort) {
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
   workspace.documentStore.onRelease(record => editor.disposeDocument(record.id));
-  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions, docxSessions], desktop);
+  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions, docxSessions, pptxSessions], desktop);
   imageSessions.configure(desktop.imageEdit, () => workspace.documents, () => tabs?.updateChrome());
   imageSessions.saveFromToolbar = (id, saveAs) => {
     const tab = workspace.documents.find(t => t.id === id);
@@ -387,17 +389,19 @@ export function startWorkspace(desktop: DesktopPort) {
     });
     fileMutation = task.catch(() => {}); return task;
   };
-  // The Word engine and its fonts load with the first .docx tab, never at startup.
+  // The Word and presentation engines and their fonts load with the first .docx or .pptx tab, never at startup.
   docxSessions.configure({ read: desktop.docxEdit.open, save: desktop.docxEdit.save, fonts: desktop.docxEdit.fonts, runtime: () => import('../docx/docx-runtime'),
     tabs: () => workspace.documents, changed: () => tabs?.updateChrome() });
-  docxSessions.saveFromToolbar = (id, saveAs) => {
+  pptxSessions.configure({ read: desktop.pptxEdit.open, save: desktop.pptxEdit.save, fonts: desktop.pptxEdit.fonts, runtime: () => import('../pptx/pptx-runtime'),
+    tabs: () => workspace.documents, changed: () => tabs?.updateChrome() });
+  for (const sessions of officeEditSessions) sessions.saveFromToolbar = (id, saveAs) => {
     const tab = workspace.documents.find(t => t.id === id);
     if (!tab) return Promise.resolve();
     const task = fileMutation.then(async () => {
       try {
         const result = await documentSessions.save(tab, saveAs);
         if (result.document && !result.canceled) { await tabs.acceptSaved(tab, result.document); await projects.documentSaved(result.document); }
-      } catch (error) { docxSessions.fail(id, error); }
+      } catch (error) { sessions.fail(id, error); }
     });
     fileMutation = task.catch(() => {}); return task;
   };
@@ -700,8 +704,9 @@ export function startWorkspace(desktop: DesktopPort) {
       }
       if (command === 'office:undo' || command === 'office:redo') {
         // Inputs keep their own history; the pages are the engine's, whose undo stack is not Chromium's.
-        if (document.activeElement?.matches('input, textarea')) document.execCommand(command.slice(7));
-        else if (active()) docxSessions.history(active()!.id, command === 'office:undo' ? 'undo' : 'redo');
+        // The presentation engine takes typing through a textarea inside its stage: that one is the engine's too.
+        if (document.activeElement?.matches('input, textarea') && !document.activeElement.closest('[data-office-pages]')) document.execCommand(command.slice(7));
+        else if (active()) for (const sessions of officeEditSessions) sessions.history(active()!.id, command === 'office:undo' ? 'undo' : 'redo');
         return;
       }
       if (command === 'open-find' && workspace.active?.kind === 'terminal' && !project.gitDiffActive) {

@@ -10,6 +10,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from '../electron/electron-app';
 import { pdfFixture } from '../media/pdf-fixture';
+import katex from 'katex';
+
+/** The formulas of the page at /article-math, as TeX. KaTeX itself writes the page's markup for them. */
+export const MATH_ARTICLE = {
+  inline: 'n',
+  heuristic: String.raw`\exp\left(O\left(n^{1/3}(\log n)^{2/3}\right)\right)`,
+  cubic: 'O(n^3)',
+  stretched: String.raw`\sqrt{\frac{a}{b}}\left(\frac{1}{2}\right)`,
+};
 
 type FixtureOptions = {
   /** Extra launch arguments, such as an address to open; they follow the app path. */
@@ -210,6 +219,20 @@ export async function fixture(document = true, markdown = '# Notes\n\nKeep the r
     if (req.url === '/tall.svg') {
       res.setHeader('content-type', 'image/svg+xml');
       res.end('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="1600"><rect width="600" height="1600" fill="#b33"/></svg>'); return;
+    }
+    // An answer with formulas as a chat page draws them: KaTeX's MathML with the TeX annotation, then its
+    // drawing hidden from assistive technology. One formula is MathML the page wrote itself.
+    if (req.url === '/article-math') {
+      const tex = (source: string, display = false) => katex.renderToString(source, { displayMode: display });
+      res.end(`<!doctype html><meta charset="utf-8"><title>Formula article</title><article><h1>The Formula Article Title</h1>
+        <p>입력 정수의 비트 길이를 ${tex(MATH_ARTICLE.inline)}이라고 하면, 휴리스틱 시간복잡도는 다음과 같아. ${sentence}</p>
+        <p>${tex(MATH_ARTICLE.heuristic, true)}</p>
+        <p>그런데 다음과 같은 알고리즘을 발견했다고 가정해 보자. ${sentence}</p>
+        <div>${tex(MATH_ARTICLE.cubic, true)}</div>
+        ${Array.from({ length: 12 }, (_, i) => `<p>Formula paragraph ${i}: ${sentence}</p>`).join('\n')}
+        <p>A root and stretched brackets: ${tex(MATH_ARTICLE.stretched, true)}</p>
+        <p>One half, written by the page as MathML: <math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>. ${sentence}</p></article>`);
+      return;
     }
     // Ends in a figure taller than the reader, like a magazine cover under an article.
     if (req.url === '/article-figure') {

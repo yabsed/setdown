@@ -191,7 +191,12 @@
           const icon = fileIcon(file.title.split(' → ').at(-1) ?? file.title);
           const span = document.createElement('span');
           span.className = 'file-type-icon'; span.dataset.fileIcon = icon.id;
-          span.setAttribute('aria-hidden', 'true'); span.textContent = icon.character;
+          span.setAttribute('aria-hidden', 'true');
+          if (icon.path) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            svg.setAttribute('viewBox', '0 0 16 16'); shape.setAttribute('fill-rule', 'evenodd'); shape.setAttribute('d', icon.path);
+            svg.append(shape); span.append(svg);
+          } else span.textContent = icon.character;
           span.style.setProperty('--file-icon-dark', icon.dark);
           span.style.setProperty('--file-icon-light', icon.light);
           file.prepend(span);

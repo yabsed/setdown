@@ -1,10 +1,12 @@
 import { electron } from '../../support/electron/electron-app';
 import { expect, test, type Locator } from '@playwright/test';
-import { copyFile, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication } from '../../support/electron/electron-app';
 import { previews } from '../../support/preview/preview-view';
+import { OUTLINE_SAMPLE, deckWithMetafile, emfBytes } from '../../support/media/metafile-fixture';
+import { asSlideShow } from '../../support/media/pptx-fixture';
 
 // report.*, budget.* and deck.* are generated for this repository; table.hwp and
 // sample.hwpx come from the hwplib/hwpxlib corpora (see the fixture README).
@@ -18,6 +20,9 @@ const launch = async (file: string, config: string) => {
 async function workspace(prefix: string) {
   const root = await mkdtemp(path.join(os.tmpdir(), prefix));
   for (const name of await readdir(fixtures)) if (/\.(docx?|xlsx?|pptx?|hwpx?)$/.test(name)) await copyFile(path.join(fixtures, name), path.join(root, name));
+  // A .pptx opens in the presentation editor (media/pptx-editor.spec.ts). The viewer keeps the other modern
+  // presentation formats: these are the same decks saved as slide shows.
+  for (const name of ['deck', 'links']) await writeFile(path.join(root, `${name}.ppsx`), asSlideShow(await readFile(path.join(fixtures, `${name}.pptx`))));
   return root;
 }
 /** The largest scroll offset inside the viewer's shadow tree. */
@@ -99,7 +104,7 @@ test('opens Word, Excel, PowerPoint and Hangul documents in tabs', async () => {
       await expect(reader.getByText('61 rows, 3 columns', { exact: false })).toBeVisible();
       await expect(reader.locator('canvas').first()).toBeVisible();
     }
-    await open('deck.pptx', 'presentation');
+    await open('deck.ppsx', 'presentation');
     await expect(reader.getByText('First slide marker: wombat-opening-slide')).toBeVisible();
     await open('deck.ppt', 'presentation');
     await expect.poll(() => reader.locator('canvas').count()).toBeGreaterThan(0);
@@ -114,6 +119,13 @@ test('opens Word, Excel, PowerPoint and Hangul documents in tabs', async () => {
     await expect(word).toHaveAttribute('data-office-ready', 'true');
     await expect(word).toHaveAttribute('data-docx-mode', 'view');
     await expect(word.getByText('Unique marker: quokka-reading-room.')).toBeVisible();
+    // A .pptx goes to the presentation editor's surface, which starts in reading mode too.
+    await page.evaluate((file) => window.marktex.openLink(`marktex-resource://file${file}`), path.join(root, 'deck.pptx'));
+    await expect(tab('deck.pptx')).toHaveAttribute('aria-selected', 'true');
+    const deck = page.getByRole('region', { name: 'Presentation', exact: true });
+    await expect(deck).toHaveAttribute('data-office-ready', 'true');
+    await expect(deck).toHaveAttribute('data-pptx-mode', 'view');
+    await expect(deck.locator('.deck-slide')).toHaveCount(3);
     // Earlier tabs are remounted from disk when revisited, still read-only.
     await tab('report.doc').click();
     await expect(reader).toHaveAttribute('data-office-family', 'word');
@@ -150,7 +162,7 @@ test('restores the legacy Word reading position after restart', async () => {
 
 test('a link inside a document opens a Setdown browser tab, never a child window or a navigation', async () => {
   const root = await workspace('setdown-office-links-');
-  const app = await launch(path.join(root, 'links.pptx'), path.join(root, 'config'));
+  const app = await launch(path.join(root, 'links.ppsx'), path.join(root, 'config'));
   const page = await app.firstWindow();
   try {
     const reader = page.getByRole('region', { name: 'Office document reader', exact: true });
@@ -173,5 +185,51 @@ test('a link inside a document opens a Setdown browser tab, never a child window
     })).toBe(true);
     expect(await windows()).toBe(1);
     expect(page.url()).toBe(shell);
+  } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
+});
+
+test('an EMF picture on a slide is painted figure by figure: an outline of lines and curves is one figure', async () => {
+  // The metafile is written the way a drawing program exports a logo: a path of moves, lines and curves, then a fill.
+  const root = await workspace('setdown-office-metafile-');
+  const { size, calls, colour, painted, clear } = OUTLINE_SAMPLE;
+  await writeFile(path.join(root, 'outline.ppsx'), asSlideShow(deckWithMetafile(await readFile(path.join(fixtures, 'deck.pptx')), emfBytes(size.width, size.height, calls), size)));
+  const app = await launch(path.join(root, 'report.doc'), path.join(root, 'config'));
+  const page = await app.firstWindow();
+  try {
+    const reader = page.getByRole('region', { name: 'Office document reader', exact: true });
+    await expect(reader).toHaveAttribute('data-office-ready', 'true');
+    const scripts: string[] = [];
+    page.on('worker', worker => scripts.push(path.basename(new URL(worker.url()).pathname)));
+    const open = async (name: string) => {
+      await page.evaluate((file) => window.marktex.openLink(`marktex-resource://file${file}`), path.join(root, name));
+      await expect(page.locator(`.document-tab[title="${path.join(root, name)}"]`)).toHaveAttribute('aria-selected', 'true');
+      await expect(reader).toHaveAttribute('data-office-family', 'presentation');
+      await expect(reader).toHaveAttribute('data-office-ready', 'true');
+    };
+    await open('outline.ppsx');
+    await expect(reader.getByText('First slide marker: wombat-opening-slide')).toBeVisible();
+    const picture = reader.locator('img[src^="data:image/svg+xml"]').first();
+    await expect(picture).toBeVisible();
+    const box = (await picture.boundingBox())!;
+    expect(box.width / box.height).toBeCloseTo(size.width / size.height, 1);
+    // The picture as the slide shows it, read back at one pixel per metafile unit.
+    const pixels = await picture.evaluate(async (image: HTMLImageElement, sample) => {
+      await image.decode();
+      const canvas = Object.assign(document.createElement('canvas'), sample.size);
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0, sample.size.width, sample.size.height);
+      const read = ([x, y]: readonly [number, number]) => Array.from(context.getImageData(x, y, 1, 1).data);
+      return { painted: sample.painted.map(read), clear: sample.clear.map(read) };
+    }, { size, painted, clear });
+    const fill = [colour >> 16 & 0xff, colour >> 8 & 0xff, colour & 0xff, 255];
+    expect(pixels.painted).toEqual(painted.map(() => fill));
+    expect(pixels.clear).toEqual(clear.map(() => [0, 0, 0, 0]));
+
+    // Both presentation formats are parsed by the worker scripts that carry the corrected converter,
+    // never by the copies the packages name as their default.
+    await open('deck.ppt');
+    await expect.poll(() => reader.locator('canvas').count()).toBeGreaterThan(0);
+    const parsers = scripts.filter(name => /ppt/.test(name)).map(name => name.replace(/-[\w-]{8}\.js$/, ''));
+    expect([...new Set(parsers)].sort()).toEqual(['office-metafile-ppt.worker', 'office-metafile-pptx.worker']);
   } finally { await disposeApplication(app); await rm(root, { recursive: true, force: true }); }
 });

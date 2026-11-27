@@ -2,8 +2,9 @@ import { buildUblock } from './browser/build-ublock.mjs';
 import { extensionAPI } from './browser/extension-api.mjs';
 import { patchDarkReaderColors } from './browser/darkreader-colors.mjs';
 import { patchExtensionPreload, secureExtensionInvocations } from './browser/extension-preload.mjs';
+import { readerMathCss } from './browser/reader-math-css.mjs';
 import { build } from 'esbuild';
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -58,6 +59,12 @@ if (!await exists(readability)) {
 await fs.copyFile(readability, path.join(output, 'readability.js'));
 await fs.copyFile(path.join(root, 'vendor/readability/LICENSE.md'), path.join(output, 'READABILITY-LICENSE.txt'));
 await fs.copyFile(path.join(root, 'vendor/readability/NOTICE'), path.join(output, 'READABILITY-NOTICE.txt'));
+// The reader's PDF export draws formulas with KaTeX (MIT) in a page that may load nothing,
+// so its style sheet carries the fonts.
+const katex = path.dirname(path.dirname(require.resolve('katex')));
+await fs.writeFile(path.join(output, 'reader-math.css'), readerMathCss(await fs.readFile(path.join(katex, 'dist/katex.min.css'), 'utf8'),
+  file => readFileSync(path.join(katex, 'dist/fonts', file))));
+await fs.copyFile(path.join(katex, 'LICENSE'), path.join(output, 'KATEX-LICENSE.txt'));
 await fs.copyFile(path.join(root, 'vendor/min/LICENSE.txt'), path.join(output, 'MIN-LICENSE.txt')).catch(async () => {
   await fs.copyFile('src/browser-runtime/MIN-LICENSE.txt', path.join(output, 'MIN-LICENSE.txt'));
 });

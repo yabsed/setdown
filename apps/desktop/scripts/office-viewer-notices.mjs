@@ -9,6 +9,11 @@ export const OFFICE_VIEWER_PACKAGES = ['@file-viewer/web', '@file-viewer/rendere
  * The engine's separately licensed Pro packages are never installed or bundled.
  */
 export const WORD_EDITOR_PACKAGES = ['@docx-editor.dev/core', '@docx-editor.dev/fonts', '@docx-editor.dev/fonts-cjk'];
+/**
+ * The presentation editor: the Apache-2.0 engine of the same publisher. It draws with the font packages the Word editor
+ * ships. Its separately licensed packages (React and Vue chrome, agents, Pro) are never installed or bundled.
+ */
+export const PRESENTATION_EDITOR_PACKAGES = ['@pptx-editor.dev/core'];
 const NOTICE_FILE = /^(licen[cs]es?|notice|third[_-]party)/i;
 const BUNDLE_NOTICE_FILE = /third[_-]party|licenses/i;
 
@@ -38,6 +43,7 @@ export function officeViewerClosure(root = process.cwd(), packages = OFFICE_VIEW
     .sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }
 export const wordEditorClosure = (root = process.cwd()) => officeViewerClosure(root, WORD_EDITOR_PACKAGES);
+export const presentationEditorClosure = (root = process.cwd()) => officeViewerClosure(root, PRESENTATION_EDITOR_PACKAGES);
 
 /** Notice files of one package: those at its root, everything inside a `licenses/` folder, and the notices shipped beside its bundles. */
 function noticeFiles(directory) {
@@ -60,7 +66,7 @@ function sections(closure) {
   return lines;
 }
 
-/** Original license and notice files of every bundled Office viewer and Word editor package, including the notices shipped beside their worker bundles and font files. */
+/** Original license and notice files of every bundled Office viewer, Word editor and presentation editor package, including the notices shipped beside their worker bundles and font files. */
 export function officeViewerNotices(root = process.cwd()) {
   return ['Setdown Office viewer notices', '=============================', '',
     'The Office viewer bundles flyfish-dev/file-viewer and the packages below. Their original notices are reproduced unchanged.', '',
@@ -68,5 +74,9 @@ export function officeViewerNotices(root = process.cwd()) {
     'Setdown Word editor notices', '===========================', '',
     'The Word (.docx) editor bundles eigenpal/docx-editor (@docx-editor.dev/core, Apache-2.0), its substitute and CJK fonts and the packages below.',
     'Only the Apache-2.0 packages are used; the EigenPal Pro packages are not part of Setdown. Their original notices are reproduced unchanged.', '',
-    ...sections(wordEditorClosure(root))].join('\n') + '\n';
+    ...sections(wordEditorClosure(root)),
+    'Setdown presentation editor notices', '===================================', '',
+    'The presentation (.pptx) editor bundles eigenpal/pptx-editor (@pptx-editor.dev/core, Apache-2.0) and the packages below.',
+    'Only the Apache-2.0 engine is used; its other packages are not part of Setdown. Their original notices are reproduced unchanged.', '',
+    ...sections(presentationEditorClosure(root))].join('\n') + '\n';
 }

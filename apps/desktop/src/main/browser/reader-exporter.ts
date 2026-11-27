@@ -4,10 +4,26 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ReaderArticle } from '../../core/browser/reader-article';
 import { readerFileName, readerMarkdown, sanitizedReaderHtml } from '../../core/browser/reader-export';
+import { drawReaderMath, hasReaderMath, readerMathOptions } from '../../core/browser/reader-math';
 import { themeProfile } from '../../core/theme/theme-catalog';
 import { APP_FONT_FAMILY } from '../../core/theme/typography';
 import type { PreviewThemeId } from '../../core/preview/preview-preferences';
 import { printThemedPdf, waitForPrintablePreview } from '../preview/pdf-exporter';
+
+let mathStyle: Promise<string> | undefined;
+/** KaTeX's style sheet with its fonts inside it (scripts/build-browser.mjs): the export page may load nothing. */
+function readerMathStyle(): Promise<string> {
+  mathStyle ??= fs.readFile(path.join(__dirname, 'reader-math.css'), 'utf8');
+  void mathStyle.catch(() => { mathStyle = undefined; });
+  return mathStyle;
+}
+
+/** The article's HTML with its formulas drawn, and the style sheet they need. An article without TeX loads neither. */
+async function withFormulas(html: string): Promise<{ html: string; style: string }> {
+  if (!hasReaderMath(html)) return { html, style: '' };
+  const [{ default: katex }, style] = await Promise.all([import('katex'), readerMathStyle()]);
+  return { html: drawReaderMath(html, (tex, display) => katex.renderToString(tex, readerMathOptions(display))), style };
+}
 
 export async function exportReader(window: BrowserWindow, article: ReaderArticle, format: 'markdown' | 'pdf', theme: PreviewThemeId,
   current: () => boolean) {
@@ -21,13 +37,15 @@ export async function exportReader(window: BrowserWindow, article: ReaderArticle
   } else {
     const escape = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
     const profile = themeProfile(theme);
-    const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http: data:; style-src 'unsafe-inline'">
-      <style>body{font:14px/1.6 ${APP_FONT_FAMILY};color:${profile.palette.text};background:${profile.preview.background};padding:2em}h1,h2,h3{line-height:1.3}table{border-collapse:collapse}td,th{border:1px solid ${profile.palette.border};padding:.5em}img{max-width:100%;height:auto}pre{white-space:pre-wrap}a{color:${profile.palette.accent}}@page{size:A4;margin:15mm}</style>
+    const body = await withFormulas(sanitizedReaderHtml(article));
+    const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http: data:; font-src data:; style-src 'unsafe-inline'">
+      <style>${body.style}body{font:14px/1.6 ${APP_FONT_FAMILY};color:${profile.palette.text};background:${profile.preview.background};padding:2em}h1,h2,h3{line-height:1.3}table{border-collapse:collapse}td,th{border:1px solid ${profile.palette.border};padding:.5em}img{max-width:100%;height:auto}pre{white-space:pre-wrap}a{color:${profile.palette.accent}}@page{size:A4;margin:15mm}</style>
       <article class="markdown-preview" data-for="preview"><h1>${escape(article.title)}</h1><p>${escape([article.byline, article.siteName].filter(Boolean).join(' · '))}</p>
-      <p><a href="${escape(article.url)}">${escape(article.url)}</a></p>${sanitizedReaderHtml(article)}</article>`;
+      <p><a href="${escape(article.url)}">${escape(article.url)}</a></p>${body.html}</article>`;
     const print = new BrowserWindow({ show: false, width: 794, height: 1123, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
     try {
-      await print.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      // Base64 keeps the address short: percent-encoding makes nine characters of each Hangul syllable, and an address has a limit.
+      await print.loadURL(`data:text/html;charset=utf-8;base64,${Buffer.from(html, 'utf8').toString('base64')}`);
       await waitForPrintablePreview(print);
       if (!current()) return { canceled: true };
       const pdf = await printThemedPdf(print);

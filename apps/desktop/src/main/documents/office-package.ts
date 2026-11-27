@@ -4,10 +4,19 @@ import { randomUUID } from 'node:crypto';
 import { inflateRawSync } from 'node:zlib';
 import { sameDiskVersion, versionFromStat } from './file-system';
 import type { DiskVersion } from '../../core/document/document';
+import type { OfficeEditor } from '../../core/document/document-profile';
 
 const END_OF_DIRECTORY = 0x06054b50, DIRECTORY_ENTRY = 0x02014b50, LOCAL_ENTRY = 0x04034b50;
-/** The content type of a Word document's main part. Templates and macro-enabled documents declare other types. */
-const WORD_MAIN_PART = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml';
+/**
+ * What each editor opens and writes: the one extension, the content type of the package's main part
+ * (templates, slide shows and macro-enabled files declare other types), and how the package is named in messages.
+ */
+export const OFFICE_PACKAGES = {
+  word: { extension: 'docx', mainPart: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+    name: 'Word document', part: 'Word document part', plural: 'Word documents', noun: 'document' },
+  presentation: { extension: 'pptx', mainPart: 'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml',
+    name: 'PowerPoint presentation', part: 'presentation part', plural: 'PowerPoint presentations', noun: 'presentation' },
+} as const satisfies Record<OfficeEditor, { extension: string; mainPart: string; name: string; part: string; plural: string; noun: string }>;
 const CONTENT_TYPES = '[Content_Types].xml', CONTENT_TYPES_LIMIT = 4 * 1024 * 1024;
 type ZipEntry = { name: string; method: number; compressed: number; offset: number };
 
@@ -54,35 +63,35 @@ const attribute = (element: string, name: string) => {
 export const zipEntryNames = (bytes: Uint8Array): string[] | null => zipDirectory(buffer(bytes))?.map(entry => entry.name) ?? null;
 
 /**
- * Whether `bytes` is a WordprocessingML document package: an archive whose content
- * types declare a Word main document part that is present. The name of a file proves
- * nothing; a spreadsheet, a legacy binary document or a web page can carry `.docx`.
- * Returns what is wrong: not an archive at all, or an archive that is not a Word document.
+ * Whether `bytes` is the package `editor` works on (a WordprocessingML document, a PresentationML
+ * presentation): an archive whose content types declare that main part and that holds it. The name
+ * of a file proves nothing; a spreadsheet, a legacy binary document or a web page can carry `.docx`
+ * or `.pptx`. Returns what is wrong: not an archive at all, or an archive without that part.
  */
-export function wordPackageProblem(bytes: Uint8Array): 'archive' | 'word' | null {
+export function officePackageProblem(bytes: Uint8Array, editor: OfficeEditor): 'archive' | 'part' | null {
   const view = buffer(bytes), entries = zipDirectory(view);
   if (!entries) return 'archive';
   const types = entries.find(entry => entry.name === CONTENT_TYPES);
-  if (!types) return 'word';
+  if (!types) return 'part';
   const xml = zipEntryText(view, types, CONTENT_TYPES_LIMIT);
   if (xml === null) return 'archive';
   // Part names are case-insensitive and written with a leading slash.
   const names = new Set(entries.map(entry => entry.name.toLowerCase()));
   for (const [override] of xml.matchAll(/<Override\b[^>]*>/g)) {
     const part = attribute(override, 'PartName');
-    if (attribute(override, 'ContentType') === WORD_MAIN_PART && part && names.has(part.replace(/^\//, '').toLowerCase())) return null;
+    if (attribute(override, 'ContentType') === OFFICE_PACKAGES[editor].mainPart && part && names.has(part.replace(/^\//, '').toLowerCase())) return null;
   }
-  return 'word';
+  return 'part';
 }
 
-/** Why `bytes` must not be written as a Word document, or null when it is one. */
-export function docxPackageError(bytes: Uint8Array): string | null {
-  const problem = wordPackageProblem(bytes);
-  return problem === 'archive' ? 'The editor produced data that is not a Word document. Nothing was written.'
-    : problem === 'word' ? 'The editor produced a package without a Word document part. Nothing was written.' : null;
+/** Why `bytes` must not be written as that editor's document, or null when it is one. */
+export function officePackageError(bytes: Uint8Array, editor: OfficeEditor): string | null {
+  const problem = officePackageProblem(bytes, editor), { name, part } = OFFICE_PACKAGES[editor];
+  return problem === 'archive' ? `The editor produced data that is not a ${name}. Nothing was written.`
+    : problem === 'part' ? `The editor produced a package without a ${part}. Nothing was written.` : null;
 }
 
-export async function docxVersion(file: string): Promise<DiskVersion | null> {
+export async function packageVersion(file: string): Promise<DiskVersion | null> {
   try { return versionFromStat(await fs.stat(file)); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 }
@@ -93,8 +102,8 @@ export async function docxVersion(file: string): Promise<DiskVersion | null> {
  * destination's version this save was prepared against (null: it must not exist);
  * a destination that moved on in the meantime is never overwritten.
  */
-export async function writeDocx(file: string, bytes: Uint8Array, expected: DiskVersion | null, valid: () => boolean): Promise<DiskVersion> {
-  const invalid = docxPackageError(bytes);
+export async function writeOfficePackage(file: string, bytes: Uint8Array, expected: DiskVersion | null, valid: () => boolean, editor: OfficeEditor): Promise<DiskVersion> {
+  const invalid = officePackageError(bytes, editor);
   if (invalid) throw Error(invalid);
   const temporary = path.join(path.dirname(file), `.${path.basename(file)}.${randomUUID()}.tmp`);
   try {
@@ -105,7 +114,7 @@ export async function writeDocx(file: string, bytes: Uint8Array, expected: DiskV
     if (stat) await fs.chmod(temporary, stat.mode);
     const handle = await fs.open(temporary, 'r');
     try {
-      const current = await docxVersion(file);
+      const current = await packageVersion(file);
       if (!valid()) throw Error('The document is no longer open.');
       if (!!expected !== !!current || (expected && current && !sameDiskVersion(expected, current)))
         throw Error('The document changed on disk while saving. Reload it or use Save As with a different filename.');

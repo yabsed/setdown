@@ -31,10 +31,14 @@ export function officeFamily(filePath: string): OfficeFamily | undefined {
   return (Object.keys(OFFICE_FAMILIES) as OfficeFamily[]).find(family => (OFFICE_FAMILIES[family] as readonly string[]).includes(extension));
 }
 export const isOfficeDocument = (filePath: string): boolean => !!officeFamily(filePath);
-/** Names the Word editor may take: `.docx` only. Macro-enabled, template and legacy binary files stay in the read-only viewer.
- * A candidate is edited only when main also verified its content (`isWordEditorDocument`). */
-export const isEditableOfficeDocument = (filePath: string): boolean => /\.docx$/i.test(filePath);
-/** Documents without a text model or text save path. An editable Word document saves through its own content owner. */
+/** The editors that replace the read-only viewer, and the one name each takes: `.docx` for the Word editor and `.pptx` for the
+ * presentation editor. Macro-enabled, template, slide-show and legacy binary files stay in the viewer.
+ * A candidate is edited only when main also verified its content (`officeEditorOf`). */
+export type OfficeEditor = 'word' | 'presentation';
+export const officeEditorFor = (filePath: string): OfficeEditor | undefined =>
+  /\.docx$/i.test(filePath) ? 'word' : /\.pptx$/i.test(filePath) ? 'presentation' : undefined;
+export const isEditableOfficeDocument = (filePath: string): boolean => !!officeEditorFor(filePath);
+/** Documents without a text model or text save path. An editable Office document saves through its own content owner. */
 export const isReadOnlyDocument = (filePath: string): boolean =>
   isPdfDocument(filePath) || isImageDocument(filePath) || isVideoDocument(filePath) || isOfficeDocument(filePath);
 const MARKDOWN = /\.(?:md|markdown|mdown|mkdn|mkd|rmd|qmd|mdx)$/i;

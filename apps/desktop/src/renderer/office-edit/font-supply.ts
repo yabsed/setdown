@@ -2,9 +2,10 @@ import { koreanFontClass, koreanLineBox } from '../../core/fonts/korean-fonts';
 import type { DocxEditApi, DocxFontRequest } from '../../protocol/docx-edit';
 
 /**
- * Turns the fonts installed on this machine into what the Word engine takes from a font origin.
- * The engine's own types stay in `docx-runtime.ts`; this module only knows their shape, so it is
- * tested without loading the engine.
+ * Turns the fonts installed on this machine into what an Office editing engine takes from a font
+ * origin. The Word and the presentation engine share the font model; their own types stay in
+ * `docx-runtime.ts` and `pptx-runtime.ts`, and this module only knows their shape, so it is tested
+ * without loading an engine.
  *
  * The document keeps naming its own families. A family that is installed is drawn by its own
  * faces under that name; a missing Korean family is drawn by a stand-in, declared to the engine
@@ -72,9 +73,9 @@ export function installedFontSupply<Source>(supply: DocxEditApi['fonts'], makeSo
       const drawn: DocxFontRequest = { family: face.standIn ?? face.family, weight: face.weight, style: face.style };
       let source = made.get(key(drawn));
       if (!source) {
-        if (!taken.has(face.file) && spent + bytes.length > budget) { warn(`DOCX font left out, the document already holds too many font bytes: ${face.family}`); continue; }
+        if (!taken.has(face.file) && spent + bytes.length > budget) { warn(`Document font left out, the document already holds too many font bytes: ${face.family}`); continue; }
         const result = makeSource(bytes, { ...drawn, faceIndex: face.index });
-        if (!('source' in result)) { warn(`DOCX font unusable: ${drawn.family} ${result.failure.reason} ${result.failure.diagnostic ?? ''}`.trimEnd()); continue; }
+        if (!('source' in result)) { warn(`Document font unusable: ${drawn.family} ${result.failure.reason} ${result.failure.diagnostic ?? ''}`.trimEnd()); continue; }
         if (!taken.has(face.file)) { taken.set(face.file, bytes); spent += bytes.length; }
         source = result.source; made.set(key(drawn), source);
       }
@@ -93,7 +94,8 @@ export function installedFontSupply<Source>(supply: DocxEditApi['fonts'], makeSo
  * font can draw it. The engine's own origin maps four Korean families onto that face (맑은 고딕,
  * 바탕, 굴림, 돋움) on the face's own line box, and leaves every other Korean family to whatever
  * the browser picks, measured by estimate. Here every Korean family that nothing earlier draws is
- * mapped onto the face, and keeps the line box Word gives it, as an installed stand-in does.
+ * mapped onto the face, and keeps the line box Word gives it, as an installed stand-in does. (The presentation
+ * engine spaces lines by PowerPoint's rule, 1.2 times the font size whatever the face, and does not read the box.)
  */
 export function koreanLastResort<Source>(packaged: (wish: FontWish) => FontAnswer<Source> | undefined | Promise<FontAnswer<Source> | undefined>, face: DocxFontRequest) {
   return async (wish: FontWish): Promise<FontAnswer<Source> | undefined> => {

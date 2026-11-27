@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, findOverlay } from '../../support/browser/browser-fixture';
+import { fixture, evaluatePage, captureNativeMenus, chooseNativeMenu, findOverlay, MATH_ARTICLE } from '../../support/browser/browser-fixture';
 import { THEME_IDS } from '../../../src/core/theme/theme-catalog';
 import { previews } from '../../support/preview/preview-view';
 import { nativeInput } from '../../support/electron/native-input';
@@ -103,6 +103,88 @@ test('web reader searches the visible article and exports its snapshot as Markdo
     await expect(panel.locator('.find-count')).toHaveText('1 / 1');
     await paragraph.dblclick(); await expect(reader).toHaveCount(0);
     await expect.poll(() => f.app.evaluate(() => (globalThis as any).__readerNativeFind)).toBeGreaterThan(0);
+    expect(f.errors).toEqual([]);
+  } finally { await f.dispose(); }
+});
+
+test('web reader draws each formula of a page once, as the page drew it, and exports it as mathematics', async () => {
+  const f = await fixture();
+  try {
+    await captureNativeMenus(f.app);
+    await f.page.evaluate(url => window.marktex.openLink(url), `${f.origin}/article-math`);
+    await expect(f.page.getByRole('tab', { name: /Formula article/ })).toBeVisible();
+    await f.page.getByRole('button', { name: 'Enter reader mode' }).click();
+    const reader = f.page.getByRole('region', { name: 'Reader mode', exact: true });
+    await expect(reader).toBeVisible();
+    // The page holds every formula three times (MathML, its TeX, the drawing). The reader draws it once from the TeX.
+    await expect(reader.locator('span[data-setdown-math] .katex')).toHaveCount(4);
+    await expect(reader.locator('.katex-display')).toHaveCount(3);
+    const shown = await reader.evaluate(async element => {
+      await document.fonts.ready;
+      // Text outside a drawn formula that is a formula's source, or the flattened text of its MathML.
+      const stray: string[] = [], walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null)
+        if (!node.parentElement!.closest('.katex') && (node.data.includes('\\left') || node.data.includes('^{') || node.data.includes('n1/3') || node.data.includes('(n3)'))) stray.push(node.data);
+      const box = (node: Element) => node.getBoundingClientRect();
+      return {
+        stray,
+        font: getComputedStyle(element.querySelector('.katex')!).fontFamily.split(',')[0],
+        loaded: [...document.fonts].filter(face => face.status === 'loaded').map(face => face.family.replace(/"/g, '')).filter(family => family.startsWith('KaTeX')),
+        // What KaTeX writes for assistive technology takes no room beside the drawing.
+        hidden: [...element.querySelectorAll('.katex-mathml')].map(node => Math.round(box(node).width)),
+        // The root sign and the stretched brackets are SVGs with a calculated height.
+        drawings: [...element.querySelectorAll('.katex svg')].map(svg => Math.round(box(svg).height) > 10),
+        inline: Math.round(box(element.querySelector('span[data-setdown-math="inline"]')!).width),
+        own: [...element.querySelectorAll('math')].filter(math => !math.closest('.katex')).map(math => ({ markup: math.outerHTML, height: Math.round(box(math).height) })),
+        paragraph: element.querySelector('p[data-setdown-block]')!.textContent!.slice(0, 14),
+      };
+    });
+    expect(shown.stray).toEqual([]);
+    expect(shown.font).toBe('KaTeX_Main');
+    expect(shown.loaded).toEqual(expect.arrayContaining(['KaTeX_Main', 'KaTeX_Math']));
+    expect(shown.hidden).toEqual([1, 1, 1, 1]);
+    expect(shown.drawings.length).toBeGreaterThan(0);
+    expect(shown.drawings).not.toContain(false);
+    expect(shown.inline).toBeGreaterThan(5);
+    expect(shown.inline).toBeLessThan(40);
+    // MathML the page wrote itself stays MathML, drawn by Chromium.
+    expect(shown.own.map(math => math.markup)).toEqual(['<math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>']);
+    expect(shown.own[0].height).toBeGreaterThan(10);
+    expect(shown.paragraph).toBe('입력 정수의 비트 길이를 ');
+    await f.page.screenshot({ path: test.info().outputPath('reader-formulas.png') });
+
+    const markdown = test.info().outputPath('formulas.md'), pdf = test.info().outputPath('formulas.pdf');
+    await f.app.evaluate(({ dialog }, { markdown, pdf }) => {
+      dialog.showSaveDialog = (async (_owner, options) => ({ canceled: false, filePath: options!.defaultPath!.endsWith('.pdf') ? pdf : markdown })) as typeof dialog.showSaveDialog;
+    }, { markdown, pdf });
+    const paragraph = reader.locator('p').filter({ hasText: 'Formula paragraph 11:' });
+    const openReaderMenu = async () => {
+      const generation = await f.app.evaluate(() => (globalThis as any).__browserTestMenuGeneration ?? 0);
+      await paragraph.click({ button: 'right' });
+      await expect.poll(() => f.app.evaluate(() => (globalThis as any).__browserTestMenuGeneration ?? 0)).toBe(generation + 1);
+    };
+    await openReaderMenu(); await chooseNativeMenu(f.app, ['Export to Markdown…']);
+    await expect.poll(() => readFile(markdown, 'utf8').catch(() => '')).toContain('Formula paragraph 11:');
+    const text = await readFile(markdown, 'utf8');
+    expect(text).toContain('입력 정수의 비트 길이를 $' + MATH_ARTICLE.inline + '$이라고 하면');
+    for (const formula of [MATH_ARTICLE.heuristic, MATH_ARTICLE.cubic, MATH_ARTICLE.stretched]) expect(text).toContain('$$\n' + formula + '\n$$');
+    expect(text).toContain('<math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>');
+    // Each formula's source is written once.
+    expect(text.split(MATH_ARTICLE.heuristic)).toHaveLength(2);
+
+    await openReaderMenu(); await chooseNativeMenu(f.app, ['Export to PDF…']);
+    await expect.poll(() => readFile(pdf).then(data => data.subarray(-64).toString('latin1').includes('%%EOF')).catch(() => false), { timeout: 30_000 }).toBe(true);
+    const bytes = await readFile(pdf);
+    // The PDF carries the fonts KaTeX drew with, and none of the text of its pages is a formula's source.
+    const fonts = new Set(bytes.toString('latin1').match(/KaTeX_[A-Za-z0-9]+-[A-Za-z]+/g) ?? []);
+    expect([...fonts]).toEqual(expect.arrayContaining(['KaTeX_Main-Regular', 'KaTeX_Math-Italic']));
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const printedDocument = await pdfjs.getDocument({ data: new Uint8Array(bytes), verbosity: 0 }).promise;
+    let printed = '';
+    for (let number = 1; number <= printedDocument.numPages; number++)
+      printed += (await (await printedDocument.getPage(number)).getTextContent()).items.map(item => 'str' in item ? item.str : '').join('') + '\n';
+    expect(printed).toContain('Formula paragraph 11:');
+    for (const source of ['\\exp', '\\left', '\\frac', '^{']) expect(printed).not.toContain(source);
     expect(f.errors).toEqual([]);
   } finally { await f.dispose(); }
 });

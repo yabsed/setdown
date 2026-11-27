@@ -119,6 +119,40 @@ Reader Markdown export retains IDs on headings themselves as well as descendant
 anchors. The preview reading-tools Electron tests and audit regression suite
 cover these cases.
 
+**Formulas in web Reader.** A page that draws mathematics holds each formula two
+or three times: the drawing (styled spans hidden from assistive technology),
+MathML, and the TeX it was written in. An extraction that keeps text prints the
+copies side by side (`nn`, or a formula followed by its own source). Before
+Readability or the Namu path reads the page copy, `core/browser/reader-math.ts`
+(`carryMath`, serialized into the page like the Namu adapter) leaves one copy of
+each formula:
+
+- KaTeX (`.katex`, with its `.katex-display` wrapper), MathJax 2 (the
+  `script[type^="math/tex"]` after the drawing) and MathJax 3 (`mjx-container`,
+  with the TeX from MathJax's own list of what it drew) become
+  `<span data-setdown-math="inline|display">TeX</span>`.
+- MathML the page wrote itself, and MathJax 3 output with no TeX on record, stays
+  `<math>`, without `annotation`/`semantics` and with a TeX annotation moved to
+  `data-setdown-tex`.
+
+Block ordinals are stamped before this step and are not touched by it. The shell
+Reader draws TeX carriers with KaTeX after its sanitizer has run
+(`renderer/browser/reader-math.ts`, loaded only for an article that has a
+formula), with the options in `readerMathOptions`: untrusted TeX gets no command
+that loads or links, and a formula KaTeX cannot read is shown as its source.
+KaTeX's rules are confined to the Reader article by the same `@scope` as its
+theme, because a notebook shows KaTeX's MathML, which those rules hide; only its
+WOFF2 fonts ship in the renderer. The article is first shown with its formulas
+drawn. Reader PDF export draws the same carriers in main with the style sheet
+`scripts/build-browser.mjs` writes as `dist-electron/reader-math.css` (KaTeX's
+CSS with its fonts inside, since the export page may load nothing), and loads
+the page as a base64 `data:` URL. Reader Markdown export writes `$…$` and
+`$$…$$`; MathML without TeX stays as markup. `core/browser/reader-math.test.ts`,
+`scripts/browser/reader-math-css.test.mjs` and the formula test in
+`browser/reader.spec.ts` (real KaTeX markup, the Reader, both exports) cover it.
+MathJax and page-authored MathML are covered by unit tests on markup of the
+shape those libraries write, not by a run of MathJax itself.
+
 Local Markdown destinations encode path segments once. The pinned Crossnote
 resolver adapter in `main/preview/render-worker.ts` interprets authored URL paths
 before the filesystem hook encodes them for the resource protocol. Reader click
@@ -419,8 +453,8 @@ menu selection, clipboard-visible ranges, sibling terminals and live pages.
 ### Office and Hangul documents — 2026-11-14
 
 Word (`docm`, `dotx`, `dotm`, `doc`, `dot`; `docx` see below), Excel (`xlsx`, `xlsm`,
-`xltx`, `xltm`, `xlsb`, `xls`, `xlt`), PowerPoint (`pptx`, `pptm`, `potx`, `potm`,
-`ppsx`, `ppsm`, `ppt`, `pot`) and Hangul (`hwp`, `hwpx`) files open as read-only
+`xltx`, `xltm`, `xlsb`, `xls`, `xlt`), PowerPoint (`pptm`, `potx`, `potm`,
+`ppsx`, `ppsm`, `ppt`, `pot`; `pptx` see below) and Hangul (`hwp`, `hwpx`) files open as read-only
 `office` documents in an ordinary media tab. `core/document/document-profile.ts`
 owns the extension families; OpenDocument and delimited text keep their previous
 routes. Main sends metadata on open and the whole file (at most 128 MiB) through
@@ -454,10 +488,35 @@ is recorded, so reopening does not drift the stored position. Slide decks reopen
 at the first slide. Theme changes re-render in the app's light or dark
 appearance at the current position.
 
+**Metafile pictures.** File Viewer draws an EMF picture (in a presentation, a
+legacy PowerPoint file or a legacy Word file) as SVG with a converter of its own.
+Setdown corrects that converter when the application is built
+(`scripts/office-metafile-patch.mjs`, wired in `vite.config.ts`; the dev server
+serves the same corrected code), so a path is built as GDI builds it:
+
+- the lines and curves between a `MoveToEx` and a `CloseFigure` are one figure
+  (`LineTo`, `PolylineTo`, `PolyBezierTo`, and `ArcTo` where the copy reads it);
+- a figure that follows a `MoveToEx` starts there, and one that follows a
+  `CloseFigure` or a figure of its own (`Polygon`, `Rectangle`, …) starts at the
+  current position;
+- only the records that continue from the current position move it; `Polyline`,
+  `Polygon` and `PolyBezier` do not.
+
+As published, the converter started a sub-path at every `PolylineTo` and
+`PolyBezierTo` record and filled each piece by itself, so a logo exported from a
+drawing program (move, lines, curves, close) came out as slivers. The correction
+changes nothing else: records the converter does not read (`PolyDraw`,
+`AngleArc`, gradient fills, and the arc records outside the legacy PowerPoint
+copy) stay unread, and a path selected as a clip region still does not clip.
+
 `office-file.test.ts`, `text-files.integration.test.ts`,
 `reading-position-store.test.ts` and `media/office-reader.spec.ts` cover routing,
 bounded version-checked reads, the read-only boundary, zoom, find, every family in
 real Electron, link containment and position restoration.
+`metafile-outlines.test.ts` runs the four corrected converters on a metafile of
+such outlines and compares each figure; `media/office-reader.spec.ts` opens a
+presentation with that metafile and reads painted and clear points back from the
+slide.
 `scripts/office-viewer-notices.test.mjs` covers the bundled license notices.
 
 ### Office documents as PDF — 2026-11-21
@@ -466,7 +525,8 @@ Every Office family can be saved as a PDF: the address bar of an Office tab has 
 Save as PDF button, and File → Export as PDF… is enabled for these documents (not in
 Git review). The save dialog proposes `<name>.pdf` beside the document. The document
 itself stays read-only and byte-identical; Save and Save As are still unavailable.
-The one exception is a `.docx` open in the Word editor: the PDF is still made from the
+The exceptions are a `.docx` open in the Word editor and a `.pptx` open in the
+presentation editor: the PDF is still made from the
 file on disk, so a document with unsaved edits is not exported. An alert asks for a
 save first, and no save dialog opens (`renderer/workspace/document-actions.ts`).
 
@@ -518,10 +578,12 @@ clear margins on every page, one slide per page, placed pictures, the hidden off
 window, focus, cancel and failure, and unchanged sources. `spreadsheet-print.test.ts`
 covers the sheet plan (orientation, scale, bands, hidden tracks, trimmed range).
 
-Since 2026-11-28 a `.docx` that really is a Word document is the one exception to
-"read-only": it opens in the Word editor described next. Every other format above,
-including `docm`, `dotx`, `dotm`, `doc` and `dot`, and any file that is only
-*named* `.docx`, keeps this viewer and this section's guarantees unchanged.
+Since 2026-11-28 a `.docx` that really is a Word document and a `.pptx` that really
+is a presentation are the exceptions to "read-only": they open in the Word editor and
+the presentation editor described next. Every other format above, including `docm`,
+`dotx`, `dotm`, `doc`, `dot`, `pptm`, `potx`, `ppsx` and `ppt`, and any file that is
+only *named* `.docx` or `.pptx`, keeps this viewer and this section's guarantees
+unchanged.
 
 ### Word document editing — 2026-11-28
 
@@ -541,7 +603,7 @@ can be named `.docx`; the engine would show such a file as an empty page that a
 save would write over the data. When main reads the document's metadata
 (`main/documents/office-file.ts`) it checks the bytes: a ZIP archive whose
 `[Content_Types].xml` declares a Word main document part that is present
-(`wordPackageProblem` in `main/documents/docx-save.ts`). Only then does the
+(`officePackageProblem` in `main/documents/office-package.ts`). Only then does the
 snapshot carry `officeEditor: 'word'`, and every decision follows that mark
 through `isWordEditorDocument` (`core/document/document-capabilities.ts`): which
 surface `App.svelte` mounts (`renderer/docx/DocxSurface.svelte`, otherwise
@@ -589,7 +651,7 @@ family (1.729 em for 맑은 고딕; 1.3 em is assumed for the others), so lines 
 do not follow the stand-in's own metrics. On a machine with no usable Korean font,
 and for a family the byte budget left out, the packaged pan-CJK face is the last
 resort: every Korean family that nothing earlier draws is mapped onto it and keeps
-the same line box (`koreanLastResort` in `renderer/docx/docx-font-supply.ts`). The
+the same line box (`koreanLastResort` in `renderer/office-edit/font-supply.ts`). The
 engine's own rule covers four Korean families only and uses the face's line
 (1.448 em). The class is not kept there: the packaged face is a gothic.
 
@@ -636,9 +698,9 @@ engine.
 
 **Saving.** Save, Save As, the close prompt, Save All on window close and the
 toolbar buttons all go through the same content owner. The renderer serializes
-the whole package; `main/documents/docx-edit-ipc.ts` accepts it only for a `.docx`
+the whole package; `main/documents/office-edit-ipc.ts` accepts it only for a `.docx`
 that is open in the requesting window, at most 128 MiB, and only if it still is a
-Word document package by the same check. `main/documents/docx-save.ts` writes and
+Word document package by the same check. `main/documents/office-package.ts` writes and
 syncs a sibling temporary file, replaces the document with one rename, keeps its
 mode, and refuses when the destination
 is not the disk version the tab was editing; the writer then reloads or uses
@@ -667,14 +729,14 @@ or window, because the edits live in this window's engine.
 once while reading; while editing, the click places the caret and the link is
 offered in a small panel. Nothing else navigates, as for every Office document.
 
-`docx-save.test.ts`, `docx-sessions.test.ts`, `media-cache.test.ts`,
+`office-package.test.ts`, `docx-sessions.test.ts`, `media-cache.test.ts`,
 `office-file.test.ts`, `editor-tools.test.ts` and `media/docx-editor.spec.ts` cover
 package validation, the content verdict for misnamed files, the atomic
 version-checked write, ownership checks, session lifetime, read-only reading,
 zoom, find, editing with toolbar formatting and undo, Korean composition, Save and
 Save As, the close prompt, eviction with unsaved edits, external changes, position
 restoration, links, crash recovery, Copy with and without a selection in both modes
-and the PDF export of unsaved edits in real Electron. `font-file.test.ts`, `system-fonts.test.ts` and `docx-font-supply.test.ts`
+and the PDF export of unsaved edits in real Electron. `font-file.test.ts`, `system-fonts.test.ts` and `renderer/office-edit/font-supply.test.ts`
 cover what a font file says about itself (family names per language, linked bold,
 collections, variable faces, damaged files), the installed-font index, Korean
 stand-ins by class with their line boxes, names as keys only, the byte budget and
@@ -686,3 +748,94 @@ names, and that italic and bold change the painted pixels of a family whose only
 face is a regular one. `scripts/office-viewer-notices.test.mjs` also checks that the engine's
 packages are pinned to one release, that no Pro package is installed, and that
 the engine and font licenses are in `dist-electron/OFFICE-VIEWER-NOTICES.txt`.
+
+### Presentation editing — 2026-11-28
+
+A `.pptx` file is an `office` document in an ordinary media tab like every other
+Office file, with the same 128 MiB bound, version-checked read, tab zoom,
+`Ctrl/Cmd+F` and link containment, and still no text model. When main reads the
+document's metadata it checks the bytes as it does for Word
+(`officePackageProblem(bytes, 'presentation')` in `main/documents/office-package.ts`:
+a ZIP archive whose `[Content_Types].xml` declares a presentation main part that is
+present). Only then does the snapshot carry `officeEditor: 'presentation'`, and
+`App.svelte` mounts `renderer/pptx/PptxSurface.svelte`; a file that is only named
+`.pptx` stays in the viewer, and a reload re-reads the verdict. `core/document`'s
+`officeEditorOf` and `renderer/office-edit/office-editors.ts` are where code asks
+"which editor owns this tab" for either editor.
+
+`renderer/pptx/pptx-runtime.ts` is the only importer of eigenpal/pptx-editor
+(`@pptx-editor.dev/core`, Apache-2.0). It loads with the first presentation.
+`pptx-sessions.ts` keeps the engine, its edits and its undo history for the tab,
+like the Word sessions it shares a base with (`office-edit/edit-sessions.ts`).
+
+**Reading.** Every slide is in one vertical list, drawn by the engine; the engine
+paints the slides in sight first and repaints a slide only when asked again, so
+the surface asks for every slide after each change. Tab zoom scales the slides.
+Find counts matches over the whole deck and marks the slide of the current one.
+A click on linked text follows it: `http(s)` opens a Setdown browser tab, a link
+to a slide scrolls to it. A double click enters editing on that slide with the
+caret at the clicked point, as in a Word document; **Edit presentation** starts at
+the slide in the middle of the view. Input changes nothing while reading.
+
+**Editing.** The list becomes a rail beside the engine's stage. The toolbar has
+undo and redo, font size, bold, italic, underline, strikethrough, four alignments,
+bulleted and numbered lists with indent, and adds a text box, a shape (rectangle,
+rounded rectangle, ellipse, triangle, block arrow, line, arrow), a 3 × 3 table, a
+picture file (PNG, JPEG, GIF) and slides (new, duplicate, delete). The engine puts
+a new object at the centre of the slide and selects it; a new text box holds the
+caret. `Esc` returns to reading in one press from anywhere in the stage: the
+surface takes it before the engine, whose own `Esc` steps (text, shape, nothing)
+would ask for three. `Esc` during a composition belongs to the input method, and
+in the find field it closes find. The slide has the keyboard as soon as editing
+starts, and the list has it again on return. `PageUp`/`PageDown` change slide when
+no text is being edited. The stage follows the tab zoom by the size of the
+engine's host element, so the engine's own fit gives the exact ratio.
+
+**Saving, other applications, recovery, PDF** follow the Word editor through the
+same code: one content owner, `office-edit-ipc.ts` and `office-package.ts`
+(`.pptx` only, the content check repeated before a write, an atomic
+version-checked replace, Save As to a bare name, no auto save), the
+external-change notice, a recovery snapshot restored as `Recovered-document.pptx`,
+and a PDF made from the file on disk only once edits are saved. One difference is
+the engine's: it writes **every XML part again** on save. Parts it did not edit
+keep their content; their bytes change wherever the file spelled XML another way
+(an empty element becomes self-closing, the declaration gains `standalone`, line
+breaks between elements go). Pictures and other binary parts are unchanged.
+
+**History.** `Ctrl/Cmd+Z`, `Ctrl/Cmd+Y` and the Edit menu reach the engine's
+history. The engine takes typing through a textarea of its own inside the stage,
+so "a focused text field keeps its own history" excludes fields inside
+`[data-office-pages]`.
+
+**Fonts.** The supply is the Word editor's (`office-edit/font-supply.ts`:
+installed fonts by index, the packaged Latin substitutes, the packaged pan-CJK
+face as the last resort for Korean). Two things differ. The engine takes
+single-font files only, so a face inside a collection is extracted to a file of
+its own (`core/fonts/font-collection.ts`). And a line is 1.2 × the font size
+whatever the face, with the baseline from the engine's own table of families; a
+substitution's line metrics are not read, so no line box is declared and a
+Korean stand-in does not move lines.
+
+**Shown once.** Fonts arrive after the deck is parsed, in two steps: the engine
+gets the font files, then hands their faces to the browser and lays the deck out
+again when the browser has loaded them. The engine brings a slide picture that is
+already painted up to date only when the browser is idle. The deck is therefore
+announced (`data-office-ready`) only after both steps, eight seconds at most, and
+the surface asks for no slide picture before that, so a deck never opens showing
+its text in a stand-in face first.
+
+**Known limits** of the engine at 0.8.0: a chart and an embedded object are drawn
+as a placeholder box (their parts are kept on save), and a placeholder filled only
+through its style reference (`p:style`) is drawn without that fill.
+
+`office-package.test.ts`, `pptx-sessions.test.ts`, `font-collection.test.ts`,
+`font-supply.test.ts` and `media/pptx-editor.spec.ts` cover the content verdict,
+the session lifetime, face extraction, and in real Electron: reading (list, tab
+icon, zoom, find), editing with undo from the keyboard and the Edit menu, saving in
+place with every other part's content kept, Korean composition, `Esc` and the
+double click, Save As and the close prompt, eviction with unsaved edits, external
+changes, position restoration, links, crash recovery, toolbar formatting and every
+insertion, the packaged Korean face on a machine with no Korean font, an EMF
+picture, the PDF export of unsaved edits and a file that is only named `.pptx`.
+`media/office-reader.spec.ts` keeps the viewer's presentation checks on a slide
+show (`.ppsx`).

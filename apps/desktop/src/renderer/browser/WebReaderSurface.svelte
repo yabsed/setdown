@@ -4,6 +4,7 @@
   import type { AppActions } from '../ports/ui-actions';
   import type { ReaderAnchor, ReaderSnapshot } from '../../protocol/browser';
   import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
+  import { READER_MATH } from '../../core/browser/reader-math';
   import { browser, type ReaderPosition } from './browser-state.svelte';
   import { createRenderedFind } from './rendered-find';
   import { zoomState } from '../zoom-state.svelte';
@@ -102,6 +103,20 @@
     });
     const style = document.createElement('style');
     document.head.append(style);
+    // The theme and KaTeX's rules apply to this article alone; font faces belong to the document.
+    let themeCss = '', math = { faces: '', rules: '' };
+    const applyStyle = () => {
+      style.textContent = `${math.faces}\n@scope ([data-reader-tab="${CSS.escape(tabId)}"] .web-reader-column) { ${themeCss}\n${math.rules} }`;
+    };
+    // A formula arrives as the TeX the page was written in (core/browser/reader-math.ts) and is drawn
+    // here with KaTeX, as rendered Markdown draws it. KaTeX loads only for an article that has one.
+    // A formula that could not be drawn stays readable as its TeX.
+    const formulas = !content.querySelector(`span[${READER_MATH}]`) ? Promise.resolve() : import('./reader-math').then(reader => {
+      if (!current()) return;
+      math = reader.readerMathStyle();
+      reader.drawReaderMath(content);
+      applyStyle();
+    }).catch(reason => { console.error('[web-reader] formulas were not drawn', reason); });
     let generation = 0;
     const place = () => positionAt(browser.readerPositions[tabId] ?? snapshot.anchor);
     let reported = '';
@@ -125,8 +140,10 @@
         if (current() && request === generation) themeFailed(reason);
         return;
       }
+      // The article is first shown with its formulas drawn; the wait for the theme covers a slow load of both.
+      await formulas;
       if (!current() || request !== generation) return;
-      style.textContent = `@scope ([data-reader-tab="${CSS.escape(tabId)}"] .web-reader-column) { ${css} }`;
+      themeCss = css; applyStyle();
       const first = !readyTheme && !unthemed;
       readyTheme = theme; unthemed = false;
       // The theme arrived after all (a slow load, or the next theme): retire this reader's own report.
@@ -148,6 +165,8 @@
       pre.querySelector('code')?.classList.add('language-text');
     }
     void applyTheme();
+    // Formulas drawn after the article was already shown (the theme failed first) change its height.
+    void formulas.then(() => { if (current() && (readyTheme || unthemed) && !userScrolled) place(); });
     // Late image loads reflow the article; settle once more unless the user
     // has already taken over the scroll position.
     const settle = () => { if (current() && !userScrolled) positionAt(browser.readerPositions[tabId] ?? snapshot.anchor); };
@@ -299,5 +318,8 @@
   .web-reader :global(pre > code) { font-size: inherit; color: inherit; }
   .web-reader :global(pre) { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
   .web-reader :global(table) { display: block; max-width: 100%; overflow-x: auto; }
-  .web-reader :global(img), .web-reader :global(svg) { max-width: 100%; height: auto; }
+  /* KaTeX's own SVGs (roots, stretched brackets) have a calculated height; their wide viewBoxes collapse under height: auto. */
+  .web-reader :global(img), .web-reader :global(svg:not(.katex svg)) { max-width: 100%; height: auto; }
+  /* A formula wider than the column scrolls by itself, as in rendered Markdown. */
+  .web-reader :global(.katex-display) { overflow-x: auto; overflow-y: hidden; }
 </style>

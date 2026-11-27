@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { OFFICE_VIEWER_PACKAGES, WORD_EDITOR_PACKAGES, officeViewerClosure, officeViewerNotices, wordEditorClosure } from './office-viewer-notices.mjs';
+import { OFFICE_VIEWER_PACKAGES, PRESENTATION_EDITOR_PACKAGES, WORD_EDITOR_PACKAGES, officeViewerClosure, officeViewerNotices, presentationEditorClosure, wordEditorClosure } from './office-viewer-notices.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -48,4 +48,28 @@ test('Word editor notices cover the engine, its fonts and their licenses, and no
   assert.match(notices, /--- @docx-editor\.dev\/core@[\d.]+: licenses\/MaterialSymbols-NOTICE\.md ---/);
   for (const font of ['OFL-Carlito.txt', 'OFL-Caladea.txt', 'LICENSE-Liberation.txt', 'OFL-Selawik.txt', 'GUST-FONT-LICENSE.txt', 'TwemojiMozilla-LICENSE.md', 'NotoSansCJK-OFL.txt'])
     assert.ok(notices.includes(`: licenses/${font} ---`), `${font} is missing`);
+});
+
+test('presentation editor notices cover the engine and what it bundles, and only its Apache-2.0 package is installed', () => {
+  const closure = presentationEditorClosure(root);
+  const names = closure.map(item => item.name);
+  for (const name of [...PRESENTATION_EDITOR_PACKAGES, '@pptx-editor.dev/i18n', '@docx-editor.dev/fonts', 'bidi-js', 'emf-converter', 'fflate', 'fast-xml-parser'])
+    assert.ok(names.includes(name), `${name} is missing from the closure`);
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const engine = closure.find(item => item.name === '@pptx-editor.dev/core');
+  assert.equal(manifest.dependencies['@pptx-editor.dev/core'], engine.version, 'the engine must be pinned exactly');
+  // It draws with the fonts package the Word editor pins, never a second copy of it.
+  assert.equal(closure.find(item => item.name === '@docx-editor.dev/fonts').version, manifest.dependencies['@docx-editor.dev/fonts']);
+  assert.equal(closure.filter(item => item.name === '@docx-editor.dev/fonts').length, 1);
+  // Only `core` and the message catalogue it depends on are Apache-2.0 and part of Setdown.
+  const scope = new URL('../../../node_modules/@pptx-editor.dev/', import.meta.url);
+  assert.deepEqual(readdirSync(scope).sort(), ['core', 'i18n']);
+  for (const name of Object.keys(manifest.dependencies)) if (name.startsWith('@pptx-editor.dev/')) assert.equal(name, '@pptx-editor.dev/core');
+  const permissive = new Set(['Apache-2.0', 'MIT', '(MIT AND Zlib)', 'Apache-2.0 AND OFL-1.1 AND CC-BY-4.0 AND LicenseRef-GUST-Font-License']);
+  for (const item of closure) assert.ok(permissive.has(item.license), `${item.name} has an unexpected license: ${item.license}`);
+  const notices = officeViewerNotices(root);
+  for (const item of closure) assert.ok(notices.includes(`=== ${item.name}@${item.version} (`), `${item.name} has no section`);
+  assert.match(notices, /--- @pptx-editor\.dev\/core@[\d.]+: LICENSE ---\n[\s\S]{0,400}Apache License/);
+  assert.match(notices, /--- @pptx-editor\.dev\/core@[\d.]+: THIRD_PARTY_NOTICES\.md ---/);
+  assert.match(notices, /--- @pptx-editor\.dev\/core@[\d.]+: licenses\/HarfBuzz-COPYING\.txt ---/);
 });

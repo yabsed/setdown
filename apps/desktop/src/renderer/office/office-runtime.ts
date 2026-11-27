@@ -40,8 +40,9 @@ async function familyOptions(family: OfficeFamily): Promise<Pick<ViewerOptions, 
       import('@file-viewer/renderer-hangul/worker/hangul.worker.js?url')]);
     return { renderers: renderers(hangulRenderer), hangul: { workerUrl: new URL(worker.default, window.location.href).href } };
   }
+  // Both worker scripts come with their EMF converter corrected: an outline of lines and curves is one figure.
   const [{ presentationRenderer }, pptx, ppt] = await Promise.all([import('@file-viewer/renderer-presentation'),
-    import('@file-viewer/pptx/worker/pptx.worker.js?url'), import('@file-viewer/ppt/worker.mjs?url')]);
+    import('virtual:office-metafile-worker/pptx'), import('virtual:office-metafile-worker/ppt')]);
   return { renderers: renderers(presentationRenderer), presentation: {
     workerUrl: new URL(pptx.default, window.location.href).href, pptWorkerUrl: new URL(ppt.default, window.location.href).href } };
 }

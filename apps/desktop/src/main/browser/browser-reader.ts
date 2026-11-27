@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { WebContents } from 'electron';
 import { readReaderSnapshot, type ReaderAnchor, type ReaderSnapshot } from '../../core/browser/reader-article';
 import { namuArticleRoot, readerBlocks, removeNamuSvg } from '../../core/browser/namu-reader';
+import { carryMath } from '../../core/browser/reader-math';
 import { GOLDEN_TOP_RATIO } from '../../core/preview/viewport-anchor';
 
 /** Block-level candidates that can carry a reading position. The ordinal of an
@@ -52,6 +53,18 @@ const extraction = `(function () {
     getBlocks(clone, namu, BLOCKS).forEach(function (el, index) {
       el.setAttribute('data-setdown-block', String(index));
     });
+    // One copy of each formula, as its TeX or its MathML, before either extraction path reads the text.
+    // MathJax 3 keeps the TeX only in its own list of what it drew; the stamped blocks are not touched.
+    var typeset = [];
+    try {
+      var drawn = window.MathJax && window.MathJax.startup && window.MathJax.startup.document && window.MathJax.startup.document.math;
+      var places = new Map(Array.prototype.map.call(doc.querySelectorAll('mjx-container'), function (el, index) { return [el, index]; }));
+      if (drawn && places.size) for (var item of drawn) {
+        var at = places.get(item && item.typesetRoot);
+        if (at !== undefined && typeof item.math === 'string' && item.inputJax && item.inputJax.name === 'TeX') typeset[at] = { tex: item.math, display: !!item.display };
+      }
+    } catch (_) { typeset = []; }
+    try { (${carryMath.toString()})(clone, typeset); } catch (_) {}
     // Strip SVG before either extraction path, so the displayed and exported
     // snapshots agree, while the live page and its block ordinals stay intact.
     if (namu) (${removeNamuSvg.toString()})(clone);

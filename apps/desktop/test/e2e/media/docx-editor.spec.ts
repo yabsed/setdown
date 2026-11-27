@@ -1,13 +1,13 @@
 import { electron } from '../../support/electron/electron-app';
 import { expect, test, type Page } from '@playwright/test';
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { disposeApplication, focusApplication, type TestApplication } from '../../support/electron/electron-app';
 import { nativeInput } from '../../support/electron/native-input';
 import { previews } from '../../support/preview/preview-view';
 import { docxBytes, docxParagraphs, docxText, docxXml, writeDocxFixture } from '../../support/media/docx-fixture';
+import { shippedFontsOnly } from '../../support/media/shipped-fonts';
 import type { MarkTexApi } from '../../../src/protocol/desktop-api';
 
 // report.docx is the LibreOffice-generated fixture the Office reader uses; the other
@@ -28,18 +28,6 @@ async function report(prefix: string) {
   const root = await mkdtemp(path.join(os.tmpdir(), prefix)), file = path.join(root, 'report.docx');
   await copyFile(path.join(fixtures, 'report.docx'), file);
   return { root, file, config: path.join(root, 'config') };
-}
-/**
- * A machine whose installed fonts are exactly the font files this repository ships: the Latin substitutes and one
- * pan-CJK face ("Noto Sans CJK JP"). No Korean family is installed under its own name, and nothing that happens to be
- * installed on the test machine takes part.
- */
-async function shippedFontsOnly(root: string, packages = ['@docx-editor.dev/fonts', '@docx-editor.dev/fonts-cjk']): Promise<Record<string, string>> {
-  const assets = (name: string) => path.join(path.dirname(createRequire(import.meta.url).resolve(`${name}/package.json`)), 'assets');
-  const file = path.join(root, 'fonts.conf');
-  await writeFile(file, `<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>${packages.map(name => `<dir>${assets(name)}</dir>`).join('')}`
-    + `<cachedir>${path.join(root, 'fontconfig-cache')}</cachedir></fontconfig>`);
-  return { FONTCONFIG_FILE: file };
 }
 async function edit(page: Page) {
   await word(page).getByRole('button', { name: 'Edit document', exact: true }).click();
@@ -296,7 +284,7 @@ test('Save As writes a new document and moves the tab to it; closing an edited d
 test('keeps unsaved edits while other tabs are shown, restores the reading position, and never overwrites a file changed elsewhere', async () => {
   test.setTimeout(120_000);
   const { root, file, config } = await report('setdown-docx-session-');
-  for (const name of ['budget.xlsx', 'deck.pptx', 'report.doc', 'budget.xls']) await copyFile(path.join(fixtures, name), path.join(root, name));
+  for (const name of ['budget.xlsx', 'deck.ppt', 'report.doc', 'budget.xls']) await copyFile(path.join(fixtures, name), path.join(root, name));
   let app = await launch(file, config), page = await app.firstWindow();
   try {
     await ready(page);
@@ -311,7 +299,7 @@ test('keeps unsaved edits while other tabs are shown, restores the reading posit
     await page.keyboard.type(' KEPT-one');
     await expect(word(page)).toHaveAttribute('data-docx-dirty', 'true');
     // More media tabs than the surface cache keeps: the Word surface is unmounted, its session is not.
-    for (const name of ['budget.xlsx', 'deck.pptx', 'report.doc', 'budget.xls']) await open(name);
+    for (const name of ['budget.xlsx', 'deck.ppt', 'report.doc', 'budget.xls']) await open(name);
     await expect(page.locator('.word-surface')).toHaveCount(0);
     await expect(dirtyTabs(page)).toHaveCount(1);
     await tab('report.docx').click();

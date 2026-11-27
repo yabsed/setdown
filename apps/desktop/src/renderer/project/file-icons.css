@@ -12,4 +12,6 @@
   color: var(--file-icon-dark); text-transform: none; text-decoration: none;
   -webkit-font-smoothing: antialiased; user-select: none;
 }
+/* An icon Setdown draws itself takes the place of a glyph: a 16px box at the 24px glyph size, growing with the font. */
+.file-type-icon svg { flex: none; width: calc(2em / 3); height: calc(2em / 3); fill: currentColor; }
 [data-appearance='light'] .file-type-icon { color: var(--file-icon-light); }

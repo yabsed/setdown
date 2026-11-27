@@ -1,0 +1,63 @@
+import { expect, test } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { disposeApplication, electron, focusApplication } from '../test/support/electron/electron-app';
+
+// Exploration only: adding a text box, a shape, a table and a picture to a slide, and what the saved file holds.
+const fixtures = path.join(import.meta.dirname, '../test/fixtures/office'), out = process.env.PROBE_OUT!;
+test('pptx insert probe', async () => {
+  test.setTimeout(240_000);
+  await mkdir(out, { recursive: true });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'setdown-pptx-insert-'));
+  const file = path.join(root, 'deck.pptx');
+  await copyFile(path.join(fixtures, 'deck.pptx'), file);
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  const app = await electron.launch({ args: ['.', file], env: { ...env, XDG_CONFIG_HOME: path.join(root, 'config') } });
+  await focusApplication(app);
+  const page = await app.firstWindow();
+  const note = (label: string, value: unknown) => console.log(`== ${label} ${JSON.stringify(value)}`.slice(0, 1500));
+  page.on('pageerror', error => note('pageerror', error.message));
+  page.on('console', message => { if (['error', 'warning'].includes(message.type())) note(`console.${message.type()}`, message.text().slice(0, 400)); });
+  try {
+    const deck = page.getByRole('region', { name: 'Presentation', exact: true });
+    await expect(deck).toHaveAttribute('data-office-ready', 'true', { timeout: 60_000 });
+    const focusAt = () => page.evaluate(() => { const a = document.activeElement; return `${a?.localName}.${a?.className}`; });
+    const stage = () => deck.locator('.deck-stage text').allTextContents();
+    await deck.getByRole('button', { name: 'Edit presentation', exact: true }).click();
+    await expect(deck).toHaveAttribute('data-pptx-mode', 'edit');
+    await page.waitForTimeout(400);
+    note('toolbar', await deck.getByRole('toolbar').locator('button, select').evaluateAll(list => list.map(e => `${e.localName}:${(e.textContent ?? '').trim().slice(0, 14)}|${e.getAttribute('aria-label') ?? e.getAttribute('title') ?? ''}${(e as HTMLButtonElement).disabled ? ' (off)' : ''}`)));
+    await deck.getByRole('button', { name: 'Text box', exact: true }).click();
+    await page.waitForTimeout(300);
+    note('after Text box', { focus: await focusAt(), dirty: await deck.getAttribute('data-pptx-dirty') });
+    await page.keyboard.type('Fresh box: quokka');
+    await page.waitForTimeout(300);
+    note('typed in new box', await stage());
+    await page.screenshot({ path: path.join(out, 'insert-1-textbox.png') });
+    await deck.getByLabel('Insert shape').selectOption('ellipse');
+    await page.waitForTimeout(300);
+    note('after shape', { focus: await focusAt(), shapes: await deck.locator('.deck-stage svg ellipse, .deck-stage svg path').count() });
+    await deck.getByLabel('Insert shape').selectOption('arrow');
+    await page.waitForTimeout(300);
+    await deck.getByRole('button', { name: 'Table', exact: true }).click();
+    await page.waitForTimeout(400);
+    note('after table', { focus: await focusAt(), alert: await deck.getByRole('alert').allTextContents() });
+    await page.screenshot({ path: path.join(out, 'insert-2-shape-table.png') });
+    await deck.locator('input[aria-label="Picture file"]').setInputFiles(process.env.PROBE_PICTURE!);
+    await page.waitForTimeout(800);
+    note('after picture', { focus: await focusAt(), images: await deck.locator('.deck-stage image, .deck-stage img').count(), alert: await deck.getByRole('alert').allTextContents() });
+    await page.screenshot({ path: path.join(out, 'insert-3-picture.png') });
+    await page.keyboard.press('Control+s');
+    await expect(deck).toHaveAttribute('data-pptx-dirty', 'false', { timeout: 20_000 });
+    await page.keyboard.press('Escape');
+    await expect(deck).toHaveAttribute('data-pptx-mode', 'view');
+    await page.waitForTimeout(600);
+    note('reading after Esc', { focus: await focusAt(), first: await deck.locator('.deck-slide').first().locator('text').allTextContents() });
+    await page.screenshot({ path: path.join(out, 'insert-4-reading.png') });
+    const xml = execFileSync('unzip', ['-p', file, 'ppt/slides/slide1.xml'], { encoding: 'utf8' });
+    note('saved slide1', { box: xml.includes('Fresh box: quokka'), ellipse: xml.includes('prst="ellipse"'), table: xml.includes('<a:tbl>'), picture: xml.includes('<p:pic>'), connector: /<p:cxnSp>|prst="line"|straightConnector1/.test(xml), bytes: xml.length });
+    note('saved parts', execFileSync('unzip', ['-Z1', file], { encoding: 'utf8' }).split('\n').filter(name => /media|slide1/.test(name)));
+  } finally { await disposeApplication(app); }
+});

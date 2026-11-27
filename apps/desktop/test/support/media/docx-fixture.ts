@@ -10,11 +10,12 @@ const WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const RELATIONSHIPS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const PACKAGE = 'http://schemas.openxmlformats.org/package/2006/relationships';
 
-function zip(parts: Array<[string, string]>): Buffer {
+/** An archive of the parts in order; text is stored as UTF-8. */
+export function zip(parts: ReadonlyArray<readonly [string, string | Buffer]>): Buffer {
   const locals: Buffer[] = [], directory: Buffer[] = [];
   let offset = 0;
-  for (const [name, text] of parts) {
-    const raw = Buffer.from(text, 'utf8'), data = deflateRawSync(raw), file = Buffer.from(name, 'utf8');
+  for (const [name, content] of parts) {
+    const raw = typeof content === 'string' ? Buffer.from(content, 'utf8') : content, data = deflateRawSync(raw), file = Buffer.from(name, 'utf8');
     const header = Buffer.alloc(30);
     header.writeUInt32LE(0x04034b50, 0); header.writeUInt16LE(20, 4); header.writeUInt16LE(0x0800, 6); header.writeUInt16LE(8, 8);
     header.writeUInt16LE(0, 10); header.writeUInt16LE(0x21, 12); header.writeUInt32LE(crc32(raw), 14);

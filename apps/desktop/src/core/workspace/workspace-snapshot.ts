@@ -24,7 +24,7 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
     if (content.binary) {
       if (typeof content.binary.extension !== 'string' || typeof content.binary.data !== 'string'
         || content.text !== undefined || content.binary.data.length > 24 * 1024 * 1024 || content.binary.data.length % 4 !== 0
-        || !/^(png|jpe?g|webp|docx)$/i.test(content.binary.extension) || !/^[A-Za-z0-9+/]*={0,2}$/.test(content.binary.data))
+        || !/^(png|jpe?g|webp|docx|pptx)$/i.test(content.binary.extension) || !/^[A-Za-z0-9+/]*={0,2}$/.test(content.binary.data))
         throw Error('Invalid binary recovery content.');
       total += content.binary.data.length;
     }
