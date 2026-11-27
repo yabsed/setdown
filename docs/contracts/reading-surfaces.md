@@ -418,7 +418,7 @@ menu selection, clipboard-visible ranges, sibling terminals and live pages.
 
 ### Office and Hangul documents — 2026-11-14
 
-Word (`docx`, `docm`, `dotx`, `dotm`, `doc`, `dot`), Excel (`xlsx`, `xlsm`,
+Word (`docm`, `dotx`, `dotm`, `doc`, `dot`; `docx` see below), Excel (`xlsx`, `xlsm`,
 `xltx`, `xltm`, `xlsb`, `xls`, `xlt`), PowerPoint (`pptx`, `pptm`, `potx`, `potm`,
 `ppsx`, `ppsm`, `ppt`, `pot`) and Hangul (`hwp`, `hwpx`) files open as read-only
 `office` documents in an ordinary media tab. `core/document/document-profile.ts`
@@ -466,6 +466,9 @@ Every Office family can be saved as a PDF: the address bar of an Office tab has 
 Save as PDF button, and File → Export as PDF… is enabled for these documents (not in
 Git review). The save dialog proposes `<name>.pdf` beside the document. The document
 itself stays read-only and byte-identical; Save and Save As are still unavailable.
+The one exception is a `.docx` open in the Word editor: the PDF is still made from the
+file on disk, so a document with unsaved edits is not exported. An alert asks for a
+save first, and no save dialog opens (`renderer/workspace/document-actions.ts`).
 
 `main/documents/office-pdf-exporter.ts` reads the file again for the disk version the
 tab holds and renders it in a hidden window of its own: session partition
@@ -514,3 +517,172 @@ reads the PDFs back in the PDF reader: page count and shape, complete text in or
 clear margins on every page, one slide per page, placed pictures, the hidden offline
 window, focus, cancel and failure, and unchanged sources. `spreadsheet-print.test.ts`
 covers the sheet plan (orientation, scale, bands, hidden tracks, trimmed range).
+
+Since 2026-11-28 a `.docx` that really is a Word document is the one exception to
+"read-only": it opens in the Word editor described next. Every other format above,
+including `docm`, `dotx`, `dotm`, `doc` and `dot`, and any file that is only
+*named* `.docx`, keeps this viewer and this section's guarantees unchanged.
+
+### Word document editing — 2026-11-28
+
+The editor was first added on 2026-11-15 and removed the same day. It is back with
+the engine at 2.41.1 and the font supply described under **Fonts** below, which the
+first version lacked: Korean text was then measured by estimate and drawn by whatever
+face the browser picked.
+
+A `.docx` file is still an `office` document in an ordinary media tab, with the
+same 128 MiB bound, version-checked read, tab zoom, `Ctrl/Cmd+F`, link containment
+and scroll-ratio reading position as the viewer above. There is still no text
+model: these documents cannot be opened, saved or chosen as a destination through
+the text save path.
+
+**The name is not enough.** A spreadsheet, a legacy binary document or a web page
+can be named `.docx`; the engine would show such a file as an empty page that a
+save would write over the data. When main reads the document's metadata
+(`main/documents/office-file.ts`) it checks the bytes: a ZIP archive whose
+`[Content_Types].xml` declares a Word main document part that is present
+(`wordPackageProblem` in `main/documents/docx-save.ts`). Only then does the
+snapshot carry `officeEditor: 'word'`, and every decision follows that mark
+through `isWordEditorDocument` (`core/document/document-capabilities.ts`): which
+surface `App.svelte` mounts (`renderer/docx/DocxSurface.svelte`, otherwise
+`OfficeSurface.svelte`), the content owner, the media-cache key, Save and Save As
+in the menu, and undo routing. A reload re-reads the verdict, so a file that
+becomes, or stops being, a Word document changes surface in the same tab. The
+bytes handed to the engine (`docx-edit:open`) are checked again, and a save is
+checked a third time before anything is written.
+
+`renderer/docx/docx-runtime.ts` is the only importer of eigenpal/docx-editor
+(`@docx-editor.dev/core`, `@docx-editor.dev/fonts` and `@docx-editor.dev/fonts-cjk`;
+the code is Apache-2.0 and the font files carry their own open licenses). It loads
+with the first Word document, never at startup. The engine's separately licensed
+Pro packages (tracked changes, comments, charts, PDF export, automation, telemetry)
+are not installed and must not be added: their license forbids distribution.
+
+**Fonts.** The engine measures and paints text from font bytes it is given; it
+cannot see the fonts installed on the machine, and text in a family it has no bytes
+for is measured by estimate and drawn by a face the browser picks. Fonts are
+therefore offered in this order, and the first answer for a face wins:
+
+1. **Fonts installed on this machine.** Main builds an index of the installed font
+   files once per run (`main/documents/system-fonts.ts`: `fc-list` on Linux, the
+   platform font directories otherwise) from each file's own name tables
+   (`core/fonts/font-file.ts`), and hands the renderer the files for the faces a
+   document names (`docx-edit:fonts`). A family name from a document is only ever a
+   key into that index; it never becomes a path. A family matches under any of its
+   names, so `맑은 고딕` and `Malgun Gothic` are the same family. A face is stated as
+   what it is: a family with no bold or italic face answers with its regular one and
+   the engine thickens or slants it. Variable fonts and files above 64 MiB are not
+   offered, because the engine takes neither; one document takes at most 96 MiB of
+   installed font files.
+2. **Packaged substitutes** for the Latin Word fonts (Carlito for Calibri, Liberation
+   for Arial, Times New Roman and Courier New, and so on).
+3. **The packaged pan-CJK face** (Noto Sans CJK JP), for East Asian text nothing above
+   covers.
+
+**Korean families that are not installed** — the families of Windows, Microsoft
+Office and Hancom Office, such as 맑은 고딕, 바탕, 굴림, 돋움, 궁서, the HY and 휴먼
+families and 함초롬 — are drawn by an installed Korean family of the same class:
+a gothic by a gothic, a myeongjo by a myeongjo, and the other class only when the
+machine has none of its own (`core/fonts/korean-fonts.ts`). The stand-in is declared
+to the engine as a substitution that keeps the line box Word gives the missing
+family (1.729 em for 맑은 고딕; 1.3 em is assumed for the others), so lines and pages
+do not follow the stand-in's own metrics. On a machine with no usable Korean font,
+and for a family the byte budget left out, the packaged pan-CJK face is the last
+resort: every Korean family that nothing earlier draws is mapped onto it and keeps
+the same line box (`koreanLastResort` in `renderer/docx/docx-font-supply.ts`). The
+engine's own rule covers four Korean families only and uses the face's line
+(1.448 em). The class is not kept there: the packaged face is a gothic.
+
+**Italic and bold without a face.** No Korean font has an italic face, and many have
+no bold one. The engine then registers the regular face and leaves the slant and the
+thickening to the browser, so the pages must allow synthesized styles: the
+application's own `font-synthesis: none` (`renderer/style.css`) is reset on the Word
+pages (`DocxSurface.svelte`). Without that reset italic text is stored as italic and
+drawn upright.
+
+The document's font names are never rewritten: the stand-in exists only in this
+session's layout, and a saved file names the fonts it named when it was opened.
+Nothing is requested from another origin, and a font that cannot be read or that the
+engine refuses only leaves its family to the next step above.
+
+**Shown once.** Fonts arrive after the document is parsed, and the engine moves every
+line when they land. The pages stay hidden and the surface is not `ready` until the
+engine reports that the text is laid out in its own fonts (at most eight seconds), so
+the first layout a reader sees is the one that stays. A font that arrives later, for
+text typed in a new family, never hides the pages again. A fallback face that a later
+page turns out to need (a symbol or mathematics font) can still move lines on that
+page shortly after opening.
+
+A document opens for **reading** (`mode: 'view'`): input on the pages changes
+nothing. **Edit document**, or a double click on the pages, enters editing; **Done**
+or `Esc` returns to reading, as for Markdown. `Esc` during an IME composition, or
+one the engine consumes itself (leaving a header, a footnote or the format
+painter), does not leave editing. Unsaved edits stay in the tab in either mode.
+
+`renderer/docx/docx-sessions.ts` owns one engine per open Word document, as a
+workspace content owner beside notebooks and images. A surface only mounts and
+unmounts that engine, so edits, undo history and the editing mode survive tab
+switches, media-cache eviction, memory reclamation, saves and Save As. An unedited
+session is freed shortly after its surface is unmounted and read again from disk
+when it is next shown; an edited one is kept until it is saved, discarded or
+closed, and its tab is protected from memory reclamation. The media-cache key of
+an editable Word document deliberately excludes the disk version, so a save does
+not remount the surface or move the caret.
+
+Reading the engine can commit input it was still holding. `DocxSurface.svelte`
+therefore reads engine state only when the engine notifies, never from a template
+expression or a derived value, and a listener that throws never unwinds into the
+engine.
+
+**Saving.** Save, Save As, the close prompt, Save All on window close and the
+toolbar buttons all go through the same content owner. The renderer serializes
+the whole package; `main/documents/docx-edit-ipc.ts` accepts it only for a `.docx`
+that is open in the requesting window, at most 128 MiB, and only if it still is a
+Word document package by the same check. `main/documents/docx-save.ts` writes and
+syncs a sibling temporary file, replaces the document with one rename, keeps its
+mode, and refuses when the destination
+is not the disk version the tab was editing; the writer then reloads or uses
+Save As. A save in place is not reported back as an external change. Save As adds
+`.docx` to a bare name, refuses other extensions and never replaces a file open
+in another tab. Input the engine commits as a save starts counts as saved; edits
+made while the file is written stay unsaved. There is no auto save for Word
+documents.
+
+**Other applications.** A changed file reloads an unedited document. An edited one
+shows the external-change notice instead; Save then fails without touching the
+file, **Reload** asks before dropping the edits, and **Keep My Changes** only
+dismisses the notice (Save As remains the way out).
+
+**Recovery.** Unsaved Word edits are part of the workspace recovery snapshot as a
+serialized package (24 MiB limit shared with other content). Serialization waits
+for a typing pause, at most ten seconds. Restoring writes a separate
+`Recovered-document.docx` and never the original file.
+
+**History and commands.** The engine keeps its own undo history: `Ctrl/Cmd+Z`,
+`Ctrl/Cmd+Y` and the Edit menu (`office:undo`/`office:redo`) reach it; text fields
+keep their own. A tab with unsaved Word edits cannot be dragged to another group
+or window, because the edits live in this window's engine.
+
+**Links.** A click on an external `http(s)` link opens a Setdown browser tab at
+once while reading; while editing, the click places the caret and the link is
+offered in a small panel. Nothing else navigates, as for every Office document.
+
+`docx-save.test.ts`, `docx-sessions.test.ts`, `media-cache.test.ts`,
+`office-file.test.ts`, `editor-tools.test.ts` and `media/docx-editor.spec.ts` cover
+package validation, the content verdict for misnamed files, the atomic
+version-checked write, ownership checks, session lifetime, read-only reading,
+zoom, find, editing with toolbar formatting and undo, Korean composition, Save and
+Save As, the close prompt, eviction with unsaved edits, external changes, position
+restoration, links, crash recovery, Copy with and without a selection in both modes
+and the PDF export of unsaved edits in real Electron. `font-file.test.ts`, `system-fonts.test.ts` and `docx-font-supply.test.ts`
+cover what a font file says about itself (family names per language, linked bold,
+collections, variable faces, damaged files), the installed-font index, Korean
+stand-ins by class with their line boxes, names as keys only, the byte budget and
+the last-resort mapping onto the packaged face; `media/docx-editor.spec.ts` checks in
+real Electron, on machines whose installed fonts are exactly the shipped font files
+(with and without the pan-CJK one), that a missing Korean family keeps Word's line,
+that nothing moves after the document is announced, that a save keeps the font
+names, and that italic and bold change the painted pixels of a family whose only
+face is a regular one. `scripts/office-viewer-notices.test.mjs` also checks that the engine's
+packages are pinned to one release, that no Pro package is installed, and that
+the engine and font licenses are in `dist-electron/OFFICE-VIEWER-NOTICES.txt`.

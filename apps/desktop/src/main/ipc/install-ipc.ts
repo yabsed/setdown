@@ -1,4 +1,5 @@
 import { installImageEditIpc } from '../documents/image-edit-ipc';
+import { installDocxEditIpc } from '../documents/docx-edit-ipc';
 import { installEditorToolsIpc } from '../editor/editor-tools-ipc';
 import { installNotebookIpc } from '../notebook/notebook-ipc';
 import type { BrowserManager } from '../browser/browser-manager';
@@ -10,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizePreviewTheme } from '../../core/preview/preview-preferences';
 import { isMarkdownDocument, isOfficeDocument, isOpenableDocument, isReadOnlyDocument } from '../../core/document/document-profile';
+import { isWordEditorDocument } from '../../core/document/document-capabilities';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { ApplicationMenuEntry, CloseDecision, ClosePromptRequest, DocumentSnapshot, GitRemoteAction, GitReviewState,
   ProjectEntryKind, ProjectSearchRequest, SaveResult, TabStateSummary, ThemeSnapshot } from '../../protocol/desktop-api';
@@ -62,6 +64,7 @@ export function installIpc(options: Options): void {
   installEditorToolsIpc(options.channels);
   installNotebookIpc(options.channels, options.browsers);
   installImageEditIpc(options.channels, options.documents);
+  installDocxEditIpc(options.channels, options.documents);
   const { channels, documents, previews, projects, renderer, themes, transfers, autoSave, markdownWordWrap } = options;
   channels.handle('browser:reader-export', (state, id: string, format: unknown) => {
     if (format !== 'markdown' && format !== 'pdf') throw Error('Unsupported reader export format.');
@@ -90,7 +93,7 @@ export function installIpc(options: Options): void {
     const webReader = !!webId && options.browsers.readerReady(state.webContentsId, webId) && !options.browsers.views.get(webId)?.view.getVisible();
     return documentMenus(applicationMenuEntries(menuId), isMarkdownDocument(filePath), review, isOfficeDocument(filePath)).map((item) =>
       item.id === 'menu-export-pdf' && webReader ? { ...item, enabled: true }
-        : (state.explorerEditTarget && ['menu-undo', 'menu-redo'].includes(item.id)) || (isReadOnlyDocument(filePath) && !/\.(png|jpe?g|webp)$/i.test(filePath) && ['save', 'menu-save-as'].includes(item.id)) ? { ...item, enabled: false } : item);
+        : (state.explorerEditTarget && ['menu-undo', 'menu-redo'].includes(item.id)) || (isReadOnlyDocument(filePath) && !/\.(png|jpe?g|webp)$/i.test(filePath) && !(!review && isWordEditorDocument(state.currentDocument)) && ['save', 'menu-save-as'].includes(item.id)) ? { ...item, enabled: false } : item);
   };
   channels.handle('menu:get', menuEntries);
   const browserFind = new BrowserFindOverlay((owner, id) => {

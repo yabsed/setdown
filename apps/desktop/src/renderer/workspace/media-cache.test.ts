@@ -69,3 +69,25 @@ it('pressure keeps a cached local video while releasing a hidden PDF', () => {
   cache.setPressure(true);
   expect(cache.sync(inputs, image.id)).toEqual([retained, expect.objectContaining({ id: image.id })]);
 });
+
+it('keeps an editable Word surface across its own saves, while read-only Office surfaces follow the disk version', () => {
+  const office = (id: string, file: string) => createWorkspaceTab(id, { kind: 'office', ...(file.endsWith('.docx') ? { officeEditor: 'word' as const } : {}), path: file, name: file.slice(1),
+    text: '', savedText: '', revision: 0, savedRevision: 0, isUntitled: false,
+    diskVersion: { size: 100, mtimeMs: 1 } }, 'office', { sourceLine: 1, yRatio: 0, reason: 'empty-document', confidence: 'fallback' });
+  const tabs = [office('word', '/report.docx'), office('legacy', '/report.doc')], cache = new MediaCache();
+  cache.sync(tabs, 'legacy');
+  const [legacy, word] = cache.sync(tabs, 'word');
+  // The Word editor's session outlives a save; remounting its surface would drop the caret on every Ctrl+S.
+  for (const tab of tabs) tab.document = { ...tab.document, diskVersion: { size: 200, mtimeMs: 2 } };
+  const saved = cache.sync(tabs, 'word');
+  expect(saved.find(entry => entry.id === 'word')).toBe(word);
+  expect(saved.find(entry => entry.id === 'legacy')).toBeUndefined();
+  expect(cache.sync(tabs, 'legacy').find(entry => entry.id === 'legacy')).not.toBe(legacy);
+  // Save As still gives the renamed document a surface of its own.
+  tabs[0].document = { ...tabs[0].document, path: '/copy.docx' };
+  const renamed = cache.sync(tabs, 'word').find(entry => entry.id === 'word');
+  expect(renamed).not.toBe(word);
+  // A file that stops being a Word package (or becomes one) changes hands between the editor and the viewer.
+  tabs[0].document = { ...tabs[0].document, officeEditor: undefined };
+  expect(cache.sync(tabs, 'word').find(entry => entry.id === 'word')).not.toBe(renamed);
+});

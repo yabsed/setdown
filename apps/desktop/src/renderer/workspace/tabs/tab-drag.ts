@@ -1,4 +1,5 @@
 import { imageSessions } from '../../image/image-edit-sessions';
+import { docxSessions } from '../../docx/docx-sessions';
 import { draggedPaths, PROJECT_FILES } from '../../project/explorer/explorer-selection';
 import { fileDrag, FILE_DRAG_END } from '../../files/file-drag';
 import type { ClaimedTabTransfer, TransferableTab } from '../../../protocol/desktop-api';
@@ -379,7 +380,10 @@ export function createTabDrag(options: Options) {
   /** Why a tab cannot leave its window right now, or null. */
   const held = (id: string): string | null => {
     const image = imageSessions.get(id);
-    return image && (image.history.dirty || image.busy) ? 'Save your image changes before moving this tab to another group or window.' : null;
+    if (image && (image.history.dirty || image.busy)) return 'Save your image changes before moving this tab to another group or window.';
+    // Unsaved Word edits live in this window's engine and cannot follow the tab to another one.
+    const word = docxSessions.get(id);
+    return word && (word.edits !== word.savedEdits || word.busy) ? 'Save your document changes before moving this tab to another group or window.' : null;
   };
   const controller = {
     /** The tab menu's "Move into New Window": the same transfer as a tear-off, without a drag. */

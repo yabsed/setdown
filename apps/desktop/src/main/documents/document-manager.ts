@@ -208,7 +208,8 @@ export class DocumentManager {
     return serializeFileSave(document.path, () => this.writeSnapshot(state, document, text, revision, auto));
   }
 
-  private async writeWatchedFile(state: WindowState, file: string, write: () => Promise<DocumentSnapshot['diskVersion']>) {
+  /** Runs a write to a file this window watches without reporting it back as an external change. */
+  async writeWatchedFile(state: WindowState, file: string, write: () => Promise<DocumentSnapshot['diskVersion']>) {
     const entry = this.watchers.get(state)?.get(file);
     if (!entry) return write();
     // Atomic rename can notify fs.watch before the save promise/renderer settles.

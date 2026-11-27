@@ -67,6 +67,11 @@ it could bubble. It decides by what holds the keyboard, not by the event's targe
 which with nothing focused is wherever the last click left the caret. It writes
 nothing itself; main owns the clipboard through `files:copy`.
 
+A Word document in the Word editor follows the same rule while it is read. While it
+is edited its pages are an editable field, so Copy is the editor's alone: the
+selected text, or nothing when there is only a caret. It never puts the file on the
+clipboard in place of what was there (`media/docx-editor.spec.ts`).
+
 A copy offers `text/uri-list` and `x-special/gnome-copied-files` (`copy`) beside
 the nonce and the plain paths, so it pastes as files in the Explorer, in a folder
 tab, in another Setdown window and in a file manager. A Cut offers only the URI

@@ -44,6 +44,11 @@
       "src/main/ipc/open-link.test.ts",
       "src/main/documents/image-file.test.ts",
       "src/main/documents/office-file.test.ts",
+      "src/main/documents/docx-save.test.ts",
+      "src/renderer/docx/docx-sessions.test.ts",
+      "src/renderer/docx/docx-font-supply.test.ts",
+      "src/core/fonts/font-file.test.ts",
+      "src/main/documents/system-fonts.test.ts",
       "src/main/documents/text-files.integration.test.ts",
       "src/main/project/recent-folders.test.ts",
       "src/main/project/project-service.test.ts",
@@ -314,6 +319,9 @@
       "previewContract": true
     },
     "media/office-pdf-export.spec.ts": {
+      "previewContract": true
+    },
+    "media/docx-editor.spec.ts": {
       "previewContract": true
     },
     "media/video-reader.spec.ts": {

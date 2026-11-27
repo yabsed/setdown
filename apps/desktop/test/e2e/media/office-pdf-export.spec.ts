@@ -35,7 +35,9 @@ async function session(prefix: string, first: string, prepare?: (root: string) =
       window.on('focus', () => { record.focused++; });
     });
   });
-  const reader = page.getByRole('region', { name: 'Office document reader', exact: true });
+  // A `.docx` that really is a Word document opens in the Word editor, every other Office file in the read-only viewer.
+  // Both announce their family and readiness the same way, and the PDF is made from the file on disk in either.
+  const reader = page.getByRole('region', { name: /^(Office document reader|Word document)$/ });
   const button = page.getByRole('button', { name: 'Save as PDF', exact: true });
   const tab = (name: string) => page.locator(`.document-tab[title="${path.join(root, name)}"]`);
   const record = () => app.evaluate(() => {

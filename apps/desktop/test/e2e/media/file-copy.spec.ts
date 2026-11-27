@@ -59,7 +59,8 @@ const FILES: Array<{ name: string; ready: string; click: string }> = [
   { name: 'banana.png', ready: '.image-surface:not(.inactive)[data-image-ready="true"]', click: '.image-surface:not(.inactive) .image-viewport' },
   { name: 'clip.mp4', ready: '.video-surface:not(.inactive)[data-video-ready="true"]', click: '.video-surface:not(.inactive) .video-toolbar' },
   { name: 'paper.pdf', ready: '.pdf-surface:not(.inactive) [data-page-number="1"] .textLayer', click: '.pdf-surface:not(.inactive) .pdf-host' },
-  { name: 'report.docx', ready: '.office-surface:not(.inactive)[data-office-ready="true"]', click: '.office-surface:not(.inactive) .office-host' },
+  // A real Word document opens in the Word editor, for reading until someone edits it; nothing is selected by a click.
+  { name: 'report.docx', ready: '.office-surface:not(.inactive)[data-office-ready="true"]', click: '.office-surface:not(.inactive) .word-host' },
   { name: 'table.hwp', ready: '.office-surface:not(.inactive)[data-office-ready="true"]', click: '.office-surface:not(.inactive) .office-host' },
 ];
 

@@ -36,6 +36,10 @@ export default defineConfig({
   // 앱의 유일한 진입점만 지정해 VS Code 소스를 dependency로 오인하지 않게 한다.
   optimizeDeps: {
     entries: ['index.html'],
+    // The Word engine locates its HarfBuzz WASM and the fonts package its font files with
+    // `new URL(..., import.meta.url)`. Pre-bundling moves that code away from those files,
+    // so the dev server serves these packages as they are published.
+    exclude: ['@docx-editor.dev/core', '@docx-editor.dev/fonts', '@docx-editor.dev/fonts-cjk'],
   },
   server: {
     // Electron owns these pages/preloads. Rebuilding them must not reload the

@@ -1,6 +1,6 @@
 import { fileLocation } from '../../core/document/file-location';
 import type { DocumentSnapshot } from '../../protocol/desktop-api';
-import { hasMarkdownPreview } from '../../core/document/document-capabilities';
+import { hasMarkdownPreview, isWordEditorDocument } from '../../core/document/document-capabilities';
 import { retainUnsavedRevision } from '../../core/document/document-save';
 import type { PreviewSession } from '../reader/preview-session';
 import type { DocumentContent as WorkspaceTab } from '../../core/workspace/document-store';
@@ -20,6 +20,8 @@ type Options = {
   beforeSave?(tab: WorkspaceTab): Promise<void>;
   autoSave?: { cancel(tabId?: string): void };
 };
+/** Word documents are edited by their own engine and saved as a whole package, never through a text buffer. */
+const binaryEditable = (tab: WorkspaceTab) => isWordEditorDocument(tab.document);
 export class DocumentActions {
   constructor(private readonly options: Options) {}
   private async accept(tab: WorkspaceTab, saved: DocumentSnapshot) {
@@ -30,7 +32,7 @@ export class DocumentActions {
   }
   async save(saveAs = false) {
     const tab = this.options.active();
-    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image')) return false;
+    if (!tab || (tab.document.kind !== undefined && tab.document.kind !== 'image' && !binaryEditable(tab))) return false;
     try {
       await this.options.beforeSave?.(tab);
       if (this.options.active() !== tab || !this.options.tabs.includes(tab)) return false;
@@ -112,6 +114,11 @@ export class DocumentActions {
   /** Office files are laid out again for paper in the main process; one export per document at a time. */
   private async exportOfficePdf(tab: WorkspaceTab) {
     if (view.pdfExports[tab.id]) return;
+    // The PDF is laid out from the file on disk. Edits to a Word document that are not saved yet would be left out of it silently.
+    if (this.options.dirty(tab)) {
+      window.alert('Save the document before exporting it as a PDF.\nThe PDF is made from the saved file, so unsaved edits would be missing from it.');
+      return;
+    }
     view.pdfExports[tab.id] = true;
     try { await this.options.desktop.exportOfficePdf(tab.document.path, { ...tab.document.diskVersion }); }
     catch (error) {
@@ -123,7 +130,7 @@ export class DocumentActions {
     const tab = this.options.active();
     if (!tab) return;
     if (view.unavailablePath === tab.document.path) { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
-    if (tab.document.kind === 'image') { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
+    if (tab.document.kind === 'image' || binaryEditable(tab)) { delete view.documentNotices[tab.document.path]; view.notice = false; return; }
     const { id, revision } = tab;
     const path = tab.document.path;
     const text = this.options.text(tab);

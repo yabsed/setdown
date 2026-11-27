@@ -2,6 +2,7 @@ import { visibleTabs } from '../../core/workspace/tab-clusters';
 import { fileLocation } from '../../core/document/file-location';
 import { parentFolder } from '../../core/files/folder-presentation';
 import { imageSessions } from '../image/image-edit-sessions';
+import { docxSessions } from '../docx/docx-sessions';
 import { DocumentSessions } from '../workspace/document-sessions';
 import { startWith } from '../terminal/terminal-start';
 import { notebookContent, notebookViews } from '../notebook/document-content';
@@ -373,7 +374,7 @@ export function startWorkspace(desktop: DesktopPort) {
     changed: (tab, text) => tabs.editorChanged(tab, text), scrolled: () => surfaces.editorScrolled(),
     escape: () => void surfaces.enterViewer(), insertLink: () => insertions.openLink(), insertTable: () => insertions.openTable() });
   workspace.documentStore.onRelease(record => editor.disposeDocument(record.id));
-  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions], desktop);
+  const documentSessions = new DocumentSessions(editor, [notebookContent, imageSessions, docxSessions], desktop);
   imageSessions.configure(desktop.imageEdit, () => workspace.documents, () => tabs?.updateChrome());
   imageSessions.saveFromToolbar = (id, saveAs) => {
     const tab = workspace.documents.find(t => t.id === id);
@@ -383,6 +384,20 @@ export function startWorkspace(desktop: DesktopPort) {
         const result = await documentSessions.save(tab, saveAs);
         if (result.document && !result.canceled) { await tabs.acceptSaved(tab, result.document); await projects.documentSaved(result.document); }
       } catch (error) { imageSessions.fail(id, error); }
+    });
+    fileMutation = task.catch(() => {}); return task;
+  };
+  // The Word engine and its fonts load with the first .docx tab, never at startup.
+  docxSessions.configure({ read: desktop.docxEdit.open, save: desktop.docxEdit.save, fonts: desktop.docxEdit.fonts, runtime: () => import('../docx/docx-runtime'),
+    tabs: () => workspace.documents, changed: () => tabs?.updateChrome() });
+  docxSessions.saveFromToolbar = (id, saveAs) => {
+    const tab = workspace.documents.find(t => t.id === id);
+    if (!tab) return Promise.resolve();
+    const task = fileMutation.then(async () => {
+      try {
+        const result = await documentSessions.save(tab, saveAs);
+        if (result.document && !result.canceled) { await tabs.acceptSaved(tab, result.document); await projects.documentSaved(result.document); }
+      } catch (error) { docxSessions.fail(id, error); }
     });
     fileMutation = task.catch(() => {}); return task;
   };
@@ -681,6 +696,12 @@ export function startWorkspace(desktop: DesktopPort) {
       if (command === 'image:undo' || command === 'image:redo') {
         if (document.activeElement?.matches('input, textarea, [contenteditable="true"]')) document.execCommand(command.slice(6));
         else if (active()) { if (command === 'image:undo') imageSessions.undo(active()!.id); else imageSessions.redo(active()!.id); }
+        return;
+      }
+      if (command === 'office:undo' || command === 'office:redo') {
+        // Inputs keep their own history; the pages are the engine's, whose undo stack is not Chromium's.
+        if (document.activeElement?.matches('input, textarea')) document.execCommand(command.slice(7));
+        else if (active()) docxSessions.history(active()!.id, command === 'office:undo' ? 'undo' : 'redo');
         return;
       }
       if (command === 'open-find' && workspace.active?.kind === 'terminal' && !project.gitDiffActive) {
